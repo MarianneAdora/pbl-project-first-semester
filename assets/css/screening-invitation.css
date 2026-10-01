@@ -1,0 +1,281 @@
+/* ==========================================================================
+   Screening Invitation
+   Standard fixed sizing: 1rem = 16px (normal browser default).
+   To nudge the layout:  --shift-left  (moves everything left/right)
+   ========================================================================== */
+
+:root {
+    --red: #e31837;
+    --red-dark: #c4122d;
+    --text: #222222;
+    --text-muted: #555555;
+    --icon-bg: #ececec;
+
+    --shift-left: 17vw;      /* space from the left edge to the logo */
+
+    --font-main: "Plus Jakarta Sans", "Segoe UI", sans-serif;
+    --font-btn: "Inter", "Segoe UI", sans-serif;
+    --font-logo: "Playfair Display", Georgia, serif;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    font-size: 16px;
+}
+
+body {
+    min-height: 100vh;
+    min-height: 100dvh;
+    font-family: var(--font-main);
+    color: var(--text);
+    /* 1440x1024 export: "cover" always fills the screen, anchored right
+       so the red shapes stay visible at any size */
+    background: #f7f7f7 url("../images/background.png") no-repeat right center / cover;
+}
+
+/* ===== Layout ===== */
+.invite {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    padding: 3.5rem 2rem 3.5rem var(--shift-left);
+}
+
+.invite__content {
+    width: 100%;
+    max-width: 38rem;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(2rem, 3.2vw, 3.5rem);
+}
+
+/* Logo sits slightly left of the text block, like the Figma */
+.invite__brand {
+    display: flex;
+    align-items: center;
+}
+
+.invite__logo {
+    width: 9rem;
+    height: auto;
+    display: block;
+}
+
+/* Text fallback if no logo file is found */
+.wordmark {
+    font-family: var(--font-logo);
+    font-size: 2rem;
+    font-weight: 500;
+    line-height: 1;
+    color: #2b2b2b;
+    padding-bottom: 0.15rem;
+    border-bottom: 3px solid var(--red);
+}
+
+.invite__main {
+    padding-left: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(2rem, 3.2vw, 3.5rem);
+}
+
+/* ===== Intro ===== */
+.invite__title {
+    font-size: 2.25rem;
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 0.5rem;
+}
+
+.invite__greeting,
+.invite__text {
+    font-size: 1rem;
+    line-height: 1.5;
+    color: var(--text-muted);
+}
+
+.invite__greeting strong {
+    color: var(--text);
+    font-weight: 700;
+}
+
+/* ===== Requirements ===== */
+.requirements__title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1.25rem;
+}
+
+.requirements__list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 1.4rem;
+}
+
+.requirement {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+}
+
+.requirement__icon {
+    flex: 0 0 auto;
+    width: 3.5rem;
+    height: 3.5rem;
+    display: grid;
+    place-items: center;
+    background: var(--icon-bg);
+    border-radius: 50%;
+}
+
+.requirement__icon svg {
+    width: 50%;
+    height: 50%;
+    fill: none;
+    stroke: var(--red);
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.requirement__name {
+    font-size: 1.05rem;
+    font-weight: 500;
+    line-height: 1.3;
+}
+
+.requirement__desc {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+}
+
+/* ===== Button ===== */
+.invite__btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    width: 100%;
+    padding: 1.05rem 1.5rem;
+    font-family: var(--font-btn);
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: #fff;
+    text-decoration: none;
+    background: var(--red);
+    border-radius: 0.4rem;
+    transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.invite__btn:hover {
+    background: var(--red-dark);
+    box-shadow: 0 0.4rem 1rem rgba(227, 24, 55, 0.3);
+}
+
+.invite__btn:active {
+    transform: translateY(1px);
+}
+
+.invite__btn:focus-visible {
+    outline: 3px solid rgba(227, 24, 55, 0.4);
+    outline-offset: 3px;
+}
+
+.invite__btn-arrow {
+    transition: transform 0.2s ease;
+}
+
+.invite__btn:hover .invite__btn-arrow {
+    transform: translateX(4px);
+}
+
+.invite__btn.is-loading {
+    pointer-events: none;
+    opacity: 0.8;
+}
+
+/* ===== Help ===== */
+.invite__help {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: -0.6rem;
+}
+
+.invite__help a {
+    color: var(--red);
+    font-weight: 500;
+}
+
+/* ===== Entrance animation (enabled by JS) ===== */
+.js-ready .invite__brand,
+.js-ready .invite__main > * {
+    opacity: 0;
+    transform: translateY(12px);
+    animation: rise 0.5s ease forwards;
+}
+
+.js-ready .invite__main > *:nth-child(1) { animation-delay: 0.08s; }
+.js-ready .invite__main > *:nth-child(2) { animation-delay: 0.16s; }
+.js-ready .invite__main > *:nth-child(3) { animation-delay: 0.24s; }
+.js-ready .invite__main > *:nth-child(4) { animation-delay: 0.32s; }
+
+@keyframes rise {
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .js-ready .invite__brand,
+    .js-ready .invite__main > * {
+        animation: none;
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* ===== Tablet ===== */
+@media (max-width: 1100px) {
+    :root {
+        --shift-left: 8vw;
+    }
+}
+
+/* ===== Mobile: content sits on a soft card so it stays readable ===== */
+@media (max-width: 800px) {
+    body {
+        background-position: 70% center;
+    }
+
+    .invite {
+        align-items: flex-start;
+        padding: 1.25rem;
+    }
+
+    .invite__content {
+        max-width: 32rem;
+        margin: 0 auto;
+        padding: 1.5rem;
+        background: rgba(255, 255, 255, 0.85);
+        border-radius: 1rem;
+        backdrop-filter: blur(4px);
+    }
+
+    .invite__main {
+        padding-left: 0;
+    }
+
+    .invite__title {
+        font-size: 1.75rem;
+    }
+}

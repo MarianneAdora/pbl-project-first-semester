@@ -1,0 +1,425 @@
+/* ==========================================================================
+   Verify OTP
+   Standard fixed sizing: 1rem = 16px (normal browser default).
+   Only the OTP boxes and columns flex so the page still fits small screens.
+   ========================================================================== */
+
+:root {
+    --red: #e31837;
+    --red-dark: #c4122d;
+    --maroon: #a81028;
+    --text: #222222;
+    --text-muted: #555555;
+    --icon-bg: #e8e8ea;
+    --box-bg: #f7f7f8;
+    --box-border: #4a4a4a;
+
+    --font-main: "Plus Jakarta Sans", "Segoe UI", sans-serif;
+    --font-btn: "Inter", "Segoe UI", sans-serif;
+    --font-logo: "Playfair Display", Georgia, serif;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+[hidden] {
+    display: none !important;
+}
+
+html {
+    font-size: 16px;
+}
+
+body {
+    min-height: 100vh;
+    min-height: 100dvh;
+    font-family: var(--font-main);
+    color: var(--text);
+    background: #f2f2f3 url("../images/background.png") no-repeat right center / cover;
+}
+
+/* ===== Page grid: top bar + centred content ===== */
+.page {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    padding: 2rem clamp(1.25rem, 4vw, 4rem) 2.5rem;
+}
+
+.topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.topbar__logo {
+    width: 9rem;
+    height: auto;
+    display: block;
+}
+
+/* Text fallback if no logo file is found */
+.wordmark {
+    font-family: var(--font-logo);
+    font-size: 2rem;
+    font-weight: 500;
+    line-height: 1;
+    color: #2b2b2b;
+    padding-bottom: 0.15rem;
+    border-bottom: 3px solid var(--red);
+}
+
+/* The pill keeps the white text readable even if the red shape
+   isn't behind it at some screen sizes */
+.topbar__back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 1rem;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #fff;
+    text-decoration: none;
+    background: rgba(168, 16, 40, 0.92);
+    border-radius: 999px;
+    transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.topbar__back:hover {
+    background: var(--maroon);
+    transform: translateX(-2px);
+}
+
+.topbar__back:focus-visible {
+    outline: 3px solid rgba(255, 255, 255, 0.8);
+    outline-offset: 2px;
+}
+
+/* ===== Main column ===== */
+.verify {
+    flex: 1;
+    width: 100%;
+    max-width: 40rem;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding-top: 1rem;
+}
+
+.verify__icon {
+    width: 6rem;
+    height: 6rem;
+    display: grid;
+    place-items: center;
+    background: var(--icon-bg);
+    border-radius: 50%;
+    margin-bottom: 1.6rem;
+}
+
+.verify__icon svg {
+    width: 48%;
+    height: 48%;
+    fill: none;
+    stroke: var(--red-dark);
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.verify__title {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 0.8rem;
+}
+
+.verify__text {
+    font-size: 1rem;
+    line-height: 1.5;
+    color: var(--text-muted);
+    margin-bottom: 2.6rem;
+}
+
+.verify__email {
+    color: var(--text);
+    font-weight: 600;
+    word-break: break-all;
+}
+
+/* ===== OTP form ===== */
+.otp {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.otp__boxes {
+    width: 100%;
+    max-width: 30rem;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 0.9rem;
+    margin-bottom: 1.5rem;
+}
+
+.otp__box {
+    width: 100%;
+    aspect-ratio: 0.86;
+    text-align: center;
+    font-family: var(--font-main);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text);
+    background: var(--box-bg);
+    border: 2px solid var(--box-border);
+    border-radius: 0.6rem;
+    outline: none;
+    caret-color: var(--red);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.otp__box:focus {
+    border-color: var(--red);
+    box-shadow: 0 0 0 0.25rem rgba(227, 24, 55, 0.18);
+}
+
+.otp__box.is-filled {
+    border-color: var(--red-dark);
+}
+
+.otp__boxes.is-error .otp__box {
+    border-color: var(--red);
+}
+
+.otp__boxes.shake {
+    animation: shake 0.4s ease;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-6px); }
+    40%, 80% { transform: translateX(6px); }
+}
+
+/* ===== Submit button ===== */
+.otp__submit {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    width: 100%;
+    max-width: 30rem;
+    padding: 1rem 1.5rem;
+    font-family: var(--font-btn);
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: #fff;
+    background: var(--red);
+    border: 0;
+    border-radius: 0.4rem;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.otp__submit:hover {
+    background: var(--red-dark);
+    box-shadow: 0 0.4rem 1rem rgba(227, 24, 55, 0.3);
+}
+
+.otp__submit:active {
+    transform: translateY(1px);
+}
+
+.otp__submit:focus-visible {
+    outline: 3px solid rgba(227, 24, 55, 0.4);
+    outline-offset: 3px;
+}
+
+.otp__submit-arrow {
+    transition: transform 0.2s ease;
+}
+
+.otp__submit:hover .otp__submit-arrow {
+    transform: translateX(4px);
+}
+
+.otp__submit.is-loading {
+    pointer-events: none;
+    opacity: 0.8;
+}
+
+/* ===== Resend ===== */
+.resend {
+    margin-top: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.1rem;
+}
+
+.resend__btn {
+    font-family: var(--font-main);
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--red-dark);
+    background: none;
+    border: 0;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+}
+
+.resend__btn:hover {
+    color: var(--maroon);
+}
+
+.resend__btn:focus-visible {
+    outline: 3px solid rgba(227, 24, 55, 0.4);
+    outline-offset: 3px;
+    border-radius: 4px;
+}
+
+.resend__btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.resend__timer {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ===== Error / notice banner ===== */
+.banner {
+    width: 100%;
+    max-width: 36rem;
+    margin-top: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.8rem;
+    padding: 1.1rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--red);
+    background: rgba(227, 24, 55, 0.18);
+    border: 1px solid rgba(227, 24, 55, 0.6);
+    border-radius: 0.3rem;
+    text-align: left;
+}
+
+.banner__icon {
+    flex: 0 0 auto;
+    width: 1.5rem;
+    height: 1.5rem;
+    color: var(--red-dark);
+}
+
+.banner--ok {
+    color: #1d6b3a;
+    background: rgba(40, 167, 89, 0.15);
+    border-color: rgba(40, 167, 89, 0.55);
+    justify-content: center;
+}
+
+.dev-hint {
+    margin-top: 1rem;
+    font-size: 0.85rem;
+    color: #8a6d00;
+    background: #fff6cc;
+    border: 1px dashed #d4b106;
+    padding: 0.3rem 0.8rem;
+    border-radius: 0.3rem;
+}
+
+/* ===== Entrance animation (enabled by JS) ===== */
+.js-ready .verify > *,
+.js-ready .otp > * {
+    opacity: 0;
+    transform: translateY(12px);
+    animation: rise 0.5s ease forwards;
+}
+
+.js-ready .verify > .otp {
+    opacity: 1;
+    transform: none;
+    animation: none;
+}
+
+.js-ready .verify > *:nth-child(2) { animation-delay: 0.06s; }
+.js-ready .verify > *:nth-child(3) { animation-delay: 0.12s; }
+.js-ready .otp > *:nth-child(1)    { animation-delay: 0.18s; }
+.js-ready .otp > *:nth-child(2)    { animation-delay: 0.24s; }
+.js-ready .otp > *:nth-child(3)    { animation-delay: 0.30s; }
+
+@keyframes rise {
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* Keep the banner visible even while other items animate in */
+.js-ready .otp > .banner:not([hidden]) {
+    animation: none;
+    opacity: 1;
+    transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .js-ready .verify > *,
+    .js-ready .otp > * {
+        animation: none;
+        opacity: 1;
+        transform: none;
+    }
+
+    .otp__boxes.shake {
+        animation: none;
+    }
+}
+
+/* ===== Mobile ===== */
+@media (max-width: 800px) {
+    body {
+        background-position: 70% center;
+    }
+
+    .page {
+        padding: 1.25rem;
+    }
+
+    .verify {
+        justify-content: flex-start;
+        margin-top: 1rem;
+        padding: 1.5rem 1.25rem;
+        background: rgba(255, 255, 255, 0.85);
+        border-radius: 1rem;
+        backdrop-filter: blur(4px);
+    }
+
+    .verify__icon {
+        width: 4.5rem;
+        height: 4.5rem;
+    }
+
+    .verify__title {
+        font-size: 1.75rem;
+    }
+
+    .otp__box {
+        font-size: 1.35rem;
+    }
+}
