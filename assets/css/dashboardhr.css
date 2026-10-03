@@ -10,6 +10,7 @@
     --ease-stripe: cubic-bezier(0.76, 0, 0.24, 1);   /* stripes: smooth ease-in-out */
     --ease-out: cubic-bezier(0.22, 1, 0.36, 1);      /* elements entering + hover */
     --ease-in: cubic-bezier(0.55, 0, 0.8, 0.3);      /* elements leaving */
+    --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);   /* hover pop (slight overshoot) */
     --reveal-count: 7;                               /* highest --i used on the page */
 }
 
@@ -29,6 +30,7 @@ body {
     inset: 0;
     z-index: 99999;
     pointer-events: none;
+    overflow: hidden;              /* stripes can't create scrollbars while sliding */
     display: flex;
     flex-direction: column;
 
@@ -260,7 +262,8 @@ html.js.is-ready.is-leaving .reveal {
     display: flex;
     align-items: center;
     max-width: 180px;
-    transition: max-width 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+    /* fade the logo out first, then shrink its space, so it is never cut in half */
+    transition: opacity 0.12s ease, max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.08s;
 }
 
 .brand-logo {
@@ -307,10 +310,15 @@ html.js.is-ready.is-leaving .reveal {
 
 .toggle-btn:hover {
     background: rgba(255, 255, 255, 0.18);
+    transform: scale(1.12);
 }
 
 .sidebar.collapsed .toggle-btn {
     transform: rotate(180deg) scale(1.35);
+}
+
+.sidebar.collapsed .toggle-btn:hover {
+    transform: rotate(180deg) scale(1.5);
 }
 
 .sidebar-nav {
@@ -330,7 +338,7 @@ html.js.is-ready.is-leaving .reveal {
     border-radius: 12px;
     font-size: 13.5px;
     font-weight: 700;
-    transition: background-color 0.2s ease, transform 0.25s var(--ease-out), box-shadow 0.2s ease;
+    transition: background-color 0.2s ease, transform 0.3s var(--ease-pop), box-shadow 0.2s ease;
     cursor: pointer;
     background: transparent;
     border: none;
@@ -339,7 +347,7 @@ html.js.is-ready.is-leaving .reveal {
 
 .nav-item:hover {
     background-color: rgba(255, 255, 255, 0.15);
-    transform: translateX(3px);
+    transform: translateX(4px) scale(1.04);
 }
 
 .nav-item:active {
@@ -445,13 +453,13 @@ html.js.is-ready.is-leaving .reveal {
     font-weight: 600;
     padding: 8px 10px;
     border-radius: 8px;
-    transition: background-color 0.2s ease, color 0.2s ease, transform 0.25s var(--ease-out);
+    transition: background-color 0.2s ease, color 0.2s ease, transform 0.3s var(--ease-pop);
 }
 
 .sub-item:hover {
     background-color: rgba(255, 255, 255, 0.18);
     color: #ffffff;
-    transform: translateX(2px);
+    transform: translateX(3px) scale(1.04);
 }
 
 .sidebar-footer {
@@ -467,8 +475,10 @@ html.js.is-ready.is-leaving .reveal {
    ========================================================================== */
 .main-content {
     flex: 1;
+    min-width: 0;
     padding: 28px 36px;
     overflow-y: auto;
+    overflow-x: hidden;            /* no horizontal scrollbar flash */
 }
 
 .content-header {
@@ -504,7 +514,8 @@ html.js.is-ready.is-leaving .reveal {
     border-radius: 14px;
     padding: 22px 16px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
-    transition: transform 0.3s var(--ease-out), box-shadow 0.3s var(--ease-out);
+    position: relative;
+    transition: transform 0.35s var(--ease-pop), box-shadow 0.3s var(--ease-out);
     cursor: pointer;
     display: flex;
     flex-direction: column;
@@ -514,12 +525,13 @@ html.js.is-ready.is-leaving .reveal {
 }
 
 .stat-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+    transform: translateY(-6px) scale(1.04);
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.12);
+    z-index: 2;
 }
 
 .stat-card:active {
-    transform: translateY(-1px) scale(0.985);
+    transform: translateY(-2px) scale(0.99);
 }
 
 .card-title {
@@ -563,12 +575,14 @@ html.js.is-ready.is-leaving .reveal {
     align-items: center;
     justify-content: center;
     text-align: center;
-    transition: transform 0.3s var(--ease-out), box-shadow 0.3s var(--ease-out);
+    position: relative;
+    transition: transform 0.35s var(--ease-pop), box-shadow 0.3s var(--ease-out);
 }
 
 .chart-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+    transform: translateY(-6px) scale(1.03);
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.12);
+    z-index: 2;
 }
 
 .chart-card h3 {
@@ -600,12 +614,12 @@ html.js.is-ready.is-leaving .reveal {
     align-items: center;
     gap: 6px;
     cursor: pointer;
-    transition: opacity 0.2s ease, transform 0.25s var(--ease-out);
+    transition: opacity 0.2s ease, transform 0.3s var(--ease-pop);
 }
 
 .legend-item:hover {
-    opacity: 0.75;
-    transform: translateY(-1px);
+    opacity: 1;
+    transform: translateY(-2px) scale(1.1);
 }
 
 .legend-dot {
@@ -622,12 +636,14 @@ html.js.is-ready.is-leaving .reveal {
     border-radius: 14px;
     padding: 20px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
-    transition: transform 0.3s var(--ease-out), box-shadow 0.3s var(--ease-out);
+    position: relative;
+    transition: transform 0.35s var(--ease-pop), box-shadow 0.3s var(--ease-out);
 }
 
 .recent-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.07);
+    transform: translateY(-4px) scale(1.012);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.1);
+    z-index: 2;
 }
 
 .card-top {
@@ -647,12 +663,14 @@ html.js.is-ready.is-leaving .reveal {
     font-size: 12px;
     font-weight: 700;
     text-decoration: none;
-    transition: color 0.2s ease;
+    transition: color 0.2s ease, transform 0.3s var(--ease-pop);
+    display: inline-block;
 }
 
 .view-all:hover {
     color: #0056b3;
     text-decoration: underline;
+    transform: scale(1.08);
 }
 
 .applicants-table {
@@ -676,14 +694,14 @@ html.js.is-ready.is-leaving .reveal {
 
 .clickable-row {
     cursor: pointer;
-    transition: background-color 0.2s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+    transition: background-color 0.2s ease, transform 0.3s var(--ease-pop), box-shadow 0.2s ease;
     border-radius: 8px;
 }
 
 .clickable-row:hover {
     background-color: #e2e8f0;
-    transform: translateY(-2px) scale(1.008);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    transform: translateY(-2px) scale(1.015);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
 }
 
 .status-pill {
@@ -692,6 +710,11 @@ html.js.is-ready.is-leaving .reveal {
     font-size: 11px;
     font-weight: 700;
     display: inline-block;
+    transition: transform 0.3s var(--ease-pop);
+}
+
+.clickable-row:hover .status-pill {
+    transform: scale(1.1);
 }
 
 .status-pending {
@@ -721,12 +744,14 @@ html.js.is-ready.is-leaving .reveal {
     flex-direction: column;
     align-items: center;
     text-align: center;
-    transition: transform 0.3s var(--ease-out), box-shadow 0.3s var(--ease-out);
+    position: relative;
+    transition: transform 0.35s var(--ease-pop), box-shadow 0.3s var(--ease-out);
 }
 
 .quick-action-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.07);
+    transform: translateY(-6px) scale(1.03);
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.12);
+    z-index: 2;
 }
 
 .quick-action-card h3 {
@@ -780,13 +805,13 @@ html.js.is-ready.is-leaving .reveal {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background-color 0.2s ease, transform 0.25s var(--ease-out), box-shadow 0.2s ease;
+    transition: background-color 0.2s ease, transform 0.3s var(--ease-pop), box-shadow 0.2s ease;
 }
 
 .btn-add-new:hover {
     background-color: #0088e0;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 162, 255, 0.3);
+    transform: translateY(-3px) scale(1.04);
+    box-shadow: 0 8px 18px rgba(0, 162, 255, 0.35);
 }
 
 .btn-add-new:active {

@@ -77,9 +77,9 @@ document.addEventListener('DOMContentLoaded', () => {
     //    draw animation is actually seen)
     const ctx = document.getElementById('passedRejectedChart');
     if (ctx && typeof chartData !== 'undefined') {
-        // After a login, wait until the stripes have fully cleared so the chart's
-        // draw animation doesn't compete with them for frames (keeps the sweep smooth)
-        const chartDelay = arrivedViaTransition ? 950 : 50 + 4 * 70 + 200;
+        // After a login, start drawing just as the stripes finish clearing, so the chart
+        // card is never left empty while the rest of the page is already up
+        const chartDelay = arrivedViaTransition ? 700 : 50 + 4 * 70 + 200;
 
         setTimeout(() => {
             new Chart(ctx, {
