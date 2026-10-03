@@ -5,12 +5,12 @@ $credentials = [
     'hr@expertise.com' => [
         'password' => 'hr123',
         'role' => 'hr',
-        'redirect' => 'dashboardhr.php'
+        'redirect' => 'hr/dashboardhr.php'
     ],
     'admin@expertise.com' => [
         'password' => 'admin123',
         'role' => 'admin',
-        'redirect' => 'dashboardadmin.php'
+        'redirect' => 'admindashboardadmin.php'
     ]
 ];
 

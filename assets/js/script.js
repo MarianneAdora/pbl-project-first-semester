@@ -5,7 +5,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const errorMessage = document.getElementById('errorMessage');
     const pageOverlay = document.getElementById('pageOverlay');
 
-    // Toggle Password Visibility
+    // 1. On Page Load: Start fully covered, then smoothly sweep OUT to reveal page
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('transition') === 'out' && pageOverlay) {
+        // Hold full solid red screen initially while DOM loads
+        pageOverlay.classList.add('hold-solid');
+
+        // Brief loading pause, then trigger outward sweep to reveal login page
+        setTimeout(() => {
+            pageOverlay.classList.remove('hold-solid');
+            pageOverlay.classList.add('sweep-out');
+        }, 200);
+
+        // Clean up URL parameter without page refresh
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    // 2. Toggle Password Visibility
     if (togglePassword && passwordInput) {
         togglePassword.addEventListener('click', () => {
             const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
@@ -13,11 +29,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Continuous Flow AJAX Login Handler
+    // 3. AJAX Login & Sweep-In Transition
     if (loginForm) {
         loginForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            errorMessage.style.display = 'none';
+            if (errorMessage) errorMessage.style.display = 'none';
 
             const formData = new FormData(loginForm);
 
@@ -28,21 +44,26 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    // Trigger single-pass continuous sweep
-                    pageOverlay.classList.add('active');
+                    // Sweep stripes in from left to cover the screen
+                    pageOverlay.classList.remove('sweep-out');
+                    pageOverlay.classList.add('sweep-in');
 
-                    // Navigate mid-sweep as screen is fully covered by the solid wave
+                    // Wait until full red screen is reached before redirecting
                     setTimeout(() => {
-                        window.location.href = data.redirect;
-                    }, 350);
+                        window.location.href = data.redirect + '?transition=out';
+                    }, 850);
                 } else {
-                    errorMessage.textContent = data.message;
-                    errorMessage.style.display = 'block';
+                    if (errorMessage) {
+                        errorMessage.textContent = data.message;
+                        errorMessage.style.display = 'block';
+                    }
                 }
             })
             .catch(() => {
-                errorMessage.textContent = 'An unexpected error occurred. Please try again.';
-                errorMessage.style.display = 'block';
+                if (errorMessage) {
+                    errorMessage.textContent = 'An unexpected error occurred. Please try again.';
+                    errorMessage.style.display = 'block';
+                }
             });
         });
     }

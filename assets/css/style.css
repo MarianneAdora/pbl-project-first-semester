@@ -20,7 +20,7 @@ body {
 }
 
 /* ==========================================================================
-   Continuous 8-Stripe Horizontal Sweep (Uninterrupted Motion)
+   Staggered Left-to-Right Individual Sweep Overlay
    ========================================================================== */
 .page-overlay {
     position: fixed;
@@ -28,7 +28,7 @@ body {
     left: 0;
     width: 100vw;
     height: 100vh;
-    z-index: 9999;
+    z-index: 99999;
     pointer-events: none;
     display: flex;
     flex-direction: column;
@@ -38,41 +38,54 @@ body {
     flex: 1;
     width: 100%;
     height: 100%;
+    /* Default offscreen left */
     transform: translateX(-100%);
+    will-change: transform;
 }
 
-/* 8-Tone Expanded Red Gradient Palette */
+/* Red Gradient Palette */
 .page-overlay .stripe-1 { background-color: #59000b; }
 .page-overlay .stripe-2 { background-color: #7a0010; }
 .page-overlay .stripe-3 { background-color: #920618; }
 .page-overlay .stripe-4 { background-color: #a3081e; }
 .page-overlay .stripe-5 { background-color: #bb0d24; }
-.page-overlay .stripe-6 { background-color: #d1122a; } /* Brand Red */
+.page-overlay .stripe-6 { background-color: #d1122a; }
 .page-overlay .stripe-7 { background-color: #e61d36; }
 .page-overlay .stripe-8 { background-color: #f7314a; }
-
-/* Continuous Keyframe Animation across the entire screen */
-.page-overlay.active .overlay-stripe {
-    animation: continuousSweep 0.65s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+/* Ensure overlay stays solid when initialized in transition state */
+.page-overlay.hold-solid .overlay-stripe {
+    transform: translateX(0%) !important;
 }
 
-/* Staggered Delay for Wave Effect */
-.page-overlay.active .stripe-1 { animation-delay: 0s; }
-.page-overlay.active .stripe-2 { animation-delay: 0.02s; }
-.page-overlay.active .stripe-3 { animation-delay: 0.04s; }
-.page-overlay.active .stripe-4 { animation-delay: 0.06s; }
-.page-overlay.active .stripe-5 { animation-delay: 0.08s; }
-.page-overlay.active .stripe-6 { animation-delay: 0.10s; }
-.page-overlay.active .stripe-7 { animation-delay: 0.12s; }
-.page-overlay.active .stripe-8 { animation-delay: 0.14s; }
+/* Inward Sweep */
+.page-overlay.sweep-in .overlay-stripe {
+    animation: sweepInLeft 0.55s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
 
-@keyframes continuousSweep {
-    0% {
-        transform: translateX(-100%);
-    }
-    100% {
-        transform: translateX(100%);
-    }
+/* Outward Sweep */
+.page-overlay.sweep-out .overlay-stripe {
+    animation: sweepOutRight 0.55s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+/* Individual Stagger Delays */
+.page-overlay.sweep-in .stripe-1, .page-overlay.sweep-out .stripe-1 { animation-delay: 0s; }
+.page-overlay.sweep-in .stripe-2, .page-overlay.sweep-out .stripe-2 { animation-delay: 0.04s; }
+.page-overlay.sweep-in .stripe-3, .page-overlay.sweep-out .stripe-3 { animation-delay: 0.08s; }
+.page-overlay.sweep-in .stripe-4, .page-overlay.sweep-out .stripe-4 { animation-delay: 0.12s; }
+.page-overlay.sweep-in .stripe-5, .page-overlay.sweep-out .stripe-5 { animation-delay: 0.16s; }
+.page-overlay.sweep-in .stripe-6, .page-overlay.sweep-out .stripe-6 { animation-delay: 0.20s; }
+.page-overlay.sweep-in .stripe-7, .page-overlay.sweep-out .stripe-7 { animation-delay: 0.24s; }
+.page-overlay.sweep-in .stripe-8, .page-overlay.sweep-out .stripe-8 { animation-delay: 0.28s; }
+
+/* Keyframes */
+@keyframes sweepInLeft {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(0%); }
+}
+
+@keyframes sweepOutRight {
+    0% { transform: translateX(0%); }
+    100% { transform: translateX(100%); }
 }
 
 /* ==========================================================================
