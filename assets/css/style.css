@@ -7,6 +7,14 @@
     -moz-osx-font-smoothing: grayscale;
 }
 
+:root {
+    --ease-stripe: cubic-bezier(0.76, 0, 0.24, 1);   /* stripes: smooth ease-in-out */
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);      /* elements entering */
+    --ease-in: cubic-bezier(0.55, 0, 0.8, 0.3);      /* elements leaving */
+    --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);   /* hover pop (slight overshoot) */
+    --reveal-count: 7;                               /* highest --i used on the page */
+}
+
 body {
     width: 100vw;
     height: 100vh;
@@ -15,35 +23,35 @@ body {
     justify-content: center;
     align-items: center;
     background: url('../../pic/Ad BG.png') no-repeat center center/cover;
-    opacity: 0;
-    animation: fadeInBody 0.4s ease-out forwards;
 }
 
 /* ==========================================================================
-   Staggered Left-to-Right Individual Sweep Overlay
+   Page Transition Overlay
    ========================================================================== */
 .page-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
+    inset: 0;
     z-index: 99999;
     pointer-events: none;
     display: flex;
     flex-direction: column;
+
+    /* Tune the feel here */
+    --sweep-duration: 0.5s;
+    --sweep-ease: var(--ease-stripe);
 }
 
 .page-overlay .overlay-stripe {
     flex: 1;
     width: 100%;
-    height: 100%;
-    /* Default offscreen left */
-    transform: translateX(-100%);
+    margin-bottom: -1px;           /* hides hairline gaps between stripes */
+    padding-bottom: 1px;
+    transform: translate3d(-100%, 0, 0);
     will-change: transform;
+    backface-visibility: hidden;
 }
 
-/* Red Gradient Palette */
+/* Red gradient palette */
 .page-overlay .stripe-1 { background-color: #59000b; }
 .page-overlay .stripe-2 { background-color: #7a0010; }
 .page-overlay .stripe-3 { background-color: #920618; }
@@ -52,40 +60,76 @@ body {
 .page-overlay .stripe-6 { background-color: #d1122a; }
 .page-overlay .stripe-7 { background-color: #e61d36; }
 .page-overlay .stripe-8 { background-color: #f7314a; }
-/* Ensure overlay stays solid when initialized in transition state */
-.page-overlay.hold-solid .overlay-stripe {
-    transform: translateX(0%) !important;
+
+/* Solid state: applied by the <head> script before first paint */
+html.is-transitioning .page-overlay .overlay-stripe {
+    transform: translate3d(0, 0, 0);
 }
 
-/* Inward Sweep */
 .page-overlay.sweep-in .overlay-stripe {
-    animation: sweepInLeft 0.55s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    animation: sweepIn var(--sweep-duration) var(--sweep-ease) forwards;
 }
 
-/* Outward Sweep */
 .page-overlay.sweep-out .overlay-stripe {
-    animation: sweepOutRight 0.55s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    animation: sweepOut var(--sweep-duration) var(--sweep-ease) forwards;
 }
 
-/* Individual Stagger Delays */
-.page-overlay.sweep-in .stripe-1, .page-overlay.sweep-out .stripe-1 { animation-delay: 0s; }
-.page-overlay.sweep-in .stripe-2, .page-overlay.sweep-out .stripe-2 { animation-delay: 0.04s; }
-.page-overlay.sweep-in .stripe-3, .page-overlay.sweep-out .stripe-3 { animation-delay: 0.08s; }
-.page-overlay.sweep-in .stripe-4, .page-overlay.sweep-out .stripe-4 { animation-delay: 0.12s; }
-.page-overlay.sweep-in .stripe-5, .page-overlay.sweep-out .stripe-5 { animation-delay: 0.16s; }
-.page-overlay.sweep-in .stripe-6, .page-overlay.sweep-out .stripe-6 { animation-delay: 0.20s; }
-.page-overlay.sweep-in .stripe-7, .page-overlay.sweep-out .stripe-7 { animation-delay: 0.24s; }
-.page-overlay.sweep-in .stripe-8, .page-overlay.sweep-out .stripe-8 { animation-delay: 0.28s; }
+/* Racing stagger: the middle stripes lead, the outer ones chase */
+.page-overlay .stripe-4 { animation-delay: 0s; }
+.page-overlay .stripe-5 { animation-delay: 0.02s; }
+.page-overlay .stripe-3 { animation-delay: 0.06s; }
+.page-overlay .stripe-6 { animation-delay: 0.08s; }
+.page-overlay .stripe-2 { animation-delay: 0.12s; }
+.page-overlay .stripe-7 { animation-delay: 0.15s; }
+.page-overlay .stripe-1 { animation-delay: 0.19s; }
+.page-overlay .stripe-8 { animation-delay: 0.22s; }
 
-/* Keyframes */
-@keyframes sweepInLeft {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(0%); }
+@keyframes sweepIn {
+    from { transform: translate3d(-100%, 0, 0); }
+    to   { transform: translate3d(0, 0, 0); }
 }
 
-@keyframes sweepOutRight {
-    0% { transform: translateX(0%); }
-    100% { transform: translateX(100%); }
+@keyframes sweepOut {
+    from { transform: translate3d(0, 0, 0); }
+    to   { transform: translate3d(100%, 0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .page-overlay { --sweep-duration: 0.01s; }
+    .page-overlay .overlay-stripe { animation-delay: 0s !important; }
+    html.js.is-ready .reveal,
+    html.js.is-ready.is-leaving .reveal { animation: none !important; opacity: 1; }
+}
+
+/* ==========================================================================
+   Entrance / Exit animations for page elements
+   ========================================================================== */
+/* Hidden until the page is ready (only when JS is running) */
+html.js .reveal {
+    opacity: 0;
+}
+
+/* Entrance: elements rise in one after another, top to bottom */
+html.js.is-ready .reveal {
+    opacity: 1;
+    animation: revealIn 0.65s var(--ease-out) backwards;
+    animation-delay: calc(var(--reveal-base, 0.05s) + var(--i, 0) * 70ms);
+}
+
+/* Exit: elements lift away bottom to top while the stripes sweep in */
+html.js.is-ready.is-leaving .reveal {
+    animation: revealOut 0.38s var(--ease-in) forwards;
+    animation-delay: calc((var(--reveal-count) - var(--i, 0)) * 35ms);
+}
+
+@keyframes revealIn {
+    from { opacity: 0; transform: translate3d(0, 22px, 0); }
+    to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes revealOut {
+    from { opacity: 1; transform: translate3d(0, 0, 0); }
+    to   { opacity: 0; transform: translate3d(0, -14px, 0); }
 }
 
 /* ==========================================================================
@@ -99,15 +143,15 @@ body {
     width: 100%;
     max-width: 380px;
     transform: translateY(-40px);
-    animation: fadeSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .logo-container {
     text-align: center;
-    margin-bottom: 12px;
+    margin-bottom: 18px;
     display: flex;
     flex-direction: column;
     align-items: center;
+    gap: 10px;                     /* real spacing between logo and title */
 }
 
 .logo-crop {
@@ -127,8 +171,8 @@ body {
     font-size: 13.5px;
     font-weight: 800;
     color: #1a1a1a;
-    letter-spacing: 0.8px;
-    margin-top: -24px;
+    letter-spacing: 1.2px;
+    margin-top: 0;                 /* was -24px (caused the overlap) */
     text-transform: uppercase;
 }
 
@@ -140,12 +184,12 @@ body {
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15), 0 5px 15px rgba(0, 0, 0, 0.05);
     text-align: center;
     position: relative;
-    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 0.35s var(--ease-pop), box-shadow 0.3s var(--ease-out);
 }
 
 .login-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18), 0 6px 18px rgba(0, 0, 0, 0.08);
+    transform: translateY(-4px);
+    box-shadow: 0 22px 46px rgba(0, 0, 0, 0.2), 0 8px 20px rgba(0, 0, 0, 0.08);
 }
 
 .card-header h2 {
@@ -192,19 +236,19 @@ body {
     color: #333333;
     background-color: #ffffff;
     outline: none;
-    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), 
-                border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), 
-                box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 0.3s var(--ease-pop),
+                border-color 0.2s ease,
+                box-shadow 0.2s ease;
 }
 
 .form-control:hover {
     border-color: #b0b0b0;
-    transform: translateY(-1px);
+    transform: translateY(-2px) scale(1.015);
 }
 
 .form-control:focus {
     border-color: #d1122a;
-    transform: translateY(-1px);
+    transform: translateY(-2px) scale(1.015);
     box-shadow: 0 0 0 3px rgba(209, 18, 42, 0.12);
 }
 
@@ -217,11 +261,11 @@ body {
     height: 16px;
     cursor: pointer;
     fill: #d1122a;
-    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), fill 0.2s ease;
+    transition: transform 0.3s var(--ease-pop), fill 0.2s ease;
 }
 
 .eye-icon:hover {
-    transform: translateY(-50%) scale(1.18);
+    transform: translateY(-50%) scale(1.3);
     fill: #b50e23;
 }
 
@@ -247,12 +291,12 @@ body {
     font-weight: 700;
     user-select: none;
     gap: 6px;
-    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+    transition: transform 0.3s var(--ease-pop), opacity 0.2s ease;
 }
 
 .remember-label:hover {
-    transform: translateY(-1px);
-    opacity: 0.9;
+    transform: translateY(-2px) scale(1.06);
+    opacity: 1;
 }
 
 .remember-label input[type="checkbox"] {
@@ -260,11 +304,11 @@ body {
     width: 15px;
     height: 15px;
     cursor: pointer;
-    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 0.3s var(--ease-pop);
 }
 
 .remember-label:hover input[type="checkbox"] {
-    transform: scale(1.1);
+    transform: scale(1.15);
 }
 
 .remember-label:active input[type="checkbox"] {
@@ -282,21 +326,26 @@ body {
     font-weight: 700;
     letter-spacing: 0.8px;
     cursor: pointer;
-    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), 
-                background-color 0.2s ease, 
-                box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 0.3s var(--ease-pop),
+                background-color 0.2s ease,
+                box-shadow 0.2s ease;
     box-shadow: 0 4px 12px rgba(209, 18, 42, 0.25);
 }
 
 .btn-submit:hover {
     background-color: #b50e23;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(209, 18, 42, 0.38);
+    transform: translateY(-3px) scale(1.04);
+    box-shadow: 0 10px 22px rgba(209, 18, 42, 0.4);
 }
 
 .btn-submit:active {
     transform: translateY(0) scale(0.98);
     box-shadow: 0 2px 6px rgba(209, 18, 42, 0.2);
+}
+
+.btn-submit:disabled {
+    opacity: 0.7;
+    cursor: wait;
 }
 
 .error-message {
@@ -309,20 +358,4 @@ body {
     margin-bottom: 14px;
     display: none;
     border: 1px solid #ffcccc;
-}
-
-@keyframes fadeInBody {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-@keyframes fadeSlideUp {
-    from {
-        opacity: 0;
-        transform: translateY(-25px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(-40px);
-    }
 }

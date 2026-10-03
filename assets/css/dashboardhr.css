@@ -6,6 +6,13 @@
     -webkit-font-smoothing: antialiased;
 }
 
+:root {
+    --ease-stripe: cubic-bezier(0.76, 0, 0.24, 1);   /* stripes: smooth ease-in-out */
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);      /* elements entering + hover */
+    --ease-in: cubic-bezier(0.55, 0, 0.8, 0.3);      /* elements leaving */
+    --reveal-count: 7;                               /* highest --i used on the page */
+}
+
 body {
     display: flex;
     min-height: 100vh;
@@ -15,30 +22,32 @@ body {
 }
 
 /* ==========================================================================
-   Staggered Left-to-Right Individual Sweep Overlay
+   Page Transition Overlay (login arrival + logout only)
    ========================================================================== */
 .page-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
+    inset: 0;
     z-index: 99999;
     pointer-events: none;
     display: flex;
     flex-direction: column;
+
+    /* Tune the feel here */
+    --sweep-duration: 0.5s;
+    --sweep-ease: var(--ease-stripe);
 }
 
 .page-overlay .overlay-stripe {
     flex: 1;
     width: 100%;
-    height: 100%;
-    /* Default offscreen left */
-    transform: translateX(-100%);
+    margin-bottom: -1px;           /* hides hairline gaps between stripes */
+    padding-bottom: 1px;
+    transform: translate3d(-100%, 0, 0);
     will-change: transform;
+    backface-visibility: hidden;
 }
 
-/* Red Gradient Palette */
+/* Red gradient palette */
 .page-overlay .stripe-1 { background-color: #59000b; }
 .page-overlay .stripe-2 { background-color: #7a0010; }
 .page-overlay .stripe-3 { background-color: #920618; }
@@ -48,40 +57,75 @@ body {
 .page-overlay .stripe-7 { background-color: #e61d36; }
 .page-overlay .stripe-8 { background-color: #f7314a; }
 
-/* Ensure overlay stays solid when initialized in transition state */
-.page-overlay.hold-solid .overlay-stripe {
-    transform: translateX(0%) !important;
+/* Solid state: applied by the <head> script before first paint */
+html.is-transitioning .page-overlay .overlay-stripe {
+    transform: translate3d(0, 0, 0);
 }
 
-/* Inward Sweep */
 .page-overlay.sweep-in .overlay-stripe {
-    animation: sweepInLeft 0.55s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    animation: sweepIn var(--sweep-duration) var(--sweep-ease) forwards;
 }
 
-/* Outward Sweep */
 .page-overlay.sweep-out .overlay-stripe {
-    animation: sweepOutRight 0.55s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    animation: sweepOut var(--sweep-duration) var(--sweep-ease) forwards;
 }
 
-/* Individual Stagger Delays */
-.page-overlay.sweep-in .stripe-1, .page-overlay.sweep-out .stripe-1 { animation-delay: 0s; }
-.page-overlay.sweep-in .stripe-2, .page-overlay.sweep-out .stripe-2 { animation-delay: 0.04s; }
-.page-overlay.sweep-in .stripe-3, .page-overlay.sweep-out .stripe-3 { animation-delay: 0.08s; }
-.page-overlay.sweep-in .stripe-4, .page-overlay.sweep-out .stripe-4 { animation-delay: 0.12s; }
-.page-overlay.sweep-in .stripe-5, .page-overlay.sweep-out .stripe-5 { animation-delay: 0.16s; }
-.page-overlay.sweep-in .stripe-6, .page-overlay.sweep-out .stripe-6 { animation-delay: 0.20s; }
-.page-overlay.sweep-in .stripe-7, .page-overlay.sweep-out .stripe-7 { animation-delay: 0.24s; }
-.page-overlay.sweep-in .stripe-8, .page-overlay.sweep-out .stripe-8 { animation-delay: 0.28s; }
+/* Racing stagger: the middle stripes lead, the outer ones chase */
+.page-overlay .stripe-4 { animation-delay: 0s; }
+.page-overlay .stripe-5 { animation-delay: 0.02s; }
+.page-overlay .stripe-3 { animation-delay: 0.06s; }
+.page-overlay .stripe-6 { animation-delay: 0.08s; }
+.page-overlay .stripe-2 { animation-delay: 0.12s; }
+.page-overlay .stripe-7 { animation-delay: 0.15s; }
+.page-overlay .stripe-1 { animation-delay: 0.19s; }
+.page-overlay .stripe-8 { animation-delay: 0.22s; }
 
-/* Keyframes */
-@keyframes sweepInLeft {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(0%); }
+@keyframes sweepIn {
+    from { transform: translate3d(-100%, 0, 0); }
+    to   { transform: translate3d(0, 0, 0); }
 }
 
-@keyframes sweepOutRight {
-    0% { transform: translateX(0%); }
-    100% { transform: translateX(100%); }
+@keyframes sweepOut {
+    from { transform: translate3d(0, 0, 0); }
+    to   { transform: translate3d(100%, 0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .page-overlay { --sweep-duration: 0.01s; }
+    .page-overlay .overlay-stripe { animation-delay: 0s !important; }
+    html.js.is-ready .reveal,
+    html.js.is-ready.is-leaving .reveal { animation: none !important; opacity: 1; }
+}
+
+/* ==========================================================================
+   Entrance / Exit animations for page elements
+   ========================================================================== */
+/* Hidden until the page is ready (only when JS is running) */
+html.js .reveal {
+    opacity: 0;
+}
+
+/* Entrance: elements rise in one after another */
+html.js.is-ready .reveal {
+    opacity: 1;
+    animation: revealIn 0.65s var(--ease-out) backwards;
+    animation-delay: calc(var(--reveal-base, 0.05s) + var(--i, 0) * 70ms);
+}
+
+/* Exit (logout): elements lift away while the stripes sweep in */
+html.js.is-ready.is-leaving .reveal {
+    animation: revealOut 0.38s var(--ease-in) forwards;
+    animation-delay: calc((var(--reveal-count) - var(--i, 0)) * 35ms);
+}
+
+@keyframes revealIn {
+    from { opacity: 0; transform: translate3d(0, 22px, 0); }
+    to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes revealOut {
+    from { opacity: 1; transform: translate3d(0, 0, 0); }
+    to   { opacity: 0; transform: translate3d(0, -14px, 0); }
 }
 
 /* ==========================================================================
@@ -118,7 +162,7 @@ body {
     text-align: center;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
     transform: translateY(15px);
-    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 0.3s var(--ease-out);
 }
 
 .modal-backdrop.active .modal-card {
@@ -151,7 +195,15 @@ body {
     font-weight: 700;
     border: none;
     cursor: pointer;
-    transition: transform 0.2s ease, background-color 0.2s ease;
+    transition: transform 0.2s var(--ease-out), background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.modal-actions button:hover {
+    transform: translateY(-2px);
+}
+
+.modal-actions button:active {
+    transform: translateY(0) scale(0.97);
 }
 
 .btn-cancel {
@@ -170,6 +222,7 @@ body {
 
 .btn-confirm:hover {
     background-color: #820416;
+    box-shadow: 0 4px 12px rgba(163, 8, 30, 0.3);
 }
 
 /* ==========================================================================
@@ -198,7 +251,7 @@ body {
     justify-content: space-between;
     margin-bottom: 32px;
     padding: 0 4px;
-    height: 48px;
+    height: 64px;
 }
 
 .brand-container {
@@ -206,18 +259,31 @@ body {
     white-space: nowrap;
     display: flex;
     align-items: center;
+    max-width: 180px;
+    transition: max-width 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
 }
 
 .brand-logo {
-    max-height: 48px;
+    height: 58px;              /* bigger logo */
     width: auto;
+    max-width: 170px;
     object-fit: contain;
-    transition: opacity 0.25s ease, transform 0.25s ease;
+    transition: transform 0.25s ease;
 }
 
-.sidebar.collapsed .brand-logo {
+/* Collapsed: logo takes no space, so the arrow sits exactly in the middle */
+.sidebar.collapsed .sidebar-header {
+    justify-content: center;
+    padding: 0;
+}
+
+.sidebar.collapsed .brand-container {
+    max-width: 0;
     opacity: 0;
-    transform: scale(0.8);
+}
+
+.toggle-btn {
+    flex-shrink: 0;
 }
 
 .toggle-btn {
@@ -264,7 +330,7 @@ body {
     border-radius: 12px;
     font-size: 13.5px;
     font-weight: 700;
-    transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+    transition: background-color 0.2s ease, transform 0.25s var(--ease-out), box-shadow 0.2s ease;
     cursor: pointer;
     background: transparent;
     border: none;
@@ -274,6 +340,10 @@ body {
 .nav-item:hover {
     background-color: rgba(255, 255, 255, 0.15);
     transform: translateX(3px);
+}
+
+.nav-item:active {
+    transform: translateX(1px) scale(0.98);
 }
 
 .nav-item.active {
@@ -287,6 +357,11 @@ body {
     height: 20px;
     fill: #ffffff;
     flex-shrink: 0;
+    transition: transform 0.25s var(--ease-out);
+}
+
+.nav-item:hover .nav-icon {
+    transform: scale(1.12);
 }
 
 .nav-text {
@@ -370,7 +445,7 @@ body {
     font-weight: 600;
     padding: 8px 10px;
     border-radius: 8px;
-    transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+    transition: background-color 0.2s ease, color 0.2s ease, transform 0.25s var(--ease-out);
 }
 
 .sub-item:hover {
@@ -421,7 +496,7 @@ body {
 .metrics-container {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 16px;
+    gap: 20px;
 }
 
 .stat-card {
@@ -429,7 +504,7 @@ body {
     border-radius: 14px;
     padding: 22px 16px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
-    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    transition: transform 0.3s var(--ease-out), box-shadow 0.3s var(--ease-out);
     cursor: pointer;
     display: flex;
     flex-direction: column;
@@ -441,6 +516,10 @@ body {
 .stat-card:hover {
     transform: translateY(-4px);
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+}
+
+.stat-card:active {
+    transform: translateY(-1px) scale(0.985);
 }
 
 .card-title {
@@ -464,6 +543,7 @@ body {
 .icon.yellow { fill: #f2a900; }
 .icon.blue { fill: #1c8adb; }
 .icon.green { fill: #159a43; }
+.icon.red { fill: #a3081e; }
 
 .card-value {
     font-size: 34px;
@@ -483,7 +563,7 @@ body {
     align-items: center;
     justify-content: center;
     text-align: center;
-    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    transition: transform 0.3s var(--ease-out), box-shadow 0.3s var(--ease-out);
 }
 
 .chart-card:hover {
@@ -520,11 +600,12 @@ body {
     align-items: center;
     gap: 6px;
     cursor: pointer;
-    transition: opacity 0.2s ease;
+    transition: opacity 0.2s ease, transform 0.25s var(--ease-out);
 }
 
 .legend-item:hover {
     opacity: 0.75;
+    transform: translateY(-1px);
 }
 
 .legend-dot {
@@ -541,7 +622,12 @@ body {
     border-radius: 14px;
     padding: 20px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
-    transition: transform 0.25s ease;
+    transition: transform 0.3s var(--ease-out), box-shadow 0.3s var(--ease-out);
+}
+
+.recent-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.07);
 }
 
 .card-top {
@@ -578,12 +664,12 @@ body {
     text-align: left;
     font-size: 11.5px;
     color: #666;
-    padding-bottom: 10px;
+    padding: 0 10px 10px 0;
     border-bottom: 1px solid #eeeeee;
 }
 
 .applicants-table td {
-    padding: 12px 10px;
+    padding: 12px 10px 12px 0;
     font-size: 12px;
     color: #333;
 }
@@ -635,11 +721,12 @@ body {
     flex-direction: column;
     align-items: center;
     text-align: center;
-    transition: transform 0.25s ease;
+    transition: transform 0.3s var(--ease-out), box-shadow 0.3s var(--ease-out);
 }
 
 .quick-action-card:hover {
     transform: translateY(-2px);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.07);
 }
 
 .quick-action-card h3 {
@@ -659,6 +746,11 @@ body {
     align-items: center;
     justify-content: center;
     margin-bottom: 12px;
+    transition: transform 0.35s var(--ease-out);
+}
+
+.quick-action-card:hover .avatar-circle {
+    transform: scale(1.06);
 }
 
 .avatar-circle svg {
@@ -688,11 +780,15 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+    transition: background-color 0.2s ease, transform 0.25s var(--ease-out), box-shadow 0.2s ease;
 }
 
 .btn-add-new:hover {
     background-color: #0088e0;
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 162, 255, 0.3);
+}
+
+.btn-add-new:active {
+    transform: translateY(0) scale(0.98);
 }
