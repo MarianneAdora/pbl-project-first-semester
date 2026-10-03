@@ -1,0 +1,315 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: url('../../pic/Ad BG.png') no-repeat center center/cover;
+    opacity: 0;
+    animation: fadeInBody 0.4s ease-out forwards;
+}
+
+/* ==========================================================================
+   Continuous 8-Stripe Horizontal Sweep (Uninterrupted Motion)
+   ========================================================================== */
+.page-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 9999;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+}
+
+.page-overlay .overlay-stripe {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    transform: translateX(-100%);
+}
+
+/* 8-Tone Expanded Red Gradient Palette */
+.page-overlay .stripe-1 { background-color: #59000b; }
+.page-overlay .stripe-2 { background-color: #7a0010; }
+.page-overlay .stripe-3 { background-color: #920618; }
+.page-overlay .stripe-4 { background-color: #a3081e; }
+.page-overlay .stripe-5 { background-color: #bb0d24; }
+.page-overlay .stripe-6 { background-color: #d1122a; } /* Brand Red */
+.page-overlay .stripe-7 { background-color: #e61d36; }
+.page-overlay .stripe-8 { background-color: #f7314a; }
+
+/* Continuous Keyframe Animation across the entire screen */
+.page-overlay.active .overlay-stripe {
+    animation: continuousSweep 0.65s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Staggered Delay for Wave Effect */
+.page-overlay.active .stripe-1 { animation-delay: 0s; }
+.page-overlay.active .stripe-2 { animation-delay: 0.02s; }
+.page-overlay.active .stripe-3 { animation-delay: 0.04s; }
+.page-overlay.active .stripe-4 { animation-delay: 0.06s; }
+.page-overlay.active .stripe-5 { animation-delay: 0.08s; }
+.page-overlay.active .stripe-6 { animation-delay: 0.10s; }
+.page-overlay.active .stripe-7 { animation-delay: 0.12s; }
+.page-overlay.active .stripe-8 { animation-delay: 0.14s; }
+
+@keyframes continuousSweep {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+/* ==========================================================================
+   Portal Layout & Form Styling
+   ========================================================================== */
+.portal-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: 380px;
+    transform: translateY(-40px);
+    animation: fadeSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.logo-container {
+    text-align: center;
+    margin-bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.logo-crop {
+    display: inline-block;
+    line-height: 0;
+}
+
+.logo-crop img {
+    width: 210px;
+    height: auto;
+    display: block;
+    object-fit: contain;
+    pointer-events: none;
+}
+
+.portal-title {
+    font-size: 13.5px;
+    font-weight: 800;
+    color: #1a1a1a;
+    letter-spacing: 0.8px;
+    margin-top: -24px;
+    text-transform: uppercase;
+}
+
+.login-card {
+    background: #f7f7f8;
+    width: 100%;
+    border-radius: 20px;
+    padding: 34px 32px 30px 32px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15), 0 5px 15px rgba(0, 0, 0, 0.05);
+    text-align: center;
+    position: relative;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.login-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18), 0 6px 18px rgba(0, 0, 0, 0.08);
+}
+
+.card-header h2 {
+    color: #d1122a;
+    font-size: 24px;
+    font-weight: 800;
+    margin-bottom: 4px;
+    letter-spacing: -0.3px;
+}
+
+.card-header p {
+    color: #555555;
+    font-size: 11.5px;
+    font-weight: 500;
+    margin-bottom: 22px;
+}
+
+.form-group {
+    text-align: left;
+    margin-bottom: 14px;
+    position: relative;
+}
+
+.form-group label {
+    display: block;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #222222;
+    margin-bottom: 6px;
+}
+
+.input-wrapper {
+    position: relative;
+}
+
+.form-control {
+    width: 100%;
+    height: 40px;
+    border: 1px solid #dcdcdc;
+    border-radius: 6px;
+    padding: 0 36px 0 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #333333;
+    background-color: #ffffff;
+    outline: none;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), 
+                border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), 
+                box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.form-control:hover {
+    border-color: #b0b0b0;
+    transform: translateY(-1px);
+}
+
+.form-control:focus {
+    border-color: #d1122a;
+    transform: translateY(-1px);
+    box-shadow: 0 0 0 3px rgba(209, 18, 42, 0.12);
+}
+
+.eye-icon {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    fill: #d1122a;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), fill 0.2s ease;
+}
+
+.eye-icon:hover {
+    transform: translateY(-50%) scale(1.18);
+    fill: #b50e23;
+}
+
+.eye-icon:active {
+    transform: translateY(-50%) scale(0.95);
+}
+
+.remember-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    width: 100%;
+    margin-top: 8px;
+    margin-bottom: 24px;
+}
+
+.remember-label {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: 12px;
+    color: #d1122a;
+    font-weight: 700;
+    user-select: none;
+    gap: 6px;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+}
+
+.remember-label:hover {
+    transform: translateY(-1px);
+    opacity: 0.9;
+}
+
+.remember-label input[type="checkbox"] {
+    accent-color: #d1122a;
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.remember-label:hover input[type="checkbox"] {
+    transform: scale(1.1);
+}
+
+.remember-label:active input[type="checkbox"] {
+    transform: scale(0.95);
+}
+
+.btn-submit {
+    width: 100%;
+    height: 42px;
+    background-color: #d1122a;
+    color: #ffffff;
+    border: none;
+    border-radius: 21px;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    cursor: pointer;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), 
+                background-color 0.2s ease, 
+                box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 4px 12px rgba(209, 18, 42, 0.25);
+}
+
+.btn-submit:hover {
+    background-color: #b50e23;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(209, 18, 42, 0.38);
+}
+
+.btn-submit:active {
+    transform: translateY(0) scale(0.98);
+    box-shadow: 0 2px 6px rgba(209, 18, 42, 0.2);
+}
+
+.error-message {
+    background-color: #ffe6e6;
+    color: #d1122a;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 6px;
+    margin-bottom: 14px;
+    display: none;
+    border: 1px solid #ffcccc;
+}
+
+@keyframes fadeInBody {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes fadeSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(-25px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(-40px);
+    }
+}
