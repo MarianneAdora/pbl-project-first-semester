@@ -271,6 +271,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let visible = [];                 // rows on the current page
     let animateRows = false;          // first render comes with the card entrance
     let busy = false;                 // an archive request/animation is running
+    let settleTimer = null;
 
     // ---------- helpers ----------
     // Build elements with textContent only, so names/emails can never inject HTML
@@ -416,6 +417,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function syncFilterUi() {
         const sActive = state.status !== 'all';
         const rActive = state.result !== 'all';
+        const activeCount = (sActive ? 1 : 0) + (rActive ? 1 : 0);
+        filterDot.hidden = activeCount === 0;
+        filterDot.textContent = String(activeCount);
+        filterToggle.title = activeCount ? activeCount + ' filter' + (activeCount === 1 ? '' : 's') + ' active' : 'Show or hide filters';
         document.getElementById('statusCard').classList.toggle('is-active', sActive);
         document.getElementById('resultCard').classList.toggle('is-active', rActive);
         document.getElementById('statusReset').hidden = !sActive;
@@ -427,12 +432,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const MAX_ROWS = 15;
 
     function fitPerPage() {
+        // measure a row at its natural height (undo the stretch from the last fit first)
+        tableScroll.style.removeProperty('--row-h');
         const firstRow = tableBody.querySelector('tr');
         const rowHeight = firstRow ? Math.ceil(firstRow.getBoundingClientRect().height) : 53;   // rows can differ by half a pixel
         const head = tableScroll.querySelector('thead');
         const room = tableScroll.clientHeight - (head ? head.offsetHeight : 46);
         if (!rowHeight || room <= 0) return perPage;
-        return Math.min(MAX_ROWS, Math.max(MIN_ROWS, Math.floor((room - 4) / rowHeight)));
+        const rows = Math.min(MAX_ROWS, Math.max(MIN_ROWS, Math.floor((room - 4) / rowHeight)));
+        // share the leftover pixels between the rows, so there is no empty band under the last one
+        tableScroll.style.setProperty('--row-h', Math.max(rowHeight, Math.floor((room - 2) / rows)) + 'px');
+        return rows;
     }
 
     // Window or filter panel changed size: re-fit, keeping the first visible applicant in view
@@ -479,7 +489,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // rows
         tableBody.textContent = '';
-        visible.forEach((a, index) => tableBody.appendChild(buildRow(a, index)));
+        visible.forEach((a, index) => tableBody.appendChild(buildRow(a, index, start + index + 1)));
         tableScroll.scrollTop = 0;
 
         // empty state
@@ -493,12 +503,11 @@ document.addEventListener('DOMContentLoaded', () => {
         updateSelectAll();
         updateSelectionUi();
         syncFilterUi();
-        filterDot.hidden = !(filtersActive() && filterPanel.classList.contains('collapsed'));
         searchClear.hidden = state.q === '';
         syncUrl();
     }
 
-    function buildRow(a, index) {
+    function buildRow(a, index, number) {
         const tr = document.createElement('tr');
         tr.dataset.id = a.id;
         if (selected.has(a.id)) tr.classList.add('is-selected');
@@ -507,15 +516,17 @@ document.addEventListener('DOMContentLoaded', () => {
             tr.style.setProperty('--r', index);
         }
 
-        // checkbox (the column is hidden until select mode)
+        // row number; in select mode the number gives way to the checkbox
         const tdCheck = el('td', 'col-check');
+        const wrap = el('span', 'idx-wrap');
         const box = document.createElement('input');
         box.type = 'checkbox';
         box.className = 'row-check';
         box.checked = selected.has(a.id);
         box.tabIndex = selectMode ? 0 : -1;
         box.setAttribute('aria-label', 'Select ' + a.name);
-        tdCheck.appendChild(box);
+        wrap.append(el('span', 'row-num', String(number)), box);
+        tdCheck.appendChild(wrap);
 
         // name / email / contact (full text on hover when it is cut with "...")
         const tdName = el('td', 'cell-name');
@@ -559,8 +570,11 @@ document.addEventListener('DOMContentLoaded', () => {
             showingText.append('Showing ' + from + '\u2013' + to + ' of ' + plural(total, 'applicant'));
         }
         if (selected.size > 0) {
+            const shown = new Set(getFiltered().map(a => a.id));
+            const hidden = Array.from(selected).filter(id => !shown.has(id)).length;
             showingText.append(' \u00B7 ');
             showingText.appendChild(el('span', 'selected-count', selected.size + ' selected'));
+            if (hidden > 0) showingText.append(' (' + hidden + ' hidden by filters)');
         }
     }
 
@@ -628,8 +642,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // ======================================================================
     // Selection mode
     // ======================================================================
+    // "All" means every applicant in the current list (search + filters), on every page
     function updateSelectAll() {
-        const ids = visible.map(a => a.id);
+        const ids = getFiltered().map(a => a.id);
         const count = ids.filter(id => selected.has(id)).length;
         selectAll.disabled = ids.length === 0;
         selectAll.checked = ids.length > 0 && count === ids.length;
@@ -659,6 +674,10 @@ document.addEventListener('DOMContentLoaded', () => {
         selectMode = on;
         table.classList.toggle('select-mode', on);
         toolbar.classList.toggle('is-selecting', on);
+        // once the buttons have finished sliding in, stop clipping them (so hover pops are never cut)
+        clearTimeout(settleTimer);
+        toolbar.classList.remove('is-settled');
+        if (on) settleTimer = setTimeout(() => toolbar.classList.add('is-settled'), 500);
         selectAllBtn.inert = on;              // hidden controls stay out of the tab order
         selectActions.inert = !on;
         selectAll.tabIndex = on ? 0 : -1;
@@ -673,18 +692,18 @@ document.addEventListener('DOMContentLoaded', () => {
         syncRowChecks();
     }
 
-    // "Select all" in the top bar: enter select mode with this page ticked
+    // "Select all" in the top bar: enter select mode with the WHOLE list ticked (every page)
     selectAllBtn.addEventListener('click', () => {
         setSelectMode(true);
-        visible.forEach(a => selected.add(a.id));
+        getFiltered().forEach(a => selected.add(a.id));
         syncRowChecks();
     });
 
     cancelSelect.addEventListener('click', () => { if (!busy) setSelectMode(false); });
 
-    // header checkbox: tick / untick everything on this page
+    // header checkbox: tick / untick the whole list, not just this page
     selectAll.addEventListener('change', () => {
-        visible.forEach(a => {
+        getFiltered().forEach(a => {
             if (selectAll.checked) selected.add(a.id);
             else selected.delete(a.id);
         });
@@ -931,7 +950,6 @@ document.addEventListener('DOMContentLoaded', () => {
         filterPanel.classList.toggle('collapsed', willCollapse);
         filterToggle.setAttribute('aria-expanded', String(!willCollapse));
         filterPanel.inert = willCollapse;                    // keep the hidden dropdowns out of the tab order
-        filterDot.hidden = !(filtersActive() && willCollapse);
         if (!willCollapse) {
             // safety net in case the transitionend below does not fire
             setTimeout(() => {

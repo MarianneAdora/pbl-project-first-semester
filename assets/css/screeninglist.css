@@ -889,23 +889,32 @@ html.js.is-ready.is-leaving .reveal {
 }
 
 .filter-toggle[aria-expanded="true"] {
-    border-color: #a3081e;
+    background: #fdf1f3;
 }
 
 .filter-toggle[aria-expanded="true"] svg {
     fill: #a3081e;
 }
 
-/* small red dot: filters are active but the panel is hidden */
+/* number of filters in use (shows whether the panel is open or closed) */
 .filter-dot {
     position: absolute;
-    top: 8px;
-    right: 8px;
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
+    top: -7px;
+    right: -7px;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
     background: #d1122a;
-    border: 2px solid #ffffff;
+    border: 2px solid #dcdfe3;     /* same colour as the page, so it looks cut out */
+    color: #ffffff;
+    font-size: 10.5px;
+    font-weight: 800;
+    line-height: 1;
+    animation: popIn 0.35s var(--ease-pop);
 }
 
 .filter-dot[hidden] {
@@ -958,30 +967,28 @@ html.js.is-ready.is-leaving .reveal {
     transition: transform 0.35s var(--ease-pop), box-shadow 0.3s var(--ease-out), border-color 0.2s ease;
 }
 
-/* accent bar that grows when the filter is in use */
-.filter-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 18px;
-    width: 0;
-    height: 3px;
-    border-radius: 0 0 4px 4px;
-    background: linear-gradient(90deg, #a3081e, #f0586e);
-    transition: width 0.45s var(--ease-out);
-}
-
-.filter-card:hover,
-.filter-card:focus-within {
+/* lift on hover only: focus must not leave one card floating above the other */
+.filter-card:hover {
     transform: translateY(-3px);
     border-color: #c3c8cf;
-    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.09);
+    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.09);
 }
 
 .filter-card.is-open { z-index: 5; }
 
-.filter-card.is-active { border-color: rgba(163, 8, 30, 0.45); }
-.filter-card.is-active::before { width: 70px; }
+.filter-card.is-active {
+    border-color: rgba(163, 8, 30, 0.5);
+    background: #fffafb;
+}
+
+/* the picked value is what tells you a filter is on */
+.filter-card.is-active .dropdown-btn {
+    border-color: rgba(163, 8, 30, 0.55);
+    background: #ffffff;
+    color: #a3081e;
+}
+
+.filter-card.is-active .dropdown-chevron { fill: #a3081e; }
 
 .filter-head {
     display: flex;
@@ -1192,6 +1199,7 @@ html.js.is-ready.is-leaving .reveal {
 
 /* ---- Table card ---- */
 .table-card {
+    container: tbl / inline-size;  /* lets the columns react to the card's width */
     flex: 1 1 0;
     min-height: 264px;             /* room for at least 4 rows */
     display: flex;
@@ -1206,7 +1214,8 @@ html.js.is-ready.is-leaving .reveal {
 .table-scroll {
     flex: 1;
     min-height: 0;
-    overflow: auto;
+    overflow-x: hidden;            /* never scroll sideways: hover pops and narrow windows can't cause it */
+    overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: #cfd4da transparent;
 }
@@ -1223,7 +1232,6 @@ html.js.is-ready.is-leaving .reveal {
 
 .screening-table {
     width: 100%;
-    min-width: 760px;
     border-collapse: collapse;
     table-layout: fixed;           /* so long names/emails can be cut with "..." */
 }
@@ -1243,6 +1251,7 @@ html.js.is-ready.is-leaving .reveal {
 }
 
 .screening-table td {
+    height: var(--row-h, auto);    /* rows stretch a little so the card has no empty band at the bottom */
     padding: 12px 10px;
     font-size: 13px;
     font-weight: 500;
@@ -1274,15 +1283,18 @@ html.js.is-ready.is-leaving .reveal {
     transition: background-color 0.2s ease, transform 0.35s var(--ease-pop);
 }
 
-/* Same pop as the dashboard cards: lift + tiny grow */
+/* Row hover: tint + a red edge. The row itself never moves or grows (that is what made the
+   list scroll sideways and cut the edges); the pill and the VIEW button pop instead. */
 .screening-table tbody tr:hover {
     background-color: #f4f6f9;
-    transform: translateY(-2px) scale(1.01);
-    z-index: 1;
+}
+
+.screening-table tbody tr:hover td:first-child {
+    box-shadow: inset 3px 0 0 #a3081e;
 }
 
 .screening-table tbody tr:active {
-    transform: scale(0.995);
+    background-color: #eef1f5;
 }
 
 .screening-table tbody tr:hover .status-pill {
@@ -1304,27 +1316,73 @@ html.js.is-ready.is-leaving .reveal {
     padding-left: 4px;
 }
 
-/* ---- Checkbox column: hidden until select mode ---- */
-.screening-table col.c-check {
-    width: 0;
-    transition: width 0.4s var(--ease-out);
+/* ---- Column widths (no min-width, so the table never needs a sideways scrollbar) ---- */
+.screening-table col.c-check   { width: 60px; }
+.screening-table col.c-name    { width: 20%; }
+.screening-table col.c-contact { width: 132px; }
+.screening-table col.c-status  { width: 130px; }
+.screening-table col.c-result  { width: 110px; }
+.screening-table col.c-action  { width: 96px; }
+/* c-email takes whatever is left */
+
+/* Narrow card: drop the least important columns instead of scrolling */
+@container tbl (max-width: 900px) {
+    .screening-table col.c-contact,
+    .screening-table th:nth-child(4),
+    .screening-table td:nth-child(4) { display: none; }
 }
 
-.screening-table.select-mode col.c-check {
-    width: 52px;
+@container tbl (max-width: 700px) {
+    .screening-table col.c-email,
+    .screening-table th:nth-child(3),
+    .screening-table td:nth-child(3) { display: none; }
 }
 
+@container tbl (max-width: 560px) {
+    .screening-table col.c-result,
+    .screening-table th:nth-child(6),
+    .screening-table td:nth-child(6) { display: none; }
+}
+
+/* ---- First column: row number, replaced by the checkbox in select mode ---- */
 .screening-table .col-check {
-    padding: 0;
-    overflow: hidden;
-    transition: padding 0.4s var(--ease-out);
-}
-
-.screening-table.select-mode .col-check {
-    padding-left: 18px;
+    padding: 0 0 0 18px;
     overflow: visible;
 }
 
+.idx-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 24px;
+}
+
+.row-num,
+.idx-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: #8a8f96;
+    font-variant-numeric: tabular-nums;
+    transition: opacity 0.25s ease, transform 0.35s var(--ease-pop);
+}
+
+.idx-label { color: #555555; font-size: 13px; }
+
+/* select mode: the numbers shrink away ... */
+.screening-table.select-mode .row-num,
+.screening-table.select-mode .idx-label {
+    opacity: 0;
+    transform: scale(0.4);
+}
+
+/* ... and the checkboxes pop in */
 .screening-table input[type="checkbox"] {
     width: 17px;
     height: 17px;
@@ -1333,12 +1391,14 @@ html.js.is-ready.is-leaving .reveal {
     vertical-align: middle;
     opacity: 0;
     transform: scale(0);
+    pointer-events: none;
     transition: transform 0.35s var(--ease-pop), opacity 0.2s ease;
 }
 
 .screening-table.select-mode input[type="checkbox"] {
     opacity: 1;
     transform: scale(1);
+    pointer-events: auto;
 }
 
 .screening-table.select-mode input[type="checkbox"]:hover {
@@ -1414,7 +1474,7 @@ html.js.is-ready.is-leaving .reveal {
 }
 
 @keyframes rowIn {
-    from { opacity: 0; transform: translate3d(0, 8px, 0); }
+    from { opacity: 0; transform: translate3d(-10px, 0, 0); }
     to   { opacity: 1; transform: translate3d(0, 0, 0); }
 }
 
@@ -1626,6 +1686,11 @@ html.js.is-ready.is-leaving .reveal {
     margin-left: 0;
     opacity: 1;
     pointer-events: auto;
+}
+
+/* after the slide-in, nothing clips the buttons, so their hover pop and shadow are complete */
+.toolbar.is-selecting.is-settled .select-actions {
+    overflow: visible;
 }
 
 .btn-cancel-sel,

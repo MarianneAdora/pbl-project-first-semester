@@ -100,6 +100,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    // room around the pie so a hovered slice (hoverOffset) is never cut by the canvas edge
+                    layout: { padding: 12 },
                     plugins: {
                         legend: { display: false }
                     },

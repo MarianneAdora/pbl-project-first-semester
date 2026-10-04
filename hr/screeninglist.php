@@ -177,7 +177,7 @@ $applicants = [
             </label>
 
             <!-- Normal mode: Select all -->
-            <button type="button" class="tool-btn select-all-btn" id="selectAllBtn" title="Select all applicants on this page (or press and hold a row)">
+            <button type="button" class="tool-btn select-all-btn" id="selectAllBtn" title="Select every applicant in the list (or press and hold a row)">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h2V3c-1.1 0-2 .9-2 2zm0 8h2v-2H3v2zm4 8h2v-2H7v2zM3 9h2V7H3v2zm10-6h-2v2h2V3zm6 0v2h2c0-1.1-.9-2-2-2zM5 21v-2H3c0 1.1.9 2 2 2zm-2-4h2v-2H3v2zM9 3H7v2h2V3zm2 18h2v-2h-2v2zm8-8h2v-2h-2v2zm0 8c1.1 0 2-.9 2-2h-2v2zm0-12h2V7h-2v2zm0 8h2v-2h-2v2zm-4 4h2v-2h-2v2zm0-16h2V3h-2v2zM9 17h6V9H9v8zm2-6h2v4h-2v-4z"/></svg>
                 <span>Select all</span>
             </button>
@@ -276,16 +276,21 @@ $applicants = [
                 <table class="screening-table" id="screeningTable">
                     <colgroup>
                         <col class="c-check">
-                        <col style="width: 21%">
-                        <col style="width: 26%">
-                        <col style="width: 15%">
-                        <col style="width: 14%">
-                        <col style="width: 11%">
-                        <col style="width: 96px">
+                        <col class="c-name">
+                        <col class="c-email">
+                        <col class="c-contact">
+                        <col class="c-status">
+                        <col class="c-result">
+                        <col class="c-action">
                     </colgroup>
                     <thead>
                         <tr>
-                            <th class="col-check"><input type="checkbox" id="selectAll" aria-label="Select all applicants on this page" tabindex="-1"></th>
+                            <th class="col-check">
+                                <span class="idx-wrap">
+                                    <span class="idx-label">#</span>
+                                    <input type="checkbox" id="selectAll" aria-label="Select all applicants" tabindex="-1">
+                                </span>
+                            </th>
                             <th>Name</th>
                             <th>Email</th>
                             <th>Contact</th>
