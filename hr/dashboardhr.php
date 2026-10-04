@@ -1,6 +1,10 @@
 <?php
 session_start();
 
+// No caching, so the Back button after logout never shows this page
+header('Cache-Control: no-store, no-cache, must-revalidate');
+header('Pragma: no-cache');
+
 // Protection: Ensure only HR users can access this page
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {
     header('Location: ../index.php');
@@ -17,11 +21,39 @@ $stats = [
     'failed'      => 13
 ];
 
+// Name shown in the greeting. The backend should set $_SESSION['user_name'] at login.
+$display_name = trim($_SESSION['user_name'] ?? '') !== '' ? $_SESSION['user_name'] : 'HR';
+
+// Recent applicants (backend: ORDER BY applied_date DESC LIMIT 10)
 $recent_applicants = [
-    ['id' => 101, 'name' => 'Juan Dela Cruz', 'date' => 'Sep 14, 2026', 'status' => 'Pending',     'badge' => 'status-pending'],
-    ['id' => 102, 'name' => 'Bruce Wayne',    'date' => 'Sep 13, 2026', 'status' => 'In Progress', 'badge' => 'status-progress'],
-    ['id' => 103, 'name' => 'Clark Kent',     'date' => 'Sep 12, 2026', 'status' => 'Completed',   'badge' => 'status-completed']
+    ['id' => 101, 'name' => 'Juan Dela Cruz',   'date' => 'Sep 14, 2026', 'status' => 'Pending'],
+    ['id' => 102, 'name' => 'Bruce Wayne',      'date' => 'Sep 13, 2026', 'status' => 'In Progress'],
+    ['id' => 103, 'name' => 'Clark Kent',       'date' => 'Sep 12, 2026', 'status' => 'Completed'],
+    ['id' => 104, 'name' => 'Maria Clara Santos', 'date' => 'Sep 11, 2026', 'status' => 'Passed'],
+    ['id' => 105, 'name' => 'Jose Protacio Rizal Mercado y Alonso Realonda', 'date' => 'Sep 10, 2026', 'status' => 'Failed'],
+    ['id' => 106, 'name' => 'Diana Prince',     'date' => 'Sep 9, 2026',  'status' => 'Pending'],
+    ['id' => 107, 'name' => 'Peter Parker',     'date' => 'Sep 8, 2026',  'status' => 'In Progress'],
+    ['id' => 108, 'name' => 'Tony Stark',       'date' => 'Sep 7, 2026',  'status' => 'Passed'],
+    ['id' => 109, 'name' => 'Natasha Romanoff', 'date' => 'Sep 6, 2026',  'status' => 'Failed'],
+    ['id' => 110, 'name' => 'Steve Rogers',     'date' => 'Sep 5, 2026',  'status' => 'Completed']
 ];
+
+// Never show more than 10, even if the query returns more
+$recent_applicants = array_slice($recent_applicants, 0, 10);
+
+// Maps any status text to its pill style. Unknown statuses get a neutral grey pill.
+function status_badge(string $status): string
+{
+    $map = [
+        'pending'     => 'status-pending',
+        'in progress' => 'status-progress',
+        'completed'   => 'status-completed',
+        'passed'      => 'status-passed',
+        'failed'      => 'status-failed',
+        'rejected'    => 'status-failed'
+    ];
+    return $map[strtolower(trim($status))] ?? 'status-default';
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -110,6 +142,13 @@ $recent_applicants = [
                     <a href="addapplicants.php" class="sub-item"><span class="sub-text">Add Applicant</span></a>
                 </div>
             </div>
+
+            <!-- Archive -->
+            <a href="archive.php" id="archiveLink" class="nav-item reveal" style="--i:3">
+                <svg class="nav-icon" viewBox="0 0 24 24"><path d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z"/></svg>
+                <span class="nav-text">Archive</span>
+                <span class="nav-badge" id="archiveBadge" hidden>0</span>
+            </a>
         </nav>
 
         <!-- Sidebar Footer Options -->
@@ -129,7 +168,7 @@ $recent_applicants = [
     <main class="main-content">
         <!-- Top Greeting Header -->
         <header class="content-header reveal" style="--i:1">
-            <h1>Hello, HR!</h1>
+            <h1 title="Hello, <?php echo htmlspecialchars($display_name); ?>!">Hello, <?php echo htmlspecialchars($display_name); ?>!</h1>
             <p>Overview of application activity.</p>
         </header>
 
@@ -191,6 +230,11 @@ $recent_applicants = [
                 </div>
                 <div class="table-responsive">
                     <table class="applicants-table">
+                        <colgroup>
+                            <col style="width: 44%">
+                            <col style="width: 30%">
+                            <col style="width: 26%">
+                        </colgroup>
                         <thead>
                             <tr>
                                 <th>Name</th>
@@ -199,12 +243,17 @@ $recent_applicants = [
                             </tr>
                         </thead>
                         <tbody>
+                            <?php if (empty($recent_applicants)): ?>
+                            <tr>
+                                <td colspan="3" class="empty-row">No applicants yet.</td>
+                            </tr>
+                            <?php endif; ?>
                             <?php foreach ($recent_applicants as $applicant): ?>
-                            <tr class="clickable-row" data-url="details.php?id=<?php echo $applicant['id']; ?>">
-                                <td><strong><?php echo htmlspecialchars($applicant['name']); ?></strong></td>
+                            <tr class="clickable-row" data-url="details.php?id=<?php echo (int) $applicant['id']; ?>">
+                                <td title="<?php echo htmlspecialchars($applicant['name']); ?>"><strong><?php echo htmlspecialchars($applicant['name']); ?></strong></td>
                                 <td><?php echo htmlspecialchars($applicant['date']); ?></td>
                                 <td>
-                                    <span class="status-pill <?php echo $applicant['badge']; ?>">
+                                    <span class="status-pill <?php echo status_badge($applicant['status']); ?>">
                                         <?php echo htmlspecialchars($applicant['status']); ?>
                                     </span>
                                 </td>

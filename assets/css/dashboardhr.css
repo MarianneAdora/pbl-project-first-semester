@@ -16,10 +16,11 @@
 
 body {
     display: flex;
-    min-height: 100vh;
+    height: 100vh;
+    height: 100dvh;
     background-color: #dcdfe3;
     color: #1a1a1a;
-    overflow-x: hidden;
+    overflow: hidden;              /* the page itself never scrolls, so the sidebar stays fixed */
 }
 
 /* ==========================================================================
@@ -232,15 +233,23 @@ html.js.is-ready.is-leaving .reveal {
    ========================================================================== */
 .sidebar {
     width: 250px;
+    flex-shrink: 0;
     background-color: #a3081e;
     color: #ffffff;
     display: flex;
     flex-direction: column;
     padding: 24px 16px;
+    overflow-y: auto;              /* only if the window is very short; scrollbar hidden */
+    overflow-x: hidden;
+    scrollbar-width: none;
     transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
     position: relative;
     z-index: 100;
     box-shadow: 8px 0 30px rgba(0, 0, 0, 0.25), 2px 0 10px rgba(0, 0, 0, 0.12);
+}
+
+.sidebar::-webkit-scrollbar {
+    display: none;
 }
 
 .sidebar.collapsed {
@@ -476,19 +485,26 @@ html.js.is-ready.is-leaving .reveal {
 .main-content {
     flex: 1;
     min-width: 0;
+    min-height: 0;
     padding: 28px 36px;
+    display: flex;
+    flex-direction: column;
     overflow-y: auto;
     overflow-x: hidden;            /* no horizontal scrollbar flash */
 }
 
 .content-header {
     margin-bottom: 24px;
+    flex-shrink: 0;
 }
 
 .content-header h1 {
     font-size: 30px;
     font-weight: 800;
     color: #1a1a1a;
+    white-space: nowrap;           /* long names get "..." instead of wrapping */
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .content-header p {
@@ -500,7 +516,10 @@ html.js.is-ready.is-leaving .reveal {
 .dashboard-grid {
     display: grid;
     grid-template-columns: 2.1fr 1fr;
+    grid-template-rows: auto minmax(260px, 1fr);
     grid-gap: 20px;
+    flex: 1 1 auto;
+    min-height: 560px;             /* on very short windows the main area scrolls instead */
 }
 
 .metrics-container {
@@ -637,6 +656,9 @@ html.js.is-ready.is-leaving .reveal {
     padding: 20px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
     position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
     transition: transform 0.35s var(--ease-pop), box-shadow 0.3s var(--ease-out);
 }
 
@@ -673,23 +695,62 @@ html.js.is-ready.is-leaving .reveal {
     transform: scale(1.08);
 }
 
+/* Scrollable list: fills the card, shows as many rows as fit (up to 10), scrolls the rest */
+.table-responsive {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    margin: 0 -10px;               /* so the 10px cell padding lines up with the card title */
+    scrollbar-width: thin;
+    scrollbar-color: #cfd4da transparent;
+}
+
+.table-responsive::-webkit-scrollbar {
+    width: 6px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+    background: #cfd4da;
+    border-radius: 6px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+    background: #b3bac2;
+}
+
 .applicants-table {
     width: 100%;
     border-collapse: collapse;
+    table-layout: fixed;           /* needed so long names can be cut with "..." */
 }
 
 .applicants-table th {
+    position: sticky;              /* header stays put while the rows scroll */
+    top: 0;
+    z-index: 2;
+    background: #ffffff;
     text-align: left;
     font-size: 11.5px;
     color: #666;
-    padding: 0 10px 10px 0;
-    border-bottom: 1px solid #eeeeee;
+    padding: 0 10px 10px;
+    box-shadow: inset 0 -1px 0 #eeeeee;
 }
 
 .applicants-table td {
-    padding: 12px 10px 12px 0;
+    padding: 12px 10px;
     font-size: 12px;
     color: #333;
+    white-space: nowrap;           /* long text becomes "..." */
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.applicants-table td.empty-row {
+    text-align: center;
+    color: #888888;
+    font-weight: 600;
+    padding: 28px 10px;
 }
 
 .clickable-row {
@@ -698,11 +759,21 @@ html.js.is-ready.is-leaving .reveal {
     border-radius: 8px;
 }
 
-.clickable-row:hover {
-    background-color: #e2e8f0;
-    transform: translateY(-2px) scale(1.015);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+.clickable-row {
+    position: relative;
 }
+
+/* Same pop as the Screening List rows: lift + tiny grow */
+.clickable-row:hover {
+    background-color: #e9eef5;
+    transform: translateY(-2px) scale(1.012);
+    z-index: 1;
+}
+
+.clickable-row:active {
+    transform: scale(0.995);
+}
+
 
 .status-pill {
     padding: 4px 12px;
@@ -710,11 +781,16 @@ html.js.is-ready.is-leaving .reveal {
     font-size: 11px;
     font-weight: 700;
     display: inline-block;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
     transition: transform 0.3s var(--ease-pop);
 }
 
 .clickable-row:hover .status-pill {
-    transform: scale(1.1);
+    transform: scale(1.08);
 }
 
 .status-pending {
@@ -735,6 +811,36 @@ html.js.is-ready.is-leaving .reveal {
     border: 1px solid #a5d6a7;
 }
 
+.status-passed {
+    background-color: #d6efd8;
+    color: #0b6b1d;
+    border: 1px solid #0b6b1d;
+}
+
+.status-failed {
+    background-color: #f6d1d1;
+    color: #c00000;
+    border: 1px solid #c00000;
+}
+
+/* Any status the CSS doesn't know about */
+.status-default {
+    background-color: #eceff1;
+    color: #546e7a;
+    border: 1px solid #cfd8dc;
+}
+
+/* Pie chart with no data */
+.chart-wrapper .chart-empty {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: #888888;
+}
+
 .quick-action-card {
     background: #ffffff;
     border-radius: 14px;
@@ -745,6 +851,7 @@ html.js.is-ready.is-leaving .reveal {
     align-items: center;
     text-align: center;
     position: relative;
+    min-height: 0;
     transition: transform 0.35s var(--ease-pop), box-shadow 0.3s var(--ease-out);
 }
 
@@ -770,7 +877,8 @@ html.js.is-ready.is-leaving .reveal {
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 12px;
+    margin: auto auto 12px;        /* auto on top: spare height is shared above and below */
+    flex-shrink: 0;
     transition: transform 0.35s var(--ease-out);
 }
 
@@ -788,7 +896,8 @@ html.js.is-ready.is-leaving .reveal {
     font-size: 12px;
     font-weight: 800;
     color: #222;
-    margin-bottom: 16px;
+    margin-bottom: auto;
+    padding-bottom: 16px;
 }
 
 .btn-add-new {
@@ -816,4 +925,57 @@ html.js.is-ready.is-leaving .reveal {
 
 .btn-add-new:active {
     transform: translateY(0) scale(0.98);
+}
+
+/* ==========================================================================
+   Sidebar: Archive badge + icon bump
+   ========================================================================== */
+.nav-item { position: relative; }
+
+.nav-badge {
+    margin-left: auto;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 7px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 11px;
+    background: #ffffff;
+    color: #a3081e;
+    font-size: 11.5px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.nav-badge[hidden] { display: none; }
+
+.nav-badge.pop { animation: badgePop 0.55s var(--ease-pop); }
+
+/* collapsed sidebar: the badge becomes a small bubble on the icon */
+.sidebar.collapsed .nav-badge {
+    position: absolute;
+    top: 3px;
+    right: 5px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    margin: 0;
+    font-size: 10px;
+    box-shadow: 0 0 0 2px #a3081e;
+}
+
+.nav-item.bump .nav-icon { animation: iconBump 0.65s var(--ease-pop); }
+
+@keyframes badgePop {
+    0%   { transform: scale(0.4); }
+    60%  { transform: scale(1.35); }
+    100% { transform: scale(1); }
+}
+
+@keyframes iconBump {
+    0%   { transform: scale(1); }
+    35%  { transform: scale(1.55) rotate(-8deg); }
+    70%  { transform: scale(0.9) rotate(4deg); }
+    100% { transform: scale(1); }
 }

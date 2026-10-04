@@ -1,15 +1,23 @@
 <?php
 session_start();
 
+// Arriving from "Log out": end the old session so the dashboards can't be reopened with Back
+if (($_GET['transition'] ?? '') === 'out') {
+    $_SESSION = [];
+    session_regenerate_id(true);
+}
+
 $credentials = [
     'hr@expertise.com' => [
         'password' => 'hr123',
         'role' => 'hr',
+        'name' => 'HR',                       // shown in "Hello, ...!" (backend: use the real name)
         'redirect' => 'hr/dashboardhr.php'
     ],
     'admin@expertise.com' => [
         'password' => 'admin123',
         'role' => 'admin',
+        'name' => 'Admin',
         'redirect' => 'admindashboardadmin.php'
     ]
 ];
@@ -23,6 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($credentials[$email]) && $credentials[$email]['password'] === $password) {
         $_SESSION['user_role'] = $credentials[$email]['role'];
         $_SESSION['user_email'] = $email;
+        $_SESSION['user_name'] = $credentials[$email]['name'];
 
         echo json_encode([
             'status' => 'success',

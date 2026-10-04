@@ -76,7 +76,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // 6. Dynamic Pie Chart (created once the chart card has risen in, so its own
     //    draw animation is actually seen)
     const ctx = document.getElementById('passedRejectedChart');
-    if (ctx && typeof chartData !== 'undefined') {
+    if (ctx && typeof chartData !== 'undefined' && (chartData.passed + chartData.failed) === 0) {
+        // Nothing to draw yet
+        ctx.parentElement.innerHTML = '<p class="chart-empty">No results yet</p>';
+    } else if (ctx && typeof chartData !== 'undefined') {
         // After a login, start drawing just as the stripes finish clearing, so the chart
         // card is never left empty while the rest of the page is already up
         const chartDelay = arrivedViaTransition ? 700 : 50 + 4 * 70 + 200;
@@ -166,6 +169,16 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(go, 1200);
         });
     }
+
+    // Archive badge in the sidebar (the Screening List keeps the archived ids)
+    try {
+        const archivedIds = JSON.parse(localStorage.getItem('hr_archived') || '[]');
+        const archiveBadge = document.getElementById('archiveBadge');
+        if (archiveBadge && Array.isArray(archivedIds) && archivedIds.length > 0) {
+            archiveBadge.textContent = archivedIds.length;
+            archiveBadge.hidden = false;
+        }
+    } catch (err) { /* storage unavailable: no badge */ }
 
     // 8. Browser back button (page restored from cache): reset the leaving state
     window.addEventListener('pageshow', (event) => {
