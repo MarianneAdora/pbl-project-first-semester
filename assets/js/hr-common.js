@@ -33,9 +33,15 @@ window.HR = (function () {
         return Promise.resolve({ ok: true, changed: ids.length, count: list.length });
     }
 
+    // The Archive is storage, not an alert, so by default it does NOT show a number badge.
+    // (Feedback comes from the fly-to-archive animation, the icon bump and the Undo toast.)
+    // Set to true if you want the count bubble back.
+    const SHOW_ARCHIVE_COUNT = false;
+
     function setArchiveBadge(count, animate) {
         const badge = document.getElementById('archiveBadge');
         if (!badge) return;
+        if (!SHOW_ARCHIVE_COUNT) { badge.hidden = true; return; }
         badge.textContent = String(count);
         badge.hidden = count <= 0;
         badge.classList.remove('pop');
@@ -43,6 +49,87 @@ window.HR = (function () {
             void badge.offsetWidth;           // restart the animation
             badge.classList.add('pop');
         }
+    }
+
+    // ---------- Completed-screening notifications ----------
+    // Kept in this browser (localStorage) for now, like the archive.
+    // When the database is ready: "completed" = applicants with status Completed,
+    // "seen" = a viewed_at column that is set when HR opens the applicant's details page.
+    const SEEN_KEY = 'hr_seen_completed';
+    const COMPLETED_KEY = 'hr_completed_ids';
+
+    function readIds(key) {
+        try {
+            const v = JSON.parse(localStorage.getItem(key) || '[]');
+            return Array.isArray(v) ? v.map(Number) : [];
+        } catch (err) {
+            return [];
+        }
+    }
+
+    function writeIds(key, list) {
+        try { localStorage.setItem(key, JSON.stringify(list)); } catch (err) { /* storage unavailable */ }
+    }
+
+    // The dashboard tells us which applicants have completed the screening
+    function syncCompleted(ids) {
+        writeIds(COMPLETED_KEY, (ids || []).map(Number));
+    }
+
+    function readSeen() { return readIds(SEEN_KEY); }
+
+    function isUnseen(id) {
+        return !readSeen().includes(Number(id));
+    }
+
+    // Completed, not yet opened by HR, and not archived
+    function unseenCompleted() {
+        const seen = new Set(readSeen());
+        const archived = new Set(readArchived());
+        return readIds(COMPLETED_KEY).filter(id => !seen.has(id) && !archived.has(id));
+    }
+
+    function markSeen(id) {
+        id = Number(id);
+        if (!id) return;
+        const list = readSeen();
+        if (!list.includes(id)) {
+            list.push(id);
+            writeIds(SEEN_KEY, list);
+        }
+        refreshDashboardBadge();
+    }
+
+    function ensureDashboardBadge() {
+        let badge = document.getElementById('dashboardBadge');
+        if (badge) return badge;
+        const link = document.querySelector('.sidebar-nav a[href$="dashboardhr.php"]');
+        if (!link) return null;
+        badge = document.createElement('span');
+        badge.className = 'nav-badge alert';
+        badge.id = 'dashboardBadge';
+        badge.hidden = true;
+        link.appendChild(badge);
+        return badge;
+    }
+
+    let lastDashCount = -1;
+    function refreshDashboardBadge() {
+        const badge = ensureDashboardBadge();
+        const count = unseenCompleted().length;
+        if (badge) {
+            badge.textContent = count > 99 ? '99+' : String(count);
+            badge.hidden = count <= 0;
+            badge.setAttribute('title', count + ' completed screening' + (count === 1 ? '' : 's') + ' to review');
+            if (count > lastDashCount && count > 0) {
+                badge.classList.remove('pop');
+                void badge.offsetWidth;
+                badge.classList.add('pop');
+            }
+        }
+        lastDashCount = count;
+        document.dispatchEvent(new CustomEvent('hr:unseen-changed', { detail: { count } }));
+        return count;
     }
 
     function bumpArchive() {
@@ -110,11 +197,28 @@ window.HR = (function () {
         return { close };
     }
 
-    // Sidebar Archive badge on every HR page
-    document.addEventListener('DOMContentLoaded', () => setArchiveBadge(readArchived().length, false));
+    // Sidebar badges on every HR page
+    document.addEventListener('DOMContentLoaded', () => {
+        setArchiveBadge(readArchived().length, false);
+
+        // Opening an applicant's details page counts as "viewed" (works with no change to details.php)
+        const q = new URLSearchParams(window.location.search);
+        if (/details\.php$/i.test(window.location.pathname) && q.get('id')) markSeen(q.get('id'));
+
+        refreshDashboardBadge();
+    });
+
+    // Keep the badge right when another tab changes things
+    window.addEventListener('storage', (e) => {
+        if ([SEEN_KEY, COMPLETED_KEY, KEY].includes(e.key)) refreshDashboardBadge();
+    });
 
     // arrivedViaTransition is filled in below (page scripts can read it after DOMContentLoaded)
-    return { archiveRequest, readArchived, setArchiveBadge, bumpArchive, toast, arrivedViaTransition: false };
+    return {
+        archiveRequest, readArchived, setArchiveBadge, bumpArchive, toast,
+        syncCompleted, isUnseen, markSeen, unseenCompleted, refreshDashboardBadge,
+        arrivedViaTransition: false
+    };
 })();
 
 

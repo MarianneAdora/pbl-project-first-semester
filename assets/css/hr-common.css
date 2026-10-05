@@ -751,3 +751,38 @@ html.js.is-ready.is-leaving .reveal {
 @media (prefers-reduced-motion: reduce) {
     .toast, .nav-badge.pop, .nav-item.bump .nav-icon { transition: none; animation: none; }
 }
+
+/* ==========================================================================
+   Sidebar: alert badge (completed screenings waiting to be viewed)
+   ========================================================================== */
+.nav-badge.alert {
+    position: relative;
+    background: #ffffff;
+    color: #a3081e;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
+}
+
+/* soft ring that pulses outward to draw the eye */
+.nav-badge.alert::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: inherit;
+    border: 2px solid rgba(255, 255, 255, 0.85);
+    opacity: 0;
+    animation: alertRing 2.4s ease-out infinite;
+    pointer-events: none;
+}
+
+@keyframes alertRing {
+    0%   { transform: scale(0.85); opacity: 0.9; }
+    70%  { transform: scale(1.5);  opacity: 0; }
+    100% { transform: scale(1.5);  opacity: 0; }
+}
+
+/* on the active (pink) Dashboard item the badge needs its own edge so it never blends in */
+.sidebar.collapsed .nav-badge.alert { box-shadow: 0 0 0 2px #a3081e; }
+
+@media (prefers-reduced-motion: reduce) {
+    .nav-badge.alert::after { animation: none; display: none; }
+}

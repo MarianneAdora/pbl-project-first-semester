@@ -4,9 +4,14 @@
    toast all live in hr-common.css (link it BEFORE this file).
    ========================================================================== */
 
+:root {
+    --ink: #1f1f23;                /* the one dark text colour used across the Recent Applicants card */
+    --ink-soft: #5b5f66;
+}
+
 /* the dashboard needs a little extra room: hover pops and their shadows are never cut */
 .main-content {
-    padding: 28px 40px 44px;
+    padding: 28px 40px 56px;
 }
 
 .dashboard-grid {
@@ -24,23 +29,44 @@
     gap: 20px;
 }
 
+/* ---------- Summary cards ---------- */
 .stat-card {
+    --tone: #a3081e;               /* set per card below */
+    --tone-soft: #fbe6e9;
     background: #ffffff;
     border-radius: 14px;
-    padding: 22px 16px;
+    padding: 14px 22px 14px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
     position: relative;
+    overflow: hidden;
     transition: transform 0.35s var(--ease-pop), box-shadow 0.3s var(--ease-out);
     cursor: pointer;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
+    justify-content: space-between;
+    gap: 6px;
+    text-align: left;
 }
 
+/* thin colour edge on the left */
+.stat-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 16px;
+    bottom: 16px;
+    width: 4px;
+    border-radius: 0 4px 4px 0;
+    background: var(--tone);
+}
+
+.stat-card.tone-red   { --tone: #a3081e; --tone-soft: #fbe6e9; }
+.stat-card.tone-amber { --tone: #e29a00; --tone-soft: #fff3d1; }
+.stat-card.tone-blue  { --tone: #1c8adb; --tone-soft: #e1f0fc; }
+.stat-card.tone-green { --tone: #159a43; --tone-soft: #dff3e6; }
+
 .stat-card:hover {
-    transform: translateY(-6px) scale(1.04);
+    transform: translateY(-6px) scale(1.03);
     box-shadow: 0 12px 26px rgba(0, 0, 0, 0.12);
     z-index: 2;
 }
@@ -49,46 +75,127 @@
     transform: translateY(-2px) scale(0.99);
 }
 
-.card-title {
-    font-size: 12.5px;
-    font-weight: 700;
-    color: #333333;
+.stat-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
-.card-header-icon {
+.stat-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: var(--tone-soft);
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    flex-shrink: 0;
+    transition: transform 0.35s var(--ease-pop);
 }
 
-.card-header-icon .icon {
+.stat-icon svg {
     width: 20px;
     height: 20px;
+    fill: var(--tone);
 }
 
-.icon.yellow { fill: #f2a900; }
-.icon.blue { fill: #1c8adb; }
-.icon.green { fill: #159a43; }
-.icon.red { fill: #a3081e; }
+.stat-card:hover .stat-icon {
+    transform: rotate(-6deg) scale(1.1);
+}
+
+.card-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink);
+    white-space: nowrap;
+}
+
+/* arrow that slides in on hover: tells you the card is a link */
+.stat-go {
+    width: 22px;
+    height: 22px;
+    margin-left: auto;
+    fill: var(--ink-soft);
+    opacity: 0;
+    transform: translateX(-6px);
+    transition: opacity 0.2s ease, transform 0.3s var(--ease-out);
+}
+
+.stat-card:hover .stat-go {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.new-chip {
+    margin-left: auto;
+    background: #d1122a;
+    color: #ffffff;
+    font-size: 10.5px;
+    font-weight: 800;
+    padding: 3px 9px;
+    border-radius: 10px;
+    white-space: nowrap;
+}
+
+.new-chip[hidden] { display: none; }
+
+.new-chip + .stat-go {
+    margin-left: 0;
+}
 
 .card-value {
-    font-size: 34px;
+    font-size: 36px;
     font-weight: 800;
-    color: #1a1a1a;
-    margin-top: 6px;
-    text-align: center;
+    line-height: 1;
+    letter-spacing: -1px;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
 }
 
+.stat-foot {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.stat-bar {
+    height: 6px;
+    border-radius: 6px;
+    background: #eef0f3;
+    overflow: hidden;
+}
+
+.stat-bar span {
+    display: block;
+    height: 100%;
+    width: var(--w, 0%);
+    border-radius: 6px;
+    background: var(--tone);
+    transform-origin: left center;
+    animation: barGrow 0.9s var(--ease-out) 0.5s backwards;
+}
+
+@keyframes barGrow {
+    from { transform: scaleX(0); }
+    to   { transform: scaleX(1); }
+}
+
+.stat-note {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--ink-soft);
+}
+
+/* ---------- Passed / Rejected chart ---------- */
 .chart-card {
     background: #ffffff;
     border-radius: 14px;
-    padding: 20px;
+    padding: 20px 22px 22px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
     text-align: center;
     position: relative;
     transition: transform 0.35s var(--ease-pop), box-shadow 0.3s var(--ease-out);
@@ -100,47 +207,100 @@
     z-index: 2;
 }
 
-.chart-card h3 {
-    font-size: 14px;
-    font-weight: 800;
-    color: #222;
-    margin-bottom: 12px;
+.chart-head {
     width: 100%;
-    text-align: center;
+    text-align: left;
+}
+
+.chart-head h3 {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--ink);
+}
+
+.chart-sub {
+    display: block;
+    margin-top: 2px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--ink-soft);
 }
 
 .chart-wrapper {
     position: relative;
-    width: 184px;                  /* the pie draws ~12px smaller inside this box, so a hovered slice has room */
+    width: 184px;                  /* the ring draws ~12px smaller inside this box, so a hovered slice has room */
     height: 184px;
     cursor: pointer;
+    margin: 6px 0;
+}
+
+/* text in the hole of the ring */
+.chart-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.chart-center strong {
+    font-size: 30px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.5px;
+    color: var(--ink);
+}
+
+.chart-center span {
+    margin-top: 5px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--ink-soft);
 }
 
 .chart-legend {
-    display: flex;
-    gap: 16px;
-    margin-top: 14px;
-    font-size: 11px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    width: 100%;
+    font-size: 12px;
     font-weight: 700;
 }
 
 .legend-item {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 7px;
+    padding: 8px 10px;
+    border: 1px solid #e8eaed;
+    border-radius: 10px;
+    color: var(--ink);
     cursor: pointer;
-    transition: opacity 0.2s ease, transform 0.3s var(--ease-pop);
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.3s var(--ease-pop);
 }
 
-.legend-item:hover {
-    opacity: 1;
-    transform: translateY(-2px) scale(1.1);
+.legend-item:hover,
+.legend-item:focus-visible {
+    background: #f6f7f9;
+    border-color: #d5d9de;
+    transform: translateY(-2px) scale(1.04);
+    outline: none;
+}
+
+.legend-text { flex: 1; text-align: left; }
+
+.legend-num {
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
 }
 
 .legend-dot {
     width: 9px;
     height: 9px;
     border-radius: 50%;
+    flex-shrink: 0;
 }
 
 .legend-dot.green { background-color: #12b700; }
@@ -150,7 +310,7 @@
 .recent-card {
     background: #ffffff;
     border-radius: 14px;
-    padding: 20px;
+    padding: 18px 20px 20px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
     position: relative;
     display: flex;
@@ -170,39 +330,58 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 16px;
+    margin-bottom: 10px;
+    padding: 0 0 0 0;
 }
 
 .card-top h3 {
     font-size: 15px;
     font-weight: 800;
+    color: var(--ink);
 }
 
 .view-all {
-    color: #0088ff;
-    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    color: var(--ink);             /* same dark shade as the rest of the card */
+    font-size: 12.5px;
     font-weight: 700;
     text-decoration: none;
     transition: color 0.2s ease, transform 0.3s var(--ease-pop);
-    display: inline-block;
+}
+
+.view-all svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+    transition: transform 0.3s var(--ease-out);
 }
 
 .view-all:hover {
-    color: #0056b3;
-    text-decoration: underline;
-    transform: scale(1.08);
+    color: #a3081e;
+    transform: scale(1.05);
 }
 
-/* Scrollable list: fills the card edge to edge (like the Screening List card),
-   shows as many rows as fit (up to 10), scrolls the rest */
+.view-all:hover svg {
+    transform: translateX(3px);
+}
+
+/* Scrollable list: fills the card edge to edge, shows as many rows as fit (up to 10), scrolls the rest */
 .table-responsive {
     flex: 1 1 0;
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
-    margin: 0 -20px -20px;         /* cancels the card padding so the header band touches the card edges */
+    margin: 0 -20px 0;             /* header band touches the card sides; the card's bottom padding stays as a gap */
     scrollbar-width: thin;
     scrollbar-color: #cfd4da transparent;
+}
+
+.table-responsive.has-more {
+    /* rows fade out at the bottom edge while there is more to scroll, so nothing looks chopped */
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 34px), transparent);
+            mask-image: linear-gradient(to bottom, #000 calc(100% - 34px), transparent);
 }
 
 .table-responsive::-webkit-scrollbar {
@@ -224,29 +403,33 @@
     table-layout: fixed;           /* needed so long names can be cut with "..." */
 }
 
-/* Same dark header band as the Screening List table */
 .applicants-table th {
     position: sticky;              /* header stays put while the rows scroll */
     top: 0;
     z-index: 2;
     background: #ebecee;
     text-align: left;
-    font-size: 13px;
-    font-weight: 600;
-    color: #555555;
-    padding: 14px 10px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--ink);
+    padding: 9px 10px;
     box-shadow: inset 0 -1px 0 #d6d9de;
     white-space: nowrap;
 }
 
 .applicants-table td {
-    padding: 12px 10px;
-    font-size: 12px;
-    color: #333;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--ink);
     white-space: nowrap;           /* long text becomes "..." */
     overflow: hidden;
     text-overflow: ellipsis;
     border-bottom: 1px solid #f0f1f3;
+}
+
+.applicants-table td strong {
+    font-weight: 700;
 }
 
 .applicants-table tbody tr:last-child td {
@@ -261,9 +444,14 @@
 
 .applicants-table td.empty-row {
     text-align: center;
-    color: #888888;
+    color: var(--ink-soft);
     font-weight: 600;
     padding: 28px 10px;
+}
+
+/* a status pill and a result pill side by side */
+.applicants-table .status-pill + .status-pill {
+    margin-left: 4px;
 }
 
 .clickable-row {
@@ -290,6 +478,56 @@
     transform: scale(1.08);
 }
 
+/* ---------- Red mark: completed screening that HR has not opened yet ---------- */
+.name-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.name-cell strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.unseen-dot {
+    display: none;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #d1122a;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 3px rgba(209, 18, 42, 0.16);
+}
+
+.clickable-row.is-unseen {
+    background-color: #fff4f5;
+}
+
+.clickable-row.is-unseen .unseen-dot {
+    display: block;
+    animation: dotPulse 2s ease-in-out infinite;
+}
+
+.clickable-row.is-unseen strong {
+    font-weight: 800;
+}
+
+.clickable-row.is-unseen:hover {
+    background-color: #fde9eb;
+}
+
+@keyframes dotPulse {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(209, 18, 42, 0.16); }
+    50%      { box-shadow: 0 0 0 6px rgba(209, 18, 42, 0.05); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .clickable-row.is-unseen .unseen-dot,
+    .stat-bar span { animation: none; }
+}
+
 /* Pie chart with no data */
 .chart-wrapper .chart-empty {
     height: 100%;
@@ -301,10 +539,11 @@
     color: #888888;
 }
 
+/* ---------- Quick Action ---------- */
 .quick-action-card {
     background: #ffffff;
     border-radius: 14px;
-    padding: 20px;
+    padding: 20px 22px 22px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
     display: flex;
     flex-direction: column;
@@ -322,59 +561,98 @@
 }
 
 .quick-action-card h3 {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 800;
+    color: var(--ink);
     width: 100%;
     text-align: left;
-    margin-bottom: 14px;
+}
+
+.qa-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 0 12px;
 }
 
 .avatar-circle {
-    width: 80px;
-    height: 80px;
-    background-color: #b2ebf2;
+    position: relative;
+    width: 68px;
+    height: 68px;
+    background-color: #d3f1f7;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: auto auto 12px;        /* auto on top: spare height is shared above and below */
+    margin-bottom: 16px;
     flex-shrink: 0;
-    transition: transform 0.35s var(--ease-out);
 }
 
-.quick-action-card:hover .avatar-circle {
-    transform: scale(1.06);
+/* dashed ring around the icon */
+.avatar-circle::after {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    border-radius: 50%;
+    border: 2px dashed #8fd3e6;
+    transition: transform 0.9s var(--ease-out);
+}
+
+.quick-action-card:hover .avatar-circle::after {
+    transform: rotate(120deg);
 }
 
 .avatar-circle svg {
-    width: 42px;
-    height: 42px;
+    width: 38px;
+    height: 38px;
     fill: #0077c2;
+    transition: transform 0.35s var(--ease-pop);
+}
+
+.quick-action-card:hover .avatar-circle svg {
+    transform: scale(1.1);
 }
 
 .quick-action-text {
-    font-size: 12px;
+    font-size: 13.5px;
     font-weight: 800;
-    color: #222;
-    margin-bottom: auto;
-    padding-bottom: 16px;
+    color: var(--ink);
+    margin-bottom: 6px;
+}
+
+.quick-action-sub {
+    max-width: 210px;
+    font-size: 11.5px;
+    font-weight: 500;
+    line-height: 1.45;
+    color: var(--ink-soft);
 }
 
 .btn-add-new {
     width: 100%;
-    height: 38px;
+    height: 40px;
     background-color: #00a2ff;
     color: #ffffff;
     border: none;
-    border-radius: 8px;
-    font-size: 12px;
+    border-radius: 10px;
+    font-size: 12.5px;
     font-weight: 800;
+    letter-spacing: 0.4px;
     cursor: pointer;
     text-decoration: none;
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 6px;
     transition: background-color 0.2s ease, transform 0.3s var(--ease-pop), box-shadow 0.2s ease;
+}
+
+.btn-add-new svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
 }
 
 .btn-add-new:hover {
