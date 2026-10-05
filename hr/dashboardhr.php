@@ -76,6 +76,9 @@ function status_badge(string $status): string
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+    <!-- Shared HR styles (sidebar, overlay, modal, pills, toast) -->
+    <link rel="stylesheet" href="../assets/css/hr-common.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/hr-common.css'); ?>">
+
     <!-- Dashboard HR Stylesheet -->
     <link rel="stylesheet" href="../assets/css/dashboardhr.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/dashboardhr.css'); ?>">
 </head>
@@ -163,6 +166,11 @@ function status_badge(string $status): string
             </button>
         </div>
     </aside>
+
+    <!-- Restore the sidebar state (collapsed / expanded) before the first paint, so it never flashes open -->
+    <script>
+        try { if (localStorage.getItem('hr_sidebar_collapsed') === '1') document.getElementById('sidebar').classList.add('collapsed'); } catch (e) {}
+    </script>
 
     <!-- Main Content Panel Area -->
     <main class="main-content">
@@ -284,6 +292,8 @@ function status_badge(string $status): string
             failed: <?php echo $stats['failed']; ?>
         };
     </script>
+    <!-- Shared HR behaviour first, then this page's script -->
+    <script src="../assets/js/hr-common.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/hr-common.js'); ?>"></script>
     <script src="../assets/js/dashboardhr.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/dashboardhr.js'); ?>"></script>
 </body>
 </html>

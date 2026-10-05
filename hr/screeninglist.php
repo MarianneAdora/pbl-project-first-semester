@@ -76,6 +76,9 @@ $applicants = [
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
+    <!-- Shared HR styles (sidebar, overlay, modal, pills, toast) -->
+    <link rel="stylesheet" href="../assets/css/hr-common.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/hr-common.css'); ?>">
+
     <!-- Page styles -->
     <link rel="stylesheet" href="../assets/css/screeninglist.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/screeninglist.css'); ?>">
 </head>
@@ -159,6 +162,11 @@ $applicants = [
         </div>
     </aside>
 
+    <!-- Restore the sidebar state (collapsed / expanded) before the first paint, so it never flashes open -->
+    <script>
+        try { if (localStorage.getItem('hr_sidebar_collapsed') === '1') document.getElementById('sidebar').classList.add('collapsed'); } catch (e) {}
+    </script>
+
     <!-- Main Content -->
     <main class="main-content">
         <header class="content-header reveal" style="--i:1">
@@ -176,19 +184,22 @@ $applicants = [
                 </button>
             </label>
 
-            <!-- Normal mode: Select all -->
-            <button type="button" class="tool-btn select-all-btn" id="selectAllBtn" title="Select every applicant in the list (or press and hold a row)">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h2V3c-1.1 0-2 .9-2 2zm0 8h2v-2H3v2zm4 8h2v-2H7v2zM3 9h2V7H3v2zm10-6h-2v2h2V3zm6 0v2h2c0-1.1-.9-2-2-2zM5 21v-2H3c0 1.1.9 2 2 2zm-2-4h2v-2H3v2zM9 3H7v2h2V3zm2 18h2v-2h-2v2zm8-8h2v-2h-2v2zm0 8c1.1 0 2-.9 2-2h-2v2zm0-12h2V7h-2v2zm0 8h2v-2h-2v2zm-4 4h2v-2h-2v2zm0-16h2V3h-2v2zM9 17h6V9H9v8zm2-6h2v4h-2v-4z"/></svg>
-                <span>Select all</span>
-            </button>
-
-            <!-- Selection mode: Cancel + Delete -->
-            <div class="select-actions" id="selectActions" inert>
-                <button type="button" class="btn-cancel-sel" id="cancelSelect">Cancel</button>
-                <button type="button" class="btn-delete-sel" id="deleteSelected" disabled title="Moves the selected applicants to the Archive">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                    <span>Delete <span id="deleteCount"></span></span>
+            <!-- Select all  <->  Cancel / Delete: one slot, so nothing else in the toolbar jumps -->
+            <div class="select-swap" id="selectSwap">
+                <!-- Normal mode: Select all -->
+                <button type="button" class="tool-btn select-all-btn" id="selectAllBtn" title="Select every applicant in the list (or press and hold a row)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h2V3c-1.1 0-2 .9-2 2zm0 8h2v-2H3v2zm4 8h2v-2H7v2zM3 9h2V7H3v2zm10-6h-2v2h2V3zm6 0v2h2c0-1.1-.9-2-2-2zM5 21v-2H3c0 1.1.9 2 2 2zm-2-4h2v-2H3v2zM9 3H7v2h2V3zm2 18h2v-2h-2v2zm8-8h2v-2h-2v2zm0 8c1.1 0 2-.9 2-2h-2v2zm0-12h2V7h-2v2zm0 8h2v-2h-2v2zm-4 4h2v-2h-2v2zm0-16h2V3h-2v2zM9 17h6V9H9v8zm2-6h2v4h-2v-4z"/></svg>
+                    <span>Select all</span>
                 </button>
+
+                <!-- Selection mode: Cancel + Delete -->
+                <div class="select-actions" id="selectActions" inert>
+                    <button type="button" class="btn-cancel-sel" id="cancelSelect">Cancel</button>
+                    <button type="button" class="btn-delete-sel" id="deleteSelected" disabled title="Moves the selected applicants to the Archive">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                        <span>Delete <span id="deleteCount"></span></span>
+                    </button>
+                </div>
             </div>
 
             <button type="button" class="filter-toggle" id="filterToggle" aria-expanded="true" aria-controls="filterPanel" title="Show or hide filters">
@@ -325,6 +336,8 @@ $applicants = [
             applicants: <?php echo json_encode($applicants, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>
         };
     </script>
+    <!-- Shared HR behaviour first, then this page's script -->
+    <script src="../assets/js/hr-common.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/hr-common.js'); ?>"></script>
     <script src="../assets/js/screeninglist.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/screeninglist.js'); ?>"></script>
 </body>
 </html>

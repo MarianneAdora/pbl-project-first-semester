@@ -1,9 +1,124 @@
 /* ==========================================================================
    HR common behaviour: shared by every HR page
-   - entrance animation (and the stripe sweep-out when arriving from login)
-   - sidebar collapse + Applicants dropdown
-   - logout confirmation + stripe sweep-in
+   Part 1: window.HR helpers (archive storage, sidebar badge, toast)
+   Part 2: entrance animation, sidebar (collapsed state is remembered),
+           Applicants dropdown, logout confirmation + stripe sweep-in
+   Load this file BEFORE the page's own script.
    ========================================================================== */
+
+/* ---------- PART 1: shared helpers (window.HR) ---------- */
+window.HR = (function () {
+    // Archived applicant ids are kept in this browser (localStorage) for now.
+    // When the database is ready, replace archiveRequest() with a fetch() to your PHP.
+    const KEY = 'hr_archived';
+
+    function readArchived() {
+        try {
+            const v = JSON.parse(localStorage.getItem(KEY) || '[]');
+            return Array.isArray(v) ? v.map(Number) : [];
+        } catch (err) {
+            return [];
+        }
+    }
+
+    function archiveRequest(action, ids) {
+        const set = new Set(readArchived());
+        ids.forEach(id => (action === 'archive' ? set.add(Number(id)) : set.delete(Number(id))));
+        const list = Array.from(set);
+        try {
+            localStorage.setItem(KEY, JSON.stringify(list));
+        } catch (err) {
+            return Promise.reject(new Error('Could not save. Please check your browser storage settings.'));
+        }
+        return Promise.resolve({ ok: true, changed: ids.length, count: list.length });
+    }
+
+    function setArchiveBadge(count, animate) {
+        const badge = document.getElementById('archiveBadge');
+        if (!badge) return;
+        badge.textContent = String(count);
+        badge.hidden = count <= 0;
+        badge.classList.remove('pop');
+        if (animate !== false && count > 0) {
+            void badge.offsetWidth;           // restart the animation
+            badge.classList.add('pop');
+        }
+    }
+
+    function bumpArchive() {
+        const link = document.getElementById('archiveLink');
+        if (!link) return;
+        link.classList.remove('bump');
+        void link.offsetWidth;
+        link.classList.add('bump');
+        setTimeout(() => link.classList.remove('bump'), 700);
+    }
+
+    function toast(message, opts) {
+        const o = Object.assign({ actionLabel: '', onAction: null, duration: 6000, error: false }, opts);
+        let host = document.getElementById('toastHost');
+        if (!host) {
+            host = document.createElement('div');
+            host.id = 'toastHost';
+            host.className = 'toast-host';
+            document.body.appendChild(host);
+        }
+
+        const t = document.createElement('div');
+        t.className = 'toast' + (o.error ? ' toast-error' : '');
+        t.setAttribute('role', o.error ? 'alert' : 'status');
+        t.style.setProperty('--toast-time', o.duration + 'ms');
+
+        const text = document.createElement('span');
+        text.className = 'toast-text';
+        text.textContent = message;
+        t.appendChild(text);
+
+        let timer = null;
+        const close = () => {
+            clearTimeout(timer);
+            t.classList.remove('show');
+            setTimeout(() => t.remove(), 350);
+        };
+
+        if (o.actionLabel && typeof o.onAction === 'function') {
+            const act = document.createElement('button');
+            act.type = 'button';
+            act.className = 'toast-action';
+            act.textContent = o.actionLabel;
+            act.addEventListener('click', () => { close(); o.onAction(); });
+            t.appendChild(act);
+        }
+
+        const x = document.createElement('button');
+        x.type = 'button';
+        x.className = 'toast-close';
+        x.setAttribute('aria-label', 'Dismiss');
+        x.textContent = '\u00D7';
+        x.addEventListener('click', close);
+        t.appendChild(x);
+
+        const bar = document.createElement('span');
+        bar.className = 'toast-bar';
+        t.appendChild(bar);
+
+        // one toast at a time
+        host.querySelectorAll('.toast').forEach(old => old.remove());
+        host.appendChild(t);
+        requestAnimationFrame(() => t.classList.add('show'));
+        timer = setTimeout(close, o.duration);
+        return { close };
+    }
+
+    // Sidebar Archive badge on every HR page
+    document.addEventListener('DOMContentLoaded', () => setArchiveBadge(readArchived().length, false));
+
+    // arrivedViaTransition is filled in below (page scripts can read it after DOMContentLoaded)
+    return { archiveRequest, readArchived, setArchiveBadge, bumpArchive, toast, arrivedViaTransition: false };
+})();
+
+
+/* ---------- PART 2: entrance, sidebar, logout ---------- */
 document.addEventListener('DOMContentLoaded', () => {
     const root = document.documentElement;
     const sidebar = document.getElementById('sidebar');
@@ -16,9 +131,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const confirmLogout = document.getElementById('confirmLogout');
     const pageOverlay = document.getElementById('pageOverlay');
 
+    // The sidebar state (collapsed / expanded) is remembered across every HR page
+    const SIDEBAR_KEY = 'hr_sidebar_collapsed';
+    const sidebarSaved = () => {
+        try { return localStorage.getItem(SIDEBAR_KEY) === '1'; } catch (err) { return false; }
+    };
+    const saveSidebar = () => {
+        try { localStorage.setItem(SIDEBAR_KEY, sidebar.classList.contains('collapsed') ? '1' : '0'); } catch (err) { /* storage unavailable */ }
+    };
+
+    // Normally the small inline script under the <aside> has already done this before the
+    // first paint; this is the fallback for a page that does not have it yet.
+    if (sidebar && sidebarSaved()) sidebar.classList.add('collapsed');
+
     // 1. Page entrance
     const params = new URLSearchParams(window.location.search);
     const arrivedViaTransition = params.get('transition') === 'out' && pageOverlay;
+    HR.arrivedViaTransition = !!arrivedViaTransition;
 
     if (arrivedViaTransition) {
         // Page is already covered (set in <head>). Sweep the stripes out and let the
@@ -43,10 +172,11 @@ document.addEventListener('DOMContentLoaded', () => {
         requestAnimationFrame(() => root.classList.add('is-ready'));
     }
 
-    // 2. Sidebar collapse / expand
+    // 2. Sidebar collapse / expand (and remember it)
     if (sidebarToggle && sidebar) {
         sidebarToggle.addEventListener('click', () => {
             sidebar.classList.toggle('collapsed');
+            saveSidebar();
         });
     }
 
@@ -70,7 +200,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.target === logoutModal) logoutModal.classList.remove('active');
         });
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') logoutModal.classList.remove('active');
+            if (e.key === 'Escape' && logoutModal.classList.contains('active')) {
+                e.preventDefault();       // so a page's own Escape handling does not also react
+                logoutModal.classList.remove('active');
+            }
         });
     }
 
@@ -108,8 +241,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 5. Browser back button (page restored from cache): reset the leaving state
+    //    and re-apply the sidebar state that was saved meanwhile
     window.addEventListener('pageshow', (event) => {
-        if (!event.persisted || !pageOverlay) return;
+        if (!event.persisted) return;
+        if (sidebar) sidebar.classList.toggle('collapsed', sidebarSaved());
+        if (!pageOverlay) return;
         root.classList.remove('is-leaving', 'is-transitioning');
         pageOverlay.classList.remove('sweep-in', 'sweep-out');
         if (confirmLogout) confirmLogout.disabled = false;

@@ -1,238 +1,8 @@
 /* ==========================================================================
-   screeninglist.js  (everything for the Screening List page in ONE file)
-   Part 1: archive helpers + toast   Part 2: sidebar / logout / entrance   Part 3: the list
+   screeninglist.js: the Screening List page.
+   Shared helpers (window.HR: archive storage, badge, toast), the sidebar, logout and the
+   entrance animation live in hr-common.js (load hr-common.js BEFORE this file).
    ========================================================================== */
-
-/* ==========================================================================
-   Shared helpers for the Archive feature: window.HR
-   - archiveRequest('archive' | 'restore', ids)  -> talks to archive_action.php
-   - setArchiveBadge(n) / bumpArchive()          -> sidebar Archive item
-   - toast(message, { actionLabel, onAction, duration, error })
-   ========================================================================== */
-window.HR = (function () {
-    // Archived applicant ids are kept in this browser (localStorage) for now.
-    // When the database is ready, replace archiveRequest() with a fetch() to your PHP.
-    const KEY = 'hr_archived';
-
-    function readArchived() {
-        try {
-            const v = JSON.parse(localStorage.getItem(KEY) || '[]');
-            return Array.isArray(v) ? v.map(Number) : [];
-        } catch (err) {
-            return [];
-        }
-    }
-
-    function archiveRequest(action, ids) {
-        const set = new Set(readArchived());
-        ids.forEach(id => (action === 'archive' ? set.add(Number(id)) : set.delete(Number(id))));
-        const list = Array.from(set);
-        try {
-            localStorage.setItem(KEY, JSON.stringify(list));
-        } catch (err) {
-            return Promise.reject(new Error('Could not save. Please check your browser storage settings.'));
-        }
-        return Promise.resolve({ ok: true, changed: ids.length, count: list.length });
-    }
-
-    function setArchiveBadge(count, animate) {
-        const badge = document.getElementById('archiveBadge');
-        if (!badge) return;
-        badge.textContent = String(count);
-        badge.hidden = count <= 0;
-        badge.classList.remove('pop');
-        if (animate !== false && count > 0) {
-            void badge.offsetWidth;           // restart the animation
-            badge.classList.add('pop');
-        }
-    }
-
-    function bumpArchive() {
-        const link = document.getElementById('archiveLink');
-        if (!link) return;
-        link.classList.remove('bump');
-        void link.offsetWidth;
-        link.classList.add('bump');
-        setTimeout(() => link.classList.remove('bump'), 700);
-    }
-
-    function toast(message, opts) {
-        const o = Object.assign({ actionLabel: '', onAction: null, duration: 6000, error: false }, opts);
-        let host = document.getElementById('toastHost');
-        if (!host) {
-            host = document.createElement('div');
-            host.id = 'toastHost';
-            host.className = 'toast-host';
-            document.body.appendChild(host);
-        }
-
-        const t = document.createElement('div');
-        t.className = 'toast' + (o.error ? ' toast-error' : '');
-        t.setAttribute('role', o.error ? 'alert' : 'status');
-        t.style.setProperty('--toast-time', o.duration + 'ms');
-
-        const text = document.createElement('span');
-        text.className = 'toast-text';
-        text.textContent = message;
-        t.appendChild(text);
-
-        let timer = null;
-        const close = () => {
-            clearTimeout(timer);
-            t.classList.remove('show');
-            setTimeout(() => t.remove(), 350);
-        };
-
-        if (o.actionLabel && typeof o.onAction === 'function') {
-            const act = document.createElement('button');
-            act.type = 'button';
-            act.className = 'toast-action';
-            act.textContent = o.actionLabel;
-            act.addEventListener('click', () => { close(); o.onAction(); });
-            t.appendChild(act);
-        }
-
-        const x = document.createElement('button');
-        x.type = 'button';
-        x.className = 'toast-close';
-        x.setAttribute('aria-label', 'Dismiss');
-        x.textContent = '\u00D7';
-        x.addEventListener('click', close);
-        t.appendChild(x);
-
-        const bar = document.createElement('span');
-        bar.className = 'toast-bar';
-        t.appendChild(bar);
-
-        // one toast at a time
-        host.querySelectorAll('.toast').forEach(old => old.remove());
-        host.appendChild(t);
-        requestAnimationFrame(() => t.classList.add('show'));
-        timer = setTimeout(close, o.duration);
-        return { close };
-    }
-
-    document.addEventListener('DOMContentLoaded', () => setArchiveBadge(readArchived().length, false));
-
-    return { archiveRequest, readArchived, setArchiveBadge, bumpArchive, toast };
-})();
-
-
-/* ---------- PART 2: sidebar, logout, entrance animation ---------- */
-document.addEventListener('DOMContentLoaded', () => {
-    const root = document.documentElement;
-    const sidebar = document.getElementById('sidebar');
-    const sidebarToggle = document.getElementById('sidebarToggle');
-    const arrowToggleBtn = document.getElementById('arrowToggleBtn');
-    const applicantsGroup = document.getElementById('applicantsGroup');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const logoutModal = document.getElementById('logoutModal');
-    const cancelLogout = document.getElementById('cancelLogout');
-    const confirmLogout = document.getElementById('confirmLogout');
-    const pageOverlay = document.getElementById('pageOverlay');
-
-    // 1. Page entrance
-    const params = new URLSearchParams(window.location.search);
-    const arrivedViaTransition = params.get('transition') === 'out' && pageOverlay;
-
-    if (arrivedViaTransition) {
-        // Page is already covered (set in <head>). Sweep the stripes out and let the
-        // elements rise in just behind them.
-        root.style.setProperty('--reveal-base', '0.3s');
-
-        // Wait for the first painted frame so the solid red is actually shown first
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                root.classList.remove('is-transitioning');
-                pageOverlay.classList.add('sweep-out');
-                root.classList.add('is-ready');
-            });
-        });
-
-        // Remove only the transition flag from the URL (keep any filters)
-        params.delete('transition');
-        const qs = params.toString();
-        window.history.replaceState({}, document.title, window.location.pathname + (qs ? '?' + qs : ''));
-    } else {
-        // Normal visit (no stripes): elements rise in right away
-        requestAnimationFrame(() => root.classList.add('is-ready'));
-    }
-
-    // 2. Sidebar collapse / expand
-    if (sidebarToggle && sidebar) {
-        sidebarToggle.addEventListener('click', () => {
-            sidebar.classList.toggle('collapsed');
-        });
-    }
-
-    // 3. Applicants dropdown (arrow only)
-    if (arrowToggleBtn && applicantsGroup && sidebar) {
-        arrowToggleBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            if (!sidebar.classList.contains('collapsed')) {
-                applicantsGroup.classList.toggle('active');
-            }
-        });
-    }
-
-    // 4. Logout: confirm, then elements lift away while the stripes sweep in
-    if (logoutBtn && logoutModal) {
-        logoutBtn.addEventListener('click', () => logoutModal.classList.add('active'));
-
-        // Click on the dark backdrop or press Escape to cancel
-        logoutModal.addEventListener('click', (e) => {
-            if (e.target === logoutModal) logoutModal.classList.remove('active');
-        });
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') logoutModal.classList.remove('active');
-        });
-    }
-
-    if (cancelLogout && logoutModal) {
-        cancelLogout.addEventListener('click', () => logoutModal.classList.remove('active'));
-    }
-
-    if (confirmLogout && pageOverlay) {
-        confirmLogout.addEventListener('click', () => {
-            confirmLogout.disabled = true;
-            logoutModal.classList.remove('active');
-
-            let redirected = false;
-            const go = () => {
-                if (redirected) return;
-                redirected = true;
-                window.location.href = '../index.php?transition=out';
-            };
-
-            root.classList.add('is-leaving');
-            pageOverlay.classList.remove('sweep-out');
-            pageOverlay.classList.add('sweep-in');
-
-            // Redirect once all 8 stripes have finished (with a safety fallback)
-            let finished = 0;
-            const stripes = pageOverlay.querySelectorAll('.overlay-stripe');
-            stripes.forEach(stripe => {
-                stripe.addEventListener('animationend', () => {
-                    finished++;
-                    if (finished === stripes.length) go();
-                }, { once: true });
-            });
-            setTimeout(go, 1200);
-        });
-    }
-
-    // 5. Browser back button (page restored from cache): reset the leaving state
-    window.addEventListener('pageshow', (event) => {
-        if (!event.persisted || !pageOverlay) return;
-        root.classList.remove('is-leaving', 'is-transitioning');
-        pageOverlay.classList.remove('sweep-in', 'sweep-out');
-        if (confirmLogout) confirmLogout.disabled = false;
-    });
-});
-
-
-/* ---------- PART 3: Screening List ---------- */
 document.addEventListener('DOMContentLoaded', () => {
     const config = window.SCREENING || { perPage: 6, applicants: [] };
     let applicants = Array.isArray(config.applicants) ? config.applicants.slice() : [];
@@ -249,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchClear = document.getElementById('searchClear');
     const selectAllBtn = document.getElementById('selectAllBtn');
     const selectActions = document.getElementById('selectActions');
+    const selectSwap = document.getElementById('selectSwap');
     const cancelSelect = document.getElementById('cancelSelect');
     const deleteSelected = document.getElementById('deleteSelected');
     const deleteCount = document.getElementById('deleteCount');
@@ -271,7 +42,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let visible = [];                 // rows on the current page
     let animateRows = false;          // first render comes with the card entrance
     let busy = false;                 // an archive request/animation is running
-    let settleTimer = null;
+    let switchTimer = null;           // staggers the number <-> checkbox swap
+    let clearTimer = null;            // clears the ticks after the leave animation
 
     // ---------- helpers ----------
     // Build elements with textContent only, so names/emails can never inject HTML
@@ -510,6 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function buildRow(a, index, number) {
         const tr = document.createElement('tr');
         tr.dataset.id = a.id;
+        tr.style.setProperty('--k', index);          // row position: staggers the number <-> checkbox swap
         if (selected.has(a.id)) tr.classList.add('is-selected');
         if (animateRows) {
             tr.classList.add('row-in');
@@ -600,6 +373,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const CHEVRON_LEFT = 'M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z';
     const CHEVRON_RIGHT = 'M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z';
+    // « and »: jump straight to the first / last page
+    const DOUBLE_LEFT = 'M17.59 18 19 16.59 14.42 12 19 7.41 17.59 6l-6 6zM11 18l1.41-1.41L7.83 12l4.58-4.59L11 6l-6 6z';
+    const DOUBLE_RIGHT = 'M6.41 6 5 7.41 9.58 12 5 16.59 6.41 18l6-6zM13 6l-1.41 1.41L16.17 12l-4.58 4.59L13 18l6-6z';
 
     function arrowButton(path, label, disabled, goTo) {
         const btn = el('button', 'page-btn');
@@ -615,6 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
         pagination.textContent = '';
         if (total === 0 || pages <= 1) return;
 
+        pagination.appendChild(arrowButton(DOUBLE_LEFT, 'First page', state.page === 1, 1));
         pagination.appendChild(arrowButton(CHEVRON_LEFT, 'Previous page', state.page === 1, state.page - 1));
 
         pageList(state.page, pages).forEach(item => {
@@ -631,6 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         pagination.appendChild(arrowButton(CHEVRON_RIGHT, 'Next page', state.page === pages, state.page + 1));
+        pagination.appendChild(arrowButton(DOUBLE_RIGHT, 'Last page', state.page === pages, pages));
     }
 
     function goToPage(n) {
@@ -651,10 +429,18 @@ document.addEventListener('DOMContentLoaded', () => {
         selectAll.indeterminate = count > 0 && count < ids.length;
     }
 
+    // the "Select all" / "Cancel + Delete" slot always takes the width of whichever one is showing
+    function sizeSwap() {
+        if (!selectSwap) return;
+        const target = selectMode ? selectActions : selectAllBtn;
+        selectSwap.style.width = target.offsetWidth + 'px';
+    }
+
     function updateSelectionUi() {
         const n = selected.size;
         deleteSelected.disabled = busy || n === 0;
         deleteCount.textContent = n ? '(' + n + ')' : '';
+        sizeSwap();
     }
 
     function syncRowChecks() {
@@ -669,21 +455,42 @@ document.addEventListener('DOMContentLoaded', () => {
         refreshFooter();
     }
 
-    function setSelectMode(on) {
+    function setSelectMode(on, immediate) {
         if (selectMode === on) return;
         selectMode = on;
         table.classList.toggle('select-mode', on);
         toolbar.classList.toggle('is-selecting', on);
-        // once the buttons have finished sliding in, stop clipping them (so hover pops are never cut)
-        clearTimeout(settleTimer);
-        toolbar.classList.remove('is-settled');
-        if (on) settleTimer = setTimeout(() => toolbar.classList.add('is-settled'), 500);
+
+        // stagger the number <-> checkbox swap, in both directions
+        table.classList.add('select-switching');
+        clearTimeout(switchTimer);
+        switchTimer = setTimeout(() => table.classList.remove('select-switching'), 800);
+
         selectAllBtn.inert = on;              // hidden controls stay out of the tab order
         selectActions.inert = !on;
         selectAll.tabIndex = on ? 0 : -1;
         tableBody.querySelectorAll('.row-check').forEach(b => { b.tabIndex = on ? 0 : -1; });
-        if (!on) selected.clear();
-        syncRowChecks();
+
+        const pending = clearTimer !== null;
+        clearTimeout(clearTimer);
+        clearTimer = null;
+
+        if (on) {
+            if (pending) selected.clear();    // re-entered while the old ticks were still fading
+            syncRowChecks();
+        } else if (immediate || reduceMotion) {
+            selected.clear();
+            syncRowChecks();
+        } else {
+            // keep the ticks until the checkboxes have shrunk away, then clear them
+            updateSelectionUi();
+            clearTimer = setTimeout(() => {
+                clearTimer = null;
+                if (selectMode) return;
+                selected.clear();
+                syncRowChecks();
+            }, 650);
+        }
     }
 
     function toggleRow(id, force) {
@@ -859,7 +666,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const removed = applicants.filter(a => idSet.has(a.id));
         applicants = applicants.filter(a => !idSet.has(a.id));
         busy = false;
-        setSelectMode(false);            // clears the selection too
+        setSelectMode(false, true);      // clears the selection right away
         updateCounts();
         render();
         HR.setArchiveBadge(result.r.count);
@@ -961,7 +768,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let resizeTimer = null;
     window.addEventListener('resize', () => {
         clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(refit, 150);
+        resizeTimer = setTimeout(() => { sizeSwap(); refit(); }, 150);
     });
 
     // the table grows/shrinks while the filter panel slides, so re-fit when it settles
@@ -983,6 +790,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // ---------- start ----------
+    sizeSwap();
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(sizeSwap);   // re-measure once the font has loaded
     updateCounts();
     perPage = fitPerPage();
     readUrl();
