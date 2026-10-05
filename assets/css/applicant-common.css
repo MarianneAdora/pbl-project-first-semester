@@ -1,0 +1,158 @@
+/* ==========================================================================
+   Applicant pages: shared base + entrance animation.
+   Link this file BEFORE the page's own css.   Used by: opening, instruction, verify-otp
+
+   The pages never scroll on a computer: everything is sized in rem and the root font size
+   follows the window (a short window = a slightly smaller page), so it always fits.
+   Phones (under 800px) are allowed to scroll.
+
+   Folders (same as the HR side):   project/pic/expertise.png   project/pic/Short BG.png
+   This file lives in project/assets/css/, so the pic folder is  ../../pic/
+   ========================================================================== */
+
+:root {
+    --red: #e31837;
+    --red-dark: #c4122d;
+    --maroon: #a81028;
+    --text: #222222;
+    --text-muted: #555555;
+    --icon-bg: #ececec;
+
+    --font-main: "Plus Jakarta Sans", "Segoe UI", sans-serif;
+    --font-btn: "Inter", "Segoe UI", sans-serif;
+    --font-logo: "Playfair Display", Georgia, serif;
+
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);      /* things entering */
+    --ease-in: cubic-bezier(0.55, 0, 0.8, 0.3);      /* things leaving */
+    --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);   /* small overshoot: hover pops */
+
+    --corner-top: 2rem;                              /* the logo sits here on every page */
+    --corner-left: clamp(1.25rem, 4.7vw, 6rem);
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+[hidden] { display: none !important; }
+
+/* 1rem follows the window (about 20px on a 1080p screen, up to 26px), so the page is sized
+   like the wireframe and always fits. The background image is on <html> itself. */
+html {
+    font-size: clamp(11px, min(1.95vh, 1.4vw), 26px);
+    background: #f4f4f5 url("../../pic/Short%20BG.png") no-repeat right center / cover;
+    background-attachment: fixed;
+}
+
+body {
+    min-height: 100dvh;
+    overflow-x: hidden;
+    font-family: var(--font-main);
+    color: var(--text);
+    background: transparent;     /* a solid body colour would paint over the background image */
+}
+
+/* ---------- Background: pic/Short BG.png is set on <html> above ---------- */
+
+/* the top-level box of each page */
+.stage {
+    position: relative;
+    min-height: 100dvh;
+    overflow: clip;              /* entrance animations never create a scrollbar */
+}
+
+/* ---------- Logo: always above left ---------- */
+.corner-logo {
+    position: absolute;
+    top: var(--corner-top);
+    left: var(--corner-left);
+    width: 13rem;
+    height: auto;
+    display: block;
+    z-index: 2;
+    user-select: none;
+}
+
+/* ==========================================================================
+   Entrance: add class "reveal" and style="--i:N" (N = order, can be 2.5 etc.)
+   Variants: reveal-pop (scale with a little bounce), reveal-left, reveal-right, reveal-fade
+   ========================================================================== */
+html.js .reveal { opacity: 0; }
+
+html.js.is-ready .reveal {
+    opacity: 1;
+    animation: revealIn 0.7s var(--ease-out) backwards;
+    animation-delay: calc(var(--reveal-base, 0.1s) + var(--i, 0) * 80ms);
+}
+
+html.js.is-ready .reveal-pop {
+    animation-name: revealPop;
+    animation-duration: 0.6s;
+    animation-timing-function: var(--ease-pop);
+}
+
+html.js.is-ready .reveal-left  { animation-name: revealLeft; }
+html.js.is-ready .reveal-right { animation-name: revealRight; }
+html.js.is-ready .reveal-fade  { animation-name: revealFade; }
+
+@keyframes revealIn    { from { opacity: 0; transform: translate3d(0, 22px, 0); }  to { opacity: 1; transform: none; } }
+@keyframes revealPop   { from { opacity: 0; transform: scale(0.55); }              to { opacity: 1; transform: none; } }
+@keyframes revealLeft  { from { opacity: 0; transform: translate3d(-28px, 0, 0); } to { opacity: 1; transform: none; } }
+@keyframes revealRight { from { opacity: 0; transform: translate3d(28px, 0, 0); }  to { opacity: 1; transform: none; } }
+@keyframes revealFade  { from { opacity: 0; } to { opacity: 1; } }
+
+/* Normal page change: the page content fades up and away, then the next page rises in */
+html.is-leaving .stage {
+    animation: stageOut 0.3s var(--ease-in) forwards;
+    pointer-events: none;
+}
+
+@keyframes stageOut {
+    from { opacity: 1; transform: none; }
+    to   { opacity: 0; transform: translate3d(0, -12px, 0); }
+}
+
+@keyframes iconPop {
+    from { opacity: 0; transform: scale(0.4) rotate(-12deg); }
+    to   { opacity: 1; transform: none; }
+}
+
+@keyframes barGrow {
+    from { transform: scaleX(0); }
+    to   { transform: scaleX(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html.js .reveal,
+    html.js.is-ready .reveal { opacity: 1; animation: none !important; }
+    html.is-leaving .stage { animation: none; opacity: 0; }
+}
+
+/* ===== Phones: normal scrolling page, logo in the flow ===== */
+@media (max-width: 800px) {
+    html { font-size: 16px; }
+
+    body {
+        height: auto;
+        min-height: 100dvh;
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+
+    html { background-position: 70% center; background-attachment: scroll; }
+
+    .stage {
+        height: auto;
+        min-height: 100dvh;
+    }
+
+    .corner-logo {
+        position: static;
+        width: 8.5rem;
+        margin: 1.25rem 0 0 1.25rem;
+    }
+}

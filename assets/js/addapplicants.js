@@ -217,7 +217,12 @@ document.addEventListener('DOMContentLoaded', () => {
            if (data.status !== 'success') throw new Error(data.message);
            return data;
 
-       The email itself is designed in email/shortlisted-email.html. */
+       The email itself is designed in email.html. When the server sends it, it replaces:
+           {{FIRST_NAME}}  first word of the applicant's name
+           {{LINK}}        the applicant's personal link:  .../applicant/opening.php?token=...
+           {{YEAR}}        current year
+       and, before redirecting from that link to opening.php, sets the session values
+       listed at the top of opening.php (applicant_name, applicant_email). */
     async function sendInvitation(formData) {
         await new Promise(resolve => setTimeout(resolve, 1200));
         return {

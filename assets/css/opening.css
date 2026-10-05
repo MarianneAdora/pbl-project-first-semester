@@ -1,0 +1,255 @@
+/* ==========================================================================
+   Screening Invitation (opening page)
+   Base, background, logo position and entrance animation come from applicant-common.css.
+   To nudge the layout:  --shift-left  (moves the text block left/right)
+   ========================================================================== */
+
+:root {
+    --shift-left: calc(var(--corner-left) + 3rem);   /* text block sits just right of the logo, like the wireframe */
+}
+
+/* ===== Layout: one screen, no scrolling ===== */
+.invite {
+    display: flex;
+    align-items: center;
+    padding: 6.5rem 2rem 2rem var(--shift-left);
+}
+
+.invite__content {
+    width: 100%;
+    max-width: 37rem;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(1rem, 3.2vh, 2.5rem);
+}
+
+/* ===== Intro ===== */
+.invite__title {
+    font-size: 2.6rem;
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 0.5rem;
+}
+
+.invite__greeting,
+.invite__text {
+    font-size: 1.1rem;
+    line-height: 1.5;
+    color: var(--text-muted);
+}
+
+.invite__greeting strong {
+    color: var(--text);
+    font-weight: 700;
+}
+
+/* ===== Requirements (each row is a card that reacts to the cursor) ===== */
+.requirements__title {
+    font-size: 1.45rem;
+    font-weight: 600;
+    margin-bottom: 0.9rem;
+}
+
+.requirements__list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.requirement {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    margin-left: -0.75rem;
+    padding: 0.6rem 1rem 0.6rem 0.75rem;
+    border-radius: 1rem;
+    border: 1px solid transparent;
+    cursor: default;
+    transition: transform 0.35s var(--ease-pop),
+                background-color 0.25s ease,
+                box-shadow 0.3s var(--ease-out),
+                border-color 0.25s ease;
+}
+
+.requirement:hover {
+    transform: translateX(8px) scale(1.02);
+    background-color: rgba(255, 255, 255, 0.85);
+    border-color: rgba(227, 24, 55, 0.18);
+    box-shadow: 0 0.6rem 1.5rem rgba(0, 0, 0, 0.09);
+}
+
+.requirement__icon {
+    flex: 0 0 auto;
+    width: 3.8rem;
+    height: 3.8rem;
+    display: grid;
+    place-items: center;
+    background: var(--icon-bg);
+    border-radius: 50%;
+    transition: background-color 0.25s ease, transform 0.4s var(--ease-pop);
+}
+
+/* the icon pops in just after its row slides in */
+html.js.is-ready .requirement__icon {
+    animation: iconPop 0.55s var(--ease-pop) backwards;
+    animation-delay: calc(var(--reveal-base, 0.1s) + var(--i, 0) * 80ms + 0.2s);
+}
+
+.requirement__icon svg {
+    width: 50%;
+    height: 50%;
+    fill: none;
+    stroke: var(--red);
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: stroke 0.25s ease;
+}
+
+.requirement:hover .requirement__icon {
+    background: var(--red);
+    transform: scale(1.1) rotate(-6deg);
+}
+
+.requirement:hover .requirement__icon svg {
+    stroke: #ffffff;
+}
+
+.requirement__name {
+    font-size: 1.25rem;
+    font-weight: 500;
+    line-height: 1.3;
+}
+
+.requirement__desc {
+    font-size: 1rem;
+    color: var(--text-muted);
+}
+
+/* ===== Estimated time + button (as in the wireframe) ===== */
+.invite__start {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.invite__time {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding-left: 0.25rem;
+    font-size: 0.95rem;
+    color: var(--text);
+}
+
+.invite__time svg {
+    width: 1.15rem;
+    height: 1.15rem;
+    fill: none;
+    stroke: var(--text);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* ===== Button ===== */
+.invite__btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    width: 100%;
+    padding: 1.15rem 1.5rem;
+    font-family: var(--font-btn);
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: #fff;
+    text-decoration: none;
+    background: var(--red);
+    border-radius: 0.5rem;
+    transition: background 0.2s ease, transform 0.35s var(--ease-pop), box-shadow 0.25s ease;
+}
+
+.invite__btn:hover {
+    background: var(--red-dark);
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 0.7rem 1.4rem rgba(227, 24, 55, 0.35);
+}
+
+.invite__btn:active {
+    transform: translateY(0) scale(0.98);
+    box-shadow: 0 0.2rem 0.5rem rgba(227, 24, 55, 0.25);
+}
+
+.invite__btn:focus-visible {
+    outline: 3px solid rgba(227, 24, 55, 0.4);
+    outline-offset: 3px;
+}
+
+.invite__btn-arrow {
+    transition: transform 0.25s var(--ease-pop);
+}
+
+.invite__btn:hover .invite__btn-arrow {
+    transform: translateX(6px);
+}
+
+.invite__btn.is-loading {
+    pointer-events: none;
+    opacity: 0.8;
+}
+
+/* ===== Help ===== */
+.invite__help {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    margin-top: -0.4rem;
+}
+
+.invite__help a {
+    color: var(--red);
+    font-weight: 600;
+    text-decoration: none;
+    background: linear-gradient(currentColor, currentColor) no-repeat 0 100% / 0 2px;
+    transition: background-size 0.3s var(--ease-out), color 0.2s ease;
+}
+
+.invite__help a:hover {
+    color: var(--red-dark);
+    background-size: 100% 2px;
+}
+
+/* ===== Tablet ===== */
+@media (max-width: 1100px) {
+    :root {
+        --shift-left: 8vw;
+    }
+}
+
+/* ===== Mobile: content sits on a soft card so it stays readable ===== */
+@media (max-width: 800px) {
+    .invite {
+        flex-direction: column;
+        align-items: stretch;
+        height: auto;
+        padding: 1rem 1.25rem 1.5rem;
+    }
+
+    .invite__content {
+        max-width: 32rem;
+        margin: 0 auto;
+        padding: 1.5rem;
+        background: rgba(255, 255, 255, 0.85);
+        border-radius: 1rem;
+        backdrop-filter: blur(4px);
+    }
+
+    .invite__title {
+        font-size: 1.75rem;
+    }
+
+    .requirement:hover {
+        transform: none;
+    }
+}
