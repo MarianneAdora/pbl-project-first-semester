@@ -1024,3 +1024,39 @@
     .filter-card, .dropdown-btn, .dropdown-menu, .dropdown-option, .tool-btn, .select-swap,
     .screening-table tbody tr { transition: none; animation: none !important; }
 }
+
+/* ==========================================================================
+   Red dot: completed screening that HR has not opened yet
+   ========================================================================== */
+.unseen-dot {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    margin-right: 9px;
+    border-radius: 50%;
+    background: #d1122a;
+    vertical-align: middle;
+    box-shadow: 0 0 0 3px rgba(209, 18, 42, 0.16);
+    animation: dotPulse 2s ease-in-out infinite;
+}
+
+.screening-table tbody tr.is-unseen {
+    background-color: #fff4f5;
+}
+
+.screening-table tbody tr.is-unseen:hover {
+    background-color: #fde9eb;
+}
+
+.screening-table tbody tr.is-unseen .cell-name strong {
+    font-weight: 800;
+}
+
+@keyframes dotPulse {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(209, 18, 42, 0.16); }
+    50%      { box-shadow: 0 0 0 6px rgba(209, 18, 42, 0.05); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .unseen-dot { animation: none; }
+}

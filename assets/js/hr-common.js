@@ -132,6 +132,69 @@ window.HR = (function () {
         return count;
     }
 
+    // ---------- New-applicant notification (Applicants > Screening List) ----------
+    // Set when HR adds an applicant; cleared as soon as the Screening List page is opened.
+    // Kept in this browser for now; with the database this becomes a "seen by HR" flag.
+    const NEW_KEY = 'hr_new_applicants';
+
+    function noteNewApplicant(id) {
+        const list = readIds(NEW_KEY);
+        id = Number(id);
+        if (id && !list.includes(id)) {
+            list.push(id);
+            writeIds(NEW_KEY, list);
+        }
+        refreshApplicantBadges();
+    }
+
+    function clearNewApplicants() {
+        writeIds(NEW_KEY, []);
+        refreshApplicantBadges();
+    }
+
+    function ensureApplicantBadges() {
+        let main = document.getElementById('applicantsBadge');
+        if (!main) {
+            const link = document.getElementById('applicantsMainLink');
+            if (link) {
+                main = document.createElement('span');
+                main.className = 'nav-badge alert';
+                main.id = 'applicantsBadge';
+                main.hidden = true;
+                link.appendChild(main);
+            }
+        }
+        let sub = document.getElementById('screeningBadge');
+        if (!sub) {
+            const item = document.querySelector('.sub-menu a.sub-item[href$="screeninglist.php"]');
+            if (item) {
+                sub = document.createElement('span');
+                sub.className = 'nav-badge alert mini';
+                sub.id = 'screeningBadge';
+                sub.hidden = true;
+                item.appendChild(sub);
+            }
+        }
+        return [main, sub].filter(Boolean);
+    }
+
+    let lastNewCount = -1;
+    function refreshApplicantBadges() {
+        const count = readIds(NEW_KEY).length;
+        ensureApplicantBadges().forEach(badge => {
+            badge.textContent = count > 99 ? '99+' : String(count);
+            badge.hidden = count <= 0;
+            badge.setAttribute('title', count + ' new applicant' + (count === 1 ? '' : 's'));
+            if (count > lastNewCount && count > 0) {
+                badge.classList.remove('pop');
+                void badge.offsetWidth;
+                badge.classList.add('pop');
+            }
+        });
+        lastNewCount = count;
+        return count;
+    }
+
     function bumpArchive() {
         const link = document.getElementById('archiveLink');
         if (!link) return;
@@ -205,18 +268,24 @@ window.HR = (function () {
         const q = new URLSearchParams(window.location.search);
         if (/details\.php$/i.test(window.location.pathname) && q.get('id')) markSeen(q.get('id'));
 
+        // Opening the Screening List counts as "seen" for the new-applicant badge
+        if (/screeninglist\.php$/i.test(window.location.pathname)) clearNewApplicants();
+
         refreshDashboardBadge();
+        refreshApplicantBadges();
     });
 
     // Keep the badge right when another tab changes things
     window.addEventListener('storage', (e) => {
         if ([SEEN_KEY, COMPLETED_KEY, KEY].includes(e.key)) refreshDashboardBadge();
+        if (e.key === NEW_KEY) refreshApplicantBadges();
     });
 
     // arrivedViaTransition is filled in below (page scripts can read it after DOMContentLoaded)
     return {
         archiveRequest, readArchived, setArchiveBadge, bumpArchive, toast,
         syncCompleted, isUnseen, markSeen, unseenCompleted, refreshDashboardBadge,
+        noteNewApplicant, clearNewApplicants, refreshApplicantBadges,
         arrivedViaTransition: false
     };
 })();

@@ -14,12 +14,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const completedChip = document.getElementById('completedNewChip');
 
+    // the order the server sent (newest activity first), so rows can go back there once viewed
+    const tbody = document.querySelector('.applicants-table tbody');
+    const originalRows = Array.from(document.querySelectorAll('.clickable-row'));
+
     function paintUnseen() {
         // red mark on completed applicants HR has not opened yet
-        document.querySelectorAll('.clickable-row').forEach(row => {
+        originalRows.forEach(row => {
             const unseen = row.dataset.completed === '1' && HR.isUnseen(row.dataset.id);
             row.classList.toggle('is-unseen', unseen);
         });
+
+        // unread completed applicants are listed first, then everything else by latest activity
+        if (tbody) {
+            const unread = originalRows.filter(r => r.classList.contains('is-unseen'));
+            const rest = originalRows.filter(r => !r.classList.contains('is-unseen'));
+            [...unread, ...rest].forEach(r => tbody.appendChild(r));
+        }
         const count = HR.refreshDashboardBadge();
         if (completedChip) {
             completedChip.textContent = count + ' new';

@@ -786,3 +786,28 @@ html.js.is-ready.is-leaving .reveal {
 @media (prefers-reduced-motion: reduce) {
     .nav-badge.alert::after { animation: none; display: none; }
 }
+
+
+/* ==========================================================================
+   New-applicant badge (Applicants > Screening List)
+   ========================================================================== */
+.sub-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.nav-badge.mini {
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    font-size: 10.5px;
+    border-radius: 9px;
+}
+
+/* sub-menu open: the badge sits on "Screening List", so hide the one on "Applicants" */
+.nav-group.active .nav-main-link .nav-badge { display: none; }
+
+/* sidebar collapsed: the sub-menu is hidden, so the bubble on the Applicants icon is shown */
+.sidebar.collapsed .nav-group.active .nav-main-link .nav-badge:not([hidden]) { display: inline-flex; }

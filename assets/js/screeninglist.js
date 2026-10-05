@@ -14,6 +14,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+    // Tell the shared helper who has completed the screening, so the red dots and the
+    // Dashboard badge are counted from the same list on every page
+    HR.syncCompleted((Array.isArray(config.applicants) ? config.applicants : [])
+        .filter(a => String(a.status).toLowerCase() === 'completed')
+        .map(a => a.id));
+
+    // Completed screening that HR has not opened yet
+    const isUnseenCompleted = (a) => String(a.status).toLowerCase() === 'completed' && HR.isUnseen(a.id);
+
     const toolbar = document.getElementById('toolbar');
     const searchInput = document.getElementById('searchInput');
     const searchClear = document.getElementById('searchClear');
@@ -304,6 +313,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // name / email / contact (full text on hover when it is cut with "...")
         const tdName = el('td', 'cell-name');
         tdName.title = a.name;
+        if (isUnseenCompleted(a)) {
+            // red dot: completed, not viewed yet
+            tr.classList.add('is-unseen');
+            const dot = el('span', 'unseen-dot');
+            dot.title = 'Completed screening, not viewed yet';
+            tdName.appendChild(dot);
+        }
         tdName.appendChild(el('strong', null, a.name));
 
         const tdEmail = el('td', null, a.email);
@@ -327,6 +343,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const view = el('a', 'btn-view', 'VIEW');
         view.href = 'details.php?id=' + encodeURIComponent(a.id);
         view.setAttribute('aria-label', 'View ' + a.name);
+        // opening the applicant clears the red dot and lowers the Dashboard badge
+        view.addEventListener('click', () => {
+            HR.markSeen(a.id);
+            tr.classList.remove('is-unseen');
+            const dot = tr.querySelector('.unseen-dot');
+            if (dot) dot.remove();
+        });
         tdAction.appendChild(view);
 
         tr.append(tdCheck, tdName, tdEmail, tdContact, tdStatus, tdResult, tdAction);
