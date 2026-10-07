@@ -1,0 +1,765 @@
+/* ==========================================================================
+   Questionnaire (one question per screen)
+   Base, background, logo and entrance animation come from applicant-common.css.
+   Layout follows the wireframe: logo + "3 of 13" on top, progress bar, the question, a big
+   answer area, then Previous (grey) and Next (red).
+   ========================================================================== */
+
+:root {
+    --track: #8f8f8f;            /* empty part of the progress bar */
+    --edge: #b4b4b9;             /* border of the answer cards */
+    --field-bg: rgba(255, 255, 255, 0.86);
+    --box-bg: rgba(222, 222, 224, 0.72);   /* the grey answer box from the wireframe */
+}
+
+/* ===== Layout ===== */
+.page {
+    display: flex;
+    flex-direction: column;
+    padding: var(--corner-top) var(--corner-left) 1.5rem;
+}
+
+.topbar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+/* the logo uses the shared corner size, in the normal flow */
+.topbar .corner-logo {
+    position: static;
+}
+
+/* "3 of 13": a pill, so the white text stays readable wherever the red shape of the background is */
+.counter {
+    margin-top: 0.6rem;
+    padding: 0.45rem 1.1rem;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #fff;
+    background: rgba(168, 16, 40, 0.92);
+    border-radius: 999px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.counter__now {
+    display: inline-block;
+}
+
+.counter__now.tick {
+    animation: tick 0.45s var(--ease-pop);
+}
+
+@keyframes tick {
+    from { opacity: 0; transform: translateY(0.6em) scale(0.8); }
+    to   { opacity: 1; transform: none; }
+}
+
+/* ===== Progress bar ===== */
+.progress {
+    margin-top: 1.4rem;
+    height: 0.85rem;
+    background: var(--track);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.progress__fill {
+    position: relative;
+    display: block;
+    height: 100%;
+    width: calc(var(--p, 0) * 100%);
+    background: var(--red);
+    border-radius: 999px;
+    overflow: hidden;
+    transition: width 0.75s var(--ease-out);
+}
+
+/* a soft light sweeps along the filled part now and then */
+.progress__fill::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+    transform: translateX(-100%);
+    animation: sheen 3s ease-in-out 1.5s infinite;
+}
+
+@keyframes sheen {
+    0%        { transform: translateX(-100%); }
+    55%, 100% { transform: translateX(100%); }
+}
+
+/* ===== The card: question + answer + buttons ===== */
+.qcard {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    width: 100%;
+    padding: 1rem 0.5rem 0;
+}
+
+/* the old and the new question sit on top of each other while they slide */
+.qstage {
+    display: grid;
+}
+
+.q {
+    grid-area: 1 / 1;
+    min-width: 0;
+}
+
+.q--out-left  { animation: qOutLeft 0.32s var(--ease-in) forwards; pointer-events: none; }
+.q--out-right { animation: qOutRight 0.32s var(--ease-in) forwards; pointer-events: none; }
+.q--in-right  { animation: qInRight 0.5s var(--ease-out) 0.1s backwards; }
+.q--in-left   { animation: qInLeft 0.5s var(--ease-out) 0.1s backwards; }
+
+@keyframes qOutLeft  { to { opacity: 0; transform: translate3d(-2.5rem, 0, 0); } }
+@keyframes qOutRight { to { opacity: 0; transform: translate3d(2.5rem, 0, 0); } }
+@keyframes qInRight  { from { opacity: 0; transform: translate3d(2.5rem, 0, 0); } }
+@keyframes qInLeft   { from { opacity: 0; transform: translate3d(-2.5rem, 0, 0); } }
+
+.q__section {
+    margin-bottom: 0.7rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--red);
+}
+
+.q__text {
+    max-width: 62rem;
+    font-size: 1.85rem;
+    font-weight: 500;
+    line-height: 1.5;
+    color: var(--text);
+}
+
+/* the job description link (its address comes from the data, not from this page) */
+.q__link {
+    position: relative;
+    display: inline;
+    color: var(--red);
+    font-weight: 700;
+    text-decoration: none;
+    background: linear-gradient(currentColor, currentColor) no-repeat 0 100% / 100% 2px;
+    transition: color 0.2s ease, background-size 0.3s var(--ease-out);
+}
+
+.q__link:hover {
+    color: var(--red-dark);
+    background-size: 0 2px;
+}
+
+.q__link:focus-visible {
+    outline: 3px solid rgba(227, 24, 55, 0.4);
+    outline-offset: 3px;
+    border-radius: 0.2rem;
+}
+
+.q__link-icon {
+    width: 0.7em;
+    height: 0.7em;
+    margin-left: 0.3em;
+    vertical-align: 0.05em;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform 0.3s var(--ease-pop);
+}
+
+.q__link:hover .q__link-icon {
+    transform: translate(2px, -2px);
+}
+
+.q__answer {
+    margin-top: 1.7rem;
+    min-height: 15rem;             /* every question takes the same room, so the buttons never move */
+}
+
+.q__hint {
+    margin-bottom: 0.7rem;
+    font-size: 1rem;
+    color: var(--text-muted);
+}
+
+/* first draw: the answer pieces rise one after another */
+.q--first .choice,
+.q--first .scale__dot,
+.q--in-right .choice,
+.q--in-left .choice,
+.q--in-right .scale__dot,
+.q--in-left .scale__dot {
+    animation: pieceIn 0.5s var(--ease-out) backwards;
+    animation-delay: calc(0.35s + var(--n, 0) * 70ms);
+}
+
+.q--in-right .choice,
+.q--in-left .choice,
+.q--in-right .scale__dot,
+.q--in-left .scale__dot {
+    animation-delay: calc(0.2s + var(--n, 0) * 70ms);
+}
+
+@keyframes pieceIn {
+    from { opacity: 0; transform: translate3d(0, 1rem, 0) scale(0.96); }
+}
+
+/* a wrong / missing answer shakes the answer area once */
+.q__answer.shake {
+    animation: shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+@keyframes shake {
+    10%, 90% { transform: translateX(-1px); }
+    20%, 80% { transform: translateX(3px); }
+    30%, 50%, 70% { transform: translateX(-6px); }
+    40%, 60% { transform: translateX(6px); }
+}
+
+/* ===== Yes / No ===== */
+.choices {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    max-width: 38rem;
+}
+
+.choice {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.35rem 1.6rem;
+    font-family: inherit;
+    font-size: 1.35rem;
+    font-weight: 600;
+    color: var(--text);
+    text-align: left;
+    background: var(--field-bg);
+    border: 2px solid var(--edge);
+    border-radius: 0.9rem;
+    cursor: pointer;
+    transition: transform 0.35s var(--ease-pop),
+                border-color 0.2s ease,
+                background-color 0.2s ease,
+                box-shadow 0.3s var(--ease-out);
+}
+
+.choice:hover {
+    transform: translateY(-3px) scale(1.02);
+    border-color: var(--red);
+    box-shadow: 0 0.7rem 1.4rem rgba(0, 0, 0, 0.08);
+}
+
+.choice:active {
+    transform: scale(0.98);
+}
+
+.choice:focus-visible {
+    outline: 3px solid rgba(227, 24, 55, 0.4);
+    outline-offset: 3px;
+}
+
+.choice__icon {
+    flex: 0 0 auto;
+    width: 2rem;
+    height: 2rem;
+    display: grid;
+    place-items: center;
+    border: 2px solid #9a9a9e;
+    border-radius: 50%;
+    background: #fff;
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.4s var(--ease-pop);
+}
+
+.choice__icon svg {
+    width: 70%;
+    height: 70%;
+    fill: none;
+    stroke: #fff;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 24;
+    stroke-dashoffset: 24;
+    transition: stroke-dashoffset 0.35s ease 0.05s;
+}
+
+.choice[aria-checked="true"] {
+    border-color: var(--red);
+    background: #fff;
+    box-shadow: 0 0 0 0.25rem rgba(227, 24, 55, 0.14), 0 0.7rem 1.4rem rgba(227, 24, 55, 0.14);
+}
+
+.choice[aria-checked="true"] .choice__icon {
+    background: var(--red);
+    border-color: var(--red);
+    transform: scale(1.08);
+}
+
+.choice[aria-checked="true"] .choice__icon svg {
+    stroke-dashoffset: 0;
+}
+
+/* picking an answer: a quick, soft pop (uses "scale" so it never fights the hover lift) */
+.choice.picked { animation: picked 0.38s var(--ease-pop); }
+.scale__dot.picked { animation: picked 0.38s var(--ease-pop); }
+.check__box.picked { animation: picked 0.38s var(--ease-pop); }
+
+@keyframes picked {
+    0%   { scale: 0.94; }
+    55%  { scale: 1.06; }
+    100% { scale: 1; }
+}
+
+/* ===== Follow-up list + "No" reminder: they unfold smoothly ===== */
+.followup,
+.q__note {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    max-width: 38rem;
+    transition: grid-template-rows 0.45s var(--ease-out), opacity 0.3s ease, margin-top 0.45s var(--ease-out);
+}
+
+.followup.open,
+.q__note.open {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    margin-top: 1.1rem;
+}
+
+.followup__inner,
+.q__note > p {
+    min-height: 0;
+    overflow: hidden;
+}
+
+.followup__label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 1.05rem;
+    font-weight: 600;
+}
+
+.q__note > p {
+    font-size: 1rem;
+    color: var(--red-dark);
+    font-weight: 500;
+}
+
+.select,
+.input {
+    width: 100%;
+    padding: 1rem 1.2rem;
+    font-family: inherit;
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: var(--text);
+    background: var(--field-bg);
+    border: 2px solid var(--edge);
+    border-radius: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.25s ease, transform 0.3s var(--ease-pop);
+}
+
+.select {
+    appearance: none;
+    cursor: pointer;
+    padding-right: 3rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23a81028' d='M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 1.5rem;
+}
+
+.select:hover,
+.input:hover {
+    border-color: #8a8a90;
+}
+
+.select:focus,
+.input:focus {
+    border-color: var(--red);
+    box-shadow: 0 0 0 0.25rem rgba(227, 24, 55, 0.14);
+}
+
+/* ===== Rating 1 to 5 ===== */
+.scale {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.scale__dot {
+    width: 4.4rem;
+    height: 4.4rem;
+    font-family: inherit;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text);
+    background: var(--field-bg);
+    border: 2px solid var(--edge);
+    border-radius: 50%;
+    cursor: pointer;
+    /* the colour travels along the row: --d is how far this dot is from the one clicked before */
+    transition: transform 0.35s var(--ease-pop),
+                background-color 0.25s ease calc(var(--d, 0) * 45ms),
+                border-color 0.25s ease calc(var(--d, 0) * 45ms),
+                color 0.25s ease calc(var(--d, 0) * 45ms),
+                box-shadow 0.3s var(--ease-out);
+}
+
+.scale__dot:hover {
+    transform: translateY(-3px) scale(1.08);
+    border-color: var(--red);
+}
+
+.scale__dot:focus-visible {
+    outline: 3px solid rgba(227, 24, 55, 0.4);
+    outline-offset: 3px;
+}
+
+.scale__dot.is-on {
+    color: #fff;
+    background: var(--red);
+    border-color: var(--red);
+}
+
+.scale__dot[aria-checked="true"] {
+    box-shadow: 0 0 0 0.3rem rgba(227, 24, 55, 0.18), 0 0.6rem 1.2rem rgba(227, 24, 55, 0.3);
+}
+
+.scale__labels {
+    display: flex;
+    justify-content: space-between;
+    max-width: calc(4.4rem * 5 + 1rem * 4);
+    margin-top: 0.9rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+/* ===== Date ===== */
+.datefield {
+    max-width: 24rem;
+}
+
+.datefield__label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 1.05rem;
+    font-weight: 600;
+}
+
+/* ===== Written answer: the big grey box from the wireframe ===== */
+.textbox {
+    position: relative;
+    background: var(--box-bg);
+    border: 1px solid #9a9a9a;
+    border-radius: 0.5rem;
+    transition: border-color 0.2s ease, box-shadow 0.25s ease, background-color 0.2s ease;
+}
+
+.textbox:hover {
+    border-color: #6f6f75;
+}
+
+.textbox:focus-within {
+    background: rgba(240, 240, 242, 0.9);
+    border-color: var(--red);
+    box-shadow: 0 0 0 0.25rem rgba(227, 24, 55, 0.14);
+}
+
+.textbox__input {
+    display: block;
+    width: 100%;
+    min-height: 13rem;
+    padding: 1.2rem 1.4rem 2.4rem;
+    font-family: inherit;
+    font-size: 1.2rem;
+    font-weight: 500;
+    line-height: 1.6;
+    color: var(--text);
+    background: transparent;
+    border: 0;
+    outline: none;
+    resize: none;
+}
+
+.textbox__input::placeholder {
+    color: #7b7b82;
+}
+
+.textbox__count {
+    position: absolute;
+    right: 1rem;
+    bottom: 0.7rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #7b7b82;
+    pointer-events: none;
+}
+
+.textbox__count.at-limit {
+    color: var(--red);
+}
+
+/* ===== Data protection: the statement + the "I agree" box ===== */
+.consent__body {
+    max-height: 11rem;
+    padding: 1.1rem 1.4rem;
+    overflow-y: auto;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--text);
+    background: var(--box-bg);
+    border: 1px solid #9a9a9a;
+    border-radius: 0.5rem;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.25s ease;
+}
+
+.consent__body p + p {
+    margin-top: 0.7rem;
+}
+
+.consent__body:focus-visible {
+    border-color: var(--red);
+    box-shadow: 0 0 0 0.25rem rgba(227, 24, 55, 0.14);
+}
+
+.check {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.9rem;
+    margin-top: 1.1rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+.check__input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}
+
+.check__box {
+    flex: 0 0 auto;
+    width: 2rem;
+    height: 2rem;
+    display: grid;
+    place-items: center;
+    background: #fff;
+    border: 2px solid #8a8a90;
+    border-radius: 0.45rem;
+    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.25s ease;
+}
+
+.check__box svg {
+    width: 75%;
+    height: 75%;
+    fill: none;
+    stroke: #fff;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 24;
+    stroke-dashoffset: 24;
+    transition: stroke-dashoffset 0.3s ease 0.05s;
+}
+
+.check:hover .check__box {
+    border-color: var(--red);
+}
+
+.check__input:checked + .check__box {
+    background: var(--red);
+    border-color: var(--red);
+}
+
+.check__input:checked + .check__box svg {
+    stroke-dashoffset: 0;
+}
+
+.check__input:focus-visible + .check__box {
+    outline: 3px solid rgba(227, 24, 55, 0.4);
+    outline-offset: 3px;
+}
+
+.check__text {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+/* ===== Message (one at a time, the room is always reserved) ===== */
+.qerror-slot {
+    min-height: 3.6rem;
+    margin-top: 0.9rem;
+}
+
+.q-error {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    max-width: 44rem;
+    padding: 0.85rem 1.4rem;
+    font-size: 1.05rem;
+    font-weight: 500;
+    color: var(--red);
+    background: rgba(227, 24, 55, 0.18);
+    border: 1px solid rgba(227, 24, 55, 0.6);
+    border-radius: 0.4rem;
+}
+
+.q-error[hidden] {
+    display: none;
+}
+
+.q-error.is-in {
+    animation: errorIn 0.4s var(--ease-out);
+}
+
+@keyframes errorIn {
+    from { opacity: 0; transform: translateY(-0.5rem); }
+    to   { opacity: 1; transform: none; }
+}
+
+.q-error__icon {
+    flex: 0 0 auto;
+    width: 1.5rem;
+    height: 1.5rem;
+    color: var(--red-dark);
+}
+
+/* ===== Buttons: Previous (grey) and Next (red) ===== */
+.qnav {
+    display: flex;
+    justify-content: space-around;
+    gap: 1rem;
+    margin-top: 0.4rem;
+}
+
+.qbtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.7rem;
+    width: min(100%, 19rem);
+    padding: 1.15rem 1.5rem;
+    font-family: var(--font-btn);
+    font-size: 1.3rem;
+    font-weight: 500;
+    border: 0;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.35s var(--ease-pop), box-shadow 0.25s ease, opacity 0.2s ease;
+}
+
+.qbtn--prev {
+    color: #1f1f23;
+    background: #8f8f8f;
+}
+
+.qbtn--next {
+    color: #fff;
+    background: var(--red);
+}
+
+.qbtn--prev:hover {
+    background: #7d7d7d;
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 0.7rem 1.4rem rgba(0, 0, 0, 0.2);
+}
+
+.qbtn--next:hover {
+    background: var(--red-dark);
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 0.7rem 1.4rem rgba(227, 24, 55, 0.35);
+}
+
+.qbtn:active {
+    transform: translateY(0) scale(0.98);
+    box-shadow: none;
+}
+
+.qbtn:focus-visible {
+    outline: 3px solid rgba(227, 24, 55, 0.4);
+    outline-offset: 3px;
+}
+
+.qbtn__arrow {
+    transition: transform 0.25s var(--ease-pop);
+}
+
+.qbtn--next:hover .qbtn__arrow { transform: translateX(6px); }
+.qbtn--prev:hover .qbtn__arrow { transform: translateX(-6px); }
+
+.qbtn.is-loading {
+    pointer-events: none;
+    opacity: 0.8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .progress__fill::after,
+    .q__answer.shake,
+    .q-error.is-in,
+    .counter__now.tick,
+    .choice.picked,
+    .scale__dot.picked,
+    .check__box.picked,
+    .q--first .choice,
+    .q--first .scale__dot { animation: none; }
+
+    .progress__fill,
+    .followup,
+    .q__note { transition: none; }
+}
+
+/* ===== Tablet ===== */
+@media (max-width: 1100px) {
+    .q__text { font-size: 1.6rem; }
+}
+
+/* ===== Mobile: the question sits on a soft card so it stays readable ===== */
+@media (max-width: 800px) {
+    .page {
+        padding: 1rem 1.25rem 1.5rem;
+    }
+
+    .counter {
+        margin-top: 0.3rem;
+        font-size: 1rem;
+    }
+
+    .qcard {
+        margin-top: 1rem;
+        padding: 1.5rem 1.25rem;
+        justify-content: flex-start;
+        background: rgba(255, 255, 255, 0.85);
+        border-radius: 1rem;
+        backdrop-filter: blur(4px);
+    }
+
+    .q__text { font-size: 1.35rem; }
+    .q__answer { min-height: 0; margin-top: 1.2rem; }
+    .choices { grid-template-columns: 1fr 1fr; }
+    .choice { padding: 1rem 1.1rem; font-size: 1.15rem; }
+    .scale { gap: 0.6rem; }
+    .scale__dot { width: 3.4rem; height: 3.4rem; }
+    .scale__labels { max-width: none; }
+
+    .qnav {
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+
+    .qbtn { width: 100%; }
+}
