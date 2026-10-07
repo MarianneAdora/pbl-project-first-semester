@@ -6,8 +6,8 @@
 document.addEventListener('DOMContentLoaded', () => {
     const config = window.SCREENING || { perPage: 6, applicants: [] };
     let applicants = Array.isArray(config.applicants) ? config.applicants.slice() : [];
-    // applicants already moved to the Archive are not listed
-    const archivedNow = new Set(HR.readArchived());
+    // applicants in the Archive (or deleted for good after 30 days) are not listed
+    const archivedNow = new Set(HR.readArchived().concat(HR.readDeleted()));
     applicants = applicants.filter(a => !archivedNow.has(a.id));
     // config.perPage is the starting value; fitPerPage() then adjusts it to the window height
     let perPage = Math.max(1, parseInt(config.perPage, 10) || 6);

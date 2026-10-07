@@ -8,9 +8,15 @@
 
 /* ---------- PART 1: shared helpers (window.HR) ---------- */
 window.HR = (function () {
-    // Archived applicant ids are kept in this browser (localStorage) for now.
-    // When the database is ready, replace archiveRequest() with a fetch() to your PHP.
-    const KEY = 'hr_archived';
+    // Archive data is kept in this browser (localStorage) for now.
+    // When the database is ready, replace archiveRequest() with a fetch() to your PHP, and
+    // purgeExpired() with a scheduled job:
+    //     DELETE FROM applicants WHERE archived_at < NOW() - INTERVAL 30 DAY
+    const KEY = 'hr_archived';          // ids that are in the Archive
+    const AT_KEY = 'hr_archived_at';    // { id: time it was moved to the Archive (ms) }
+    const DEL_KEY = 'hr_deleted';       // ids deleted for good (30 days passed, or HR deleted them)
+    const ARCHIVE_DAYS = 30;            // how long an applicant stays in the Archive
+    const DAY_MS = 24 * 60 * 60 * 1000;
 
     function readArchived() {
         try {
@@ -21,16 +27,69 @@ window.HR = (function () {
         }
     }
 
-    function archiveRequest(action, ids) {
-        const set = new Set(readArchived());
-        ids.forEach(id => (action === 'archive' ? set.add(Number(id)) : set.delete(Number(id))));
-        const list = Array.from(set);
+    function readArchivedAt() {
         try {
-            localStorage.setItem(KEY, JSON.stringify(list));
+            const v = JSON.parse(localStorage.getItem(AT_KEY) || '{}');
+            return v && typeof v === 'object' && !Array.isArray(v) ? v : {};
         } catch (err) {
+            return {};
+        }
+    }
+
+    function readDeleted() {
+        try {
+            const v = JSON.parse(localStorage.getItem(DEL_KEY) || '[]');
+            return Array.isArray(v) ? v.map(Number) : [];
+        } catch (err) {
+            return [];
+        }
+    }
+
+    function store(key, value) {
+        try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch (err) { return false; }
+    }
+
+    // action: 'archive' = move to the Archive (the 30 days start now)
+    //         'restore' = back to the Screening List
+    //         'purge'   = delete for good
+    // opts.at = { id: time } keeps the original archive time (used by Undo)
+    function archiveRequest(action, ids, opts) {
+        const set = new Set(readArchived());
+        const at = readArchivedAt();
+        const gone = new Set(readDeleted());
+        ids.forEach(raw => {
+            const id = Number(raw);
+            if (action === 'archive') {
+                set.add(id);
+                at[id] = Number(opts && opts.at && opts.at[id]) || Number(at[id]) || Date.now();
+            } else {
+                set.delete(id);
+                delete at[id];
+                if (action === 'purge') gone.add(id);
+            }
+        });
+        const list = Array.from(set);
+        if (!store(KEY, list) || !store(AT_KEY, at) || !store(DEL_KEY, Array.from(gone))) {
             return Promise.reject(new Error('Could not save. Please check your browser storage settings.'));
         }
         return Promise.resolve({ ok: true, changed: ids.length, count: list.length });
+    }
+
+    // Applicants that have been in the Archive for 30 days are deleted for good.
+    // Runs on every HR page. Returns the ids that were removed.
+    function purgeExpired() {
+        const ids = readArchived();
+        const at = readArchivedAt();
+        const now = Date.now();
+        const expired = [];
+        let stamped = false;
+        ids.forEach(id => {
+            if (!at[id]) { at[id] = now; stamped = true; }          // archived before dates existed: the 30 days start now
+            else if (now - Number(at[id]) >= ARCHIVE_DAYS * DAY_MS) expired.push(id);
+        });
+        if (stamped) store(AT_KEY, at);
+        if (expired.length) archiveRequest('purge', expired);
+        return expired;
     }
 
     // The Archive is storage, not an alert, so by default it does NOT show a number badge.
@@ -85,7 +144,7 @@ window.HR = (function () {
     // Completed, not yet opened by HR, and not archived
     function unseenCompleted() {
         const seen = new Set(readSeen());
-        const archived = new Set(readArchived());
+        const archived = new Set(readArchived().concat(readDeleted()));
         return readIds(COMPLETED_KEY).filter(id => !seen.has(id) && !archived.has(id));
     }
 
@@ -262,6 +321,7 @@ window.HR = (function () {
 
     // Sidebar badges on every HR page
     document.addEventListener('DOMContentLoaded', () => {
+        purgeExpired();                       // 30 days in the Archive: gone for good
         setArchiveBadge(readArchived().length, false);
 
         // Opening an applicant's details page counts as "viewed" (works with no change to details.php)
@@ -283,7 +343,8 @@ window.HR = (function () {
 
     // arrivedViaTransition is filled in below (page scripts can read it after DOMContentLoaded)
     return {
-        archiveRequest, readArchived, setArchiveBadge, bumpArchive, toast,
+        archiveRequest, readArchived, readArchivedAt, readDeleted, purgeExpired, ARCHIVE_DAYS,
+        setArchiveBadge, bumpArchive, toast,
         syncCompleted, isUnseen, markSeen, unseenCompleted, refreshDashboardBadge,
         noteNewApplicant, clearNewApplicants, refreshApplicantBadges,
         arrivedViaTransition: false

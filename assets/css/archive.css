@@ -1,0 +1,217 @@
+/* ==========================================================================
+   Archive page: page styles
+   Sidebar, overlay, entrance animations, modal, status pills, badge and toast live in
+   hr-common.css. The toolbar, filter cards, dropdowns, table, select mode, pagination and
+   flying chips are shared with the Screening List (screeninglist.css).
+   Link order:  hr-common.css  ->  screeninglist.css  ->  archive.css
+   This file only adds what the Archive needs on top.
+   ========================================================================== */
+
+/* ---- Columns:  # | Name | Email | Deleted on | Time left | Status | Action ----
+   The shared rules in screeninglist.css drop column 4, then 3, then 6 as the card gets
+   narrow, so the least important columns go first and "Time left" always stays.
+   (c-contact = Deleted on, c-status = Time left, c-result = Status: the class names are the
+   shared ones, so those narrow-card rules keep working.)                                  */
+.archive-table col.c-name    { width: 20%; }
+.archive-table col.c-contact { width: 132px; }
+.archive-table col.c-status  { width: 150px; }
+.archive-table col.c-result  { width: 122px; }
+.archive-table col.c-action  { width: 124px; }
+
+/* ---- "Time left" pill: the closer to day 30, the louder it gets ---- */
+.left-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+    padding: 4px 12px;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+    vertical-align: middle;
+    transition: transform 0.3s var(--ease-pop);
+}
+
+.left-pill::before {
+    content: '';
+    width: 7px;
+    height: 7px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+/* more than 7 days */
+.left-ok {
+    background: #eef1f4;
+    color: #4a5560;
+    border-color: #d3d9df;
+}
+
+/* 7 days or less */
+.left-soon {
+    background: #fff8d6;
+    color: #b88a00;
+    border-color: #fce881;
+}
+
+/* 3 days or less */
+.left-urgent {
+    background: #f6d1d1;
+    color: #c00000;
+    border-color: #c00000;
+}
+
+.left-urgent::before {
+    animation: leftPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes leftPulse {
+    0%, 100% { opacity: 1;    transform: scale(1); }
+    50%      { opacity: 0.45; transform: scale(0.7); }
+}
+
+.screening-table tbody tr:hover .left-pill {
+    transform: scale(1.08);
+}
+
+/* ---- RESTORE button (in every row) ---- */
+.btn-restore {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 28px;
+    padding: 0 14px;
+    background: #e1f3ff;
+    color: #0077c2;
+    border: 1px solid #8ccbf5;
+    border-radius: 7px;
+    font-family: inherit;
+    font-size: 11.5px;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease,
+                transform 0.3s var(--ease-pop), box-shadow 0.2s ease;
+}
+
+.btn-restore svg {
+    width: 14px;
+    height: 14px;
+    fill: currentColor;
+    transition: transform 0.45s var(--ease-pop);
+}
+
+.screening-table tbody tr:hover .btn-restore {
+    transform: scale(1.06);
+}
+
+.btn-restore:hover {
+    background: #00a2ff;
+    color: #ffffff;
+    border-color: #00a2ff;
+    transform: translateY(-2px) scale(1.06);
+    box-shadow: 0 6px 14px rgba(0, 162, 255, 0.35);
+}
+
+.btn-restore:hover svg {
+    transform: rotate(-360deg);
+}
+
+.btn-restore:active {
+    transform: scale(0.97);
+}
+
+/* ---- Toolbar in select mode: Cancel / Restore / Delete forever ---- */
+.btn-restore-sel {
+    height: 46px;
+    min-width: 128px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 20px;
+    background: #e1f3ff;
+    color: #0077c2;
+    border: 1px solid #8ccbf5;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 800;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: transform 0.3s var(--ease-pop), background-color 0.2s ease, color 0.2s ease,
+                border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.btn-restore-sel svg {
+    width: 19px;
+    height: 19px;
+    fill: currentColor;
+}
+
+.btn-restore-sel:hover:not(:disabled) {
+    background: #00a2ff;
+    color: #ffffff;
+    border-color: #00a2ff;
+    transform: translateY(-2px) scale(1.04);
+    box-shadow: 0 10px 22px rgba(0, 162, 255, 0.35);
+}
+
+.btn-restore-sel:active:not(:disabled) { transform: scale(0.96); }
+
+.btn-restore-sel:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* "Delete forever (12)" is longer than "Delete (12)" */
+.archive-page .btn-delete-sel { min-width: 172px; }
+
+@media (max-width: 1100px) {
+    /* tight toolbar: a little less padding so Cancel / Restore / Delete all fit */
+    .btn-restore-sel { min-width: 0; padding: 0 14px; }
+}
+
+/* ---- "Delete permanently?" box ---- */
+.modal-icon {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 14px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: #fdecee;
+}
+
+.modal-icon svg {
+    width: 28px;
+    height: 28px;
+    fill: #a3081e;
+}
+
+.modal-backdrop.active .modal-icon {
+    animation: popIn 0.45s var(--ease-pop) 0.1s backwards;
+}
+
+/* ---- Rows being deleted for good: they slide away and fade, one after another ---- */
+.screening-table tbody tr.row-purging {
+    background-color: #fbe3e7;
+    transform: translateX(36px);
+    transition: background-color 0.2s ease, transform 0.42s var(--ease-in);
+    transition-delay: 0s, calc(min(var(--k, 0), 9) * 40ms);
+    pointer-events: none;
+}
+
+.screening-table tbody tr.row-purging td {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    transition-delay: calc(min(var(--k, 0), 9) * 40ms + 60ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .left-urgent::before { animation: none; }
+    .btn-restore svg { transition: none; }
+    .btn-restore:hover svg { transform: none; }
+    .screening-table tbody tr.row-purging,
+    .screening-table tbody tr.row-purging td { transition: none; }
+}
