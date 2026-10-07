@@ -127,7 +127,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         data: [chartData.passed, chartData.failed],
                         backgroundColor: ['#12b700', '#e60000'],
                         borderWidth: 3,
-                        borderColor: '#ffffff',
+                        // the ring between the slices matches the card (white in the light theme)
+                        borderColor: getComputedStyle(document.documentElement).getPropertyValue('--chart-ring').trim() || '#ffffff',
                         borderRadius: 6,
                         spacing: 2,
                         hoverOffset: 8
@@ -163,7 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     animation: {
                         animateScale: true,
                         animateRotate: true,
-                        duration: 1000
+                        duration: document.documentElement.getAttribute('data-motion') === 'off' ? 0 : 1000   // Settings > Page animations
                     }
                 }
             });

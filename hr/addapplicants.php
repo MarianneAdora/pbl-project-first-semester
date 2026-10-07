@@ -24,6 +24,13 @@ require_once __DIR__ . '/static-data.php';
     <!-- Runs before first paint so the screen is already covered when arriving via login -->
     <script>
         document.documentElement.classList.add('js');
+        // Saved Settings (theme + animations) are put on the page before the first paint, so it never flashes
+        try {
+            var s = JSON.parse(localStorage.getItem('hr_settings') || '{}'), t = s.theme || 'light';
+            if (t === 'system') t = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', t === 'dark' ? 'dark' : 'light');
+            if (s.animations === false) document.documentElement.setAttribute('data-motion', 'off');
+        } catch (e) {}
         if (new URLSearchParams(location.search).get('transition') === 'out') {
             document.documentElement.classList.add('is-transitioning');
         }
@@ -39,6 +46,8 @@ require_once __DIR__ . '/static-data.php';
 
     <!-- Add Applicant page styles -->
     <link rel="stylesheet" href="../assets/css/addapplicants.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/addapplicants.css'); ?>">
+    <!-- Dark theme + animations setting (keep this LAST so it can override the page styles) -->
+    <link rel="stylesheet" href="../assets/css/theme.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/theme.css'); ?>">
 </head>
 <body>
 

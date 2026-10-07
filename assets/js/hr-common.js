@@ -49,6 +49,103 @@ window.HR = (function () {
         try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch (err) { return false; }
     }
 
+    // ---- Settings (hr/settinghr.php) ----------------------------------------------------------
+    // The HR preferences live in ONE browser key for now, like the archive. Every HR page reads
+    // them here, so a change on the Settings page shows up everywhere:
+    //   theme          'light' | 'dark' | 'system'      -> <html data-theme>   (assets/css/theme.css)
+    //   animations     false = no page motion            -> <html data-motion="off">
+    //   notifications  master switch for the red badges / marks
+    //   notifyCompleted  badge + red mark for completed screenings nobody has opened yet
+    //   notifyNew        badge on Applicants > Screening List for newly added applicants
+    // BACKEND: when the database is ready, load these from a user_settings table and print them
+    // into window.HR_SERVER_SETTINGS; only readSettings() and saveSettings() have to change.
+    const SETTINGS_KEY = 'hr_settings';
+    const PROFILE_KEY = 'hr_profile';       // { name, email } edited on the Settings page
+    const SETTINGS_DEFAULTS = { theme: 'light', animations: true, notifications: true, notifyCompleted: true, notifyNew: true };
+
+    function readSettings() {
+        try {
+            const v = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+            return Object.assign({}, SETTINGS_DEFAULTS, v && typeof v === 'object' && !Array.isArray(v) ? v : {});
+        } catch (err) {
+            return Object.assign({}, SETTINGS_DEFAULTS);
+        }
+    }
+
+    function readProfile() {
+        try {
+            const v = JSON.parse(localStorage.getItem(PROFILE_KEY) || '{}');
+            return v && typeof v === 'object' && !Array.isArray(v) ? v : {};
+        } catch (err) {
+            return {};
+        }
+    }
+
+    function resolveTheme(theme) {
+        if (theme === 'dark' || theme === 'light') return theme;
+        const dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        return dark ? 'dark' : 'light';
+    }
+
+    // Puts a settings object on the page. fade = true lets the colours glide for half a second
+    // (used when the person changes the theme, not when a page simply opens).
+    let fadeTimer = null;
+    function applySettings(s, fade) {
+        s = s || readSettings();
+        const root = document.documentElement;
+        const motionOff = s.animations === false;
+        if (motionOff) root.classList.remove('theme-fade');
+        if (fade && !motionOff) {
+            root.classList.add('theme-fade');
+            clearTimeout(fadeTimer);
+            fadeTimer = setTimeout(() => root.classList.remove('theme-fade'), 520);
+        }
+        root.setAttribute('data-theme', resolveTheme(s.theme));
+        if (motionOff) root.setAttribute('data-motion', 'off');
+        else root.removeAttribute('data-motion');
+    }
+
+    // kind: 'completed' | 'new'. False when the master switch or that kind is off.
+    function notifyOn(kind) {
+        const s = readSettings();
+        return s.notifications !== false && s[kind === 'completed' ? 'notifyCompleted' : 'notifyNew'] !== false;
+    }
+
+    function saveSettings(partial) {
+        const next = Object.assign(readSettings(), partial || {});
+        const ok = store(SETTINGS_KEY, next);
+        applySettings(next, true);
+        refreshDashboardBadge();               // badges appear / disappear right away
+        refreshApplicantBadges();
+        document.dispatchEvent(new CustomEvent('hr:settings-changed', { detail: next }));
+        return ok;
+    }
+
+    function saveProfile(profile) {
+        const next = Object.assign(readProfile(), profile || {});
+        const ok = store(PROFILE_KEY, next);
+        applyProfile();
+        return ok;
+    }
+
+    // The name HR saved replaces the one the session gave ("Hello, ...!" on the dashboard)
+    function applyProfile() {
+        const h = document.getElementById('greeting');
+        const name = String(readProfile().name || '').trim();
+        if (h && name) {
+            h.textContent = 'Hello, ' + name + '!';
+            h.title = h.textContent;
+        }
+    }
+
+    applySettings();                           // the <head> script already did this; harmless backup
+    if (window.matchMedia) {
+        const mq = window.matchMedia('(prefers-color-scheme: dark)');
+        const onScheme = () => { if (readSettings().theme === 'system') applySettings(); };
+        if (mq.addEventListener) mq.addEventListener('change', onScheme);
+        else if (mq.addListener) mq.addListener(onScheme);
+    }
+
     // ---- Server link (static-data.php) --------------------------------------------------------
     // The server is the truth. Every HR page prints window.HR_SERVER_ARCHIVE before this file, and
     // the three browser keys below are rewritten from it, so the Screening List, the Archive and
@@ -197,11 +294,12 @@ window.HR = (function () {
     function readSeen() { return readIds(SEEN_KEY); }
 
     function isUnseen(id) {
-        return !readSeen().includes(Number(id));
+        return notifyOn('completed') && !readSeen().includes(Number(id));
     }
 
     // Completed, not yet opened by HR, and not archived
     function unseenCompleted() {
+        if (!notifyOn('completed')) return [];          // Settings > Notifications is off
         const seen = new Set(readSeen());
         const archived = new Set(readArchived().concat(readDeleted()));
         return readIds(COMPLETED_KEY).filter(id => !seen.has(id) && !archived.has(id));
@@ -298,7 +396,7 @@ window.HR = (function () {
 
     let lastNewCount = -1;
     function refreshApplicantBadges() {
-        const count = readIds(NEW_KEY).length;
+        const count = notifyOn('new') ? readIds(NEW_KEY).length : 0;     // Settings > Notifications
         ensureApplicantBadges().forEach(badge => {
             badge.textContent = count > 99 ? '99+' : String(count);
             badge.hidden = count <= 0;
@@ -381,6 +479,7 @@ window.HR = (function () {
     // Sidebar badges on every HR page
     document.addEventListener('DOMContentLoaded', () => {
         purgeExpired();                       // 30 days in the Archive: gone for good
+        applyProfile();                       // name saved in Settings -> "Hello, ...!"
         setArchiveBadge(readArchived().length, false);
 
         // Opening an applicant's details page counts as "viewed" (works with no change to details.php)
@@ -398,6 +497,12 @@ window.HR = (function () {
     window.addEventListener('storage', (e) => {
         if ([SEEN_KEY, COMPLETED_KEY, KEY].includes(e.key)) refreshDashboardBadge();
         if (e.key === NEW_KEY) refreshApplicantBadges();
+        if (e.key === SETTINGS_KEY) {          // Settings saved in another tab
+            applySettings(null, true);
+            refreshDashboardBadge();
+            refreshApplicantBadges();
+        }
+        if (e.key === PROFILE_KEY) applyProfile();
     });
 
     // arrivedViaTransition is filled in below (page scripts can read it after DOMContentLoaded)
@@ -406,6 +511,7 @@ window.HR = (function () {
         setArchiveBadge, bumpArchive, toast,
         syncCompleted, isUnseen, markSeen, unseenCompleted, refreshDashboardBadge,
         noteNewApplicant, clearNewApplicants, refreshApplicantBadges,
+        settings: { get: readSettings, save: saveSettings, apply: applySettings, defaults: SETTINGS_DEFAULTS, profile: readProfile, saveProfile: saveProfile },
         arrivedViaTransition: false
     };
 })();
@@ -537,6 +643,7 @@ document.addEventListener('DOMContentLoaded', () => {
     //    and re-apply the sidebar state that was saved meanwhile
     window.addEventListener('pageshow', (event) => {
         if (!event.persisted) return;
+        HR.settings.apply();                   // a setting may have changed while this page was cached
         if (sidebar) sidebar.classList.toggle('collapsed', sidebarSaved());
         if (!pageOverlay) return;
         root.classList.remove('is-leaving', 'is-transitioning');

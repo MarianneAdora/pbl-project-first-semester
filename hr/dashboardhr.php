@@ -118,6 +118,13 @@ function status_badge(string $status): string
     <!-- Runs before first paint so the screen is already covered when arriving via login -->
     <script>
         document.documentElement.classList.add('js');
+        // Saved Settings (theme + animations) are put on the page before the first paint, so it never flashes
+        try {
+            var s = JSON.parse(localStorage.getItem('hr_settings') || '{}'), t = s.theme || 'light';
+            if (t === 'system') t = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', t === 'dark' ? 'dark' : 'light');
+            if (s.animations === false) document.documentElement.setAttribute('data-motion', 'off');
+        } catch (e) {}
         if (new URLSearchParams(location.search).get('transition') === 'out') {
             document.documentElement.classList.add('is-transitioning');
         }
@@ -134,6 +141,8 @@ function status_badge(string $status): string
 
     <!-- Dashboard HR Stylesheet -->
     <link rel="stylesheet" href="../assets/css/dashboardhr.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/dashboardhr.css'); ?>">
+    <!-- Dark theme + animations setting (keep this LAST so it can override the page styles) -->
+    <link rel="stylesheet" href="../assets/css/theme.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/theme.css'); ?>">
 </head>
 <body>
 
@@ -229,7 +238,7 @@ function status_badge(string $status): string
     <main class="main-content">
         <!-- Top Greeting Header -->
         <header class="content-header reveal" style="--i:1">
-            <h1 title="Hello, <?php echo htmlspecialchars($display_name); ?>!">Hello, <?php echo htmlspecialchars($display_name); ?>!</h1>
+            <h1 id="greeting" title="Hello, <?php echo htmlspecialchars($display_name); ?>!">Hello, <?php echo htmlspecialchars($display_name); ?>!</h1>
             <p>Overview of application activity.</p>
         </header>
 
