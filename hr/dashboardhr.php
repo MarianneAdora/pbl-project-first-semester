@@ -13,7 +13,14 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {
 
 date_default_timezone_set('Asia/Manila');
 
+// Every number on this page comes from static-data.php (the one place for sample data).
+// BACKEND: when the database is ready, only static-data.php changes.
+require_once __DIR__ . '/static-data.php';
+$all_applicants = static_applicants();      // active applicants only (archived ones are not counted)
+
 // Sample Dynamic Data (Replace with MySQL DB queries)
+$stats = static_stats($all_applicants);
+/* Original hard-coded numbers (kept for reference):
 $stats = [
     'total'       => 35,
     'pending'     => 13,
@@ -22,6 +29,7 @@ $stats = [
     'passed'      => 22,
     'failed'      => 13
 ];
+*/
 
 // Share of all applicants, used by the little bar on each summary card
 function share(int $part, int $total): int
@@ -46,12 +54,17 @@ $display_name = trim($_SESSION['user_name'] ?? '') !== '' ? $_SESSION['user_name
 // IDs of EVERY applicant whose status is Completed (backend: SELECT id ... WHERE status = 'Completed').
 // The red mark + the Dashboard notification badge are built from this list; an applicant stops
 // counting as "new" once HR opens their details page.
+$completed_ids = static_completed_ids($all_applicants);
+/* Original hard-coded list (kept for reference):
 $completed_ids = [103, 104, 106, 108, 109, 111, 114, 116, 119, 121, 124, 126, 129, 131, 135];
+*/
 
 // Recent applicants = new applicants + applicants whose status just changed.
 // 'updated' is the time of the newest event (applied OR status change).
 // Backend: ORDER BY updated_at DESC LIMIT 10
 //   status: 'Pending' | 'In Progress' | 'Completed'    result: 'Passed' | 'Failed' | null
+$recent_applicants = static_recent($all_applicants, 10);
+/* Original hard-coded list (kept for reference):
 $recent_applicants = [
     ['id' => 101, 'name' => 'Juan Dela Cruz',    'updated' => '2026-10-05 08:15', 'status' => 'Pending',     'result' => null],
     ['id' => 103, 'name' => 'Clark Kent',        'updated' => '2026-10-05 10:52', 'status' => 'Completed',   'result' => 'Passed'],
@@ -64,6 +77,7 @@ $recent_applicants = [
     ['id' => 109, 'name' => 'Natasha Romanoff',  'updated' => '2026-09-30 15:25', 'status' => 'Completed',   'result' => 'Failed'],
     ['id' => 106, 'name' => 'Jose Protacio Rizal Mercado y Alonso Realonda', 'updated' => '2026-09-29 10:00', 'status' => 'Completed', 'result' => 'Passed']
 ];
+*/
 
 // Newest activity first, and never more than 10, even if the query returns more
 usort($recent_applicants, fn($a, $b) => strtotime($b['updated']) <=> strtotime($a['updated']));
@@ -400,6 +414,7 @@ function status_badge(string $status): string
         const completedIds = <?php echo json_encode(array_map('intval', $completed_ids)); ?>;
     </script>
     <!-- Shared HR behaviour first, then this page's script -->
+    <script>window.HR_SERVER_ARCHIVE = <?php echo json_encode(static_archive_sync(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
     <script src="../assets/js/hr-common.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/hr-common.js'); ?>"></script>
     <script src="../assets/js/dashboardhr.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/dashboardhr.js'); ?>"></script>
 </body>

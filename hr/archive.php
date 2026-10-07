@@ -11,6 +11,9 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {
 header('Cache-Control: no-store, no-cache, must-revalidate');
 header('Pragma: no-cache');
 
+// All applicant data comes from static-data.php (the one place for sample data)
+require_once __DIR__ . '/static-data.php';
+
 // Rows per page
 $per_page = 6;
 
@@ -31,6 +34,8 @@ $demo = isset($_GET['demo']);
 // Keep these keys: id, name, email, contact, status, result.
 //   status: 'Pending' | 'In Progress' | 'Completed'
 //   result: 'Passed' | 'Failed' | null (null = no result yet)
+$applicants = static_archived_applicants();      // only the ARCHIVED applicants (with deleted + days_left)
+/* Original hard-coded list (kept for reference):
 $applicants = [
     ['id' => 101, 'name' => 'Juan Dela Cruz', 'email' => 'juandelacruz@gmail.com', 'contact' => '091234567891', 'status' => 'Pending', 'result' => null],
     ['id' => 102, 'name' => 'Bruce Wayne', 'email' => 'brucewayne@gmail.com', 'contact' => '091234567854', 'status' => 'In Progress', 'result' => null],
@@ -68,6 +73,7 @@ $applicants = [
     ['id' => 134, 'name' => 'Nick Fury', 'email' => 'nickfury@gmail.com', 'contact' => '091234566670', 'status' => 'Pending', 'result' => null],
     ['id' => 135, 'name' => 'Gabriel Antonio Dela Rosa Villanueva', 'email' => 'gabrielantoniodelarosavillanueva@gmail.com', 'contact' => '091234566633', 'status' => 'Completed', 'result' => 'Passed']
 ];
+*/
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -369,6 +375,7 @@ $applicants = [
         };
     </script>
     <!-- Shared HR behaviour first, then this page's script -->
+    <script>window.HR_SERVER_ARCHIVE = <?php echo json_encode(static_archive_sync(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
     <script src="../assets/js/hr-common.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/hr-common.js'); ?>"></script>
     <script src="../assets/js/archive.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/archive.js'); ?>"></script>
 </body>

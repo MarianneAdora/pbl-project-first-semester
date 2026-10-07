@@ -223,7 +223,21 @@ document.addEventListener('DOMContentLoaded', () => {
            {{YEAR}}        current year
        and, before redirecting from that link to opening.php, sets the session values
        listed at the top of opening.php (applicant_name, applicant_email). */
+    /* Real request: saves the applicant through static-data.php (it is the endpoint too),
+       so the Screening List, Dashboard cards, chart and Recent Applicants all show the new person.
+       BACKEND: when the database is ready, the backend answers this same POST; this stays the same. */
     async function sendInvitation(formData) {
+        formData.append('action', 'add');
+        const res = await fetch('static-data.php', { method: 'POST', body: formData, credentials: 'same-origin' });
+        let data;
+        try { data = await res.json(); }
+        catch (e) { throw new Error('The server did not answer correctly. Please try again.'); }
+        if (data.status !== 'success') throw new Error(data.message || 'Something went wrong. Please try again.');
+        return data;
+    }
+
+    // The original pretend version, kept for testing without the server
+    async function sendInvitationFake(formData) {
         await new Promise(resolve => setTimeout(resolve, 1200));
         return {
             status: 'success',

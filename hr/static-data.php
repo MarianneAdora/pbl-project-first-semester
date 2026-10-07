@@ -27,6 +27,28 @@
      static_recent()           ->  ORDER BY updated_at DESC LIMIT 10
    ========================================================================== */
 
+/* ==========================================================================
+   HOW IT WORKS NOW (store layer, added at the bottom of this file)
+   The list below (static_seed_applicants) is only the STARTING data. The first time any page
+   asks for applicants, it is copied into  data/static-store.json  and from then on every page
+   reads and writes THAT file, exactly like a table in a database:
+
+     static_applicants()            active applicants (Screening List, Dashboard)
+     static_archived_applicants()   archived applicants + "Deleted on" + days left (Archive page)
+     static_add_applicant()         Add Applicant           -> Pending
+     static_set_status()            status / result change  -> Pending / In Progress / Completed
+     static_archive($ids)           Screening List "Delete" -> moves to the Archive
+     static_restore($ids)           Archive "Restore"       -> back to the Screening List
+     static_purge($ids)             Archive "Delete forever"
+
+   THIS FILE IS ALSO THE ENDPOINT the JavaScript calls (see the bottom of the file): a POST to
+   static-data.php with  action = add | archive | restore | purge | status  changes the store and
+   answers with JSON. So everything static lives in this ONE file.
+   data/static-store.json is only the saved data (created automatically, not code).
+   To reset the sample data: delete data/static-store.json.
+   To go live: delete this file + data/, and the backend answers the same POST requests.
+   ========================================================================== */
+
 // ---------------------------------------------------------------------------
 // Login accounts (index.php). Passwords are plain text only because this is sample data.
 // ---------------------------------------------------------------------------
@@ -54,7 +76,7 @@ function static_accounts(): array
 //   result:  'Passed' | 'Failed' | null   (only a Completed screening has a result)
 //   updated: newest event (applied OR status change), 'YYYY-MM-DD HH:MM'
 // ---------------------------------------------------------------------------
-function static_applicants(): array
+function static_seed_applicants(): array
 {
     return [
         ['id' => 101, 'name' => 'Juan Dela Cruz', 'email' => 'juandelacruz@gmail.com', 'contact' => '091234567891', 'status' => 'Pending', 'result' => null, 'updated' => '2026-10-05 08:15'],
@@ -130,4 +152,334 @@ function static_recent(array $applicants, int $limit = 10): array
 {
     usort($applicants, fn($a, $b) => strtotime($b['updated']) <=> strtotime($a['updated']));
     return array_slice($applicants, 0, $limit);
+}
+
+
+/* ==========================================================================
+   STORE LAYER: makes the static list behave like a real table.
+   Everything below is the part that is replaced by the database later.
+   ========================================================================== */
+const STATIC_STORE_FILE   = __DIR__ . '/data/static-store.json';
+const STATIC_ARCHIVE_DAYS = 30;                 // days an archived applicant stays before it is gone for good
+
+function static_now(): DateTimeImmutable
+{
+    return new DateTimeImmutable('now', new DateTimeZone('Asia/Manila'));
+}
+
+function static_store_write(array $store): bool
+{
+    $dir = dirname(STATIC_STORE_FILE);
+    if (!is_dir($dir)) @mkdir($dir, 0775, true);
+    $json = json_encode($store, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    return file_put_contents(STATIC_STORE_FILE, $json, LOCK_EX) !== false;
+}
+
+// Reads the whole store. First run (or a broken file): starts from the seed list.
+function static_store_read(): array
+{
+    $store = null;
+    if (is_file(STATIC_STORE_FILE)) {
+        $store = json_decode((string) @file_get_contents(STATIC_STORE_FILE), true);
+    }
+    if (!is_array($store) || !isset($store['applicants']) || !is_array($store['applicants'])) {
+        $store = ['applicants' => array_map(fn($a) => $a + ['archived_at' => null], static_seed_applicants())];
+        static_store_write($store);
+    }
+    return $store;
+}
+
+// Read, change, write (one place so every change is saved the same way)
+function static_store_update(callable $change)
+{
+    $store  = static_store_read();
+    $result = $change($store);
+    static_store_write($store);
+    return $result;
+}
+
+function static_next_id(array $store): int
+{
+    $max = 100;
+    foreach ($store['applicants'] as $a) $max = max($max, (int) $a['id']);
+    return $max + 1;
+}
+
+// ---------------------------------------------------------------------------
+// READ
+// ---------------------------------------------------------------------------
+// Active applicants (NOT archived), same shape as the original sample list
+function static_applicants(): array
+{
+    $out = [];
+    foreach (static_store_read()['applicants'] as $a) {
+        if (!empty($a['archived_at'])) continue;
+        unset($a['archived_at']);
+        $out[] = $a;
+    }
+    return $out;
+}
+
+// Archived applicants, newest deletion first. Adds:
+//   deleted   'YYYY-MM-DD HH:MM'  when it was moved to the Archive
+//   days_left days before it is removed for good (0 = today)
+function static_archived_applicants(): array
+{
+    static_purge_expired();
+    $now = static_now();
+    $out = [];
+    foreach (static_store_read()['applicants'] as $a) {
+        if (empty($a['archived_at'])) continue;
+        $deletedAt = new DateTimeImmutable($a['archived_at'], new DateTimeZone('Asia/Manila'));
+        $passed    = (int) $deletedAt->diff($now)->format('%a');
+        $a['deleted']   = $a['archived_at'];
+        $a['days_left'] = max(0, STATIC_ARCHIVE_DAYS - $passed);
+        unset($a['archived_at']);
+        $out[] = $a;
+    }
+    usort($out, fn($x, $y) => strcmp($y['deleted'], $x['deleted']));
+    return $out;
+}
+
+// What the pages hand to hr-common.js so the browser copy of the Archive matches this file:
+//   ids = ids that are in the Archive      at = { id: time it was archived, in milliseconds }
+// Every HR page prints it, as JSON, into window.HR_SERVER_ARCHIVE before hr-common.js loads
+// (see the <script> line above hr-common.js in dashboardhr.php, screeninglist.php, archive.php
+// and addapplicants.php).
+function static_archive_sync(): array
+{
+    $zone = new DateTimeZone('Asia/Manila');
+    $ids  = [];
+    $at   = [];
+    foreach (static_archived_applicants() as $a) {
+        $id       = (int) $a['id'];
+        $ids[]    = $id;
+        $at[$id]  = (new DateTimeImmutable($a['deleted'], $zone))->getTimestamp() * 1000;
+    }
+    return ['ids' => $ids, 'at' => (object) $at];
+}
+
+// ---------------------------------------------------------------------------
+// WRITE
+// ---------------------------------------------------------------------------
+// Add Applicant: a new applicant starts as Pending. Throws InvalidArgumentException with a
+// message that is safe to show to HR.
+function static_add_applicant(string $name, string $email, string $contact): array
+{
+    $name    = trim($name);
+    $email   = trim($email);
+    $contact = trim($contact);
+    if ($name === '')                                 throw new InvalidArgumentException('Please enter the full name.');
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL))   throw new InvalidArgumentException('Enter a valid email address (example: name@gmail.com).');
+    if ($contact === '')                              throw new InvalidArgumentException('Please enter the contact number.');
+
+    return static_store_update(function (array &$store) use ($name, $email, $contact) {
+        foreach ($store['applicants'] as $a) {
+            if (strcasecmp($a['email'], $email) === 0) {
+                throw new InvalidArgumentException(
+                    empty($a['archived_at'])
+                        ? 'An applicant with this email already exists.'
+                        : 'An applicant with this email is in the Archive. Restore them instead.'
+                );
+            }
+        }
+        $applicant = [
+            'id'      => static_next_id($store),
+            'name'    => $name,
+            'email'   => $email,
+            'contact' => $contact,
+            'status'  => 'Pending',
+            'result'  => null,
+            'updated' => static_now()->format('Y-m-d H:i')
+        ];
+        $store['applicants'][] = $applicant + ['archived_at' => null];
+        return $applicant;
+    });
+}
+
+// Status change (this is what the screening itself will call later).
+// Only a Completed screening has a result.
+function static_set_status(int $id, string $status, ?string $result = null): bool
+{
+    $valid = ['Pending', 'In Progress', 'Completed'];
+    if (!in_array($status, $valid, true)) return false;
+    if ($status !== 'Completed' || !in_array($result, ['Passed', 'Failed'], true)) $result = null;
+
+    return static_store_update(function (array &$store) use ($id, $status, $result) {
+        foreach ($store['applicants'] as &$a) {
+            if ((int) $a['id'] !== $id) continue;
+            $a['status']  = $status;
+            $a['result']  = $result;
+            $a['updated'] = static_now()->format('Y-m-d H:i');
+            return true;
+        }
+        return false;
+    });
+}
+
+// Screening List "Delete": moves applicants to the Archive. Returns how many were moved.
+// $at (optional) = [ id => time in milliseconds ]: keeps the original archive time (used by Undo
+// and by the archive.php?demo=1 test data).
+function static_archive(array $ids, array $at = []): int
+{
+    $ids = array_map('intval', $ids);
+    return static_store_update(function (array &$store) use ($ids, $at) {
+        $n = 0;
+        $zone = new DateTimeZone('Asia/Manila');
+        $now  = static_now()->format('Y-m-d H:i:s');
+        foreach ($store['applicants'] as &$a) {
+            if (in_array((int) $a['id'], $ids, true) && empty($a['archived_at'])) {
+                $ms = $at[(int) $a['id']] ?? null;
+                $a['archived_at'] = is_numeric($ms) && $ms > 0
+                    ? (new DateTimeImmutable('@' . intdiv((int) $ms, 1000)))->setTimezone($zone)->format('Y-m-d H:i:s')
+                    : $now;
+                $n++;
+            }
+        }
+        return $n;
+    });
+}
+
+// Archive "Restore": back to the Screening List with their old status and result
+function static_restore(array $ids): int
+{
+    $ids = array_map('intval', $ids);
+    return static_store_update(function (array &$store) use ($ids) {
+        $n = 0;
+        foreach ($store['applicants'] as &$a) {
+            if (in_array((int) $a['id'], $ids, true) && !empty($a['archived_at'])) {
+                $a['archived_at'] = null;
+                $n++;
+            }
+        }
+        return $n;
+    });
+}
+
+// Archive "Delete forever": only archived applicants can be removed for good
+function static_purge(array $ids): int
+{
+    $ids = array_map('intval', $ids);
+    return static_store_update(function (array &$store) use ($ids) {
+        $before = count($store['applicants']);
+        $store['applicants'] = array_values(array_filter(
+            $store['applicants'],
+            fn($a) => !(in_array((int) $a['id'], $ids, true) && !empty($a['archived_at']))
+        ));
+        return $before - count($store['applicants']);
+    });
+}
+
+// Archived applicants older than STATIC_ARCHIVE_DAYS are removed automatically
+function static_purge_expired(): int
+{
+    $limit = static_now()->modify('-' . STATIC_ARCHIVE_DAYS . ' days')->format('Y-m-d H:i:s');
+    return static_store_update(function (array &$store) use ($limit) {
+        $before = count($store['applicants']);
+        $store['applicants'] = array_values(array_filter(
+            $store['applicants'],
+            fn($a) => empty($a['archived_at']) || $a['archived_at'] > $limit
+        ));
+        return $before - count($store['applicants']);
+    });
+}
+
+
+/* ==========================================================================
+   ENDPOINT: the JavaScript posts here  ( fetch('static-data.php', {method:'POST', ...}) )
+   It only runs when this file is opened DIRECTLY; when a page does require_once on it,
+   nothing below happens.
+
+   Request (form fields or a JSON body):
+       action = add | archive | restore | purge | status
+       add      name, email, contact                 (the cv file is ignored for now)
+       archive  ids = [101, 102], at = { id: ms }     Screening List "Delete" (at is optional)
+       restore  ids = [101, 102]                      Archive "Restore"
+       purge    ids = [101, 102]                      Archive "Delete forever"
+       status   id, status, result                    Pending | In Progress | Completed (+ Passed | Failed)
+   Response (JSON):
+       { status: 'success', ..., stats: {...}, completed_ids: [...], archived: N }
+       { status: 'error', message: '...' }
+   ========================================================================== */
+if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) !== false
+    && strcasecmp(realpath($_SERVER['SCRIPT_FILENAME']), __FILE__) === 0) {   // strcasecmp: Windows paths
+
+    if (session_status() === PHP_SESSION_NONE) session_start();
+    header('Content-Type: application/json; charset=UTF-8');
+
+    function static_respond(array $data, int $code = 200): void
+    {
+        http_response_code($code);
+        echo json_encode($data, JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // Only a signed-in HR or Admin user may change applicants
+    if (!in_array($_SESSION['user_role'] ?? '', ['hr', 'admin'], true)) {
+        static_respond(['status' => 'error', 'message' => 'Your session has ended. Please log in again.'], 403);
+    }
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        static_respond(['status' => 'error', 'message' => 'Invalid request.'], 405);
+    }
+
+    // Accept a JSON body as well as normal form fields
+    $input = $_POST;
+    if (stripos($_SERVER['CONTENT_TYPE'] ?? '', 'application/json') !== false) {
+        $json  = json_decode((string) file_get_contents('php://input'), true);
+        $input = is_array($json) ? $json : [];
+    }
+
+    $action = (string) ($input['action'] ?? '');
+    $ids    = array_values(array_filter((array) ($input['ids'] ?? []), 'is_numeric'));
+
+    try {
+        $extra = [];
+
+        switch ($action) {
+            case 'add':
+                $extra['applicant'] = static_add_applicant(
+                    (string) ($input['name'] ?? ''),
+                    (string) ($input['email'] ?? ''),
+                    (string) ($input['contact'] ?? '')
+                );
+                break;
+
+            case 'archive':
+                $extra['count'] = static_archive($ids, (array) ($input['at'] ?? []));
+                break;
+
+            case 'restore':
+                $extra['count'] = static_restore($ids);
+                break;
+
+            case 'purge':
+                $extra['count'] = static_purge($ids);
+                break;
+
+            case 'status':
+                $ok = static_set_status(
+                    (int) ($input['id'] ?? 0),
+                    (string) ($input['status'] ?? ''),
+                    isset($input['result']) && $input['result'] !== '' ? (string) $input['result'] : null
+                );
+                if (!$ok) static_respond(['status' => 'error', 'message' => 'That applicant or status was not found.'], 404);
+                break;
+
+            default:
+                static_respond(['status' => 'error', 'message' => 'Unknown action.'], 400);
+        }
+
+        // Fresh numbers so a page can update its cards, chart and badges
+        $active = static_applicants();
+        static_respond(['status' => 'success'] + $extra + [
+            'stats'         => static_stats($active),
+            'completed_ids' => static_completed_ids($active),
+            'archived'      => count(static_archived_applicants())
+        ]);
+
+    } catch (InvalidArgumentException $e) {
+        static_respond(['status' => 'error', 'message' => $e->getMessage()], 422);
+    } catch (Throwable $e) {
+        static_respond(['status' => 'error', 'message' => 'Something went wrong while saving. Please try again.'], 500);
+    }
 }

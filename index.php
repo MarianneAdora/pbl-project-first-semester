@@ -7,6 +7,11 @@ if (($_GET['transition'] ?? '') === 'out') {
     session_regenerate_id(true);
 }
 
+// The login accounts now come from static-data.php (delete that file when the database is ready)
+require_once __DIR__ . '/hr/static-data.php';
+$credentials = static_accounts();
+
+/* Original hard-coded accounts, kept for reference:
 $credentials = [
     'hr@expertise.com' => [
         'password' => 'hr123',
@@ -21,6 +26,7 @@ $credentials = [
         'redirect' => 'admindashboardadmin.php'
     ]
 ];
+*/
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');

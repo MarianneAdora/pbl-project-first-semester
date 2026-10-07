@@ -10,6 +10,9 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {
     header('Location: ../index.php');
     exit();
 }
+
+// Keeps the browser copy of the Archive in step with static-data.php
+require_once __DIR__ . '/static-data.php';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -266,6 +269,7 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {
     </main>
 
     <!-- Shared HR behaviour first, then this page's script -->
+    <script>window.HR_SERVER_ARCHIVE = <?php echo json_encode(static_archive_sync(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
     <script src="../assets/js/hr-common.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/hr-common.js'); ?>"></script>
     <script src="../assets/js/addapplicants.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/addapplicants.js'); ?>"></script>
 </body>

@@ -49,11 +49,67 @@ window.HR = (function () {
         try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch (err) { return false; }
     }
 
-    // action: 'archive' = move to the Archive (the 30 days start now)
+    // ---- Server link (static-data.php) --------------------------------------------------------
+    // The server is the truth. Every HR page prints window.HR_SERVER_ARCHIVE before this file, and
+    // the three browser keys below are rewritten from it, so the Screening List, the Archive and
+    // the Dashboard always agree. The browser copy is only a mirror that the page scripts read.
+    const SERVER_API = 'static-data.php';      // same folder as the HR pages
+
+    function syncArchiveFromServer() {
+        const s = window.HR_SERVER_ARCHIVE;
+        if (!s || !Array.isArray(s.ids)) return;
+        store(KEY, s.ids.map(Number));
+        store(AT_KEY, s.at && typeof s.at === 'object' ? s.at : {});
+        store(DEL_KEY, []);                    // purged applicants no longer exist on the server
+    }
+    syncArchiveFromServer();
+
+    // One request to static-data.php. Rejects with a message that is safe to show.
+    function serverRequest(action, ids, opts) {
+        const body = { action: action, ids: (ids || []).map(Number) };
+        if (opts && opts.at) body.at = opts.at;
+        return fetch(SERVER_API, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify(body)
+        })
+            .then(
+                res => res.json().catch(() => { throw new Error('The server did not answer correctly. Please try again.'); }),
+                () => { throw new Error('Could not reach the server. Please check your connection and try again.'); }
+            )
+            .then(data => {
+                if (data.status !== 'success') throw new Error(data.message || 'Something went wrong. Please try again.');
+                return data;
+            });
+    }
+
+    // Same job as before (and the same answer), but the change is also saved on the server.
+    // The browser copy changes right away so the page reacts at once; if the server says no,
+    // the copy goes back to how it was and the error is shown.
+    function archiveRequest(action, ids, opts) {
+        const keys = [KEY, AT_KEY, DEL_KEY];
+        let snapshot = [];
+        try { snapshot = keys.map(k => localStorage.getItem(k)); } catch (err) { /* storage unavailable */ }
+
+        return archiveRequestLocal(action, ids, opts).then(local =>
+            serverRequest(action, ids, opts).then(() => local, err => {
+                try {
+                    keys.forEach((k, i) => {
+                        if (snapshot[i] === null) localStorage.removeItem(k);
+                        else localStorage.setItem(k, snapshot[i]);
+                    });
+                } catch (e) { /* storage unavailable */ }
+                throw err;
+            })
+        );
+    }
+
+    // (original, browser only) action: 'archive' = move to the Archive (the 30 days start now)
     //         'restore' = back to the Screening List
     //         'purge'   = delete for good
     // opts.at = { id: time } keeps the original archive time (used by Undo)
-    function archiveRequest(action, ids, opts) {
+    function archiveRequestLocal(action, ids, opts) {
         const set = new Set(readArchived());
         const at = readArchivedAt();
         const gone = new Set(readDeleted());
@@ -88,7 +144,10 @@ window.HR = (function () {
             else if (now - Number(at[id]) >= ARCHIVE_DAYS * DAY_MS) expired.push(id);
         });
         if (stamped) store(AT_KEY, at);
-        if (expired.length) archiveRequest('purge', expired);
+        if (expired.length) {
+            archiveRequestLocal('purge', expired);                     // the browser copy, at once
+            serverRequest('purge', expired).catch(() => { /* the server also removes expired ones itself */ });
+        }
         return expired;
     }
 
@@ -343,7 +402,7 @@ window.HR = (function () {
 
     // arrivedViaTransition is filled in below (page scripts can read it after DOMContentLoaded)
     return {
-        archiveRequest, readArchived, readArchivedAt, readDeleted, purgeExpired, ARCHIVE_DAYS,
+        archiveRequest, archiveRequestLocal, serverRequest, syncArchiveFromServer, readArchived, readArchivedAt, readDeleted, purgeExpired, ARCHIVE_DAYS,
         setArchiveBadge, bumpArchive, toast,
         syncCompleted, isUnseen, markSeen, unseenCompleted, refreshDashboardBadge,
         noteNewApplicant, clearNewApplicants, refreshApplicantBadges,
