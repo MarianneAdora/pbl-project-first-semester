@@ -29,7 +29,7 @@ if ($requireVerification) {
 }
 
 // ---- Video rules + questions (static-data.php for now, the database later) -----
-require_once __DIR__ . '/../hr/static-data.php';
+require_once __DIR__ . '/static-applicant.php';
 $video     = static_video_rules();      // max_seconds, max_mb, formats
 $questions = static_questionnaire();    // only used to check the answers are all there
 
@@ -38,7 +38,8 @@ $formatsText = strtoupper(implode(', ', $video['formats']));
 $screening = [
     'questions'      => $questions,
     'video'          => $video,
-    'endpoint'       => '../hr/static-data.php',
+    'endpoint'       => 'static-applicant.php',
+    'session'        => substr(sha1(session_id()), 0, 16),
     'live'           => $requireVerification,
     'nextPage'       => $nextPage,
     'backPage'       => $backPage,
@@ -97,8 +98,11 @@ $screening = [
             <section class="intro">
                 <h1 class="intro__title reveal" style="--i:4">Video Response</h1>
                 <p class="intro__text reveal" style="--i:5">
-                    Upload your completed video response, or record it right here.
-                    It only needs to be <strong><?= (int) $video['max_seconds'] ?> seconds</strong>.
+                    Upload your completed video response, or record it right here with your camera.
+                </p>
+                <p class="tenbadge reveal reveal-pop" style="--i:5.5">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4.5l3 1.8M9.5 3h5"/></svg>
+                    Only <?= (int) $video['max_seconds'] ?> seconds needed. No longer video is required.
                 </p>
             </section>
 

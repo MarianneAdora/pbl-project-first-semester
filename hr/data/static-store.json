@@ -360,5 +360,89 @@
             "updated": "2026-10-07 13:37",
             "archived_at": "2026-10-07 16:06:07"
         }
+    ],
+    "submissions": [
+        {
+            "applicant_id": null,
+            "email": "",
+            "answers": {
+                "q1": "Yes",
+                "q2": "Yes",
+                "q3": "Yes",
+                "q4": "Yes",
+                "q5": 5,
+                "q6": "2026-10-07",
+                "q7": "Yes",
+                "q7:follow": "Less than 1 week",
+                "q8": "Yes",
+                "q9": "Yes",
+                "q10": "Yes",
+                "q11": "Yes",
+                "q12": "yea i love it. thanks . lolshjavdbsducdghsvbNMDSDFVHIUndvkdisjfhan dmff.fdxouihjbjdsfdxvihbn dvkxhijwabn .",
+                "q13": true
+            },
+            "video": {
+                "name": "video_response.mp4",
+                "size": 1267957,
+                "seconds": 6.5,
+                "source": "recorded"
+            },
+            "submitted_at": "2026-10-07 22:03"
+        },
+        {
+            "applicant_id": null,
+            "email": "",
+            "answers": {
+                "q1": "Yes",
+                "q2": "Yes",
+                "q3": "Yes",
+                "q4": "Yes",
+                "q5": 5,
+                "q6": "2026-10-08",
+                "q7": "Yes",
+                "q7:follow": "More than 2 months",
+                "q8": "Yes",
+                "q9": "Yes",
+                "q10": "Yes",
+                "q11": "Yes",
+                "q12": "egrthmhjhrgfhnm..satrtjeawrgfdgfhky.teykurtytu",
+                "q13": true
+            },
+            "video": {
+                "name": "video_response.mp4",
+                "size": 640821,
+                "seconds": 1.8,
+                "source": "recorded"
+            },
+            "submitted_at": "2026-10-08 08:11"
+        },
+        {
+            "reference": "SCR-2026-54410",
+            "applicant_id": null,
+            "email": "",
+            "answers": {
+                "q1": "Yes",
+                "q2": "Yes",
+                "q3": "Yes",
+                "q4": "Yes",
+                "q5": 5,
+                "q6": "2026-10-08",
+                "q7": "Yes",
+                "q7:follow": "3 to 4 weeks (30 days)",
+                "q8": "Yes",
+                "q9": "Yes",
+                "q10": "Yes",
+                "q11": "Yes",
+                "q12": "ASsdfhhijlkkhfsdfdzfxgfhjgjgdfdg.gfsfdgfhjgfd",
+                "q13": true
+            },
+            "video": {
+                "name": "video_response.mp4",
+                "size": 605827,
+                "seconds": 1.8,
+                "source": "recorded"
+            },
+            "submitted_at": "2026-10-08 08:29"
+        }
     ]
 }

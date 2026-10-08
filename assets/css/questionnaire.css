@@ -1,8 +1,8 @@
 /* ==========================================================================
    Questionnaire (one question per screen)
    Base, background, logo and entrance animation come from applicant-common.css.
-   Layout follows the wireframe: logo + "3 of 13" on top, progress bar, the question, a big
-   answer area, then Previous (grey) and Next (red).
+   Layout: logo + "3 of 13" on top, then ONE white card in the middle that holds the progress
+   bar, the question, the answer and the Previous / Next buttons.
    ========================================================================== */
 
 :root {
@@ -16,7 +16,7 @@
 .page {
     display: flex;
     flex-direction: column;
-    padding: var(--corner-top) var(--corner-left) 1.5rem;
+    padding: var(--corner-top) var(--corner-left) 2rem;
 }
 
 .topbar {
@@ -59,8 +59,8 @@
 
 /* ===== Progress bar ===== */
 .progress {
-    margin-top: 1.4rem;
-    height: 0.85rem;
+    margin-bottom: 2.2rem;
+    height: 0.6rem;
     background: var(--track);
     border-radius: 999px;
     overflow: hidden;
@@ -94,12 +94,15 @@
 
 /* ===== The card: question + answer + buttons ===== */
 .qcard {
-    flex: 1;
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    width: 100%;
-    padding: 1rem 0.5rem 0;
+    width: min(100%, 60rem);
+    margin: clamp(0.5rem, 3vh, 2.5rem) auto auto;   /* a fixed place under the top bar: only the bottom of the card moves */
+    padding: 2.2rem 3rem 2rem;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    border-radius: 1.5rem;
+    box-shadow: 0 1.2rem 3.2rem rgba(30, 30, 40, 0.12), 0 0.2rem 0.6rem rgba(30, 30, 40, 0.06);
 }
 
 /* the old and the new question sit on top of each other while they slide */
@@ -123,19 +126,22 @@
 @keyframes qInLeft   { from { opacity: 0; transform: translate3d(-2.5rem, 0, 0); } }
 
 .q__section {
-    margin-bottom: 0.7rem;
-    font-size: 0.85rem;
+    display: inline-block;
+    margin-bottom: 1rem;
+    padding: 0.3rem 0.9rem;
+    font-size: 0.8rem;
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--red);
+    color: var(--red-dark);
+    background: rgba(227, 24, 55, 0.08);
+    border-radius: 999px;
 }
 
 .q__text {
-    max-width: 62rem;
-    font-size: 1.85rem;
-    font-weight: 500;
-    line-height: 1.5;
+    font-size: 1.65rem;
+    font-weight: 600;
+    line-height: 1.4;
     color: var(--text);
 }
 
@@ -179,8 +185,8 @@
 }
 
 .q__answer {
-    margin-top: 1.7rem;
-    min-height: 15rem;             /* every question takes the same room, so the buttons never move */
+    margin-top: 1.5rem;
+    margin-bottom: 0.4rem;
 }
 
 .q__hint {
@@ -228,16 +234,15 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1rem;
-    max-width: 38rem;
 }
 
 .choice {
     display: flex;
     align-items: center;
     gap: 1rem;
-    padding: 1.35rem 1.6rem;
+    padding: 1.7rem 1.8rem;
     font-family: inherit;
-    font-size: 1.35rem;
+    font-size: 1.4rem;
     font-weight: 600;
     color: var(--text);
     text-align: left;
@@ -268,8 +273,8 @@
 
 .choice__icon {
     flex: 0 0 auto;
-    width: 2rem;
-    height: 2rem;
+    width: 2.2rem;
+    height: 2.2rem;
     display: grid;
     place-items: center;
     border: 2px solid #9a9a9e;
@@ -324,7 +329,6 @@
     display: grid;
     grid-template-rows: 0fr;
     opacity: 0;
-    max-width: 38rem;
     transition: grid-template-rows 0.45s var(--ease-out), opacity 0.3s ease, margin-top 0.45s var(--ease-out);
 }
 
@@ -349,9 +353,13 @@
 }
 
 .q__note > p {
+    padding: 0.8rem 1.1rem;
     font-size: 1rem;
     color: var(--red-dark);
     font-weight: 500;
+    background: rgba(227, 24, 55, 0.07);
+    border-left: 4px solid var(--red);
+    border-radius: 0.3rem 0.7rem 0.7rem 0.3rem;
 }
 
 .select,
@@ -392,21 +400,21 @@
 
 /* ===== Rating 1 to 5 ===== */
 .scale {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(var(--cols, 5), minmax(0, 1fr));
     gap: 1rem;
-    flex-wrap: wrap;
 }
 
 .scale__dot {
-    width: 4.4rem;
-    height: 4.4rem;
+    width: 100%;
+    height: 5.6rem;
     font-family: inherit;
-    font-size: 1.5rem;
+    font-size: 1.7rem;
     font-weight: 700;
     color: var(--text);
     background: var(--field-bg);
     border: 2px solid var(--edge);
-    border-radius: 50%;
+    border-radius: 0.9rem;
     cursor: pointer;
     /* the colour travels along the row: --d is how far this dot is from the one clicked before */
     transition: transform 0.35s var(--ease-pop),
@@ -439,24 +447,238 @@
 .scale__labels {
     display: flex;
     justify-content: space-between;
-    max-width: calc(4.4rem * 5 + 1rem * 4);
-    margin-top: 0.9rem;
+    margin-top: 1rem;
     font-size: 0.95rem;
     font-weight: 500;
     color: var(--text-muted);
 }
 
-/* ===== Date ===== */
-.datefield {
-    max-width: 24rem;
+/* ===== Date: calendar + quick picks + the chosen day ===== */
+.datepick {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 1.6rem;
+    align-items: stretch;
 }
 
-.datefield__label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-size: 1.05rem;
-    font-weight: 600;
+.cal {
+    width: 21.5rem;
+    padding: 1rem 1rem 1.1rem;
+    background: var(--field-bg);
+    border: 2px solid var(--edge);
+    border-radius: 1rem;
 }
+
+.cal__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.7rem;
+}
+
+.cal__title {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.cal__nav {
+    width: 2.3rem;
+    height: 2.3rem;
+    display: grid;
+    place-items: center;
+    background: transparent;
+    border: 0;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.3s var(--ease-pop), opacity 0.2s ease;
+}
+
+.cal__nav svg {
+    width: 1.3rem;
+    height: 1.3rem;
+    fill: none;
+    stroke: var(--text);
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.cal__nav--prev svg { transform: scaleX(-1); }
+
+.cal__nav:hover:not(:disabled) {
+    background: rgba(227, 24, 55, 0.1);
+    transform: scale(1.12);
+}
+
+.cal__nav:disabled {
+    opacity: 0.25;
+    cursor: default;
+}
+
+.cal__nav:focus-visible,
+.cal__day:focus-visible,
+.chip:focus-visible {
+    outline: 3px solid rgba(227, 24, 55, 0.4);
+    outline-offset: 2px;
+}
+
+.cal__dow,
+.cal__grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.25rem;
+}
+
+.cal__dow {
+    margin-bottom: 0.3rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.cal__day {
+    aspect-ratio: 1;
+    display: grid;
+    place-items: center;
+    font-family: inherit;
+    font-size: 0.98rem;
+    font-weight: 600;
+    color: var(--text);
+    background: transparent;
+    border: 0;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease, transform 0.3s var(--ease-pop), box-shadow 0.25s ease;
+}
+
+.cal__day:hover:not(:disabled):not(.is-selected) {
+    background: rgba(227, 24, 55, 0.12);
+    transform: scale(1.1);
+}
+
+.cal__day:disabled {
+    color: #b4b4b9;
+    cursor: default;
+}
+
+.cal__day.is-today:not(.is-selected) {
+    box-shadow: inset 0 0 0 2px var(--red);
+    color: var(--red-dark);
+}
+
+.cal__day.is-selected {
+    color: #fff;
+    background: var(--red);
+    box-shadow: 0 0.4rem 0.9rem rgba(227, 24, 55, 0.35);
+}
+
+.cal__day.picked { animation: picked 0.38s var(--ease-pop); }
+
+/* a month slides in from the side it came from */
+.cal__grid--next { animation: monthNext 0.35s var(--ease-out); }
+.cal__grid--prev { animation: monthPrev 0.35s var(--ease-out); }
+
+@keyframes monthNext { from { opacity: 0; transform: translate3d(1.2rem, 0, 0); } }
+@keyframes monthPrev { from { opacity: 0; transform: translate3d(-1.2rem, 0, 0); } }
+
+.dateside {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    min-width: 0;
+}
+
+.dateside__label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+.chip {
+    padding: 0.55rem 1.1rem;
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text);
+    background: var(--field-bg);
+    border: 2px solid var(--edge);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: transform 0.3s var(--ease-pop), border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+.chip:hover {
+    transform: translateY(-2px);
+    border-color: var(--red);
+}
+
+.chip.is-on {
+    color: #fff;
+    background: var(--red);
+    border-color: var(--red);
+}
+
+/* the chosen day, big */
+.daysum {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 1.3rem;
+    min-height: 7rem;
+    margin-top: 0.3rem;
+    padding: 1rem 1.4rem;
+    background: rgba(227, 24, 55, 0.05);
+    border: 2px dashed rgba(227, 24, 55, 0.3);
+    border-radius: 1rem;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.daysum__day {
+    min-width: 4.4rem;
+    font-size: 3.6rem;
+    font-weight: 800;
+    line-height: 1;
+    text-align: center;
+    color: #b4b4b9;
+}
+
+.daysum__text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+}
+
+.daysum__line {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.daysum__note {
+    font-size: 1rem;
+    color: var(--text-muted);
+}
+
+.daysum.is-set {
+    background: rgba(227, 24, 55, 0.08);
+    border-style: solid;
+    border-color: rgba(227, 24, 55, 0.45);
+}
+
+.daysum.is-set .daysum__day { color: var(--red); }
+.daysum.is-set .daysum__note { color: var(--red-dark); font-weight: 600; }
+
+.daysum.bump { animation: picked 0.4s var(--ease-pop); }
 
 /* ===== Written answer: the big grey box from the wireframe ===== */
 .textbox {
@@ -480,8 +702,8 @@
 .textbox__input {
     display: block;
     width: 100%;
-    min-height: 13rem;
-    padding: 1.2rem 1.4rem 2.4rem;
+    min-height: 11rem;
+    padding: 1.1rem 1.3rem 2.4rem;
     font-family: inherit;
     font-size: 1.2rem;
     font-weight: 500;
@@ -513,7 +735,7 @@
 
 /* ===== Data protection: the statement + the "I agree" box ===== */
 .consent__body {
-    max-height: 11rem;
+    max-height: 10.5rem;
     padding: 1.1rem 1.4rem;
     overflow-y: auto;
     font-size: 1rem;
@@ -601,16 +823,15 @@
 
 /* ===== Message (one at a time, the room is always reserved) ===== */
 .qerror-slot {
-    min-height: 3.6rem;
-    margin-top: 0.9rem;
+    min-height: 3rem;
+    margin-top: 0.6rem;
 }
 
 .q-error {
     display: flex;
     align-items: center;
     gap: 0.8rem;
-    max-width: 44rem;
-    padding: 0.85rem 1.4rem;
+    padding: 0.8rem 1.2rem;
     font-size: 1.05rem;
     font-weight: 500;
     color: var(--red);
@@ -642,9 +863,10 @@
 /* ===== Buttons: Previous (grey) and Next (red) ===== */
 .qnav {
     display: flex;
-    justify-content: space-around;
+    justify-content: space-between;
     gap: 1rem;
-    margin-top: 0.4rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .qbtn {
@@ -652,10 +874,10 @@
     align-items: center;
     justify-content: center;
     gap: 0.7rem;
-    width: min(100%, 19rem);
-    padding: 1.15rem 1.5rem;
+    min-width: 12.5rem;
+    padding: 0.95rem 1.8rem;
     font-family: var(--font-btn);
-    font-size: 1.3rem;
+    font-size: 1.15rem;
     font-weight: 500;
     border: 0;
     border-radius: 0.5rem;
@@ -664,8 +886,8 @@
 }
 
 .qbtn--prev {
-    color: #1f1f23;
-    background: #8f8f8f;
+    color: #fff;
+    background: #707076;
 }
 
 .qbtn--next {
@@ -674,7 +896,7 @@
 }
 
 .qbtn--prev:hover {
-    background: #7d7d7d;
+    background: #5d5d63;
     transform: translateY(-3px) scale(1.02);
     box-shadow: 0 0.7rem 1.4rem rgba(0, 0, 0, 0.2);
 }
@@ -715,6 +937,10 @@
     .choice.picked,
     .scale__dot.picked,
     .check__box.picked,
+    .cal__day.picked,
+    .cal__grid--next,
+    .cal__grid--prev,
+    .daysum.bump,
     .q--first .choice,
     .q--first .scale__dot { animation: none; }
 
@@ -725,7 +951,8 @@
 
 /* ===== Tablet ===== */
 @media (max-width: 1100px) {
-    .q__text { font-size: 1.6rem; }
+    .q__text { font-size: 1.5rem; }
+    .qcard { padding: 2rem 2rem 1.8rem; }
 }
 
 /* ===== Mobile: the question sits on a soft card so it stays readable ===== */
@@ -740,21 +967,23 @@
     }
 
     .qcard {
-        margin-top: 1rem;
+        margin: 1rem 0 0;
         padding: 1.5rem 1.25rem;
-        justify-content: flex-start;
-        background: rgba(255, 255, 255, 0.85);
         border-radius: 1rem;
         backdrop-filter: blur(4px);
     }
 
+    .progress { margin-bottom: 1.4rem; }
+
     .q__text { font-size: 1.35rem; }
-    .q__answer { min-height: 0; margin-top: 1.2rem; }
+    .q__answer { margin-top: 1.2rem; }
     .choices { grid-template-columns: 1fr 1fr; }
     .choice { padding: 1rem 1.1rem; font-size: 1.15rem; }
-    .scale { gap: 0.6rem; }
-    .scale__dot { width: 3.4rem; height: 3.4rem; }
-    .scale__labels { max-width: none; }
+    .scale { gap: 0.5rem; }
+    .scale__dot { height: 4rem; font-size: 1.3rem; }
+    .choice { padding: 1.2rem 1rem; }
+    .datepick { grid-template-columns: minmax(0, 1fr); }
+    .cal { width: 100%; }
 
     .qnav {
         flex-direction: column-reverse;

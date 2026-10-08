@@ -19,15 +19,16 @@ if ($requireVerification) {
 }
 
 // ---- Questions --------------------------------------------------------------
-// The questions are edited by HR, so they live in static-data.php for now (one place, like the
-// applicants). BACKEND: replace static_questionnaire() with a query on the questions table.
-require_once __DIR__ . '/../hr/static-data.php';
+// The questions are edited by HR, so they live in applicant/static-applicant.php for now (one place, like the
+// applicants in hr/static-data.php). BACKEND: replace static_questionnaire() with a query on the questions table.
+require_once __DIR__ . '/static-applicant.php';
 $questions = static_questionnaire();
 
 // What the scripts need (printed as JSON below)
 $screening = [
     'questions' => $questions,
-    'endpoint'  => '../hr/static-data.php',   // sample server: moves the applicant to "In Progress" in the HR lists
+    'endpoint'  => 'static-applicant.php',        // sample server: moves the applicant to "In Progress" in the HR lists
+    'session'   => substr(sha1(session_id()), 0, 16),   // lets the browser forget old answers when a new applicant starts
     'live'      => $requireVerification,
     'nextPage'  => $nextPage,
     'backPage'  => $backPage
@@ -67,15 +68,15 @@ $screening = [
         </p>
     </header>
 
-    <!-- Progress bar: fills as the applicant moves through the questions -->
-    <div class="progress reveal" style="--i:2" id="progress" role="progressbar" aria-label="Questionnaire progress" aria-valuemin="0" aria-valuemax="<?= count($questions) ?>" aria-valuenow="1">
-        <span class="progress__fill" id="progressFill"></span>
-    </div>
+    <form class="qcard reveal reveal-pop" style="--i:2" id="qForm" novalidate>
 
-    <form class="qcard" id="qForm" novalidate>
+        <!-- Progress bar: fills as the applicant moves through the questions -->
+        <div class="progress" id="progress" role="progressbar" aria-label="Questionnaire progress" aria-valuemin="0" aria-valuemax="<?= count($questions) ?>" aria-valuenow="1">
+            <span class="progress__fill" id="progressFill"></span>
+        </div>
 
         <!-- The current question is drawn here by questionnaire.js -->
-        <div class="qstage reveal" style="--i:4" id="qStage"></div>
+        <div class="qstage" id="qStage"></div>
 
         <!-- One message at a time; the space is always reserved so nothing jumps -->
         <div class="qerror-slot">
@@ -88,7 +89,7 @@ $screening = [
             </div>
         </div>
 
-        <div class="qnav reveal" style="--i:6">
+        <div class="qnav">
             <button type="button" class="qbtn qbtn--prev" id="prevBtn">
                 <span class="qbtn__arrow" aria-hidden="true">&larr;</span>
                 <span class="qbtn__label">Previous</span>

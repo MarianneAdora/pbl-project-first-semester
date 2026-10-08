@@ -7,7 +7,7 @@
    questionnaire.php prints from static-data.php (later: the database). To change a question,
    its type or its choices, change the data, not this file.
 
-   Question types:  yesno | yesno_select (Yes/No + a follow-up list) | scale | date | text | consent
+   Question types:  yesno | yesno_select (Yes/No + a follow-up list) | scale | date (calendar) | text | consent
    ========================================================================== */
 document.addEventListener('DOMContentLoaded', function () {
     var cfg = window.SCREENING || { questions: [] };
@@ -186,6 +186,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function buildScale(q, box) {
         var max = q.max || 5;
         var group = h('div', 'scale');
+        group.style.setProperty('--cols', max);
         group.setAttribute('role', 'radiogroup');
         group.setAttribute('aria-label', 'Rating from 1 to ' + max);
 
@@ -230,22 +231,175 @@ document.addEventListener('DOMContentLoaded', function () {
         return { focus: function () { (dots.filter(function (b) { return b.tabIndex === 0; })[0] || dots[0]).focus({ preventScroll: true }); } };
     }
 
+    /* ---------- date: a calendar + quick picks + a summary of the chosen day ---------- */
+    var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    var WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    var CHEVRON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
+
+    function ymd(d) {
+        function p(n) { return (n < 10 ? '0' : '') + n; }
+        return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+    }
+    function fromYmd(s) {
+        var p = String(s).split('-');
+        return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+    }
+    function addDays(d, n) { var x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() + n); return x; }
+
     function buildDate(q, box) {
-        var field = h('div', 'datefield');
-        var label = h('label', 'datefield__label', q.hint || 'Choose a date');
-        label.htmlFor = 'answerInput';
-        var input = h('input', 'input');
-        input.type = 'date';
-        input.id = 'answerInput';
-        input.min = Screening.today();
-        input.value = answers[q.id] || '';
-        input.addEventListener('input', function () {
-            answers[q.id] = input.value;
-            changed();
+        var todayStr = Screening.today();
+        var today = fromYmd(todayStr);
+        var picked = answers[q.id] && answers[q.id] >= todayStr ? answers[q.id] : '';
+        if (!picked && answers[q.id]) { delete answers[q.id]; save(); }   // a date in the past is no longer valid
+        var view = fromYmd(picked || todayStr);
+        view.setDate(1);
+
+        var wrap = h('div', 'datepick');
+
+        /* --- the calendar --- */
+        var cal = h('div', 'cal');
+        cal.setAttribute('role', 'group');
+        cal.setAttribute('aria-label', q.hint || 'Choose a date');
+        var head = h('div', 'cal__head');
+        var prev = h('button', 'cal__nav cal__nav--prev');
+        prev.type = 'button';
+        prev.setAttribute('aria-label', 'Previous month');
+        prev.innerHTML = CHEVRON;
+        var next = h('button', 'cal__nav');
+        next.type = 'button';
+        next.setAttribute('aria-label', 'Next month');
+        next.innerHTML = CHEVRON;
+        var title = h('p', 'cal__title');
+        title.setAttribute('aria-live', 'polite');
+        head.append(prev, title, next);
+        cal.appendChild(head);
+
+        var dow = h('div', 'cal__dow');
+        ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].forEach(function (d) { dow.appendChild(h('span', null, d)); });
+        cal.appendChild(dow);
+        var grid = h('div', 'cal__grid');
+        grid.setAttribute('role', 'grid');
+        cal.appendChild(grid);
+
+        /* --- the right side: quick picks + the chosen day --- */
+        var side = h('div', 'dateside');
+        side.appendChild(h('p', 'dateside__label', 'Quick picks'));
+        var chips = h('div', 'chips');
+        var nextMonday = addDays(today, ((8 - today.getDay()) % 7) || 7);
+        var oneMonth = new Date(today.getFullYear(), today.getMonth() + 1, today.getDate());
+        [['Today', today], ['Next Monday', nextMonday], ['In 2 weeks', addDays(today, 14)], ['In 1 month', oneMonth]].forEach(function (c) {
+            var chip = h('button', 'chip', c[0]);
+            chip.type = 'button';
+            chip.dataset.date = ymd(c[1]);
+            chip.addEventListener('click', function () { choose(ymd(c[1]), true); });
+            chips.appendChild(chip);
         });
-        field.append(label, input);
-        box.appendChild(field);
-        return { focus: function () { input.focus({ preventScroll: true }); } };
+        side.appendChild(chips);
+
+        var sum = h('div', 'daysum');
+        var sumDay = h('span', 'daysum__day');
+        var sumLine = h('span', 'daysum__line');
+        var sumNote = h('span', 'daysum__note');
+        var sumText = h('span', 'daysum__text');
+        sumText.append(sumLine, sumNote);
+        sum.append(sumDay, sumText);
+        side.appendChild(sum);
+
+        wrap.append(cal, side);
+        box.appendChild(wrap);
+
+        function paintSummary(animate) {
+            if (!picked) {
+                sum.classList.remove('is-set');
+                sumDay.textContent = '--';
+                sumLine.textContent = 'No date chosen yet';
+                sumNote.textContent = 'Pick a day on the calendar.';
+                return;
+            }
+            var d = fromYmd(picked);
+            var diff = Math.round((d - today) / 86400000);
+            sum.classList.add('is-set');
+            sumDay.textContent = String(d.getDate());
+            sumLine.textContent = WEEKDAYS[d.getDay()] + ', ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear();
+            sumNote.textContent = diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' : 'In ' + diff + ' days';
+            if (animate) replay(sum, 'bump');
+        }
+
+        function draw(dir) {
+            title.textContent = MONTHS[view.getMonth()] + ' ' + view.getFullYear();
+            prev.disabled = view.getFullYear() === today.getFullYear() && view.getMonth() <= today.getMonth();
+
+            grid.textContent = '';
+            var first = new Date(view.getFullYear(), view.getMonth(), 1);
+            var days = new Date(view.getFullYear(), view.getMonth() + 1, 0).getDate();
+            for (var i = 0; i < first.getDay(); i++) grid.appendChild(h('span', 'cal__blank'));
+            for (var n = 1; n <= days; n++) {
+                (function (day) {
+                    var date = new Date(view.getFullYear(), view.getMonth(), day);
+                    var key = ymd(date);
+                    var b = h('button', 'cal__day', String(day));
+                    b.type = 'button';
+                    b.dataset.date = key;
+                    b.setAttribute('aria-label', WEEKDAYS[date.getDay()] + ', ' + MONTHS[date.getMonth()] + ' ' + day + ', ' + date.getFullYear());
+                    b.style.setProperty('--n', day);
+                    if (key < todayStr) b.disabled = true;
+                    if (key === todayStr) b.classList.add('is-today');
+                    if (key === picked) { b.classList.add('is-selected'); b.setAttribute('aria-pressed', 'true'); }
+                    b.tabIndex = (picked ? key === picked : key === todayStr) ? 0 : -1;
+                    b.addEventListener('click', function () { choose(key, false); });
+                    grid.appendChild(b);
+                })(n);
+            }
+            // a month with no picked / today button: the first free day takes the tab stop
+            if (!grid.querySelector('.cal__day[tabindex="0"]')) {
+                var firstFree = grid.querySelector('.cal__day:not(:disabled)');
+                if (firstFree) firstFree.tabIndex = 0;
+            }
+            chips.querySelectorAll('.chip').forEach(function (c) { c.classList.toggle('is-on', c.dataset.date === picked); });
+            if (dir) replay(grid, dir > 0 ? 'cal__grid--next' : 'cal__grid--prev');
+        }
+
+        function choose(key, fromChip) {
+            picked = key;
+            answers[q.id] = key;
+            var d = fromYmd(key);
+            var target = new Date(d.getFullYear(), d.getMonth(), 1);
+            var dir = target > view ? 1 : target < view ? -1 : 0;   // which way the month slides
+            view = target;
+            draw(dir);
+            paintSummary(true);
+            var btn = grid.querySelector('.cal__day[data-date="' + key + '"]');
+            if (btn) { replay(btn, 'picked'); if (!fromChip) btn.focus({ preventScroll: true }); }
+            changed();
+        }
+
+        function go(delta) {
+            view = new Date(view.getFullYear(), view.getMonth() + delta, 1);
+            draw(delta);
+        }
+        prev.addEventListener('click', function () { if (!prev.disabled) go(-1); });
+        next.addEventListener('click', function () { go(1); });
+
+        // arrow keys move between days (a week up / down), Home / End jump to the start / end of the month
+        grid.addEventListener('keydown', function (e) {
+            var step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[e.key];
+            var cur = document.activeElement;
+            if (!cur || !cur.dataset || !cur.dataset.date) return;
+            if (step === undefined) return;
+            e.preventDefault();
+            var target = addDays(fromYmd(cur.dataset.date), step);
+            if (ymd(target) < todayStr) return;
+            if (target.getMonth() !== view.getMonth() || target.getFullYear() !== view.getFullYear()) {
+                view = new Date(target.getFullYear(), target.getMonth(), 1);
+                draw(step > 0 ? 1 : -1);
+            }
+            var btn = grid.querySelector('.cal__day[data-date="' + ymd(target) + '"]');
+            if (btn) { grid.querySelectorAll('.cal__day').forEach(function (x) { x.tabIndex = -1; }); btn.tabIndex = 0; btn.focus({ preventScroll: true }); }
+        });
+
+        draw(0);
+        paintSummary(false);
+        return { focus: function () { var t = grid.querySelector('.cal__day[tabindex="0"]'); if (t) t.focus({ preventScroll: true }); } };
     }
 
     function buildText(q, box) {
@@ -256,7 +410,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var area = h('textarea', 'textbox__input');
         area.id = 'answerInput';
         area.maxLength = max;
-        area.rows = 6;
+        area.rows = 4;
         area.placeholder = q.placeholder || '';
         area.value = answers[q.id] || '';
         area.setAttribute('aria-label', 'Your answer');
