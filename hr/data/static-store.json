@@ -358,7 +358,37 @@
             "status": "Pending",
             "result": null,
             "updated": "2026-10-07 13:37",
-            "archived_at": "2026-10-07 16:06:07"
+            "archived_at": null
+        },
+        {
+            "id": 137,
+            "name": "Cristina Mae Dalumay",
+            "email": "dalumay@gmail.com",
+            "contact": "098765432",
+            "status": "Pending",
+            "result": null,
+            "updated": "2026-10-08 10:23",
+            "archived_at": null
+        },
+        {
+            "id": 138,
+            "name": "Carlo S. Hilario",
+            "email": "carlohilario@gmail.com",
+            "contact": "09784783232",
+            "status": "Pending",
+            "result": null,
+            "updated": "2026-10-08 11:13",
+            "archived_at": "2026-10-08 11:50:49"
+        },
+        {
+            "id": 139,
+            "name": "Carlo Hilario",
+            "email": "carlohilario77@gmail.com",
+            "contact": "0974374673",
+            "status": "Pending",
+            "result": null,
+            "updated": "2026-10-08 12:18",
+            "archived_at": null
         }
     ],
     "submissions": [
@@ -443,6 +473,173 @@
                 "source": "recorded"
             },
             "submitted_at": "2026-10-08 08:29"
+        },
+        {
+            "reference": "SCR-2026-84898",
+            "applicant_id": null,
+            "email": "",
+            "answers": {
+                "q1": "Yes",
+                "q2": "Yes",
+                "q3": "Yes",
+                "q4": "Yes",
+                "q5": 5,
+                "q6": "2026-10-08",
+                "q7": "Yes",
+                "q7:follow": "Less than 1 week",
+                "q8": "Yes",
+                "q9": "Yes",
+                "q10": "Yes",
+                "q11": "Yes",
+                "q12": "xdfchijygfchbj.hyftchjuytrdxfchuyg\n",
+                "q13": true
+            },
+            "video": {
+                "name": "video_response.mp4",
+                "size": 3340556,
+                "seconds": 10,
+                "source": "recorded"
+            },
+            "submitted_at": "2026-10-08 10:29"
+        },
+        {
+            "reference": "SCR-2026-63060",
+            "applicant_id": null,
+            "email": "",
+            "answers": {
+                "q1": "Yes",
+                "q2": "Yes",
+                "q3": "Yes",
+                "q4": "Yes",
+                "q5": 3,
+                "q6": "2026-10-12",
+                "q7": "Yes",
+                "q7:follow": "1 to 2 months",
+                "q8": "Yes",
+                "q9": "Yes",
+                "q10": "Yes",
+                "q11": "Yes",
+                "q12": "hey u, are you there? hey you, turn off my humanity. please!",
+                "q13": true
+            },
+            "video": {
+                "name": "video_response.mp4",
+                "size": 3278091,
+                "seconds": 10,
+                "source": "recorded"
+            },
+            "submitted_at": "2026-10-08 11:19"
+        },
+        {
+            "reference": "SCR-2026-29738",
+            "applicant_id": null,
+            "email": "",
+            "answers": {
+                "q1": "Yes",
+                "q2": "Yes",
+                "q3": "Yes",
+                "q4": "Yes",
+                "q5": 5,
+                "q6": "2026-10-12",
+                "q7": "No",
+                "q8": "Yes",
+                "q9": "Yes",
+                "q10": "Yes",
+                "q11": "Yes",
+                "q12": "gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "q13": true
+            },
+            "video": {
+                "name": "video_response.mp4",
+                "size": 1467787,
+                "seconds": 4.5,
+                "source": "recorded"
+            },
+            "submitted_at": "2026-10-08 12:21"
+        },
+        {
+            "reference": "SCR-2026-32968",
+            "applicant_id": null,
+            "email": "",
+            "answers": {
+                "q1": "Yes",
+                "q2": "Yes",
+                "q3": "Yes",
+                "q4": "Yes",
+                "q5": 5,
+                "q6": "2026-10-09",
+                "q7": "Yes",
+                "q7:follow": "Less than 1 week",
+                "q8": "Yes",
+                "q9": "Yes",
+                "q10": "Yes",
+                "q11": "Yes",
+                "q12": "no.noliuhygfvbnmkloiuyhgbnm,.uytrdfghjoiuiyutyrtdfh\n\n",
+                "q13": true
+            },
+            "video": {
+                "name": "video_response.mp4",
+                "size": 1204562,
+                "seconds": 3.6,
+                "source": "recorded"
+            },
+            "submitted_at": "2026-10-09 09:08"
+        },
+        {
+            "reference": "SCR-2026-58491",
+            "applicant_id": null,
+            "email": "",
+            "answers": {
+                "q1": "Yes",
+                "q2": "Yes",
+                "q3": "Yes",
+                "q4": "Yes",
+                "q5": 5,
+                "q6": "2026-10-10",
+                "q7": "Yes",
+                "q7:follow": "Less than 1 week",
+                "q8": "Yes",
+                "q9": "Yes",
+                "q10": "Yes",
+                "q11": "Yes",
+                "q12": "awrestgrhdtgjfhk.hfgdsaetrytythyu.",
+                "q13": true
+            },
+            "video": {
+                "name": "video_response.mp4",
+                "size": 1071338,
+                "seconds": 3.1,
+                "source": "recorded"
+            },
+            "submitted_at": "2026-10-09 09:32"
+        },
+        {
+            "reference": "SCR-2026-41894",
+            "applicant_id": null,
+            "email": "",
+            "answers": {
+                "q1": "Yes",
+                "q2": "Yes",
+                "q3": "Yes",
+                "q4": "Yes",
+                "q5": 5,
+                "q6": "2026-10-23",
+                "q7": "Yes",
+                "q7:follow": "Less than 1 week",
+                "q8": "Yes",
+                "q9": "Yes",
+                "q10": "Yes",
+                "q11": "Yes",
+                "q12": "zsdfghjlgjfsdASfgh.,jhrwteyrtuykgthseawq",
+                "q13": true
+            },
+            "video": {
+                "name": "video_response.mp4",
+                "size": 3262800,
+                "seconds": 10,
+                "source": "recorded"
+            },
+            "submitted_at": "2026-10-09 10:08"
         }
     ]
 }

@@ -9,6 +9,10 @@ $requireVerification = true;      // TODO: keep true in production
 $nextPage = 'upload-video.php';   // the video step
 $backPage = 'instruction.php';    // "Previous" on the first question
 
+// Stepper (same as the other applicant pages): 0 = Verification, 1 = Instructions, 2 = Questionnaires, 3 = Video, 4 = Submit
+$currentStep = 2;
+$stepLabels  = ['Verification', 'Instructions', 'Questionnaires', 'Video', 'Submit'];
+
 // No caching, so the Back button never shows an old copy of the page
 header('Cache-Control: no-store, no-cache, must-revalidate');
 header('Pragma: no-cache');
@@ -53,54 +57,72 @@ $screening = [
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="../assets/css/applicant-common.css?v=<?= @filemtime(__DIR__ . '/../assets/css/applicant-common.css') ?>">
+    <link rel="stylesheet" href="../assets/css/stepper.css?v=<?= @filemtime(__DIR__ . '/../assets/css/stepper.css') ?>">
     <link rel="stylesheet" href="../assets/css/questionnaire.css?v=<?= @filemtime(__DIR__ . '/../assets/css/questionnaire.css') ?>">
 </head>
 <body>
 
 <main class="page stage">
 
-    <header class="topbar">
-        <img class="corner-logo reveal" style="--i:0" src="../pic/expertise.png" alt="Expertise">
+    <div class="wrap">
 
-        <!-- "3 of 13" -->
-        <p class="counter reveal reveal-right" style="--i:1" id="counter" aria-live="polite">
-            <span class="counter__now" id="counterNow">1</span> of <span id="counterTotal"><?= count($questions) ?></span>
-        </p>
-    </header>
+        <!-- Progress stepper: the dots pop in one by one and the lines draw between them -->
+        <ol class="stepper" aria-label="Screening progress">
+            <?php foreach ($stepLabels as $i => $label):
+                $state = $i < $currentStep ? 'is-done' : ($i === $currentStep ? 'is-current' : 'is-upcoming');
+            ?>
+                <li class="step reveal reveal-fade <?= $state ?>" style="--i:<?= 1 + $i * 1.2 ?>" <?= $i === $currentStep ? 'aria-current="step"' : '' ?>>
+                    <span class="step__dot">
+                        <?php if ($state === 'is-done'): ?>
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+                        <?php else: ?>
+                            <span class="step__pip"></span>
+                        <?php endif; ?>
+                    </span>
+                    <span class="step__label"><?= htmlspecialchars($label) ?></span>
+                </li>
+            <?php endforeach; ?>
+        </ol>
 
-    <form class="qcard reveal reveal-pop" style="--i:2" id="qForm" novalidate>
+        <form class="main qcard glass reveal" style="--i:5" id="qForm" novalidate>
 
-        <!-- Progress bar: fills as the applicant moves through the questions -->
-        <div class="progress" id="progress" role="progressbar" aria-label="Questionnaire progress" aria-valuemin="0" aria-valuemax="<?= count($questions) ?>" aria-valuenow="1">
-            <span class="progress__fill" id="progressFill"></span>
-        </div>
-
-        <!-- The current question is drawn here by questionnaire.js -->
-        <div class="qstage" id="qStage"></div>
-
-        <!-- One message at a time; the space is always reserved so nothing jumps -->
-        <div class="qerror-slot">
-            <div class="q-error" id="qError" role="alert" hidden>
-                <svg class="q-error__icon" viewBox="0 0 24 24" aria-hidden="true">
-                    <circle cx="12" cy="12" r="10" fill="currentColor"/>
-                    <path d="M12 7v6M12 16.5v.5" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
-                </svg>
-                <span id="qErrorText"></span>
+            <!-- Progress bar + "3 of 13": fills as the applicant moves through the questions -->
+            <div class="progressrow">
+                <div class="progress" id="progress" role="progressbar" aria-label="Questionnaire progress" aria-valuemin="0" aria-valuemax="<?= count($questions) ?>" aria-valuenow="1">
+                    <span class="progress__fill" id="progressFill"></span>
+                </div>
+                <p class="counter" id="counter" aria-live="polite">
+                    <span class="counter__now" id="counterNow">1</span> of <span id="counterTotal"><?= count($questions) ?></span>
+                </p>
             </div>
-        </div>
 
-        <div class="qnav">
-            <button type="button" class="qbtn qbtn--prev" id="prevBtn">
-                <span class="qbtn__arrow" aria-hidden="true">&larr;</span>
-                <span class="qbtn__label">Previous</span>
-            </button>
-            <button type="submit" class="qbtn qbtn--next" id="nextBtn">
-                <span class="qbtn__label">Next</span>
-                <span class="qbtn__arrow" aria-hidden="true">&rarr;</span>
-            </button>
-        </div>
-    </form>
+            <!-- The current question is drawn here by questionnaire.js -->
+            <div class="qstage" id="qStage"></div>
 
+            <!-- One message at a time; the space is always reserved so nothing jumps -->
+            <div class="qerror-slot">
+                <div class="q-error" id="qError" role="alert" hidden>
+                    <svg class="q-error__icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10" fill="currentColor"/>
+                        <path d="M12 7v6M12 16.5v.5" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
+                    </svg>
+                    <span id="qErrorText"></span>
+                </div>
+            </div>
+
+            <div class="qnav">
+                <button type="button" class="btn btn--ghost qbtn qbtn--prev" id="prevBtn">
+                    <span class="qbtn__arrow" aria-hidden="true">&larr;</span>
+                    <span class="qbtn__label">Previous</span>
+                </button>
+                <button type="submit" class="btn btn--primary qbtn qbtn--next" id="nextBtn">
+                    <span class="qbtn__label">Next</span>
+                    <span class="qbtn__arrow" aria-hidden="true">&rarr;</span>
+                </button>
+            </div>
+        </form>
+
+    </div>
 </main>
 
 <script>

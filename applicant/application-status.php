@@ -42,8 +42,7 @@ $reference = htmlspecialchars((string) ($_SESSION['screening_reference'] ?? stat
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="../assets/css/applicant-common.css?v=<?= @filemtime(__DIR__ . '/../assets/css/applicant-common.css') ?>">
-    <link rel="stylesheet" href="../assets/css/stepper.css?v=<?= @filemtime(__DIR__ . '/../assets/css/stepper.css') ?>">
-    <link rel="stylesheet" href="../assets/css/application-status.css?v=<?= @filemtime(__DIR__ . '/../assets/css/application-status.css') ?>">
+    <link rel="stylesheet" href="../assets/css/applicant-status.css?v=<?= @filemtime(__DIR__ . '/../assets/css/applicant-status.css') ?>">
 </head>
 <body>
 
@@ -55,7 +54,7 @@ $reference = htmlspecialchars((string) ($_SESSION['screening_reference'] ?? stat
 
         <!-- The big green tick: it pops in, then draws itself -->
         <span class="badge reveal reveal-pop" style="--i:1" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+            <svg viewBox="0 0 24 24" width="64" height="64"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
         </span>
 
         <h1 class="status__title reveal" style="--i:2">Screening Submitted</h1>
@@ -71,7 +70,7 @@ $reference = htmlspecialchars((string) ($_SESSION['screening_reference'] ?? stat
                 <li class="step reveal reveal-fade <?= $state ?>" style="--i:<?= 4 + $i * 1.2 ?>" <?= $i === $currentStep ? 'aria-current="step"' : '' ?>>
                     <span class="step__dot">
                         <?php if ($state === 'is-done'): ?>
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+                            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
                         <?php else: ?>
                             <span class="step__pip"></span>
                         <?php endif; ?>

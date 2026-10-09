@@ -49,7 +49,7 @@ function static_video_rules(): array
 {
     return [
         'max_seconds' => 10,                 // the video only needs to be 10 seconds
-        'max_mb'      => 100,
+        'max_mb'      => 50,                 // one video, 50 MB at most
         'formats'     => ['mp4', 'mov']
     ];
 }

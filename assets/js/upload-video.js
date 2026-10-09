@@ -18,9 +18,9 @@
    ========================================================================== */
 document.addEventListener('DOMContentLoaded', function () {
     var cfg = window.SCREENING || {};
-    var rules = cfg.video || { max_seconds: 10, max_mb: 100, formats: ['mp4', 'mov'] };
+    var rules = cfg.video || { max_seconds: 10, max_mb: 50, formats: ['mp4', 'mov'] };
     var MAX_SEC = Number(rules.max_seconds) || 10;
-    var MAX_BYTES = (Number(rules.max_mb) || 100) * 1024 * 1024;
+    var MAX_BYTES = (Number(rules.max_mb) || 50) * 1024 * 1024;
     var FORMATS = (rules.formats || ['mp4', 'mov']).map(function (f) { return String(f).toLowerCase(); });
     var FORMATS_TEXT = FORMATS.map(function (f) { return f.toUpperCase(); }).join(' or ');
     var SECONDS_SLACK = 0.6;            // a clip of 10.4 s is still "10 seconds"
@@ -45,6 +45,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var input = $('videoInput');
     var browseBtn = $('browseBtn');
     var recordBtn = $('recordBtn');
+    var dropTitle = $('dropTitle');
     var vmsg = $('vmsg');
     var vError = $('vError');
     var vErrorText = $('vErrorText');
@@ -57,7 +58,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var filePct = $('filePct');
     var fileState = $('fileState');
     var removeBtn = $('removeBtn');
-    var reselectBtn = $('reselectBtn');
+    var reselectBtn = $('reselectBtn');         // no longer in the page (one video only); kept so older markup still works
     var submitBtn = $('submitBtn');
     var submitLabel = submitBtn.querySelector('.submit__label');
     var submitText = submitLabel.textContent;
@@ -154,10 +155,26 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // ONE video only. While a video is there, nothing else can be added (browse, drop or record):
+    // the applicant has to press Remove first.
+    var FULL_TEXT = 'You can only upload one video. Remove your current video first if you want to add a different one.';
+    var dropTitleText = dropTitle.textContent;
+
+    function syncFull() {
+        var full = !!state.file;
+        dropzone.classList.toggle('is-full', full);
+        input.disabled = full;
+        browseBtn.setAttribute('aria-disabled', String(full));
+        browseBtn.tabIndex = full ? -1 : 0;
+        recordBtn.disabled = full;
+        dropTitle.textContent = full ? 'Your video is added' : dropTitleText;
+    }
+
     async function choose(file, opts) {
         opts = opts || {};
         if (submitting) return;
         hideMsg();
+        if (state.file) { showMsg(FULL_TEXT); return; }
 
         var problem = checkFile(file, opts.recorded);
         if (problem) { showMsg(problem); return; }
@@ -172,7 +189,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        // accepted: it replaces any earlier video
+        // accepted (there is no earlier video: that was checked at the top)
         stopUpload();
         if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
         state = {
@@ -192,6 +209,7 @@ document.addEventListener('DOMContentLoaded', function () {
         fileCard.classList.remove('is-leaving', 'is-locked');
         fileCard.hidden = false;
         replay(fileCard, 'is-in');
+        syncFull();
         startUpload();
     }
 
@@ -290,6 +308,7 @@ document.addEventListener('DOMContentLoaded', function () {
         hideMsg();
         if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
         state = { file: null, seconds: null, source: 'upload', status: 'idle', url: '', previewUrl: '' };
+        syncFull();
         submitBtn.disabled = true;
         submitBtn.classList.remove('is-ready');
         fileCard.classList.add('is-leaving');
@@ -302,16 +321,25 @@ document.addEventListener('DOMContentLoaded', function () {
 
     /* ---------- picking a file: browse, drag and drop ---------- */
     input.addEventListener('change', function () {
-        var file = input.files && input.files[0];
+        var files = input.files;
+        var file = files && files[0];
         input.value = '';                    // so the same file can be picked again
+        if (files && files.length > 1) { showMsg('Please choose one video only.'); return; }
         if (file) choose(file);
     });
 
-    [browseBtn, reselectBtn].forEach(function (label) {
+    [browseBtn, reselectBtn].filter(Boolean).forEach(function (label) {
         label.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (!submitting) input.click(); }
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                if (state.file) { showMsg(FULL_TEXT); return; }
+                if (!submitting) input.click();
+            }
         });
-        label.addEventListener('click', function (e) { if (submitting) e.preventDefault(); });
+        label.addEventListener('click', function (e) {
+            if (submitting) { e.preventDefault(); return; }
+            if (state.file) { e.preventDefault(); showMsg(FULL_TEXT); }     // one video only
+        });
     });
 
     var dragDepth = 0;
@@ -440,6 +468,7 @@ document.addEventListener('DOMContentLoaded', function () {
     async function openRecorder() {
         if (submitting) return;
         hideMsg();
+        if (state.file) { showMsg(FULL_TEXT); return; }
         if (!await openCamera()) return;
         pickPanel.hidden = true;
         recorder.hidden = false;

@@ -15,9 +15,9 @@ $backPage = 'questionnaire.php';
 $simulateUpload = true;           // TODO: set to false when the backend upload exists
 $uploadUrl      = '../api/upload-file.php';
 
-// Stepper: 0 = Questionnaires, 1 = Videos, 2 = Submit
-$currentStep = 1;
-$stepLabels  = ['Questionnaires', 'Videos', 'Submit'];
+// Stepper (same as the other applicant pages): 0 = Verification, 1 = Instructions, 2 = Questionnaires, 3 = Video, 4 = Submit
+$currentStep = 3;
+$stepLabels  = ['Verification', 'Instructions', 'Questionnaires', 'Video', 'Submit'];
 
 // No caching, so the Back button never shows an old copy of the page
 header('Cache-Control: no-store, no-cache, must-revalidate');
@@ -80,7 +80,7 @@ $screening = [
             <?php foreach ($stepLabels as $i => $label):
                 $state = $i < $currentStep ? 'is-done' : ($i === $currentStep ? 'is-current' : 'is-upcoming');
             ?>
-                <li class="step reveal reveal-fade <?= $state ?>" style="--i:<?= $i * 1.2 ?>" <?= $i === $currentStep ? 'aria-current="step"' : '' ?>>
+                <li class="step reveal reveal-fade <?= $state ?>" style="--i:<?= 1 + $i * 1.2 ?>" <?= $i === $currentStep ? 'aria-current="step"' : '' ?>>
                     <span class="step__dot">
                         <?php if ($state === 'is-done'): ?>
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
@@ -93,21 +93,21 @@ $screening = [
             <?php endforeach; ?>
         </ol>
 
-        <div class="main">
+        <div class="main glass reveal" style="--i:5">
 
             <section class="intro">
-                <h1 class="intro__title reveal" style="--i:4">Video Response</h1>
-                <p class="intro__text reveal" style="--i:5">
-                    Upload your completed video response, or record it right here with your camera.
+                <h1 class="intro__title">Video Response</h1>
+                <p class="intro__text">
+                    Upload your completed video response, or record it right here with your camera. You can add one video only.
                 </p>
-                <p class="tenbadge reveal reveal-pop" style="--i:5.5">
+                <p class="tenbadge">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4.5l3 1.8M9.5 3h5"/></svg>
                     Only <?= (int) $video['max_seconds'] ?> seconds needed. No longer video is required.
                 </p>
             </section>
 
             <!-- Drop zone: drag a video in, browse for one, or record it with the camera -->
-            <section class="dropzone reveal" style="--i:6" id="dropzone" aria-label="Add your video">
+            <section class="dropzone" id="dropzone" aria-label="Add your video">
 
                 <!-- state 1: pick or drop a file -->
                 <div class="dropzone__pick" id="pickPanel">
@@ -118,8 +118,8 @@ $screening = [
                     <p class="dropzone__title" id="dropTitle">Drag and drop your video here</p>
                     <p class="dropzone__or">or</p>
                     <div class="dropzone__buttons">
-                        <label class="vbtn vbtn--solid" for="videoInput" id="browseBtn" tabindex="0" role="button">Browse Files</label>
-                        <button type="button" class="vbtn vbtn--outline" id="recordBtn" hidden>
+                        <label class="btn btn--primary" for="videoInput" id="browseBtn" tabindex="0" role="button">Browse Files</label>
+                        <button type="button" class="btn btn--outline" id="recordBtn" hidden>
                             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/></svg>
                             Record Video
                         </button>
@@ -139,19 +139,20 @@ $screening = [
                         <p class="recorder__title" id="recTitle">Check your camera</p>
                         <p class="recorder__text" id="recText">Face the camera in good light. Your video is <?= (int) $video['max_seconds'] ?> seconds long.</p>
                         <div class="recorder__actions" id="recActions">
-                            <button type="button" class="vbtn vbtn--solid" id="recStart">Start Recording</button>
-                            <button type="button" class="vbtn vbtn--stop" id="recStop" hidden>Stop</button>
-                            <button type="button" class="vbtn vbtn--solid" id="recUse" hidden>Use This Video</button>
-                            <button type="button" class="vbtn vbtn--ghost" id="recRetake" hidden>Retake</button>
-                            <button type="button" class="vbtn vbtn--ghost" id="recCancel">Cancel</button>
+                            <button type="button" class="btn btn--primary" id="recStart">Start Recording</button>
+                            <button type="button" class="btn btn--dark" id="recStop" hidden>Stop</button>
+                            <button type="button" class="btn btn--primary" id="recUse" hidden>Use This Video</button>
+                            <button type="button" class="btn btn--ghost" id="recRetake" hidden>Retake</button>
+                            <button type="button" class="btn btn--ghost" id="recCancel">Cancel</button>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <p class="rules reveal" style="--i:7">
+            <p class="rules">
                 <span>Supported formats: <?= htmlspecialchars($formatsText) ?></span>
                 <span>Max file size: <?= (int) $video['max_mb'] ?>MB</span>
+                <span>1 video only</span>
                 <span>Video length: <?= (int) $video['max_seconds'] ?> seconds</span>
             </p>
 
@@ -185,13 +186,12 @@ $screening = [
                     </div>
                     <div class="filecard__actions">
                         <button type="button" class="link link--plain" id="removeBtn">Remove</button>
-                        <label class="link link--red" for="videoInput" id="reselectBtn" tabindex="0" role="button">Re-select</label>
                         <span class="filecard__state" id="fileState"></span>
                     </div>
                 </div>
             </section>
 
-            <button type="button" class="submit reveal" style="--i:8" id="submitBtn" disabled>
+            <button type="button" class="btn btn--primary submit" id="submitBtn" disabled>
                 <span class="submit__label">Submit Video</span>
                 <span class="submit__arrow" aria-hidden="true">&rarr;</span>
             </button>

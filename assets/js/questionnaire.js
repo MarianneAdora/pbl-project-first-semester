@@ -7,7 +7,7 @@
    questionnaire.php prints from static-data.php (later: the database). To change a question,
    its type or its choices, change the data, not this file.
 
-   Question types:  yesno | yesno_select (Yes/No + a follow-up list) | scale | date (calendar) | text | consent
+   Question types:  yesno | yesno_select (Yes/No + a follow-up list) | scale (circles) | date (calendar) | text | consent
    ========================================================================== */
 document.addEventListener('DOMContentLoaded', function () {
     var cfg = window.SCREENING || { questions: [] };
@@ -107,6 +107,127 @@ document.addEventListener('DOMContentLoaded', function () {
         items.forEach(function (b) { b.tabIndex = (checked ? b === checked : b === items[0]) ? 0 : -1; });
     }
 
+    /* ---------- dropdown (a styled list instead of the browser's own select) ----------
+       options: ['A', 'B']   value: '' or one of them   onChange(value)
+       Keyboard: Enter / Space / arrows open it, arrows move, Enter picks, Esc closes.              */
+    var CHEVRON_DOWN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
+    var dropdownCount = 0;
+
+    function buildDropdown(opts) {
+        var id = 'dd' + (++dropdownCount);
+        var value = opts.value || '';
+        var activeIndex = -1;
+
+        var root = h('div', 'dropdown');
+        var btn = h('button', 'dropdown__btn');
+        btn.type = 'button';
+        btn.id = id + 'Btn';
+        btn.setAttribute('aria-haspopup', 'listbox');
+        btn.setAttribute('aria-expanded', 'false');
+        btn.setAttribute('aria-controls', id + 'List');
+        if (opts.labelId) btn.setAttribute('aria-labelledby', opts.labelId + ' ' + btn.id);
+        var current = h('span', 'dropdown__value');
+        var chevron = h('span', 'dropdown__chevron');
+        chevron.innerHTML = CHEVRON_DOWN;
+        btn.append(current, chevron);
+
+        var list = h('ul', 'dropdown__list');
+        list.id = id + 'List';
+        list.setAttribute('role', 'listbox');
+        list.tabIndex = -1;
+        list.hidden = true;
+
+        var items = (opts.options || []).map(function (text, n) {
+            var li = h('li', 'dropdown__item');
+            li.id = id + 'Opt' + n;
+            li.setAttribute('role', 'option');
+            li.dataset.value = text;
+            li.style.setProperty('--n', n);
+            li.innerHTML = '<span class="dropdown__text"></span><span class="dropdown__tick">' + TICK + '</span>';
+            li.querySelector('.dropdown__text').textContent = text;
+            li.addEventListener('mousemove', function () { setActive(n, false); });
+            li.addEventListener('click', function () { pick(n); });
+            list.appendChild(li);
+            return li;
+        });
+
+        root.append(btn, list);
+
+        function paint() {
+            current.textContent = value || opts.placeholder || 'Choose one';
+            root.classList.toggle('has-value', !!value);
+            items.forEach(function (li) {
+                var on = li.dataset.value === value;
+                li.setAttribute('aria-selected', String(on));
+                li.classList.toggle('is-selected', on);
+            });
+        }
+
+        function setActive(n, scroll) {
+            activeIndex = Math.max(0, Math.min(items.length - 1, n));
+            items.forEach(function (li, k) { li.classList.toggle('is-active', k === activeIndex); });
+            btn.setAttribute('aria-activedescendant', items[activeIndex] ? items[activeIndex].id : '');
+            if (scroll && items[activeIndex]) items[activeIndex].scrollIntoView({ block: 'nearest' });
+        }
+
+        function isOpen() { return !list.hidden; }
+
+        function open() {
+            if (isOpen() || !items.length) return;
+            // not enough room below: the list opens upwards
+            var room = window.innerHeight - btn.getBoundingClientRect().bottom;
+            root.classList.toggle('is-up', room < list.scrollHeight + 40 && btn.getBoundingClientRect().top > room);
+            list.hidden = false;
+            root.classList.add('is-open');
+            btn.setAttribute('aria-expanded', 'true');
+            var sel = items.findIndex(function (li) { return li.dataset.value === value; });
+            setActive(sel === -1 ? 0 : sel, true);
+            replay(list, 'dropdown__list--in');
+        }
+
+        function close(refocus) {
+            if (!isOpen()) return;
+            list.hidden = true;
+            root.classList.remove('is-open');
+            btn.setAttribute('aria-expanded', 'false');
+            btn.removeAttribute('aria-activedescendant');
+            if (refocus) btn.focus({ preventScroll: true });
+        }
+
+        function pick(n) {
+            var chosen = items[n].dataset.value;
+            var changedNow = chosen !== value;
+            value = chosen;
+            paint();
+            close(true);
+            replay(btn, 'picked');
+            if (changedNow) opts.onChange(value);
+        }
+
+        btn.addEventListener('click', function () { isOpen() ? close(false) : open(); });
+        btn.addEventListener('keydown', function (e) {
+            var k = e.key;
+            if (!isOpen()) {
+                if (k === 'ArrowDown' || k === 'ArrowUp') { e.preventDefault(); open(); }
+                return;
+            }
+            if (k === 'ArrowDown') { e.preventDefault(); setActive(activeIndex + 1, true); }
+            else if (k === 'ArrowUp') { e.preventDefault(); setActive(activeIndex - 1, true); }
+            else if (k === 'Home') { e.preventDefault(); setActive(0, true); }
+            else if (k === 'End') { e.preventDefault(); setActive(items.length - 1, true); }
+            else if (k === 'Enter' || k === ' ') { e.preventDefault(); pick(activeIndex); }
+            else if (k === 'Escape') { e.preventDefault(); e.stopPropagation(); close(true); }
+            else if (k === 'Tab') { close(false); }
+        });
+        // clicking anywhere else closes it
+        document.addEventListener('pointerdown', function (e) {
+            if (isOpen() && !root.contains(e.target)) close(false);
+        });
+
+        paint();
+        return { el: root, close: function () { close(false); }, focus: function () { btn.focus({ preventScroll: true }); } };
+    }
+
     function buildYesNo(q, box) {
         var group = h('div', 'choices');
         group.setAttribute('role', 'radiogroup');
@@ -117,7 +238,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
         function sync() {
             var v = answers[q.id];
-            if (follow) follow.wrap.classList.toggle('open', !!(q.followup && v === q.followup.when));
+            if (follow) {
+                var open = !!(q.followup && v === q.followup.when);
+                follow.wrap.classList.toggle('open', open);
+                clearTimeout(follow.timer);
+                if (open) {
+                    // the list may only hang out of the box once the box has finished unfolding
+                    follow.timer = setTimeout(function () { follow.wrap.classList.add('settled'); }, reduceMotion ? 0 : 480);
+                } else {
+                    follow.wrap.classList.remove('settled');
+                    follow.dropdown.close();
+                }
+            }
             if (note) note.classList.toggle('open', !!(q.no_note && v === 'No'));
         }
 
@@ -149,27 +281,22 @@ document.addEventListener('DOMContentLoaded', function () {
         if (q.followup) {
             var wrap = h('div', 'followup');
             var inner = h('div', 'followup__inner');
-            var label = h('label', 'followup__label', q.followup.label);
-            label.htmlFor = 'followSelect';
-            var select = h('select', 'select');
-            select.id = 'followSelect';
-            var blank = h('option', null, 'Choose one');
-            blank.value = '';
-            select.appendChild(blank);
-            (q.followup.options || []).forEach(function (opt) {
-                var o = h('option', null, opt);
-                o.value = opt;
-                select.appendChild(o);
+            var label = h('span', 'followup__label', q.followup.label);
+            label.id = 'followLabel';
+            var dd = buildDropdown({
+                labelId: 'followLabel',
+                placeholder: 'Choose one',
+                options: q.followup.options || [],
+                value: answers[q.id + ':follow'] || '',
+                onChange: function (value) {
+                    answers[q.id + ':follow'] = value;
+                    changed();
+                }
             });
-            select.value = answers[q.id + ':follow'] || '';
-            select.addEventListener('change', function () {
-                answers[q.id + ':follow'] = select.value;
-                changed();
-            });
-            inner.append(label, select);
+            inner.append(label, dd.el);
             wrap.appendChild(inner);
             box.appendChild(wrap);
-            follow = { wrap: wrap, select: select };
+            follow = { wrap: wrap, dropdown: dd };
         }
 
         // optional gentle reminder when the answer is "No" (text comes from the data)
@@ -183,6 +310,10 @@ document.addEventListener('DOMContentLoaded', function () {
         return { focus: function () { (buttons.filter(function (b) { return b.tabIndex === 0; })[0] || buttons[0]).focus({ preventScroll: true }); } };
     }
 
+    /* ---------- rating: circles joined by a line ----------
+       hover   -> preview (the line and the circles up to the pointer light up)
+       click   -> the line grows to the chosen circle, the ones before it turn red, the chosen one pops
+       keys    -> 1..max choose, arrows move                                                        */
     function buildScale(q, box) {
         var max = q.max || 5;
         var group = h('div', 'scale');
@@ -190,42 +321,65 @@ document.addEventListener('DOMContentLoaded', function () {
         group.setAttribute('role', 'radiogroup');
         group.setAttribute('aria-label', 'Rating from 1 to ' + max);
 
-        function paint() {
+        var rail = h('span', 'scale__rail');
+        rail.setAttribute('aria-hidden', 'true');
+        rail.innerHTML = '<i class="pv"></i><i class="fill"></i>';
+        group.appendChild(rail);
+
+        var dots = [];
+        var readout = h('span', 'scale__readout');
+        readout.setAttribute('aria-live', 'polite');
+
+        function frac(n) { return max > 1 ? Math.max(0, (n - 1) / (max - 1)) : 0; }
+
+        function paint(animateReadout) {
             var v = Number(answers[q.id]) || 0;
+            group.style.setProperty('--fill', frac(v).toFixed(4));
             dots.forEach(function (d, i) {
-                d.classList.toggle('is-on', i + 1 <= v);
+                d.classList.toggle('is-on', i + 1 === v);
+                d.classList.toggle('is-reached', v > 0 && i + 1 < v);
                 d.setAttribute('aria-checked', String(i + 1 === v));
             });
             setRoving(dots);
+            readout.classList.toggle('has-value', v > 0);
+            readout.textContent = v > 0 ? v + ' / ' + max : '';
+            if (v > 0 && animateReadout) replay(readout, 'tick');
         }
 
-        var dots = [];
+        function preview(n) {
+            group.style.setProperty('--pv', frac(n).toFixed(4));
+            dots.forEach(function (d, i) { d.classList.toggle('is-preview', n > 0 && i + 1 <= n && i + 1 !== (Number(answers[q.id]) || 0)); });
+        }
+
         for (var i = 1; i <= max; i++) {
             (function (n) {
                 var d = h('button', 'scale__dot', String(n));
                 d.type = 'button';
                 d.setAttribute('role', 'radio');
+                d.setAttribute('aria-label', n + ' out of ' + max);
                 d.style.setProperty('--n', n - 1);
                 d.addEventListener('click', function () {
-                    var before = Number(answers[q.id]) || 0;
                     answers[q.id] = n;
-                    // the dots fill from the left (or empty from the right) one after another
-                    dots.forEach(function (x, k) { x.style.setProperty('--d', Math.abs(k + 1 - (before || 0)) ); });
-                    paint();
+                    preview(0);
+                    paint(true);
                     replay(d, 'picked');
                     changed();
                 });
+                d.addEventListener('pointerenter', function () { preview(n); });
+                d.addEventListener('focus', function () { preview(n); });
+                d.addEventListener('blur', function () { preview(0); });
                 dots.push(d);
                 group.appendChild(d);
             })(i);
         }
-        paint();
+        group.addEventListener('pointerleave', function () { preview(0); });
+        paint(false);
         radioKeys(group, dots);
         box.appendChild(group);
 
         var labels = h('div', 'scale__labels');
         var l = (q.labels || []);
-        labels.append(h('span', null, l[0] || ''), h('span', null, l[1] || ''));
+        labels.append(h('span', null, l[0] || ''), readout, h('span', null, l[1] || ''));
         box.appendChild(labels);
 
         return { focus: function () { (dots.filter(function (b) { return b.tabIndex === 0; })[0] || dots[0]).focus({ preventScroll: true }); } };
@@ -431,28 +585,70 @@ document.addEventListener('DOMContentLoaded', function () {
         return { focus: function () { area.focus({ preventScroll: true }); } };
     }
 
+    var SHIELD = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6z"/><path d="M9 12l2.2 2.2L15.5 10"/></svg>';
+
     function buildConsent(q, box) {
+        var wrap = h('div', 'consent');
+
+        /* the notice: icon + title, the text (scrolls), a line that fills while it is read */
+        var card = h('div', 'consent__card');
+        var head = h('div', 'consent__head');
+        var shield = h('span', 'consent__shield');
+        shield.innerHTML = SHIELD;
+        var heading = h('div');
+        heading.append(h('p', 'consent__title', 'Data Privacy Notice'), h('p', 'consent__sub', 'Please read this before you continue'));
+        var read = h('span', 'consent__read');
+        read.setAttribute('aria-hidden', 'true');
+        head.append(shield, heading, read);
+
+        var scroller = h('div', 'consent__scroll');
         var body = h('div', 'consent__body');
         body.tabIndex = 0;                                   // so the text can be scrolled with the keyboard
         body.setAttribute('role', 'region');
         body.setAttribute('aria-label', 'Data protection statement');
         (q.body || []).forEach(function (p) { body.appendChild(h('p', null, p)); });
-        box.appendChild(body);
+        var fade = h('div', 'consent__fade', 'Scroll for more');
+        fade.setAttribute('aria-hidden', 'true');
+        scroller.append(body, fade);
+        card.append(head, scroller);
+        wrap.appendChild(card);
 
-        var label = h('label', 'check');
-        var input = h('input');
+        function measure() {
+            var room = body.scrollHeight - body.clientHeight;
+            var pos = room > 2 ? body.scrollTop / room : 1;
+            card.style.setProperty('--read', Math.min(1, Math.max(0, pos)).toFixed(3));
+            read.style.setProperty('--read', Math.min(1, Math.max(0, pos)).toFixed(3));
+            scroller.classList.toggle('no-scroll', room <= 2);
+            scroller.classList.toggle('is-end', room > 2 && body.scrollTop >= room - 4);
+        }
+        body.addEventListener('scroll', measure, { passive: true });
+        window.addEventListener('resize', measure);
+        setTimeout(measure, 60);
+
+        /* the big "I agree" tile */
+        var label = h('label', 'agree');
+        var input = h('input', 'agree__input');
         input.type = 'checkbox';
-        input.className = 'check__input';
         input.checked = answers[q.id] === true;
-        var mark = h('span', 'check__box');
+        var mark = h('span', 'agree__box');
         mark.innerHTML = TICK;
-        label.append(input, mark, h('span', 'check__text', q.checkbox || 'I agree'));
+        var badge = h('span', 'agree__badge');
+
+        function paintAgree() {
+            label.classList.toggle('is-on', input.checked);
+            badge.textContent = input.checked ? 'Agreed' : 'Required';
+        }
         input.addEventListener('change', function () {
             answers[q.id] = input.checked;
+            paintAgree();
             if (input.checked) replay(mark, 'picked');
             changed();
         });
-        box.appendChild(label);
+        paintAgree();
+        label.append(input, mark, h('span', 'agree__text', q.checkbox || 'I agree'), badge);
+        wrap.appendChild(label);
+
+        box.appendChild(wrap);
         return { focus: function () { input.focus({ preventScroll: true }); } };
     }
 
@@ -508,16 +704,19 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        // one calm step: the old question leaves, then the new one comes in (they never overlap)
         busy = true;
         outgoing.classList.add(dir > 0 ? 'q--out-left' : 'q--out-right');
-        incoming.classList.add(dir > 0 ? 'q--in-right' : 'q--in-left');
-        stage.appendChild(incoming);
         setTimeout(function () {
-            outgoing.remove();
-            incoming.classList.remove('q--in-right', 'q--in-left');
-            busy = false;
-            incoming._focus();
-        }, 460);
+            stage.textContent = '';
+            incoming.classList.add(dir > 0 ? 'q--in-right' : 'q--in-left');
+            stage.appendChild(incoming);
+            setTimeout(function () {
+                incoming.classList.remove('q--in-right', 'q--in-left');
+                busy = false;
+                incoming._focus();
+            }, 400);
+        }, 230);
     }
 
     /* ---------- Next / Previous ---------- */
@@ -559,13 +758,18 @@ document.addEventListener('DOMContentLoaded', function () {
     document.addEventListener('keydown', function (e) {
         if (e.ctrlKey || e.metaKey || e.altKey) return;
         var t = e.target;
-        var typing = t && (t.tagName === 'TEXTAREA' || t.tagName === 'INPUT' || t.tagName === 'SELECT');
+        var typing = t && (t.tagName === 'TEXTAREA' || t.tagName === 'INPUT' || t.tagName === 'SELECT' || (t.closest && t.closest('.dropdown')));
         if (typing) return;
         var q = questions[index];
         if ((q.type === 'yesno' || q.type === 'yesno_select') && (e.key === 'y' || e.key === 'Y' || e.key === 'n' || e.key === 'N')) {
             var want = e.key.toLowerCase() === 'y' ? 'Yes' : 'No';
             var btn = stage.querySelector('.choice[data-value="' + want + '"]');
             if (btn) { btn.focus({ preventScroll: true }); btn.click(); }
+        }
+        // rating: press 1 .. 5 to choose
+        if (q.type === 'scale' && /^[0-9]$/.test(e.key)) {
+            var dot = stage.querySelectorAll('.scale__dot')[Number(e.key) - 1];
+            if (dot) { dot.focus({ preventScroll: true }); dot.click(); }
         }
     });
 

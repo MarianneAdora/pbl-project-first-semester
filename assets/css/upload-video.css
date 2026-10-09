@@ -1,51 +1,55 @@
 /* ==========================================================================
    Video Response (upload or record)
-   Base, background and entrance animation come from applicant-common.css; the stepper comes
-   from stepper.css. Layout follows the wireframe: stepper on top, title, a big drop zone, the
-   formats line, the chosen video, then the red Submit Video button.
+   Base, glass card and buttons come from applicant-common.css; the stepper comes from stepper.css.
+   Same look as the questionnaire: the page sits in the MIDDLE of the window, the stepper on top and
+   ONE glass card with the title, the drop zone, the rules, the chosen video and Submit Video.
    ========================================================================== */
 
 :root {
-    --shift-left: var(--corner-left);      /* the stepper lines up with the logo on the other pages */
-    --zone-bg: rgba(222, 222, 224, 0.72);
-    --zone-edge: #9a9a9a;
+    --zone-bg: rgba(255, 255, 255, 0.5);
+    --zone-edge: rgba(110, 110, 122, 0.55);
 }
 
-/* ===== Layout ===== */
+/* ===== Layout: everything in the middle of the page ===== */
 .page {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1.5rem 2rem;
+    padding: 12.5rem 2rem 2rem;            /* room on top for the stepper (same height as the instructions page) */
 }
 
-/* one white card in the middle holds the stepper and everything else */
 .wrap {
     width: 100%;
-    max-width: 58rem;
+    max-width: 66rem;
     display: flex;
     flex-direction: column;
-    gap: clamp(0.9rem, 2.4vh, 1.8rem);
-    padding: 2rem 3rem 2.2rem;
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid rgba(255, 255, 255, 0.9);
-    border-radius: 1.5rem;
-    box-shadow: 0 1.2rem 3.2rem rgba(30, 30, 40, 0.12), 0 0.2rem 0.6rem rgba(30, 30, 40, 0.06);
+    align-items: center;
+    gap: clamp(1rem, 3vh, 2rem);
 }
 
-.wrap .stepper {
-    max-width: 34rem;
-    margin: 0 auto;
+/* the stepper stays top left, in the same place as on the instructions page */
+.wrap > .stepper {
+    position: absolute;
+    top: 6rem;                              /* the same height as on the instructions page */
+    left: var(--corner-left);
+    width: 42rem;
+    max-width: calc(100vw - 2 * var(--corner-left));
 }
 
+/* the glass card */
 .main {
+    width: 100%;
     display: flex;
     flex-direction: column;
-    gap: clamp(0.8rem, 2vh, 1.3rem);
+    gap: clamp(0.7rem, 1.8vh, 1.1rem);
+    padding: 2.2rem 3.4rem 2.4rem;
 }
 
 /* ===== Intro ===== */
 .intro {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     text-align: center;
 }
 
@@ -53,10 +57,11 @@
     font-size: 2.2rem;
     font-weight: 700;
     line-height: 1.2;
-    margin-bottom: 0.4rem;
+    margin-bottom: 0.35rem;
 }
 
 .intro__text {
+    max-width: 36rem;
     font-size: 1.1rem;
     color: var(--text-muted);
 }
@@ -72,9 +77,9 @@
     align-items: center;
     gap: 0.55rem;
     width: fit-content;
-    margin: 0.9rem auto 0;
+    margin: 0.8rem 0 0;
     padding: 0.45rem 1rem 0.45rem 0.8rem;
-    font-size: 1rem;
+    font-size: 0.98rem;
     font-weight: 600;
     color: var(--red-dark);
     background: rgba(227, 24, 55, 0.08);
@@ -92,90 +97,10 @@
     stroke-linejoin: round;
 }
 
-/* ===== Buttons used inside the drop zone ===== */
-.vbtn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    padding: 0.85rem 2.2rem;
-    font-family: var(--font-btn);
-    font-size: 1.2rem;
-    font-weight: 500;
-    line-height: 1.2;
-    text-decoration: none;
-    border: 2px solid transparent;
-    border-radius: 0.5rem;
-    cursor: pointer;
-    user-select: none;
-    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease,
-                transform 0.35s var(--ease-pop), box-shadow 0.25s ease;
-}
-
-.vbtn:hover {
-    transform: translateY(-3px) scale(1.04);
-}
-
-.vbtn:active {
-    transform: translateY(0) scale(0.97);
-}
-
-.vbtn:focus-visible {
-    outline: 3px solid rgba(227, 24, 55, 0.4);
-    outline-offset: 3px;
-}
-
-.vbtn svg {
-    width: 1.2rem;
-    height: 1.2rem;
+/* the cloud + record icon pulse (buttons themselves come from the shared .btn in applicant-common.css) */
+.btn--outline svg {
     fill: currentColor;
-}
-
-.vbtn--solid {
-    color: #fff;
-    background: var(--red);
-}
-
-.vbtn--solid:hover {
-    background: var(--red-dark);
-    box-shadow: 0 0.7rem 1.4rem rgba(227, 24, 55, 0.35);
-}
-
-.vbtn--outline {
-    color: var(--red);
-    background: rgba(255, 255, 255, 0.7);
-    border-color: var(--red);
-}
-
-.vbtn--outline:hover {
-    color: #fff;
-    background: var(--red);
-    box-shadow: 0 0.7rem 1.4rem rgba(227, 24, 55, 0.3);
-}
-
-.vbtn--outline svg {
     animation: recPulse 1.8s ease-in-out infinite;
-}
-
-.vbtn--ghost {
-    color: var(--text);
-    background: rgba(255, 255, 255, 0.7);
-    border-color: #8f8f8f;
-}
-
-.vbtn--ghost:hover {
-    background: #fff;
-    box-shadow: 0 0.5rem 1.1rem rgba(0, 0, 0, 0.12);
-}
-
-.vbtn--stop {
-    color: #fff;
-    background: #1f1f23;
-}
-
-.vbtn--stop:hover {
-    background: #000;
-    box-shadow: 0 0.7rem 1.4rem rgba(0, 0, 0, 0.3);
 }
 
 @keyframes recPulse {
@@ -186,21 +111,35 @@
 /* ===== Drop zone ===== */
 .dropzone {
     position: relative;
-    min-height: 14.5rem;
+    min-height: 12.5rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1.4rem 1.5rem;
-    background: rgba(244, 244, 246, 0.9);
-    border: 2px dashed #b4b4b9;
-    border-radius: 1rem;
+    padding: 1.2rem 1.5rem;
+    background: var(--zone-bg);
+    border: 1.5px dashed var(--zone-edge);
+    border-radius: var(--ctl-radius);
     transition: background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.3s var(--ease-out);
 }
 
 .dropzone:hover {
     border-color: var(--red);
-    background: rgba(255, 244, 245, 0.95);
+    background: rgba(255, 255, 255, 0.82);
 }
+
+/* one video only: while a video is added the zone is locked until it is removed */
+.dropzone.is-full {
+    min-height: 9rem;
+    opacity: 0.55;
+    cursor: not-allowed;
+    background: var(--zone-bg);
+    border-color: var(--zone-edge);
+}
+
+.dropzone.is-full .dropzone__cloud { animation: none; }
+.dropzone.is-full .dropzone__or,
+.dropzone.is-full .dropzone__buttons { display: none; }
+.dropzone.is-full .dropzone__cloud { width: 3rem; height: 3rem; }
 
 /* a file is being dragged over the zone */
 .dropzone.is-drag {
@@ -232,9 +171,9 @@
 }
 
 .dropzone__cloud {
-    width: 4.4rem;
-    height: 4.4rem;
-    margin-bottom: 0.4rem;
+    width: 4rem;
+    height: 4rem;
+    margin-bottom: 0.3rem;
     fill: none;
     stroke: #c4122d;
     stroke-width: 3.4;
@@ -254,14 +193,14 @@ html.js.is-ready .dropzone__cloud {
 }
 
 .dropzone__title {
-    font-size: 1.35rem;
+    font-size: 1.25rem;
     font-weight: 600;
     color: #3a3a40;
 }
 
 .dropzone__or {
-    margin: 0.25rem 0 0.8rem;
-    font-size: 1.05rem;
+    margin: 0.2rem 0 0.7rem;
+    font-size: 1.02rem;
     color: #3a3a40;
 }
 
@@ -285,7 +224,7 @@ html.js.is-ready .dropzone__cloud {
 .recorder__view {
     position: relative;
     flex: 0 0 auto;
-    height: 12.5rem;
+    height: 11.5rem;
     aspect-ratio: 16 / 9;
     overflow: hidden;
     background: #111;
@@ -401,11 +340,6 @@ html.js.is-ready .dropzone__cloud {
     gap: 0.7rem;
 }
 
-.recorder__actions .vbtn {
-    padding: 0.7rem 1.4rem;
-    font-size: 1.05rem;
-}
-
 .recorder__actions [hidden] {
     display: none;
 }
@@ -421,8 +355,9 @@ html.js.is-ready .dropzone__cloud {
 }
 
 .rules > span {
-    padding: 0.3rem 0.9rem;
-    background: rgba(0, 0, 0, 0.05);
+    padding: 0.32rem 0.95rem;
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(110, 110, 122, 0.25);
     border-radius: 999px;
 }
 
@@ -452,7 +387,7 @@ html.js.is-ready .dropzone__cloud {
     color: var(--red);
     background: rgba(227, 24, 55, 0.18);
     border: 1px solid rgba(227, 24, 55, 0.6);
-    border-radius: 0.4rem;
+    border-radius: var(--ctl-radius);
 }
 
 .banner.is-in {
@@ -476,10 +411,10 @@ html.js.is-ready .dropzone__cloud {
     display: flex;
     align-items: center;
     gap: 1.4rem;
-    padding: 1.1rem 1.5rem;
+    padding: 1rem 1.3rem;
     background: var(--zone-bg);
     border: 1px solid var(--zone-edge);
-    border-radius: 0.6rem;
+    border-radius: var(--ctl-radius);
 }
 
 .filecard[hidden] {
@@ -688,45 +623,10 @@ html.js.is-ready .dropzone__cloud {
     color: var(--red-dark);
 }
 
-/* ===== Submit ===== */
+/* ===== Submit (size, corners and font come from the shared .btn) ===== */
 .submit {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.6rem;
     width: 100%;
-    margin: 0.2rem 0 0;
-    padding: 1.05rem 1.5rem;
-    font-family: var(--font-btn);
-    font-size: 1.25rem;
-    font-weight: 500;
-    color: #fff;
-    background: var(--red);
-    border: 0;
-    border-radius: 0.5rem;
-    cursor: pointer;
-    transition: background 0.2s ease, transform 0.35s var(--ease-pop), box-shadow 0.25s ease, opacity 0.25s ease;
-}
-
-.submit:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-}
-
-.submit:not(:disabled):hover {
-    background: var(--red-dark);
-    transform: translateY(-3px) scale(1.02);
-    box-shadow: 0 0.7rem 1.4rem rgba(227, 24, 55, 0.35);
-}
-
-.submit:not(:disabled):active {
-    transform: translateY(0) scale(0.98);
-    box-shadow: 0 0.2rem 0.5rem rgba(227, 24, 55, 0.25);
-}
-
-.submit:focus-visible {
-    outline: 3px solid rgba(227, 24, 55, 0.4);
-    outline-offset: 3px;
+    margin-top: 0.2rem;
 }
 
 /* the video is uploaded: the button glows softly to say "go" */
@@ -828,7 +728,7 @@ html.js.is-ready .dropzone__cloud {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .vbtn--outline svg,
+    .btn--outline svg,
     .rec-dot,
     .submit.is-ready,
     .banner.is-in,
@@ -844,37 +744,33 @@ html.js.is-ready .dropzone__cloud {
 
 /* ===== Tablet ===== */
 @media (max-width: 1100px) {
-    .wrap { padding: 1.8rem 2rem 2rem; }
     .recorder { gap: 1.2rem; }
 }
 
-/* ===== Mobile: content sits on a soft card so it stays readable ===== */
+/* ===== Mobile: normal scrolling page, the glass card fills the width ===== */
 @media (max-width: 800px) {
     .page {
-        flex-direction: column;
-        align-items: stretch;
-        padding: 1rem 1.25rem 1.5rem;
+        align-items: flex-start;
+        padding: 1.25rem 1rem 1.5rem;
     }
 
-    .wrap {
-        max-width: 34rem;
-        margin: 0 auto;
-        padding: 1.5rem 1.25rem;
-        border-radius: 1rem;
-        backdrop-filter: blur(4px);
-    }
+    .wrap > .stepper { position: static; width: 100%; max-width: none; }
 
-    .intro__title { font-size: 1.75rem; }
-    .intro__text { font-size: 1.05rem; }
+    .wrap { max-width: 34rem; gap: 1.25rem; }
+    .wrap > .stepper { --dot: 2.2rem; }
+    .wrap > .stepper .step__label { font-size: 0.62rem; }
+
+    .main { padding: 1.4rem 1.15rem 1.5rem; border-radius: 1.25rem; }
+
+    .intro__title { font-size: 1.7rem; }
+    .intro__text { font-size: 1rem; }
     .dropzone { min-height: 0; padding: 1.2rem 1rem; }
-    .dropzone__title { font-size: 1.15rem; }
+    .dropzone__title { font-size: 1.1rem; }
     .recorder { flex-direction: column; }
     .recorder__view { width: 100%; height: auto; }
     .recorder__side { flex: 0 0 auto; width: 100%; text-align: center; }
     .recorder__actions { justify-content: center; }
-    .rules { gap: 0.3rem 1.5rem; }
     .filecard { flex-direction: column; align-items: stretch; gap: 0.9rem; }
     .filecard__thumb { width: 100%; max-width: 12rem; align-self: center; }
     .filecard__actions { flex-wrap: wrap; gap: 1rem 1.5rem; }
-    .submit { width: 100%; }
 }

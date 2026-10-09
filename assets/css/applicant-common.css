@@ -28,6 +28,12 @@
 
     --corner-top: 2rem;                              /* the logo sits here on every page */
     --corner-left: clamp(1.25rem, 4.7vw, 6rem);
+
+    /* One size for every button and every answer control on the questionnaire + video pages */
+    --btn-h: 3.5rem;
+    --btn-radius: 0.8rem;
+    --btn-font: 1.1rem;
+    --ctl-radius: 0.9rem;
 }
 
 *,
@@ -155,4 +161,92 @@ html.is-leaving .stage {
         width: 8.5rem;
         margin: 1.25rem 0 0 1.25rem;
     }
+}
+
+/* ==========================================================================
+   Glass card (questionnaire + video pages): frosted panel that sits in the middle of the page.
+   Add class "glass" to the box. The background picture blurs through it.
+   ========================================================================== */
+.glass {
+    position: relative;
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.28));
+    -webkit-backdrop-filter: blur(22px) saturate(170%);
+    backdrop-filter: blur(22px) saturate(170%);
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    border-radius: 1.6rem;
+    box-shadow: 0 1.6rem 3.6rem rgba(70, 10, 25, 0.16),
+                0 0.2rem 0.6rem rgba(70, 10, 25, 0.06),
+                inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+/* if the browser cannot blur, the card is simply a bit more solid */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass { background: rgba(255, 255, 255, 0.86); }
+}
+
+/* ===== Buttons: every button on these pages shares height, corners, font ===== */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    min-height: var(--btn-h);
+    padding: 0 1.8rem;
+    font-family: var(--font-btn);
+    font-size: var(--btn-font);
+    font-weight: 600;
+    line-height: 1;
+    text-decoration: none;
+    white-space: nowrap;
+    color: #fff;
+    background: var(--red);
+    border: 1.5px solid transparent;
+    border-radius: var(--btn-radius);
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease,
+                transform 0.35s var(--ease-pop), box-shadow 0.25s ease, opacity 0.2s ease;
+}
+
+.btn:hover { transform: translateY(-2px); }
+.btn:active { transform: translateY(0) scale(0.98); box-shadow: none; }
+.btn:focus-visible { outline: 3px solid rgba(227, 24, 55, 0.4); outline-offset: 3px; }
+.btn:disabled, .btn[disabled] { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.btn svg { width: 1.2em; height: 1.2em; flex: 0 0 auto; }
+
+.btn--primary:hover:not(:disabled) {
+    background: var(--red-dark);
+    box-shadow: 0 0.7rem 1.4rem rgba(227, 24, 55, 0.32);
+}
+
+/* the quiet one: white glass with a grey edge */
+.btn--ghost {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.6);
+    border-color: rgba(110, 110, 120, 0.55);
+}
+.btn--ghost:hover:not(:disabled) {
+    background: #fff;
+    border-color: var(--red);
+    color: var(--red-dark);
+    box-shadow: 0 0.6rem 1.2rem rgba(0, 0, 0, 0.1);
+}
+
+.btn--outline {
+    color: var(--red);
+    background: rgba(255, 255, 255, 0.6);
+    border-color: var(--red);
+}
+.btn--outline:hover:not(:disabled) {
+    color: #fff;
+    background: var(--red);
+    box-shadow: 0 0.7rem 1.4rem rgba(227, 24, 55, 0.28);
+}
+
+.btn--dark { color: #fff; background: #1f1f23; }
+.btn--dark:hover:not(:disabled) { background: #000; box-shadow: 0 0.7rem 1.4rem rgba(0, 0, 0, 0.3); }
+
+@media (prefers-reduced-motion: reduce) {
+    .btn, .btn:hover { transition: none; transform: none; }
 }

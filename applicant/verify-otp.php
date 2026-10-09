@@ -4,6 +4,7 @@ session_start();
 // ---- Settings ---------------------------------------------------------------
 $devMode     = true;    // true = shows the OTP on screen so you can test without email. TODO: set to false in production
 $otpLifetime = 300;    // seconds the code stays valid (5 minutes)
+$resendWait  = 60;     // seconds the applicant must wait before asking for another code (1 minute)
 $nextPage    = 'instruction.php';
 $backPage    = 'opening.php';
 
@@ -17,6 +18,7 @@ function issueOtp(int $lifetime): void
 {
     $_SESSION['otp']         = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
     $_SESSION['otp_expires'] = time() + $lifetime;
+    $_SESSION['otp_sent_at'] = time();          // the resend wait starts from here
     // TODO: send $_SESSION['otp'] to the applicant's email here (PHPMailer, etc.)
 }
 
@@ -35,8 +37,14 @@ $notice = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['resend'])) {
-        issueOtp($otpLifetime);
-        $notice = 'A new code has been sent to your email.';
+        // the wait is checked here too, so it cannot be skipped by editing the page
+        $wait = ($_SESSION['otp_sent_at'] ?? 0) + $resendWait - time();
+        if ($wait > 0) {
+            $error = 'Please wait ' . $wait . ' second' . ($wait === 1 ? '' : 's') . ' before asking for a new code.';
+        } else {
+            issueOtp($otpLifetime);
+            $notice = 'A new code has been sent to your email.';
+        }
     } else {
         $digits = array_filter((array) ($_POST['otp'] ?? []), 'is_string');
         $code   = preg_replace('/\D/', '', implode('', $digits));
@@ -47,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Incorrect or expired code. Please try again.';
         } else {
             $_SESSION['otp_verified'] = true;
-            unset($_SESSION['otp'], $_SESSION['otp_expires']);
+            unset($_SESSION['otp'], $_SESSION['otp_expires'], $_SESSION['otp_sent_at']);
             header('Location: ' . $nextPage);
             exit;
         }
@@ -56,6 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $remaining = max(0, $_SESSION['otp_expires'] - time());
 $timerText = sprintf('%02d:%02d', intdiv($remaining, 60), $remaining % 60);
+$cooldown  = max(0, ($_SESSION['otp_sent_at'] ?? 0) + $resendWait - time());   // seconds until "Resend Code" works again
 
 // ---- Logo: project/pic/expertise.png (same logo as the login page) ---------
 $logoSrc = is_file(__DIR__ . '/../pic/expertise.png') ? '../pic/expertise.png' : null;
@@ -134,7 +143,7 @@ $logoSrc = is_file(__DIR__ . '/../pic/expertise.png') ? '../pic/expertise.png' :
             </button>
 
             <div class="resend reveal" style="--i:9.8">
-                <button type="submit" name="resend" value="1" class="resend__btn" id="resendBtn">Resend Code</button>
+                <button type="submit" name="resend" value="1" class="resend__btn" id="resendBtn" data-cooldown="<?= (int) $cooldown ?>" <?= $cooldown > 0 ? 'disabled' : '' ?>>Resend Code</button>
                 <p class="resend__timer">
                     <span id="timer" data-remaining="<?= (int) $remaining ?>"><?= $timerText ?></span>
                     <span id="timerSuffix"><?= $remaining > 0 ? 'remaining' : 'expired' ?></span>

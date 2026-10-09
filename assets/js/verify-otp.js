@@ -14,6 +14,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const verifyLabel = verifyBtn.querySelector(".otp__submit-label");
     const verifyText = verifyLabel.textContent;
     const resendText = resendBtn.textContent;
+    const resendEndsAt = Date.now() + (parseInt(resendBtn.dataset.cooldown, 10) || 0) * 1000;
     const banner = document.getElementById("errorBanner");
     const bannerText = document.getElementById("errorText");
     const timerEl = document.getElementById("timer");
@@ -233,11 +234,27 @@ document.addEventListener("DOMContentLoaded", function () {
         }, 500);
     }
 
+    /* ---------- "Resend Code" has a 1 minute break after every code that was sent ---------- */
+    function renderResend() {
+        const left = Math.max(0, Math.ceil((resendEndsAt - Date.now()) / 1000));
+        resendBtn.disabled = left > 0;
+        resendBtn.textContent = left > 0
+            ? resendText + " in " + Math.floor(left / 60) + ":" + String(left % 60).padStart(2, "0")
+            : resendText;
+        return left;
+    }
+
+    if (renderResend() > 0) {
+        const resendWait = setInterval(function () {
+            if (renderResend() <= 0) clearInterval(resendWait);
+        }, 500);
+    }
+
     /* ---------- Back button (browser) resets the loading state ---------- */
     window.addEventListener("pageshow", function () {
         submitting = false;
         verifyBtn.classList.remove("is-loading");
         verifyLabel.textContent = verifyText;
-        resendBtn.textContent = resendText;
+        renderResend();
     });
 });
