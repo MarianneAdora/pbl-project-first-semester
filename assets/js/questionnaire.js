@@ -695,6 +695,7 @@ document.addEventListener('DOMContentLoaded', function () {
         paintChrome();
 
         var incoming = build(questions[index], dir === 0);
+        Screening.lap(questions[index].id);           // time spent on each question (for the screening evaluation)
         var outgoing = stage.querySelector('.q');
 
         if (!outgoing || dir === 0 || reduceMotion) {
@@ -739,6 +740,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // last question: on to the video
+        Screening.lap(null);
         nextBtn.classList.add('is-loading');
         nextLabel.textContent = 'Loading...';
         Applicant.go(cfg.nextPage || 'upload-video.php');

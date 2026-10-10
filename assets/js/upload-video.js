@@ -617,6 +617,15 @@ document.addEventListener('DOMContentLoaded', function () {
     /* ==========================================================================
        Submit
        ========================================================================== */
+    // SHA-256 of the chosen file: lets the evaluation see the same video sent by two different applicants
+    async function fileHash(file) {
+        try {
+            if (!window.crypto || !window.crypto.subtle) return '';
+            var digest = await window.crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+            return Array.prototype.map.call(new Uint8Array(digest), function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+        } catch (e) { return ''; }                 // no fingerprint is not a problem, the video is still sent
+    }
+
     submitBtn.addEventListener('click', async function () {
         if (state.status !== 'ready' || submitting) return;
         submitting = true;
@@ -630,7 +639,7 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             await Screening.submit({
                 answers: Screening.load(),
-                video: { name: state.file.name, size: state.file.size, seconds: state.seconds, url: state.url, source: state.source }
+                video: { name: state.file.name, size: state.file.size, seconds: state.seconds, url: state.url, source: state.source, hash: await fileHash(state.file) }
             });
             Screening.clear();
             Applicant.go(cfg.nextPage || 'application-status.php');

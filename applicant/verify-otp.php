@@ -21,6 +21,7 @@ function issueOtp(int $lifetime): void
     $_SESSION['otp']         = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
     $_SESSION['otp_expires'] = time() + $lifetime;
     $_SESSION['otp_sent_at'] = time();          // the resend wait starts from here
+    $_SESSION['otp_request_times'][] = time();  // kept for the screening evaluation (how many codes were asked for)
     // TODO: send $_SESSION['otp'] to the applicant's email here (PHPMailer, etc.)
 }
 
@@ -73,11 +74,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$locked) {      // a locked page i
             $error = 'This code has expired. Please request a new one.';      // does not use an attempt
         } elseif (!hash_equals($_SESSION['otp'], $code)) {
             $_SESSION['otp_attempts']++;
+            $_SESSION['otp_failed_total'] = (int) ($_SESSION['otp_failed_total'] ?? 0) + 1;   // kept for the evaluation
             $left = $maxAttempts - $_SESSION['otp_attempts'];
 
             if ($left <= 0) {
                 // out of attempts: the code is no longer valid and the page locks
                 $_SESSION['otp_locked_until'] = time() + $lockSeconds;
+                $_SESSION['otp_was_locked']   = true;                // kept for the evaluation
                 unset($_SESSION['otp'], $_SESSION['otp_expires'], $_SESSION['otp_sent_at']);
                 $locked = true;
             } elseif ($left === 1) {

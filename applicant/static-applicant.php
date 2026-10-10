@@ -143,7 +143,8 @@ function static_questionnaire(): array
             'body' => [
                 'By submitting your application, you agree that Expertise Company will use your data by collecting, processing, storing, and using your personal information for legitimate recruitment and employment purposes only, including applicant screening, assessment, interview scheduling, and communication. Your information will be kept confidential and secure and will only be accessed by authorized personnel or disclosed when required or permitted by law.',
                 'You have the right to access, correct, and request the deletion or restriction of your personal information, subject to applicable laws and regulations.',
-                'In accordance with the Data Privacy Act of 2012 (Republic Act No. 10173), The Company is committed to protecting the privacy and confidentiality of your personal information. Rest assured that Expertise will not use your personal information for purposes unrelated to recruitment without obtaining the appropriate consent or having another lawful basis for such processing.'
+                'In accordance with the Data Privacy Act of 2012 (Republic Act No. 10173), The Company is committed to protecting the privacy and confidentiality of your personal information. Rest assured that Expertise will not use your personal information for purposes unrelated to recruitment without obtaining the appropriate consent or having another lawful basis for such processing.',
+                'To keep the screening fair and secure, we also collect technical information such as your device identifier and IP address, and how you move through the screening (for example, the time spent on each question). This information is used only to protect the integrity of the screening and is reviewed by authorized personnel.'
             ],
             'checkbox' => 'I have read and agree to the data protection statement.'
         ]
@@ -266,18 +267,38 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
                 }
 
                 // keep what was sent, like a "responses" table (HR review reads it later)
+                // what the screening evaluation (static-evaluation.php) looks at: time per question, device, IP, the OTP behaviour, the video fingerprint
+                $timing = [];
+                foreach ((array) ($input['timing'] ?? []) as $key => $ms) {
+                    if (is_string($key) && preg_match('/^q\d+$/', $key) && is_numeric($ms)) $timing[$key] = (int) min(max(0, $ms), 3600000);
+                }
+                $device = substr((string) preg_replace('/[^A-Za-z0-9\-]/', '', (string) ($input['device'] ?? '')), 0, 64);
+                $hash   = substr((string) preg_replace('/[^a-f0-9]/', '', strtolower((string) ($video['hash'] ?? ''))), 0, 64);
+                $otp    = [
+                    'failed'   => (int) ($_SESSION['otp_failed_total'] ?? 0),
+                    'requests' => array_values(array_map('intval', (array) ($_SESSION['otp_request_times'] ?? []))),
+                    'locked'   => !empty($_SESSION['otp_was_locked'])
+                ];
+                $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+
                 $reference = static_reference($me);
-                static_store_update(function (array &$store) use ($me, $email, $answers, $video, $reference) {
+                static_store_update(function (array &$store) use ($me, $email, $answers, $video, $reference, $timing, $device, $hash, $otp, $ip) {
                     $store['submissions'][] = [
                         'reference'    => $reference,
                         'applicant_id' => $me['id'] ?? null,
+                        'name'         => $me['name'] ?? '',
                         'email'        => $email,
                         'answers'      => $answers,
+                        'timing'       => $timing,
+                        'device'       => $device,
+                        'ip'           => $ip,
+                        'otp'          => $otp,
                         'video'        => [
                             'name'    => (string) ($video['name'] ?? ''),
                             'size'    => (int) ($video['size'] ?? 0),
                             'seconds' => isset($video['seconds']) ? round((float) $video['seconds'], 1) : null,
-                            'source'  => (string) ($video['source'] ?? '')
+                            'source'  => (string) ($video['source'] ?? ''),
+                            'hash'    => $hash
                         ],
                         'submitted_at' => static_now()->format('Y-m-d H:i')
                     ];

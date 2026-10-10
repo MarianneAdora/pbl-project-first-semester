@@ -12,6 +12,8 @@
    Screening.validate(q, answers)         '' when the answer is fine, otherwise the message to show
    Screening.firstIncomplete(qs, answers) index of the first unanswered question, or -1
    Screening.startOnce()                  tells the HR lists this applicant is now "In Progress"
+   Screening.lap(id)                      time spent per question (call with the question id when it is shown, null when leaving)
+   Screening.timing() / deviceId()        the times and a random id kept in this browser (both are sent with the submit)
    Screening.submit({answers, video})     sends everything (returns a Promise)
    Screening.isSubmitted() / clear()
    ========================================================================== */
@@ -21,6 +23,8 @@
     var KEY_OWNER = 'expertise.screening.owner';
     var KEY_STARTED = 'expertise.screening.started';
     var KEY_DONE = 'expertise.screening.done';
+    var KEY_TIMING = 'expertise.screening.timing';
+    var KEY_DEVICE = 'expertise.device';          // kept in localStorage: it stays the same for this browser
 
     function cfg() { return window.SCREENING || {}; }
 
@@ -42,7 +46,7 @@
     // Another applicant on the same browser tab (a new server session) must not see old answers
     var token = String(cfg().session || '');
     if (token && read(KEY_OWNER) !== token) {
-        remove(KEY_ANSWERS); remove(KEY_INDEX); remove(KEY_STARTED); remove(KEY_DONE);
+        remove(KEY_ANSWERS); remove(KEY_INDEX); remove(KEY_STARTED); remove(KEY_DONE); remove(KEY_TIMING);
         write(KEY_OWNER, token);
     }
 
@@ -57,6 +61,52 @@
 
     function getIndex() { return parseInt(read(KEY_INDEX) || '0', 10) || 0; }
     function setIndex(n) { write(KEY_INDEX, String(Math.max(0, n | 0))); }
+
+    /* ---------- time per question (for the screening evaluation: very fast answers look like a bot) ---------- */
+    var lapId = null;
+    var lapAt = 0;
+
+    function timing() {
+        try {
+            var data = JSON.parse(read(KEY_TIMING) || '{}');
+            return data && typeof data === 'object' ? data : {};
+        } catch (e) { return {}; }
+    }
+
+    function lap(id) {
+        var now = Date.now();
+        if (lapId) {
+            var t = timing();
+            t[lapId] = (t[lapId] || 0) + Math.min(now - lapAt, 600000);    // an idle tab counts for 10 minutes at most
+            write(KEY_TIMING, JSON.stringify(t));
+        }
+        lapId = id || null;
+        lapAt = now;
+    }
+
+    /* ---------- a random id for this browser (not the phone model): lets the evaluation see one device used by many applicants ---------- */
+    function deviceId() {
+        try {
+            var id = window.localStorage.getItem(KEY_DEVICE);
+            if (!id) {
+                var bytes = new Uint8Array(16);
+                (window.crypto || window.msCrypto).getRandomValues(bytes);
+                id = Array.prototype.map.call(bytes, function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+                window.localStorage.setItem(KEY_DEVICE, id);
+            }
+            return id;
+        } catch (e) { return ''; }
+    }
+
+    // an old follow-up answer must not travel with a different Yes / No (Yes + notice period, then changed to No)
+    function cleanAnswers(answers) {
+        var out = {};
+        Object.keys(answers || {}).forEach(function (k) { out[k] = answers[k]; });
+        (cfg().questions || []).forEach(function (q) {
+            if (q.followup && out[q.id] !== q.followup.when) delete out[q.id + ':follow'];
+        });
+        return out;
+    }
 
     function today() {
         var d = new Date();
@@ -126,7 +176,13 @@
         if (!cfg().live || !cfg().endpoint) {                          // design/testing mode: nothing is sent
             return new Promise(function (resolve) { setTimeout(resolve, 700); });
         }
-        return post({ action: 'submit', answers: payload.answers, video: payload.video }).then(function (data) {
+        return post({
+            action: 'submit',
+            answers: cleanAnswers(payload.answers),
+            video: payload.video,
+            timing: timing(),
+            device: deviceId()
+        }).then(function (data) {
             write(KEY_DONE, token || '1');
             return data;
         });
@@ -134,11 +190,12 @@
 
     function isSubmitted() { return read(KEY_DONE) === (token || '1'); }
 
-    function clear() { remove(KEY_ANSWERS); remove(KEY_INDEX); }
+    function clear() { remove(KEY_ANSWERS); remove(KEY_INDEX); remove(KEY_TIMING); }
 
     window.Screening = {
         load: load, save: save, getIndex: getIndex, setIndex: setIndex, today: today,
         validate: validate, firstIncomplete: firstIncomplete,
+        lap: lap, timing: timing, deviceId: deviceId,
         startOnce: startOnce, submit: submit, isSubmitted: isSubmitted, clear: clear
     };
 })();
