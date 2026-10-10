@@ -980,6 +980,60 @@
                 "hash": "fc64dd7aa96e907d8c5b4f89b924eb8b6b532294f1071a06ef7c9b1fe124c407"
             },
             "submitted_at": "2026-10-10 17:56"
+        },
+        {
+            "reference": "SCR-2026-18489",
+            "applicant_id": null,
+            "name": "",
+            "email": "",
+            "answers": {
+                "q1": "Yes",
+                "q2": "Yes",
+                "q3": "Yes",
+                "q4": "Yes",
+                "q5": 3,
+                "q6": "2026-10-22",
+                "q7": "Yes",
+                "q7:follow": "1 to 2 weeks",
+                "q8": "Yes",
+                "q9": "Yes",
+                "q10": "Yes",
+                "q11": "Yes",
+                "q12": "ytrewertyuioppoiuytrhjk.;poiuytreswertyuio\n",
+                "q13": true
+            },
+            "timing": {
+                "q1": 2536,
+                "q2": 1716,
+                "q3": 1961,
+                "q4": 4784,
+                "q5": 2194,
+                "q6": 3527,
+                "q7": 5303,
+                "q8": 2419,
+                "q9": 3114,
+                "q10": 1709,
+                "q11": 2509,
+                "q12": 7057,
+                "q13": 4225
+            },
+            "device": "ed7757fbd5737a2c680f41eb3c070536",
+            "ip": "::1",
+            "otp": {
+                "failed": 0,
+                "requests": [
+                    1791628129
+                ],
+                "locked": false
+            },
+            "video": {
+                "name": "video_response.mp4",
+                "size": 1320356,
+                "seconds": 3.8,
+                "source": "recorded",
+                "hash": "50aba4ae9e38e3e307f22d22efb950933b81e476ece93d1ed381385b73dcd104"
+            },
+            "submitted_at": "2026-10-10 18:30"
         }
     ],
     "evaluations": [
@@ -1372,6 +1426,71 @@
                 }
             ],
             "evaluated_at": "2026-10-10 17:56"
+        },
+        {
+            "reference": "SCR-2026-18489",
+            "email": "",
+            "points": 3,
+            "band": "Low",
+            "auto_high": [],
+            "outcome": "passed",
+            "factors": [
+                {
+                    "label": "Failed OTP attempts",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "0 wrong code(s). Typos are normal."
+                },
+                {
+                    "label": "OTP requests in 10 minutes",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "1 code request(s). Email delays make this normal."
+                },
+                {
+                    "label": "Questionnaire speed",
+                    "points": 1,
+                    "max": 3,
+                    "reason": "Finished in 43 seconds; 0% of the items were answered in under 1.5 seconds."
+                },
+                {
+                    "label": "Same email or phone as another record",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No other record shares the email or phone number."
+                },
+                {
+                    "label": "Re-applying after a failed screening",
+                    "points": 2,
+                    "max": 2,
+                    "reason": "The last screening was failed 0 day(s) ago."
+                },
+                {
+                    "label": "Same device or IP as other applicants",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No suspicious sharing (a shared IP alone is not scored)."
+                },
+                {
+                    "label": "Contradictory logistics answers",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "The logistics answers agree with each other."
+                },
+                {
+                    "label": "Time on the video page",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "Not scored, because applicants can upload a file instead of recording live."
+                },
+                {
+                    "label": "Video matches another applicant",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No other applicant sent this video."
+                }
+            ],
+            "evaluated_at": "2026-10-10 18:30"
         }
     ],
     "interviews": {
@@ -1380,10 +1499,60 @@
             "preferred_date": "2026-10-16",
             "preferred_time": "15:00",
             "type": "On Site Interview",
-            "date": "2026-10-30",
-            "time": "16:00",
+            "date": "2026-10-16",
+            "time": "14:00",
             "source": "sample",
-            "updated": "2026-10-10 17:52"
+            "updated": "2026-10-10 21:24"
+        },
+        "106": {
+            "status": "rescheduled",
+            "preferred_date": "2026-10-14",
+            "preferred_time": "10:00",
+            "type": "On Site Interview",
+            "date": "2026-10-15",
+            "time": "13:00",
+            "source": "sample",
+            "updated": "2026-10-10 21:31"
+        },
+        "108": {
+            "status": "rescheduled",
+            "preferred_date": "2026-10-16",
+            "preferred_time": "13:00",
+            "type": "On Site Interview",
+            "date": "2026-10-15",
+            "time": "09:00",
+            "source": "sample",
+            "updated": "2026-10-10 21:12"
+        },
+        "129": {
+            "status": "awaiting",
+            "preferred_date": "2026-10-19",
+            "preferred_time": "13:00",
+            "type": "On Site Interview",
+            "date": null,
+            "time": null,
+            "source": "sample",
+            "updated": "2026-10-10 21:18"
+        },
+        "135": {
+            "status": "confirmed",
+            "preferred_date": "2026-10-13",
+            "preferred_time": "11:00",
+            "type": "On Site Interview",
+            "date": "2026-10-13",
+            "time": "11:00",
+            "source": "sample",
+            "updated": "2026-10-10 21:25"
+        },
+        "121": {
+            "status": "confirmed",
+            "preferred_date": "2026-10-14",
+            "preferred_time": "11:00",
+            "type": "On Site Interview",
+            "date": "2026-10-14",
+            "time": "11:00",
+            "source": "sample",
+            "updated": "2026-10-10 21:31"
         }
     },
     "outbox": [
@@ -1402,6 +1571,54 @@
             "subject": "New interview schedule | Expertise",
             "html": "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head><body style=\"margin:0;padding:0;background:#f4f4f5;font-family:'Plus Jakarta Sans','Segoe UI',Helvetica,Arial,sans-serif;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f4f4f5;\"><tr><td align=\"center\" style=\"padding:28px 12px;\"><table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;\"><tr><td style=\"height:6px;line-height:6px;font-size:0;background:#d1122a;\">&nbsp;</td></tr><tr><td style=\"padding:28px 40px 0 40px;font-size:26px;font-weight:800;color:#a3081e;letter-spacing:.3px;\">Expertise</td></tr><tr><td style=\"padding:26px 40px 0 40px;\"><p style=\"margin:0 0 8px 0;font-size:13px;font-weight:700;color:#d1122a;\">Interview update</p><h1 style=\"margin:0;font-size:26px;line-height:1.25;font-weight:800;color:#1f1f23;\">We have a new schedule for you</h1></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:15px;line-height:1.7;\"><p style=\"margin:0 0 12px 0;color:#1f1f23;font-weight:700;\">Hi Clark,</p><p style=\"margin:0;\">Thank you for choosing a schedule. Unfortunately, that date and time is not available, so we set a new one for your interview.</p></td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f8f8f9;border:1px solid #e6e7ea;border-radius:12px;\"><tr><td style=\"padding:12px 22px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Date</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">October 30, 2026</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Time</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">04:00 PM</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Interview Type</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">On Site Interview</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Location</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">Expertise Office, BGC, Taguig</td></tr></table></td></tr></table></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:14px;line-height:1.7;\">If this schedule does not work for you, please reply to this email and we will find another time. Please arrive 15 minutes early and bring a valid ID.</td></tr><tr><td style=\"padding:26px 40px 30px 40px;color:#8a8f96;font-size:12px;line-height:1.6;border-top:0;\">Thank you,<br><strong style=\"color:#1f1f23;\">Expertise HR Team</strong></td></tr></table></td></tr></table></body></html>",
             "sent_at": "2026-10-10 17:52:56"
+        },
+        {
+            "applicant_id": 103,
+            "kind": "rescheduled",
+            "to": "clarkkent@gmail.com",
+            "subject": "New interview schedule | Expertise",
+            "html": "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head><body style=\"margin:0;padding:0;background:#f4f4f5;font-family:'Plus Jakarta Sans','Segoe UI',Helvetica,Arial,sans-serif;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f4f4f5;\"><tr><td align=\"center\" style=\"padding:28px 12px;\"><table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;\"><tr><td style=\"height:6px;line-height:6px;font-size:0;background:#d1122a;\">&nbsp;</td></tr><tr><td style=\"padding:28px 40px 0 40px;font-size:26px;font-weight:800;color:#a3081e;letter-spacing:.3px;\">Expertise</td></tr><tr><td style=\"padding:26px 40px 0 40px;\"><p style=\"margin:0 0 8px 0;font-size:13px;font-weight:700;color:#d1122a;\">Interview update</p><h1 style=\"margin:0;font-size:26px;line-height:1.25;font-weight:800;color:#1f1f23;\">We have a new schedule for you</h1></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:15px;line-height:1.7;\"><p style=\"margin:0 0 12px 0;color:#1f1f23;font-weight:700;\">Hi Clark,</p><p style=\"margin:0;\">Thank you for choosing a schedule. Unfortunately, that date and time is not available, so we set a new one for your interview.</p></td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f8f8f9;border:1px solid #e6e7ea;border-radius:12px;\"><tr><td style=\"padding:12px 22px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Date</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">October 16, 2026</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Time</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">01:00 PM</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Interview Type</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">On Site Interview</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Location</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">Expertise Office, BGC, Taguig</td></tr></table></td></tr></table></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:14px;line-height:1.7;\">If this schedule does not work for you, please reply to this email and we will find another time. Please arrive 15 minutes early and bring a valid ID.</td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><a href=\"http://localhost/pbl-project-first-semester/applicant/application-status.php\" style=\"display:inline-block;padding:13px 26px;background:#d1122a;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;border-radius:10px;\">View my interview schedule</a></td></tr><tr><td style=\"padding:12px 40px 0 40px;color:#8a8f96;font-size:12px;line-height:1.6;\">The link opens your application status page. You will be asked to verify your email with a one-time code first.</td></tr><tr><td style=\"padding:26px 40px 30px 40px;color:#8a8f96;font-size:12px;line-height:1.6;border-top:0;\">Thank you,<br><strong style=\"color:#1f1f23;\">Expertise HR Team</strong></td></tr></table></td></tr></table></body></html>",
+            "sent_at": "2026-10-10 20:58:38"
+        },
+        {
+            "applicant_id": 108,
+            "kind": "rescheduled",
+            "to": "tonystark@gmail.com",
+            "subject": "New interview schedule | Expertise",
+            "html": "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head><body style=\"margin:0;padding:0;background:#f4f4f5;font-family:'Plus Jakarta Sans','Segoe UI',Helvetica,Arial,sans-serif;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f4f4f5;\"><tr><td align=\"center\" style=\"padding:28px 12px;\"><table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;\"><tr><td style=\"height:6px;line-height:6px;font-size:0;background:#d1122a;\">&nbsp;</td></tr><tr><td style=\"padding:28px 40px 0 40px;font-size:26px;font-weight:800;color:#a3081e;letter-spacing:.3px;\">Expertise</td></tr><tr><td style=\"padding:26px 40px 0 40px;\"><p style=\"margin:0 0 8px 0;font-size:13px;font-weight:700;color:#d1122a;\">Interview update</p><h1 style=\"margin:0;font-size:26px;line-height:1.25;font-weight:800;color:#1f1f23;\">We have a new schedule for you</h1></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:15px;line-height:1.7;\"><p style=\"margin:0 0 12px 0;color:#1f1f23;font-weight:700;\">Hi Tony,</p><p style=\"margin:0;\">Thank you for choosing a schedule. Unfortunately, that date and time is not available, so we set a new one for your interview.</p></td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f8f8f9;border:1px solid #e6e7ea;border-radius:12px;\"><tr><td style=\"padding:12px 22px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Date</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">October 15, 2026</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Time</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">09:00 AM</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Interview Type</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">On Site Interview</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Location</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">Expertise Office, BGC, Taguig</td></tr></table></td></tr></table></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:14px;line-height:1.7;\">If this schedule does not work for you, please reply to this email and we will find another time. Please arrive 15 minutes early and bring a valid ID.</td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><a href=\"http://localhost/pbl-project-first-semester/applicant/application-status.php\" style=\"display:inline-block;padding:13px 26px;background:#d1122a;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;border-radius:10px;\">View my interview schedule</a></td></tr><tr><td style=\"padding:12px 40px 0 40px;color:#8a8f96;font-size:12px;line-height:1.6;\">The link opens your application status page. You will be asked to verify your email with a one-time code first.</td></tr><tr><td style=\"padding:26px 40px 30px 40px;color:#8a8f96;font-size:12px;line-height:1.6;border-top:0;\">Thank you,<br><strong style=\"color:#1f1f23;\">Expertise HR Team</strong></td></tr></table></td></tr></table></body></html>",
+            "sent_at": "2026-10-10 21:12:31"
+        },
+        {
+            "applicant_id": 103,
+            "kind": "rescheduled",
+            "to": "clarkkent@gmail.com",
+            "subject": "New interview schedule | Expertise",
+            "html": "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head><body style=\"margin:0;padding:0;background:#f4f4f5;font-family:'Plus Jakarta Sans','Segoe UI',Helvetica,Arial,sans-serif;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f4f4f5;\"><tr><td align=\"center\" style=\"padding:28px 12px;\"><table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;\"><tr><td style=\"height:6px;line-height:6px;font-size:0;background:#d1122a;\">&nbsp;</td></tr><tr><td style=\"padding:28px 40px 0 40px;font-size:26px;font-weight:800;color:#a3081e;letter-spacing:.3px;\">Expertise</td></tr><tr><td style=\"padding:26px 40px 0 40px;\"><p style=\"margin:0 0 8px 0;font-size:13px;font-weight:700;color:#d1122a;\">Interview update</p><h1 style=\"margin:0;font-size:26px;line-height:1.25;font-weight:800;color:#1f1f23;\">We have a new schedule for you</h1></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:15px;line-height:1.7;\"><p style=\"margin:0 0 12px 0;color:#1f1f23;font-weight:700;\">Hi Clark,</p><p style=\"margin:0;\">Thank you for choosing a schedule. Unfortunately, that date and time is not available, so we set a new one for your interview.</p></td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f8f8f9;border:1px solid #e6e7ea;border-radius:12px;\"><tr><td style=\"padding:12px 22px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Date</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">October 16, 2026</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Time</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">02:00 PM</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Interview Type</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">On Site Interview</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Location</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">Expertise Office, BGC, Taguig</td></tr></table></td></tr></table></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:14px;line-height:1.7;\">If this schedule does not work for you, please reply to this email and we will find another time. Please arrive 15 minutes early and bring a valid ID.</td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><a href=\"http://localhost/pbl-project-first-semester/applicant/application-status.php\" style=\"display:inline-block;padding:13px 26px;background:#d1122a;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;border-radius:10px;\">View my interview schedule</a></td></tr><tr><td style=\"padding:12px 40px 0 40px;color:#8a8f96;font-size:12px;line-height:1.6;\">The link opens your application status page. You will be asked to verify your email with a one-time code first.</td></tr><tr><td style=\"padding:26px 40px 30px 40px;color:#8a8f96;font-size:12px;line-height:1.6;border-top:0;\">Thank you,<br><strong style=\"color:#1f1f23;\">Expertise HR Team</strong></td></tr></table></td></tr></table></body></html>",
+            "sent_at": "2026-10-10 21:24:43"
+        },
+        {
+            "applicant_id": 135,
+            "kind": "confirmed",
+            "to": "gabrielantoniodelarosavillanueva@gmail.com",
+            "subject": "Your interview is confirmed | Expertise",
+            "html": "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head><body style=\"margin:0;padding:0;background:#f4f4f5;font-family:'Plus Jakarta Sans','Segoe UI',Helvetica,Arial,sans-serif;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f4f4f5;\"><tr><td align=\"center\" style=\"padding:28px 12px;\"><table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;\"><tr><td style=\"height:6px;line-height:6px;font-size:0;background:#d1122a;\">&nbsp;</td></tr><tr><td style=\"padding:28px 40px 0 40px;font-size:26px;font-weight:800;color:#a3081e;letter-spacing:.3px;\">Expertise</td></tr><tr><td style=\"padding:26px 40px 0 40px;\"><p style=\"margin:0 0 8px 0;font-size:13px;font-weight:700;color:#d1122a;\">Interview update</p><h1 style=\"margin:0;font-size:26px;line-height:1.25;font-weight:800;color:#1f1f23;\">Your interview is confirmed</h1></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:15px;line-height:1.7;\"><p style=\"margin:0 0 12px 0;color:#1f1f23;font-weight:700;\">Hi Gabriel,</p><p style=\"margin:0;\">Good news! The schedule you chose is available. Your interview is now confirmed.</p></td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f8f8f9;border:1px solid #e6e7ea;border-radius:12px;\"><tr><td style=\"padding:12px 22px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Date</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">October 13, 2026</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Time</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">11:00 AM</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Interview Type</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">On Site Interview</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Location</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">Expertise Office, BGC, Taguig</td></tr></table></td></tr></table></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:14px;line-height:1.7;\">Please arrive 15 minutes early and bring a valid ID. If you can no longer make it, reply to this email as soon as possible.</td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><a href=\"http://localhost/pbl-project-first-semester/applicant/application-status.php\" style=\"display:inline-block;padding:13px 26px;background:#d1122a;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;border-radius:10px;\">View my interview schedule</a></td></tr><tr><td style=\"padding:12px 40px 0 40px;color:#8a8f96;font-size:12px;line-height:1.6;\">The link opens your application status page. You will be asked to verify your email with a one-time code first.</td></tr><tr><td style=\"padding:26px 40px 30px 40px;color:#8a8f96;font-size:12px;line-height:1.6;border-top:0;\">Thank you,<br><strong style=\"color:#1f1f23;\">Expertise HR Team</strong></td></tr></table></td></tr></table></body></html>",
+            "sent_at": "2026-10-10 21:25:07"
+        },
+        {
+            "applicant_id": 106,
+            "kind": "rescheduled",
+            "to": "joseprotaciorizalmercadoyalonsorealonda@gmail.com",
+            "subject": "New interview schedule | Expertise",
+            "html": "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head><body style=\"margin:0;padding:0;background:#f4f4f5;font-family:'Plus Jakarta Sans','Segoe UI',Helvetica,Arial,sans-serif;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f4f4f5;\"><tr><td align=\"center\" style=\"padding:28px 12px;\"><table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;\"><tr><td style=\"height:6px;line-height:6px;font-size:0;background:#d1122a;\">&nbsp;</td></tr><tr><td style=\"padding:28px 40px 0 40px;font-size:26px;font-weight:800;color:#a3081e;letter-spacing:.3px;\">Expertise</td></tr><tr><td style=\"padding:26px 40px 0 40px;\"><p style=\"margin:0 0 8px 0;font-size:13px;font-weight:700;color:#d1122a;\">Interview update</p><h1 style=\"margin:0;font-size:26px;line-height:1.25;font-weight:800;color:#1f1f23;\">We have a new schedule for you</h1></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:15px;line-height:1.7;\"><p style=\"margin:0 0 12px 0;color:#1f1f23;font-weight:700;\">Hi Jose,</p><p style=\"margin:0;\">Thank you for choosing a schedule. Unfortunately, that date and time is not available, so we set a new one for your interview.</p></td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f8f8f9;border:1px solid #e6e7ea;border-radius:12px;\"><tr><td style=\"padding:12px 22px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Date</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">October 15, 2026</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Time</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">01:00 PM</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Interview Type</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">On Site Interview</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Location</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">Expertise Office, BGC, Taguig</td></tr></table></td></tr></table></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:14px;line-height:1.7;\">If this schedule does not work for you, please reply to this email and we will find another time. Please arrive 15 minutes early and bring a valid ID.</td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><a href=\"http://localhost/pbl-project-first-semester/applicant/application-status.php\" style=\"display:inline-block;padding:13px 26px;background:#d1122a;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;border-radius:10px;\">View my interview schedule</a></td></tr><tr><td style=\"padding:12px 40px 0 40px;color:#8a8f96;font-size:12px;line-height:1.6;\">The link opens your application status page. You will be asked to verify your email with a one-time code first.</td></tr><tr><td style=\"padding:26px 40px 30px 40px;color:#8a8f96;font-size:12px;line-height:1.6;border-top:0;\">Thank you,<br><strong style=\"color:#1f1f23;\">Expertise HR Team</strong></td></tr></table></td></tr></table></body></html>",
+            "sent_at": "2026-10-10 21:31:00"
+        },
+        {
+            "applicant_id": 121,
+            "kind": "confirmed",
+            "to": "caroldanvers@gmail.com",
+            "subject": "Your interview is confirmed | Expertise",
+            "html": "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head><body style=\"margin:0;padding:0;background:#f4f4f5;font-family:'Plus Jakarta Sans','Segoe UI',Helvetica,Arial,sans-serif;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f4f4f5;\"><tr><td align=\"center\" style=\"padding:28px 12px;\"><table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;\"><tr><td style=\"height:6px;line-height:6px;font-size:0;background:#d1122a;\">&nbsp;</td></tr><tr><td style=\"padding:28px 40px 0 40px;font-size:26px;font-weight:800;color:#a3081e;letter-spacing:.3px;\">Expertise</td></tr><tr><td style=\"padding:26px 40px 0 40px;\"><p style=\"margin:0 0 8px 0;font-size:13px;font-weight:700;color:#d1122a;\">Interview update</p><h1 style=\"margin:0;font-size:26px;line-height:1.25;font-weight:800;color:#1f1f23;\">Your interview is confirmed</h1></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:15px;line-height:1.7;\"><p style=\"margin:0 0 12px 0;color:#1f1f23;font-weight:700;\">Hi Carol,</p><p style=\"margin:0;\">Good news! The schedule you chose is available. Your interview is now confirmed.</p></td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f8f8f9;border:1px solid #e6e7ea;border-radius:12px;\"><tr><td style=\"padding:12px 22px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Date</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">October 14, 2026</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Time</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">11:00 AM</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Interview Type</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">On Site Interview</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Location</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">Expertise Office, BGC, Taguig</td></tr></table></td></tr></table></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:14px;line-height:1.7;\">Please arrive 15 minutes early and bring a valid ID. If you can no longer make it, reply to this email as soon as possible.</td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><a href=\"http://localhost/pbl-project-first-semester/applicant/application-status.php\" style=\"display:inline-block;padding:13px 26px;background:#d1122a;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;border-radius:10px;\">View my interview schedule</a></td></tr><tr><td style=\"padding:12px 40px 0 40px;color:#8a8f96;font-size:12px;line-height:1.6;\">The link opens your application status page. You will be asked to verify your email with a one-time code first.</td></tr><tr><td style=\"padding:26px 40px 30px 40px;color:#8a8f96;font-size:12px;line-height:1.6;border-top:0;\">Thank you,<br><strong style=\"color:#1f1f23;\">Expertise HR Team</strong></td></tr></table></td></tr></table></body></html>",
+            "sent_at": "2026-10-10 21:31:33"
         }
     ]
 }

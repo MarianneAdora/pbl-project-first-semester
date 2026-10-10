@@ -78,6 +78,26 @@ document.addEventListener('DOMContentLoaded', function () {
         requestAnimationFrame(frame);
     }
 
+    /* ---------- 3. waiting for HR: ask the page every few seconds if HR answered ---------- */
+    var ivView = document.querySelector('.view--interview');
+    if (ivView && ivView.dataset.state === 'pending') {
+        var knownSig = ivView.dataset.sig || '';
+        var pollTimer = null;
+        var checkHr = function () {
+            if (document.hidden) return;
+            fetch(window.location.pathname + '?status=1', {
+                credentials: 'same-origin', cache: 'no-store', headers: { 'Accept': 'application/json' }
+            }).then(function (res) { return res.json(); }).then(function (data) {
+                if (data && data.status === 'success' && data.sig && data.sig !== knownSig) {
+                    clearInterval(pollTimer);
+                    Applicant.go(window.location.pathname);          // HR answered: show the new page
+                }
+            }).catch(function () { /* offline: try again next time */ });
+        };
+        pollTimer = setInterval(checkHr, 8000);
+        document.addEventListener('visibilitychange', checkHr);
+    }
+
     /* ---------- 2. the interview schedule ---------- */
     var form = document.getElementById('scheduleForm');
     if (!form) return;

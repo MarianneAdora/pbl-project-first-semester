@@ -54,6 +54,11 @@ $today    = (new DateTimeImmutable('today', $tz));
 $minDate  = $today->modify('+1 day');
 $maxDate  = $today->modify('+60 days');
 
+// CONNECTED TO HR: the applicant record (found by the verified email) and the shared interview row that
+// HR's Interview Schedule tab reads and answers (hr/static-data.php -> static_interview_*).
+$applicantRow = static_applicant_by_email((string) ($_SESSION['applicant_email'] ?? ''));
+$storedIv     = $applicantRow ? static_interview_get((int) $applicantRow['id']) : null;
+
 function interview_json(array $data, int $code = 200): void
 {
     http_response_code($code);
@@ -69,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($outcome !== 'passed') {
         interview_json(['status' => 'error', 'message' => 'Interview scheduling is not open for this result.'], 403);
     }
-    if (!empty($_SESSION['interview'])) {
+    if (!empty($_SESSION['interview']) || $storedIv) {
         interview_json(['status' => 'error', 'message' => 'Your interview schedule was already submitted.'], 409);
     }
 
@@ -90,11 +95,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         interview_json(['status' => 'error', 'message' => 'Please choose an available time.'], 422);
     }
 
+    // HR sees this request in the Interview Schedule tab (status: awaiting)
+    if ($applicantRow) {
+        static_interview_request((int) $applicantRow['id'], $date->format('Y-m-d'), (string) static_interview_time24($time));
+    }
     $_SESSION['interview'] = ['date' => $date->format('Y-m-d'), 'time' => $time, 'status' => 'pending'];
     interview_json(['status' => 'success']);
 }
 
+// The stored row is the truth: whatever HR answered (confirmed / new schedule) shows up here on the next load.
+if ($applicantRow) {
+    $row = static_interview_get((int) $applicantRow['id']);
+    if ($row) {
+        $_SESSION['interview'] = static_interview_session_shape($row);
+    } elseif (!empty($_SESSION['interview']) && is_array($_SESSION['interview'])) {
+        // sent before this page was connected to HR: hand it over now
+        $old = $_SESSION['interview'];
+        $t24 = static_interview_time24((string) ($old['time'] ?? ''));
+        if ($t24 && !empty($old['date'])) static_interview_request((int) $applicantRow['id'], (string) $old['date'], $t24);
+    }
+}
+
 $interview = isset($_SESSION['interview']) && is_array($_SESSION['interview']) ? $_SESSION['interview'] : null;
+$ivSig     = $interview ? md5(json_encode($interview)) : '';
+
+// The page asks this every few seconds while it waits for HR (see application-status.js)
+if (($_GET['status'] ?? '') === '1') {
+    interview_json(['status' => 'success', 'state' => $interview['status'] ?? 'none', 'sig' => $ivSig]);
+}
 
 // testing only: pretend HR answered
 if ($devMode && $interview && in_array($_GET['hr'] ?? '', ['approve', 'suggest', 'pending'], true)) {
@@ -185,7 +213,7 @@ $iconChevron  = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6
         $showTime = $isNew ? ($interview['new_time'] ?? $interview['time']) : $interview['time'];
     ?>
     <!-- ===== The interview the applicant sent: waiting for HR / confirmed / HR suggested another time ===== -->
-    <section class="status view view--interview" aria-live="polite">
+    <section class="status view view--interview" aria-live="polite" data-state="<?= htmlspecialchars($state) ?>" data-sig="<?= $ivSig ?>">
 
         <?php if ($isNew): ?>
             <?= $bigAgain ?>
@@ -210,6 +238,9 @@ $iconChevron  = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6
                         <span class="detail__value"><?= $state === 'confirmed' ? 'Confirmed' : 'Awaiting HR Confirmation' ?></span></li>
                 <?php endif; ?>
             </ul>
+            <?php if ($state === 'pending'): ?>
+                <p class="panel__text panel__text--muted live-note"><span class="live-dot" aria-hidden="true"></span>This page updates by itself when HR responds.</p>
+            <?php endif; ?>
         </div>
 
         <a class="btn btn--primary btn--wide reveal" style="--i:5" href="<?= htmlspecialchars($homePage) ?>" data-leave>Back Home</a>

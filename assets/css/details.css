@@ -6,7 +6,8 @@
    Colours are CSS variables on .details, with the dark values set right below, so this page
    follows the Settings > Theme choice without touching theme.css.
    ========================================================================== */
-.details {
+.details,
+.modal-backdrop {
     --d-ink: #1a1a1a;
     --d-soft: #5f646c;
     --d-faint: #8a8f96;
@@ -28,7 +29,8 @@
     color: var(--d-ink);
 }
 
-html[data-theme="dark"] .details {
+html[data-theme="dark"] .details,
+html[data-theme="dark"] .modal-backdrop {
     --d-ink: #eceef2;
     --d-soft: #a6acb6;
     --d-faint: #8b93a0;
@@ -491,20 +493,20 @@ html[data-theme="dark"] .q-no { color: #1f2329; }
 /* ==========================================================================
    Interview schedule (drawn by details.js)
    ========================================================================== */
-.iv-title { font-size: 21px; font-weight: 800; color: var(--d-ink); }
-
-.iv-sub {
+.iv-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 14px;
-    margin: 4px 0 14px 0;
+    gap: 12px 16px;
+    flex-wrap: wrap;
 }
 
-.iv-sub-text { font-size: 17px; font-weight: 500; color: var(--d-soft); }
+.iv-title { font-size: 20px; font-weight: 800; color: var(--d-ink); }
+
+.iv-sub-text { margin: 0 0 10px; font-size: 14px; font-weight: 700; color: var(--d-soft); }
 
 .iv-badge {
-    padding: 4px 16px;
+    padding: 5px 14px;
     border-radius: 16px;
     border: 1.5px solid;
     font-size: 13px;
@@ -518,25 +520,41 @@ html[data-theme="dark"] .q-no { color: #1f2329; }
 .iv-badge.is-no { background: var(--d-bad-soft); color: var(--d-bad); border-color: var(--d-bad); }
 
 .iv-card {
-    padding: 8px 28px;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
     border: 1px solid var(--d-line);
-    border-radius: 10px;
+    border-radius: 12px;
     background: var(--d-sub);
+    overflow: hidden;
 }
 
 .iv-row {
-    display: grid;
-    grid-template-columns: 36px 170px minmax(0, 1fr);
+    display: flex;
     align-items: center;
     gap: 14px;
-    padding: 15px 0;
+    min-width: 0;
+    padding: 20px 24px;
 }
 
-.iv-row + .iv-row { border-top: 1px solid var(--d-line); }
-.iv-row svg { width: 30px; height: 30px; fill: #c4120d; }
-html[data-theme="dark"] .iv-row svg { fill: #ff6b80; }
-.iv-label { font-size: 19px; font-weight: 700; color: var(--d-ink); }
-.iv-value { font-size: 17px; font-weight: 500; color: var(--d-ink); }
+.iv-row + .iv-row { border-left: 1px solid var(--d-line); }
+
+.iv-ico {
+    flex: 0 0 auto;
+    width: 46px;
+    height: 46px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--d-red-soft);
+}
+
+.iv-ico svg { width: 23px; height: 23px; fill: #c4120d; }
+html[data-theme="dark"] .iv-ico svg { fill: #ff6b80; }
+
+.iv-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.iv-label { font-size: 12px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--d-faint); }
+.iv-value { font-size: 16px; font-weight: 700; color: var(--d-ink); overflow-wrap: anywhere; }
 
 .iv-was { margin-top: 12px; font-size: 13px; font-weight: 500; color: var(--d-soft); }
 .iv-was s { color: var(--d-faint); }
@@ -545,19 +563,19 @@ html[data-theme="dark"] .iv-row svg { fill: #ff6b80; }
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 18px;
+    gap: 16px 24px;
     flex-wrap: wrap;
     margin-top: 20px;
 }
 
 .iv-ok { display: flex; align-items: center; gap: 14px; min-width: 0; }
-.iv-ok svg { width: 46px; height: 46px; flex-shrink: 0; fill: var(--d-green-bar); }
-.iv-ok strong { display: block; font-size: 22px; font-weight: 800; color: var(--d-green); line-height: 1.2; }
-.iv-ok span { font-size: 15px; font-weight: 500; color: var(--d-soft); }
+.iv-ok svg { width: 44px; height: 44px; flex-shrink: 0; fill: var(--d-green-bar); }
+.iv-ok strong { display: block; font-size: 18px; font-weight: 800; color: var(--d-green); line-height: 1.25; }
+.iv-ok span { font-size: 14px; font-weight: 500; color: var(--d-soft); }
 
-.iv-ask { margin-left: auto; text-align: right; }
-.iv-ask p { font-size: 15px; font-weight: 500; color: var(--d-soft); margin-bottom: 8px; }
-.iv-actions { display: flex; justify-content: flex-end; gap: 14px; flex-wrap: wrap; }
+.iv-ask { display: flex; align-items: center; justify-content: space-between; gap: 14px 24px; flex-wrap: wrap; width: 100%; }
+.iv-ask p { margin: 0; font-size: 15px; font-weight: 700; color: var(--d-ink); }
+.iv-actions { display: flex; justify-content: flex-end; gap: 12px; flex-wrap: wrap; }
 
 .iv-btn {
     min-width: 168px;
@@ -578,27 +596,30 @@ html[data-theme="dark"] .iv-row svg { fill: #ff6b80; }
 .iv-btn:disabled { opacity: 0.6; cursor: wait; }
 .iv-btn:focus-visible { outline: 3px solid rgba(163, 8, 30, 0.35); outline-offset: 2px; }
 
-.iv-btn.yes { background: #a1c4ae; border-color: #1c8a3d; color: #0b6b1d; }
-.iv-btn.yes:hover:not(:disabled) { background: #8fb9a0; box-shadow: 0 6px 14px rgba(28, 138, 61, 0.28); }
-.iv-btn.no  { background: #e8a3a3; border-color: #c00000; color: #a60000; }
-.iv-btn.no:hover:not(:disabled) { background: #e18f8f; box-shadow: 0 6px 14px rgba(192, 0, 0, 0.25); }
-.iv-btn.neutral { background: #eceef0; border-color: #c4c8ce; color: #333333; }
-.iv-btn.neutral:hover:not(:disabled) { background: #dfe2e5; }
-.iv-btn.send { background: #d9f0e0; border-color: #1c8a3d; color: #0b6b1d; }
-.iv-btn.send:hover:not(:disabled) { background: #c6e8d1; box-shadow: 0 6px 14px rgba(28, 138, 61, 0.28); }
-.iv-btn.cancel { background: #9a9ea5; border-color: #7a7e85; color: #1a1a1a; }
-.iv-btn.cancel:hover:not(:disabled) { background: #8b8f96; }
+.iv-btn.yes { background: #1c8a3d; border-color: #1c8a3d; color: #ffffff; }
+.iv-btn.yes:hover:not(:disabled) { background: #167333; box-shadow: 0 6px 14px rgba(28, 138, 61, 0.3); }
+.iv-btn.no { background: transparent; border-color: #c00000; color: #c00000; }
+.iv-btn.no:hover:not(:disabled) { background: var(--d-bad-soft); box-shadow: 0 6px 14px rgba(192, 0, 0, 0.16); }
+.iv-btn.neutral,
+.iv-btn.cancel { background: transparent; border-color: var(--d-line); color: var(--d-ink); }
+.iv-btn.neutral:hover:not(:disabled),
+.iv-btn.cancel:hover:not(:disabled) { background: var(--d-sub); border-color: var(--d-faint); }
+.iv-btn.send { background: #1c8a3d; border-color: #1c8a3d; color: #ffffff; }
+.iv-btn.send:hover:not(:disabled) { background: #167333; box-shadow: 0 6px 14px rgba(28, 138, 61, 0.3); }
 
-html[data-theme="dark"] .iv-btn.yes { background: rgba(63, 191, 99, 0.2); border-color: #3fbf63; color: #6fdc8c; }
-html[data-theme="dark"] .iv-btn.no { background: rgba(255, 107, 107, 0.18); border-color: #ff6b6b; color: #ff9a9a; }
-html[data-theme="dark"] .iv-btn.neutral { background: #3a414a; border-color: #4a525c; color: #c9ced6; }
-html[data-theme="dark"] .iv-btn.send { background: rgba(63, 191, 99, 0.2); border-color: #3fbf63; color: #6fdc8c; }
-html[data-theme="dark"] .iv-btn.cancel { background: #3a414a; border-color: #4a525c; color: #c9ced6; }
+html[data-theme="dark"] .iv-btn.yes,
+html[data-theme="dark"] .iv-btn.send { background: #3fbf63; border-color: #3fbf63; color: #0e1f14; }
+html[data-theme="dark"] .iv-btn.yes:hover:not(:disabled),
+html[data-theme="dark"] .iv-btn.send:hover:not(:disabled) { background: #5ad37d; }
+html[data-theme="dark"] .iv-btn.no { border-color: #ff6b6b; color: #ff9a9a; }
+html[data-theme="dark"] .iv-btn.neutral,
+html[data-theme="dark"] .iv-btn.cancel { border-color: #4a525c; color: #c9ced6; }
 
-.iv-adjust-title { margin: 26px 0 12px; font-size: 21px; font-weight: 800; color: var(--d-ink); }
+.iv-adjust { margin-top: 26px; padding-top: 24px; border-top: 1px solid var(--d-line); }
+.iv-adjust-title { margin: 0 0 16px; font-size: 18px; font-weight: 800; color: var(--d-ink); }
 
-.iv-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px; }
-.iv-field label { display: block; margin-bottom: 8px; font-size: 17px; font-weight: 700; color: var(--d-ink); }
+.iv-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+.iv-field label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 700; color: var(--d-ink); }
 .iv-field label b { color: #c00000; margin-left: 4px; }
 
 .iv-input {
@@ -637,12 +658,11 @@ html[data-theme="dark"] .iv-btn.cancel { background: #3a414a; border-color: #4a5
 .iv-input select option { color: #1a1a1a; background: #ffffff; }
 .iv-input .chev { position: absolute; right: 14px; width: 24px; height: 24px; fill: var(--d-ink); pointer-events: none; }
 
-.iv-error { min-height: 20px; margin-top: 6px; font-size: 13px; font-weight: 600; color: #c00000; }
+.iv-error { min-height: 20px; margin-top: 4px; font-size: 13px; font-weight: 600; color: #c00000; }
 html[data-theme="dark"] .iv-error { color: #ff8a8a; }
 
-.iv-hint { margin-top: 2px; font-size: 12.5px; font-weight: 500; color: var(--d-faint); }
+.iv-hint { margin-top: 12px; font-size: 13px; font-weight: 500; color: var(--d-soft); }
 
-.iv-adjust-actions { display: flex; justify-content: flex-end; gap: 14px; margin-top: 10px; flex-wrap: wrap; }
 
 /* ==========================================================================
    AI Evaluation (the risk scoring rubric: more points = more risk)
@@ -800,12 +820,13 @@ html[data-theme="dark"] .iv-error { color: #ff8a8a; }
 html[data-theme="dark"] .email-meta { color: #a6acb6; }
 html[data-theme="dark"] .email-close { color: #a6acb6; }
 html[data-theme="dark"] .email-card iframe { border-color: #343942; }
-html[data-theme="dark"] .modal-card p { color: #a6acb6; }
 
 /* ==========================================================================
    Narrow windows
    ========================================================================== */
 @media (max-width: 1100px) {
+    .iv-card { grid-auto-flow: row; grid-template-columns: minmax(0, 1fr); }
+    .iv-row + .iv-row { border-left: 0; border-top: 1px solid var(--d-line); }
     .eval-grid { grid-template-columns: minmax(0, 1fr); gap: 30px; }
     .eval-criteria { padding-right: 0; border-right: none; }
     .eval-score { padding-left: 0; }
@@ -818,18 +839,13 @@ html[data-theme="dark"] .modal-card p { color: #a6acb6; }
     .profile-card { flex-wrap: wrap; padding: 22px; }
     .profile-status { flex-direction: row; align-items: center; }
     .iv-fields, .why-cols { grid-template-columns: minmax(0, 1fr); }
-    .iv-row { grid-template-columns: 32px 130px minmax(0, 1fr); }
     .q-row { grid-template-columns: minmax(0, 1fr); gap: 8px; }
     .q-row:not(.is-wide) .q-answer { justify-content: flex-start; text-align: left; }
-    .iv-ask { margin-left: 0; text-align: left; }
-    .iv-actions { justify-content: flex-start; }
 }
 
 @media (max-width: 600px) {
     .panel-card { padding: 20px 18px 24px; }
-    .iv-card { padding: 4px 16px; }
-    .iv-row { grid-template-columns: 28px minmax(0, 1fr); }
-    .iv-row .iv-value { grid-column: 2; margin-top: -8px; }
+    .iv-row { padding: 16px 18px; }
     .iv-btn { min-width: 0; flex: 1; }
 }
 
@@ -837,3 +853,455 @@ html[data-theme="dark"] .modal-card p { color: #a6acb6; }
     .panel, .tab.shake { animation: none; }
     .bar-fill, .donut-ring { transition: none; }
 }
+
+
+/* ==========================================================================
+   Interview schedule: pickers (same look + behaviour as the applicant's result page),
+   progress tracker and animations. Colours follow the theme through the --d- variables.
+   ========================================================================== */
+.iv { --iv-ease: var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)); --iv-pop: var(--ease-pop, cubic-bezier(0.34, 1.56, 0.64, 1)); }
+
+/* the whole tab slides in once, piece by piece; later changes only animate the part that changed */
+@keyframes ivIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.iv--first > * { animation: ivIn 0.55s var(--iv-ease) backwards; }
+.iv--first > *:nth-child(2) { animation-delay: 0.06s; }
+.iv--first > *:nth-child(3) { animation-delay: 0.12s; }
+.iv--first > *:nth-child(4) { animation-delay: 0.18s; }
+.iv--first > *:nth-child(5) { animation-delay: 0.24s; }
+.iv--first > *:nth-child(6) { animation-delay: 0.30s; }
+.iv-adjust, .iv-foot, .iv-was { animation: ivIn 0.5s var(--iv-ease) backwards; }
+.iv--first > .iv-adjust, .iv--first > .iv-foot { animation-delay: 0.3s; }
+
+
+/* status badge: a dot that pulses while the answer is still open */
+.iv-badge { display: inline-flex; align-items: center; gap: 8px; transition: background-color 0.3s ease; }
+.iv-badge::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.iv-badge.is-awaiting::before { animation: ivPulse 1.6s ease-out infinite; }
+@keyframes ivPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(25, 118, 210, 0.55); }
+    100% { box-shadow: 0 0 0 9px rgba(25, 118, 210, 0); }
+}
+
+/* progress tracker: Schedule chosen > HR response > Applicant emailed
+   (dot + line on the top row, the text under it, so nothing ever crosses the words) */
+.iv-track { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); list-style: none; margin: 20px 0 24px; padding: 0; }
+.iv-step { min-width: 0; }
+.iv-step-top { display: flex; align-items: center; }
+.iv-step-dot {
+    position: relative; z-index: 1; flex: 0 0 auto; width: 34px; height: 34px; border-radius: 50%;
+    display: grid; place-items: center; border: 2px solid var(--d-line); background: var(--d-card);
+    color: var(--d-faint); font-size: 14px; font-weight: 800; transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+.iv-step-dot b { font-weight: 800; }
+.iv-step-dot svg { width: 18px; height: 18px; fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.iv-step-line { position: relative; flex: 1; height: 3px; margin: 0 12px; border-radius: 2px; background: var(--d-line); overflow: hidden; }
+.iv-step-line::after { content: ""; position: absolute; inset: 0; background: var(--d-green-bar); transform-origin: left; transform: scaleX(0); }
+.iv-step-line.is-full::after { transform: scaleX(1); animation: ivLineFull 0.6s var(--iv-ease) backwards; animation-delay: calc(var(--n) * 0.18s + 0.15s); }
+.iv-step-line.is-half::after { transform: scaleX(0.5); animation: ivLineHalf 0.6s var(--iv-ease) backwards; animation-delay: calc(var(--n) * 0.18s + 0.15s); }
+@keyframes ivLineFull { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes ivLineHalf { from { transform: scaleX(0); } to { transform: scaleX(0.5); } }
+.iv-step.is-done .iv-step-dot { background: var(--d-green-bar); border-color: var(--d-green-bar); animation: ivDot 0.5s var(--iv-pop) backwards; animation-delay: calc(var(--n) * 0.18s); }
+.iv-step.is-current .iv-step-dot { border-color: var(--d-blue); color: var(--d-blue); background: var(--d-blue-soft); animation: ivRing 1.8s ease-out infinite; }
+@keyframes ivDot { from { transform: scale(0.4); } to { transform: scale(1); } }
+@keyframes ivRing { 0% { box-shadow: 0 0 0 0 rgba(25, 118, 210, 0.4); } 100% { box-shadow: 0 0 0 10px rgba(25, 118, 210, 0); } }
+.iv-step-text { display: flex; flex-direction: column; gap: 2px; margin-top: 10px; padding-right: 12px; min-width: 0; line-height: 1.3; }
+.iv-step-text strong { font-size: 14px; font-weight: 700; color: var(--d-ink); }
+.iv-step-text small { font-size: 12.5px; font-weight: 500; color: var(--d-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.iv-step.is-todo .iv-step-text strong { color: var(--d-faint); }
+
+/* the confirmed tick draws itself */
+.iv-ok svg.iv-ok-svg { width: 52px; height: 52px; fill: none; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+.iv-ok-svg .ok-circle { stroke: var(--d-green-bar); stroke-dasharray: 227; stroke-dashoffset: 227; animation: ivDraw 0.7s var(--iv-ease) 0.1s forwards; }
+.iv-ok-svg .ok-tick { stroke: var(--d-green-bar); stroke-dasharray: 60; stroke-dashoffset: 60; animation: ivDraw 0.45s var(--iv-ease) 0.6s forwards; }
+@keyframes ivDraw { to { stroke-dashoffset: 0; } }
+
+/* buttons: a soft press + a ready glow on "Send New Schedule" */
+.iv-btn { position: relative; overflow: hidden; }
+.iv-btn:disabled:not(.is-loading) { cursor: not-allowed; opacity: 0.5; }
+.iv-btn.send.is-ready { animation: ivGlow 2.2s ease-in-out infinite; }
+.iv-btn.is-loading { cursor: wait; opacity: 0.8; }
+.iv-btn.is-loading::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.45) 50%, transparent 70%);
+    transform: translateX(-100%); animation: ivShine 1s linear infinite;
+}
+@keyframes ivGlow { 0%, 100% { box-shadow: 0 0 0 0 rgba(28, 138, 61, 0); } 50% { box-shadow: 0 0 0 6px rgba(28, 138, 61, 0.18); } }
+@keyframes ivShine { to { transform: translateX(100%); } }
+
+/* ---- adjust form ---- */
+.iv-fields { position: relative; z-index: 5; }               /* the open picker sits above the cards below */
+.iv-flabel { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 700; color: var(--d-ink); }
+.iv-flabel b { color: #c00000; margin-left: 4px; }
+
+.iv .picker { position: relative; }
+.iv .picker__btn {
+    width: 100%; min-height: 50px; display: flex; align-items: center; gap: 10px; padding: 0 14px;
+    font-family: inherit; font-size: 15px; font-weight: 600; text-align: left; color: var(--d-ink);
+    background: var(--d-card); border: 1.5px solid var(--d-line); border-radius: 10px; cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, transform 0.3s var(--iv-pop);
+}
+.iv .picker__btn:hover { border-color: var(--d-faint); transform: translateY(-1px); }
+.iv .picker__btn:focus-visible, .iv .picker.open .picker__btn { outline: none; border-color: #a3081e; box-shadow: 0 0 0 4px rgba(163, 8, 30, 0.13); }
+.iv .picker__btn.has-error { border-color: #c00000; animation: tabShake 0.4s ease; }
+.iv .picker__icon, .iv .picker__chevron { flex: 0 0 auto; display: grid; place-items: center; }
+.iv .picker__icon svg { width: 26px; height: 26px; fill: none; stroke: #c4120d; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+html[data-theme="dark"] .iv .picker__icon svg { stroke: #ff6b80; }
+.iv .picker__chevron svg { width: 22px; height: 22px; fill: none; stroke: var(--d-ink); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; transition: transform 0.35s var(--iv-pop); }
+.iv .picker.open .picker__chevron svg { transform: rotate(180deg); }
+.iv .picker__value { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.iv .picker__value.is-placeholder { font-weight: 500; color: var(--d-faint); }
+
+.iv .picker__pop {
+    position: absolute; top: calc(100% + 8px); left: 0; z-index: 60; background: var(--d-card);
+    border: 1px solid var(--d-line); border-radius: 14px;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18), 0 4px 12px rgba(0, 0, 0, 0.07);
+    opacity: 0; visibility: hidden; transform-origin: top left; transform: translateY(-8px) scale(0.97);
+    transition: opacity 0.2s ease, transform 0.3s var(--iv-pop), visibility 0s linear 0.3s;
+}
+html[data-theme="dark"] .iv .picker__pop { box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55); }
+.iv .picker.open .picker__pop { opacity: 1; visibility: visible; transform: none; transition: opacity 0.2s ease, transform 0.3s var(--iv-pop), visibility 0s; }
+
+.iv .picker__menu { right: 0; margin: 0; padding: 7px; list-style: none; outline: none; max-height: 330px; overflow-y: auto; }
+.iv .picker__option {
+    display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 14px; font-size: 16px; font-weight: 600;
+    color: var(--d-ink); border-radius: 9px; cursor: pointer; user-select: none;
+    transition: background-color 0.15s ease, color 0.15s ease, transform 0.25s var(--iv-pop);
+}
+.iv .picker.open .picker__option { animation: optionIn 0.35s var(--iv-ease) backwards; animation-delay: calc(var(--k, 0) * 35ms + 40ms); }
+.iv .picker__option:hover, .iv .picker__option.is-focused { background: var(--d-red-soft); transform: translateX(4px); }
+.iv .picker__option[aria-selected="true"] { color: var(--d-red); font-weight: 800; }
+.iv .picker__optlabel { flex: 1; }
+.iv .picker__check { width: 20px; height: 20px; fill: var(--d-red); opacity: 0; transform: scale(0.4); transition: opacity 0.2s ease, transform 0.3s var(--iv-pop); }
+.iv .picker__option[aria-selected="true"] .picker__check { opacity: 1; transform: none; }
+@keyframes optionIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+/* calendar */
+.iv .pcal { width: 344px; max-width: calc(100vw - 40px); padding: 16px 16px 14px; }
+.iv .pcal__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 11px; }
+.iv .pcal__title { font-size: 18px; font-weight: 700; color: var(--d-ink); }
+.iv .pcal__nav { width: 38px; height: 38px; display: grid; place-items: center; background: transparent; border: 0; border-radius: 50%; cursor: pointer; transition: background-color 0.15s ease, transform 0.25s var(--iv-pop); }
+.iv .pcal__nav svg { width: 22px; height: 22px; fill: none; stroke: var(--d-ink); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.iv .pcal__nav--prev svg { transform: scaleX(-1); }
+.iv .pcal__nav:hover:not(:disabled) { background: var(--d-red-soft); transform: scale(1.08); }
+.iv .pcal__nav:disabled { opacity: 0.25; cursor: not-allowed; }
+.iv .pcal__nav:focus-visible, .iv .pcal__day:focus-visible { outline: 2px solid #a3081e; outline-offset: 2px; }
+.iv .pcal__dow, .iv .pcal__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.iv .pcal__dow span { padding: 5px 0; font-size: 13px; font-weight: 700; text-align: center; color: var(--d-faint); }
+.iv .pcal__day {
+    position: relative; aspect-ratio: 1; display: grid; place-items: center; font-family: inherit; font-size: 15px; font-weight: 600;
+    color: var(--d-ink); background: transparent; border: 0; border-radius: 50%; cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, transform 0.25s var(--iv-pop);
+}
+.iv .pcal__day:hover:not(:disabled):not(.is-selected) { background: var(--d-red-soft); color: var(--d-red); transform: scale(1.1); }
+.iv .pcal__day:disabled { color: var(--d-line); cursor: not-allowed; }
+.iv .pcal__day.is-weekend:disabled { text-decoration: line-through; text-decoration-color: rgba(128, 128, 128, 0.3); }
+.iv .pcal__day.is-today:not(.is-selected) { box-shadow: inset 0 0 0 2px rgba(163, 8, 30, 0.4); }
+.iv .pcal__day.is-current::after { content: ""; position: absolute; bottom: 4px; width: 5px; height: 5px; border-radius: 50%; background: var(--d-blue); }
+.iv .pcal__day.is-selected { color: #fff; background: #a3081e; box-shadow: 0 5px 12px rgba(163, 8, 30, 0.35); }
+.iv .pcal__day.is-selected.is-current::after { background: #fff; }
+.iv .pcal__day.picked { animation: dayPicked 0.38s var(--iv-pop); }
+.iv .pcal__grid--next { animation: monthNext 0.35s var(--iv-ease); }
+.iv .pcal__grid--prev { animation: monthPrev 0.35s var(--iv-ease); }
+@keyframes dayPicked { 0% { transform: scale(0.7); } 100% { transform: scale(1); } }
+@keyframes monthNext { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
+@keyframes monthPrev { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: none; } }
+.iv .pcal__hint { margin-top: 11px; padding-top: 9px; font-size: 13px; text-align: center; color: var(--d-faint); border-top: 1px solid var(--d-line); }
+.iv .pcal__legend { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 4px; }
+.iv .pcal__legend i { width: 6px; height: 6px; border-radius: 50%; background: var(--d-blue); }
+
+/* the live "New schedule" card under the pickers */
+.iv-new {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px 28px; margin-top: 18px; padding: 14px 20px;
+    border: 1px dashed var(--d-line); border-radius: 10px; background: var(--d-sub);
+}
+.iv-new-title { font-size: 13px; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase; color: var(--d-soft); }
+.iv-new-item { display: inline-flex; align-items: center; gap: 9px; font-size: 15px; font-weight: 500; color: var(--d-faint); }
+.iv-new-item svg { width: 22px; height: 22px; fill: #c4120d; opacity: 0.55; transition: opacity 0.3s ease; }
+html[data-theme="dark"] .iv-new-item svg { fill: #ff6b80; }
+.iv-new-item .is-set { font-weight: 700; color: var(--d-ink); }
+.iv-new-item:has(.is-set) svg { opacity: 1; }
+.iv-new-item .bump { animation: valueBump 0.4s var(--iv-pop); }
+@keyframes valueBump { 0% { transform: scale(0.9); opacity: 0.4; } 100% { transform: none; opacity: 1; } }
+
+.iv-error { min-height: 20px; }
+.iv-error.is-in { animation: ivIn 0.35s var(--iv-ease); }
+
+/* ==========================================================================
+   "Confirm this schedule?" pop-up
+   It sits OUTSIDE <main class="details">, so it gets its own sizes here (the old rules read
+   variables that only exist inside .details, which is why the buttons came out flat and clipped).
+   ========================================================================== */
+.modal-card.approve-card {
+    max-width: 460px;
+    padding: 30px 30px 26px;
+    text-align: center;
+}
+
+.approve-card h3 { margin-bottom: 16px; }
+
+.ap-line {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    padding: 16px 18px;
+    border-radius: 12px;
+    background: var(--d-red-soft);
+    color: var(--d-ink);
+}
+
+.ap-when { display: flex; align-items: baseline; justify-content: center; flex-wrap: wrap; gap: 4px 8px; font-size: 17px; line-height: 1.35; }
+.ap-when b { font-weight: 800; }
+.ap-when span { font-size: 14px; font-weight: 500; color: var(--d-soft); }
+
+.ap-type {
+    padding: 3px 12px;
+    border-radius: 12px;
+    background: var(--d-card);
+    border: 1px solid var(--d-line);
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--d-soft);
+}
+
+.approve-card p { margin-bottom: 24px; font-size: 13.5px; line-height: 1.6; color: var(--d-soft); overflow-wrap: anywhere; }
+.approve-card p b { color: var(--d-ink); font-weight: 700; }
+
+.approve-card .modal-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.7fr);
+    gap: 12px;
+}
+
+.approve-card .modal-actions button {
+    box-sizing: border-box;
+    min-width: 0;
+    height: 46px;
+    padding: 0 14px;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.approve-card .btn-cancel { background: transparent; border: 1.5px solid var(--d-line); color: var(--d-ink); }
+.approve-card .btn-cancel:hover { background: var(--d-sub); border-color: var(--d-faint); }
+.approve-card .btn-confirm { background: #a3081e; border: 1.5px solid #a3081e; color: #ffffff; }
+.approve-card .btn-confirm:hover:not(:disabled) { background: #820416; border-color: #820416; }
+.approve-card .modal-actions button:disabled { opacity: 0.6; cursor: wait; transform: none; }
+.approve-card .modal-actions button:focus-visible { outline: 3px solid rgba(163, 8, 30, 0.35); outline-offset: 2px; }
+
+html[data-theme="dark"] .approve-card .btn-cancel { background: transparent; border-color: #4a525c; color: #c9ced6; }
+html[data-theme="dark"] .approve-card .btn-cancel:hover { background: #272c33; }
+html[data-theme="dark"] .approve-card .btn-confirm { background: #ff6b80; border-color: #ff6b80; color: #2a0a10; }
+html[data-theme="dark"] .approve-card .btn-confirm:hover:not(:disabled) { background: #ff8595; border-color: #ff8595; }
+
+@media (max-width: 440px) {
+    .modal-card.approve-card { padding: 24px 20px 20px; }
+    .approve-card .modal-actions { grid-template-columns: minmax(0, 1fr); }
+    .approve-card .btn-confirm { order: -1; }          /* the main answer first, easy to reach with a thumb */
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .iv--first > *, .iv-adjust, .iv-foot, .iv-was, .iv-step, .iv-step-dot, .iv-step::before,
+    .iv-badge::before, .iv-step-line::after, .iv-btn.send.is-ready, .iv-btn.is-loading::after, .iv .picker__option,
+    .iv .pcal__grid--next, .iv .pcal__grid--prev, .iv .pcal__day.picked, .iv-error.is-in, .iv-new-item .bump { animation: none !important; }
+    .iv-ok-svg .ok-circle, .iv-ok-svg .ok-tick { animation: none; stroke-dashoffset: 0; }
+    .iv .picker__pop { transition: none; }
+}
+
+/* ==========================================================================
+   One button system for the whole Details page (Overview to AI Evaluation, and the windows):
+   same height, corners, text and spacing everywhere.
+   ========================================================================== */
+.details {
+    --btn-h: 44px;
+    --btn-r: 10px;
+    --btn-gap: 12px;
+}
+
+.btn-outline,
+.btn-outline.small,
+.iv-btn {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: var(--btn-h);
+    padding: 0 22px;
+    border-radius: var(--btn-r);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    line-height: 1;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.btn-outline,
+.btn-outline.small { min-width: 132px; border-width: 1.5px; }
+.iv-btn { min-width: 160px; }
+
+.back-link { height: var(--btn-h); box-sizing: border-box; padding: 0 16px; border: 1.5px solid var(--d-line); border-radius: var(--btn-r); font-size: 14px; letter-spacing: 0.4px; text-transform: uppercase; }
+.back-link:hover { border-color: var(--d-red); }
+
+/* every group of buttons: same gap, same alignment; a button is as wide as its text needs (never clipped) */
+.iv-actions, .iv-adjust-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--btn-gap); margin: 0; }
+.iv-adjust-actions { margin-top: 8px; }
+.iv-actions .iv-btn, .iv-adjust-actions .iv-btn { flex: 0 0 auto; padding: 0 26px; }
+
+/* the answer row: what was done on the left, the buttons on the right, always on one tidy line */
+.iv-foot { margin-top: 22px; }
+.iv-foot .iv-actions { margin-left: auto; }
+
+/* file / video cards: the button sits at the right edge, centred with the text */
+.file-card .btn-outline { margin-left: auto; flex-shrink: 0; }
+.video-stage .btn-outline { align-self: flex-start; }
+
+@media (max-width: 600px) {
+    .iv-track { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+    .iv-step { display: flex; align-items: center; gap: 12px; }
+    .iv-step-line { display: none; }
+    .iv-step-text { margin-top: 0; }
+    .iv-foot { flex-direction: column; align-items: stretch; }
+    .iv-ask { flex-direction: column; align-items: stretch; }
+    .iv-foot .iv-actions, .iv-adjust-actions { width: 100%; margin-left: 0; }
+    .iv-actions .iv-btn, .iv-adjust-actions .iv-btn { flex: 1 1 0; min-width: 0; padding: 0 12px; }
+    .file-card { flex-wrap: wrap; }
+    .file-card .btn-outline { width: 100%; margin-left: 0; }
+}
+
+/* ==========================================================================
+   Sticky top part (title + applicant card + tabs) and evenly spread tabs
+   ========================================================================== */
+.details-sticky {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    /* reaches the edges of the scrolling area (it has 28px 36px of padding) so nothing shows around it */
+    margin: -28px -36px 0;
+    padding: 28px 36px 0;
+    background: #dcdfe3;
+    transition: box-shadow 0.3s ease;
+}
+html[data-theme="dark"] .details-sticky { background: #14171b; }
+.details-sticky.is-stuck { box-shadow: 0 10px 18px -12px rgba(0, 0, 0, 0.35); }
+
+/* the five tabs share the full width above the card, no empty space at the end */
+.tabs { display: flex; gap: 0; padding: 0; overflow: hidden; }
+.tab { flex: 1 1 0; min-width: 0; justify-content: center; padding: 13px 10px 12px; text-align: center; }
+.tab > span { overflow: hidden; text-overflow: ellipsis; }
+.tab::after { left: 18%; right: 18%; }
+
+/* slim bar once the page is scrolled */
+.details-head, .profile-card, .avatar, .avatar svg, .profile-name, .profile-line, .profile-status {
+    transition: padding 0.3s var(--ease-out), margin 0.3s var(--ease-out), width 0.3s var(--ease-out), height 0.3s var(--ease-out),
+                font-size 0.3s var(--ease-out), gap 0.3s var(--ease-out), max-height 0.3s var(--ease-out), opacity 0.2s ease;
+}
+.profile-line { max-height: 30px; }
+
+.details-sticky.is-compact .details-head { margin-bottom: 10px; }
+.details-sticky.is-compact .details-head h1 { font-size: 22px; }
+.details-sticky.is-compact .back-link { height: 38px; }
+.details-sticky.is-compact .profile-card { gap: 14px; padding: 10px 20px; margin-bottom: 12px; }
+.details-sticky.is-compact .avatar { width: 44px; height: 44px; }
+.details-sticky.is-compact .avatar svg { width: 30px; height: 30px; }
+.details-sticky.is-compact .profile-name { font-size: 17px; margin-bottom: 0; }
+.details-sticky.is-compact .profile-line { max-height: 0; margin-top: 0; opacity: 0; overflow: hidden; }
+.details-sticky.is-compact .profile-status { flex-direction: row; gap: 8px; }
+.details-sticky.is-compact .status-pill.big { padding: 4px 16px; font-size: 13px; }
+
+@media (max-width: 600px) {
+    .tab { padding: 12px 4px 11px; font-size: 12.5px; gap: 4px; }
+    .tab-lock { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .details-head, .profile-card, .avatar, .avatar svg, .profile-name, .profile-line, .profile-status, .details-sticky { transition: none; }
+}
+
+/* ==========================================================================
+   Sticky fix + the tabs become the TOP of the card (one object, nothing cut)
+   ========================================================================== */
+/* the scrolling area has 28px of top padding and a sticky box measures from inside it, so it needs -28px
+   to sit flush at the very top (otherwise the page shows through above it) */
+.details-sticky { top: -28px; }
+.details-sticky.is-stuck { box-shadow: none; }
+
+.tabs {
+    position: relative;
+    overflow: visible;
+    background: var(--d-card);
+    border: 1px solid var(--d-line);
+    border-bottom: 0;
+    border-radius: 14px 14px 0 0;
+    box-shadow: inset 0 -1px 0 var(--d-line);
+    transition: box-shadow 0.35s ease;
+}
+.details-sticky.is-stuck .tabs { box-shadow: inset 0 -1px 0 var(--d-line), 0 12px 18px -14px rgba(0, 0, 0, 0.4); }
+
+.tab { border-radius: 0; padding: 16px 10px 15px; }
+.tab:first-child { border-top-left-radius: 13px; }
+.tab:last-child { border-top-right-radius: 13px; }
+.tab::after { display: none; }                 /* replaced by the sliding line below */
+
+.tab-ink {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    z-index: 2;
+    height: 3px;
+    width: var(--ink-w, 0px);
+    border-radius: 3px 3px 0 0;
+    background: #c4120d;
+    transform: translateX(var(--ink-x, 0px));
+    pointer-events: none;
+    transition: transform 0.5s var(--ease-out), width 0.5s var(--ease-out);
+}
+.tab-ink.no-anim { transition: none; }
+html[data-theme="dark"] .tab-ink { background: #ff6b80; }
+
+/* the card continues straight from the tabs: no top border, no square corner hanging out */
+.panel-card { border-top: 0; border-radius: 0 0 14px 14px; }
+
+/* smoother panel change + scrolling */
+@keyframes panelIn {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: none; }
+}
+.panel { animation: panelIn 0.5s var(--ease-out) both; }
+
+.main-content.details {
+    scroll-behavior: smooth;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(120, 124, 132, 0.45) transparent;
+}
+.main-content.details::-webkit-scrollbar { width: 10px; }
+.main-content.details::-webkit-scrollbar-thumb { background: rgba(120, 124, 132, 0.45); border-radius: 10px; border: 2px solid transparent; background-clip: content-box; }
+.main-content.details::-webkit-scrollbar-thumb:hover { background: rgba(120, 124, 132, 0.7); background-clip: content-box; }
+.main-content.details::-webkit-scrollbar-track { background: transparent; }
+
+/* the slim bar eases in and out instead of snapping */
+.details-sticky { will-change: transform; }
+.details-sticky .profile-card, .details-sticky .details-head h1, .details-sticky .back-link {
+    transition: padding 0.4s var(--ease-out), margin 0.4s var(--ease-out), gap 0.4s var(--ease-out),
+                font-size 0.4s var(--ease-out), height 0.4s var(--ease-out), box-shadow 0.4s ease;
+}
+.details-sticky.is-stuck .profile-card { box-shadow: 0 6px 16px -10px rgba(0, 0, 0, 0.3); }
+
+@media (prefers-reduced-motion: reduce) {
+    .tab-ink { transition: none; }
+    .main-content.details { scroll-behavior: auto; }
+    .panel { animation: none; }
+}
+
+/* The header changes size while you scroll. Without this, Chrome "helps" by moving the scroll position when
+   it does, which pushed the page back over the threshold and made the header flicker open and shut. */
+.main-content.details { overflow-anchor: none; }

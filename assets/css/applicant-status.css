@@ -852,3 +852,37 @@ html.js.is-ready .bc-glyph  { animation: glyphIn 0.4s ease-out 0.4s backwards; }
 
     .eval__line { transition: none; }
 }
+/* ===== Waiting for HR: the page checks for the answer by itself ===== */
+.live-note {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    margin-top: 1rem;
+}
+
+.live-dot {
+    position: relative;
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 50%;
+    background: #1a8f3a;
+}
+
+.live-dot::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: #1a8f3a;
+    animation: liveRing 1.8s ease-out infinite;
+}
+
+@keyframes liveRing {
+    from { transform: scale(1); opacity: 0.55; }
+    to   { transform: scale(3); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .live-dot::after { animation: none; }
+}

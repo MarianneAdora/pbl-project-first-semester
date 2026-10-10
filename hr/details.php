@@ -93,6 +93,7 @@ $pageData = [
     'locked'    => array_map('details_locked_message', array_combine(array_keys($tabs), array_keys($tabs))),
     'maxDate'   => static_now()->modify('+60 days')->format('Y-m-d'),
     'interview' => $interview,
+    'lastEmail' => $interview ? details_last_email($id) : null,
     'videoUrl'  => $video['url'] ?? ''
 ];
 ?>
@@ -218,6 +219,8 @@ $pageData = [
 
     <!-- Main Content -->
     <main class="main-content details" id="details">
+        <!-- This whole top part (title, applicant card, tabs) stays in place while the page scrolls -->
+        <div class="details-sticky" id="detailsSticky">
         <header class="content-header details-head reveal" style="--i:1">
             <h1>Applicant Details</h1>
             <a href="screeninglist.php" class="back-link" id="backLink">
@@ -267,6 +270,7 @@ $pageData = [
                 </button>
             <?php endforeach; ?>
         </div>
+        </div><!-- /details-sticky -->
 
         <section class="panel-card reveal" style="--i:4">
 
@@ -553,8 +557,9 @@ $pageData = [
 
     <!-- Approve the interview schedule (an email goes out right after) -->
     <div class="modal-backdrop" id="approveModal" aria-hidden="true">
-        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="approveTitle">
+        <div class="modal-card approve-card" role="dialog" aria-modal="true" aria-labelledby="approveTitle">
             <h3 id="approveTitle">Confirm this schedule?</h3>
+            <div class="ap-line" id="approveWhen"></div>
             <p id="approveText"></p>
             <div class="modal-actions">
                 <button type="button" class="btn-cancel" id="approveCancel">Cancel</button>

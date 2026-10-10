@@ -542,6 +542,32 @@ function details_interview_reschedule(array $a, string $date, string $time): arr
 // ---------------------------------------------------------------------------
 // The emails (HTML written the same way as hr/email.html: tables + inline styles)
 // ---------------------------------------------------------------------------
+// The address of the applicant's status page (the link inside the emails).
+// Set APP_URL (config/constants.php) to the real site address when it is online, for example
+// define('APP_URL', 'https://expertise.example.com'); until then it is worked out from this request.
+function details_status_url(): string
+{
+    if (defined('APP_URL') && APP_URL !== '') return rtrim((string) APP_URL, '/') . '/applicant/application-status.php';
+    $https  = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+    $host   = (string) ($_SERVER['HTTP_HOST'] ?? 'localhost');
+    $script = (string) ($_SERVER['SCRIPT_NAME'] ?? '/hr/static-details.php');
+    $root   = rtrim(str_replace('\\', '/', dirname(dirname($script))), '/');      // hr/ -> the project folder
+    return ($https ? 'https://' : 'http://') . $host . $root . '/applicant/application-status.php';
+}
+
+// The latest email that was sent to this applicant (so HR can open "View Email" again after a refresh)
+function details_last_email(int $applicantId): ?array
+{
+    $outbox = static_store_read()['outbox'] ?? [];
+    if (!is_array($outbox)) return null;
+    foreach (array_reverse(array_values($outbox)) as $m) {
+        if (is_array($m) && (int) ($m['applicant_id'] ?? 0) === $applicantId) {
+            return ['to' => (string) $m['to'], 'subject' => (string) $m['subject'], 'html' => (string) $m['html']];
+        }
+    }
+    return null;
+}
+
 function details_email(string $kind, array $a, array $iv): array
 {
     $first   = details_h(details_first_name((string) $a['name']));
@@ -550,6 +576,7 @@ function details_email(string $kind, array $a, array $iv): array
     $type    = details_h($iv['type']);
     $venue   = details_h(DETAILS_VENUE);
     $company = details_h(DETAILS_COMPANY);
+    $link    = details_h(details_status_url());
 
     if ($kind === 'confirmed') {
         $subject = 'Your interview is confirmed | ' . DETAILS_COMPANY;
@@ -585,6 +612,8 @@ function details_email(string $kind, array $a, array $iv): array
         . $row('Date', $date) . $row('Time', $time) . $row('Interview Type', $type) . $row('Location', $venue)
         . '</table></td></tr></table></td></tr>'
         . '<tr><td style="padding:20px 40px 0 40px;color:#3a3d44;font-size:14px;line-height:1.7;">' . $closing . '</td></tr>'
+        . '<tr><td style="padding:22px 40px 0 40px;"><a href="' . $link . '" style="display:inline-block;padding:13px 26px;background:#d1122a;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;border-radius:10px;">View my interview schedule</a></td></tr>'
+        . '<tr><td style="padding:12px 40px 0 40px;color:#8a8f96;font-size:12px;line-height:1.6;">The link opens your application status page. You will be asked to verify your email with a one-time code first.</td></tr>'
         . '<tr><td style="padding:26px 40px 30px 40px;color:#8a8f96;font-size:12px;line-height:1.6;border-top:0;">Thank you,<br><strong style="color:#1f1f23;">' . $company . ' HR Team</strong></td></tr>'
         . '</table></td></tr></table></body></html>';
 
