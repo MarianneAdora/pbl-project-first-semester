@@ -264,7 +264,7 @@ function static_archive_sync(): array
 // ---------------------------------------------------------------------------
 // Add Applicant: a new applicant starts as Pending. Throws InvalidArgumentException with a
 // message that is safe to show to HR.
-function static_add_applicant(string $name, string $email, string $contact): array
+function static_add_applicant(string $name, string $email, string $contact, ?array $cvUpload = null): array
 {
     $name    = trim($name);
     $email   = trim($email);
@@ -273,7 +273,7 @@ function static_add_applicant(string $name, string $email, string $contact): arr
     if (!filter_var($email, FILTER_VALIDATE_EMAIL))   throw new InvalidArgumentException('Enter a valid email address (example: name@gmail.com).');
     if ($contact === '')                              throw new InvalidArgumentException('Please enter the contact number.');
 
-    return static_store_update(function (array &$store) use ($name, $email, $contact) {
+    return static_store_update(function (array &$store) use ($name, $email, $contact, $cvUpload) {
         foreach ($store['applicants'] as $a) {
             if (strcasecmp($a['email'], $email) === 0) {
                 throw new InvalidArgumentException(
@@ -292,9 +292,114 @@ function static_add_applicant(string $name, string $email, string $contact): arr
             'result'  => null,
             'updated' => static_now()->format('Y-m-d H:i')
         ];
+        // the CV file (shown on the Applicant Details page). A problem with the file never stops the applicant from being added.
+        $cv = static_save_cv((int) $applicant['id'], $cvUpload);
+        if ($cv) $applicant['cv'] = $cv;
+
         $store['applicants'][] = $applicant + ['archived_at' => null];
         return $applicant;
     });
+}
+
+// Keeps an uploaded CV in data/cv/ (PDF, DOC, DOCX, 5 MB at most). Returns ['name','size','file'] or null.
+// DATABASE / CLOUDINARY (later): upload the file there and save the url instead of a file name.
+function static_save_cv(int $id, ?array $upload): ?array
+{
+    if (!$upload || ($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) return null;
+    if (empty($upload['tmp_name']) || !is_uploaded_file($upload['tmp_name']))    return null;
+
+    $ext = strtolower(pathinfo((string) ($upload['name'] ?? ''), PATHINFO_EXTENSION));
+    if (!in_array($ext, ['pdf', 'doc', 'docx'], true))     return null;
+    if ((int) $upload['size'] <= 0 || (int) $upload['size'] > 5 * 1024 * 1024) return null;
+
+    $dir = __DIR__ . '/data/cv';
+    if (!is_dir($dir) && !@mkdir($dir, 0775, true)) return null;
+
+    $file = $id . '.' . $ext;
+    if (!@move_uploaded_file($upload['tmp_name'], $dir . '/' . $file)) return null;
+
+    return ['name' => basename((string) $upload['name']), 'size' => (int) $upload['size'], 'file' => $file];
+}
+
+// ---------------------------------------------------------------------------
+// INTERVIEWS (the table "interviews", one row per applicant). Shared by BOTH sides:
+//   the APPLICANT sends a preferred date + time   applicant/application-status.php  -> static_interview_request()
+//   HR confirms it or sends another one           hr/details.php (Interview Schedule)  -> hr/static-details.php
+//   status: awaiting     waiting for HR                     (the applicant page calls it "pending")
+//           confirmed    HR said "Available"
+//           rescheduled  HR sent a new date + time          (the applicant page calls it "suggested")
+// Dates are 'Y-m-d', times are 24-hour 'H:i' in the store; the applicant page shows '10:00 AM'.
+// DATABASE (later): SELECT / INSERT / UPDATE on an interviews table with the same columns.
+// ---------------------------------------------------------------------------
+const STATIC_INTERVIEW_TYPE = 'On Site Interview';
+
+// The times that can be chosen (same list as $slots in application-status.php)
+function static_interview_slots(): array
+{
+    return ['09:00 AM', '10:00 AM', '11:00 AM', '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM'];
+}
+
+function static_interview_time24(string $time12): ?string
+{
+    $d = DateTimeImmutable::createFromFormat('h:i A', trim($time12));
+    return $d ? $d->format('H:i') : null;
+}
+
+function static_interview_time12(?string $time24): string
+{
+    $d = $time24 ? DateTimeImmutable::createFromFormat('H:i', $time24) : false;
+    return $d ? $d->format('h:i A') : '';
+}
+
+// The applicant record that goes with an email address (active applicants only), or null
+function static_applicant_by_email(string $email): ?array
+{
+    $email = strtolower(trim($email));
+    if ($email === '') return null;
+    foreach (static_applicants() as $a) {
+        if (strtolower($a['email']) === $email) return $a;
+    }
+    return null;
+}
+
+function static_interview_get(int $applicantId): ?array
+{
+    $row = static_store_read()['interviews'][$applicantId] ?? null;
+    return is_array($row) ? $row : null;
+}
+
+// The applicant picked a date and time (status: awaiting). Replaces an older request.
+function static_interview_request(int $applicantId, string $date, string $time24, string $source = 'applicant'): array
+{
+    return static_store_update(function (array &$store) use ($applicantId, $date, $time24, $source) {
+        if (!isset($store['interviews']) || !is_array($store['interviews'])) $store['interviews'] = [];
+        $store['interviews'][$applicantId] = [
+            'status'         => 'awaiting',
+            'preferred_date' => $date,
+            'preferred_time' => $time24,
+            'type'           => STATIC_INTERVIEW_TYPE,
+            'date'           => null,
+            'time'           => null,
+            'source'         => $source,
+            'updated'        => static_now()->format('Y-m-d H:i')
+        ];
+        return $store['interviews'][$applicantId];
+    });
+}
+
+// The same row in the shape application-status.php already uses ($_SESSION['interview'])
+function static_interview_session_shape(array $row): array
+{
+    $shape = [
+        'date'   => (string) $row['preferred_date'],
+        'time'   => static_interview_time12($row['preferred_time']),
+        'status' => $row['status'] === 'confirmed' ? 'confirmed' : ($row['status'] === 'rescheduled' ? 'suggested' : 'pending')
+    ];
+    if ($row['status'] === 'rescheduled') {
+        $shape['new_date'] = (string) $row['date'];
+        $shape['new_time'] = static_interview_time12($row['time']);
+    }
+    return $shape;
 }
 
 // Status change (this is what the screening itself will call later).
@@ -440,7 +545,8 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
                 $extra['applicant'] = static_add_applicant(
                     (string) ($input['name'] ?? ''),
                     (string) ($input['email'] ?? ''),
-                    (string) ($input['contact'] ?? '')
+                    (string) ($input['contact'] ?? ''),
+                    isset($_FILES['cv']) && is_array($_FILES['cv']) ? $_FILES['cv'] : null
                 );
                 break;
 
