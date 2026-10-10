@@ -407,6 +407,65 @@ html.js.is-ready .verify__icon {
     justify-content: center;
 }
 
+/* ===== Attempts left ===== */
+.attempts {
+    margin-top: 1rem;
+    font-size: 0.98rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.attempts--last {
+    color: var(--red-dark);
+}
+
+/* ===== Locked (all attempts used) ===== */
+.locked {
+    width: 100%;
+    max-width: 30rem;
+    padding: 1.8rem 2rem 1.6rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid rgba(227, 24, 55, 0.35);
+    border-radius: 1rem;
+    box-shadow: 0 0.8rem 2rem rgba(0, 0, 0, 0.08);
+}
+
+.locked__label {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+}
+
+.locked__time {
+    font-size: 3.2rem;
+    font-weight: 800;
+    line-height: 1.1;
+    color: var(--red-dark);
+    font-variant-numeric: tabular-nums;
+}
+
+.locked__hint {
+    font-size: 1rem;
+    color: var(--text-muted);
+}
+
+.locked__help {
+    margin-top: 0.9rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--red);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    transition: color 0.2s ease;
+}
+
+.locked__help:hover {
+    color: var(--red-dark);
+}
+
 .dev-hint {
     margin-top: 0.8rem;
     font-size: 0.85rem;

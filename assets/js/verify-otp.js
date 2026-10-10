@@ -7,6 +7,22 @@
    - the row  .otp__boxes  does the shake                                                  */
 document.addEventListener("DOMContentLoaded", function () {
     const form = document.getElementById("otpForm");
+
+    /* ---------- locked page (too many wrong codes): only a countdown, then the page reloads with a fresh code ---------- */
+    const lockTimer = document.getElementById("lockTimer");
+    if (!form) {
+        if (lockTimer) {
+            const lockEndsAt = Date.now() + (parseInt(lockTimer.dataset.remaining, 10) || 0) * 1000;
+            const tickLock = function () {
+                const left = Math.max(0, Math.ceil((lockEndsAt - Date.now()) / 1000));
+                lockTimer.textContent = String(Math.floor(left / 60)).padStart(2, "0") + ":" + String(left % 60).padStart(2, "0");
+                if (left <= 0) { clearInterval(lockLoop); location.reload(); }   // the server issues a new code and resets the attempts
+            };
+            const lockLoop = setInterval(tickLock, 500);
+            tickLock();
+        }
+        return;
+    }
     const boxesWrap = document.getElementById("otpBoxes");
     const boxes = Array.from(document.querySelectorAll(".otp__box"));
     const verifyBtn = document.getElementById("verifyBtn");

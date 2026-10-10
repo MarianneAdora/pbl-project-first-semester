@@ -21,7 +21,7 @@
 /* ===== Layout: everything in the middle of the page ===== */
 .page {
     display: flex;
-    align-items: center;
+    align-items: flex-start;               /* the card hangs from a fixed top, so the section + question never move */
     justify-content: center;
     padding: 12.5rem 2rem 2rem;            /* room on top for the stepper (same height as the instructions page) */
 }
@@ -74,7 +74,7 @@
     display: flex;
     flex-direction: column;
     max-width: 100%;
-    min-height: var(--card-h, 34.5rem);       /* every question gets the same card, so nothing jumps */
+    min-height: var(--card-h, 25.5rem);       /* a short question gets a calm card; a tall one (calendar, notice) simply grows downward */
     padding: 1.6rem 3.4rem 1.7rem;
 }
 
@@ -125,7 +125,8 @@
 .qstage {
     flex: 1;                                /* takes the free room, so Previous / Next stay at the bottom */
     display: grid;
-    align-content: center;                  /* short questions sit in the middle of the card */
+    align-content: start;                   /* section + question stay pinned at the top of the card */
+    padding-top: 0.4rem;
 }
 
 .q {
@@ -199,7 +200,7 @@
 }
 
 .q__answer {
-    margin-top: 1.1rem;
+    margin-top: 1.4rem;
 }
 
 .q__hint {
@@ -973,7 +974,7 @@
 .consent {
     display: flex;
     flex-direction: column;
-    gap: 0.9rem;
+    gap: 1.1rem;
 }
 
 .consent__card {
@@ -995,15 +996,15 @@
     display: flex;
     align-items: center;
     gap: 0.9rem;
-    padding: 0.65rem 1.3rem;
+    padding: 0.9rem 1.5rem;
     background: rgba(255, 255, 255, 0.55);
     border-bottom: 1px solid rgba(110, 110, 122, 0.25);
 }
 
 .consent__shield {
     flex: 0 0 auto;
-    width: 2.4rem;
-    height: 2.4rem;
+    width: 2.8rem;
+    height: 2.8rem;
     display: grid;
     place-items: center;
     background: rgba(227, 24, 55, 0.1);
@@ -1011,8 +1012,8 @@
 }
 
 .consent__shield svg {
-    width: 1.35rem;
-    height: 1.35rem;
+    width: 1.55rem;
+    height: 1.55rem;
     fill: none;
     stroke: var(--red-dark);
     stroke-width: 2.2;
@@ -1021,13 +1022,13 @@
 }
 
 .consent__title {
-    font-size: 1.05rem;
+    font-size: 1.2rem;
     font-weight: 700;
     line-height: 1.2;
 }
 
 .consent__sub {
-    font-size: 0.85rem;
+    font-size: 0.92rem;
     color: var(--text-muted);
 }
 
@@ -1048,11 +1049,11 @@
 }
 
 .consent__body {
-    max-height: 7.2rem;
-    padding: 1rem 1.4rem 1.6rem;
+    max-height: 10rem;
+    padding: 1.2rem 1.6rem 2rem;
     overflow-y: auto;
-    font-size: 0.98rem;
-    line-height: 1.65;
+    font-size: 1.02rem;
+    line-height: 1.7;
     color: var(--text);
     outline: none;
     scrollbar-width: thin;
@@ -1065,7 +1066,7 @@
 .consent__body::-webkit-scrollbar-thumb:hover { background: var(--red); }
 
 .consent__body p + p {
-    margin-top: 0.7rem;
+    margin-top: 0.9rem;
 }
 
 /* a soft fade at the bottom says "there is more": it goes away at the end */
@@ -1205,7 +1206,7 @@
 /* ===== Message (one at a time, the room is always reserved) ===== */
 .qerror-slot {
     min-height: 2.6rem;
-    margin-top: 0.4rem;
+    margin-top: 1rem;
 }
 
 .q-error {
@@ -1245,7 +1246,7 @@
 .qnav {
     display: flex;
     gap: 1rem;
-    margin-top: 0.3rem;
+    margin-top: 0.6rem;
 }
 
 .qbtn--prev {

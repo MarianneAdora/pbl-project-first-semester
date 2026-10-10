@@ -5,6 +5,8 @@ session_start();
 $devMode     = true;    // true = shows the OTP on screen so you can test without email. TODO: set to false in production
 $otpLifetime = 300;    // seconds the code stays valid (5 minutes)
 $resendWait  = 60;     // seconds the applicant must wait before asking for another code (1 minute)
+$maxAttempts = 3;      // wrong codes allowed (the usual OTP limit). Reaching it locks the page
+$lockSeconds = 900;    // how long the page stays locked after the last wrong attempt (15 minutes)
 $nextPage    = 'instruction.php';
 $backPage    = 'opening.php';
 
@@ -22,20 +24,36 @@ function issueOtp(int $lifetime): void
     // TODO: send $_SESSION['otp'] to the applicant's email here (PHPMailer, etc.)
 }
 
-if (!isset($_SESSION['otp'], $_SESSION['otp_expires'])) {
-    issueOtp($otpLifetime);
+// ---- Attempt limit ----------------------------------------------------------
+// Every wrong code uses one attempt (an expired or incomplete code does not). When the attempts run out
+// the code is thrown away and the page is locked until $lockSeconds have passed; then the applicant
+// gets a fresh code and a fresh set of attempts. It lives in the session, so refreshing does not reset it.
+// BACKEND: keep the attempt count and the lock time on the applicant's record instead of the session.
+$_SESSION['otp_attempts'] = $_SESSION['otp_attempts'] ?? 0;
+
+if (!empty($_SESSION['otp_locked_until']) && time() >= $_SESSION['otp_locked_until']) {
+    unset($_SESSION['otp_locked_until'], $_SESSION['otp'], $_SESSION['otp_expires'], $_SESSION['otp_sent_at']);
+    $_SESSION['otp_attempts'] = 0;                       // the lock is over: new code, new attempts
 }
 
-// Opening the page again after the old code ran out: start fresh instead of showing "00:00 expired"
-if ($_SERVER['REQUEST_METHOD'] !== 'POST' && time() > $_SESSION['otp_expires']) {
-    issueOtp($otpLifetime);
+$locked = !empty($_SESSION['otp_locked_until']) && time() < $_SESSION['otp_locked_until'];
+
+if (!$locked) {
+    if (!isset($_SESSION['otp'], $_SESSION['otp_expires'])) {
+        issueOtp($otpLifetime);
+    }
+
+    // Opening the page again after the old code ran out: start fresh instead of showing "00:00 expired"
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST' && time() > $_SESSION['otp_expires']) {
+        issueOtp($otpLifetime);
+    }
 }
 
 // ---- Handle form ------------------------------------------------------------
 $error  = '';
 $notice = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$locked) {      // a locked page ignores every submit
     if (isset($_POST['resend'])) {
         // the wait is checked here too, so it cannot be skipped by editing the page
         $wait = ($_SESSION['otp_sent_at'] ?? 0) + $resendWait - time();
@@ -51,20 +69,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (strlen($code) !== 6) {
             $error = 'Please enter the complete 6-digit code.';
-        } elseif (time() > $_SESSION['otp_expires'] || !hash_equals($_SESSION['otp'], $code)) {
-            $error = 'Incorrect or expired code. Please try again.';
+        } elseif (time() > $_SESSION['otp_expires']) {
+            $error = 'This code has expired. Please request a new one.';      // does not use an attempt
+        } elseif (!hash_equals($_SESSION['otp'], $code)) {
+            $_SESSION['otp_attempts']++;
+            $left = $maxAttempts - $_SESSION['otp_attempts'];
+
+            if ($left <= 0) {
+                // out of attempts: the code is no longer valid and the page locks
+                $_SESSION['otp_locked_until'] = time() + $lockSeconds;
+                unset($_SESSION['otp'], $_SESSION['otp_expires'], $_SESSION['otp_sent_at']);
+                $locked = true;
+            } elseif ($left === 1) {
+                $error = 'Incorrect code. You have 1 attempt left.';
+            } else {
+                $error = 'Incorrect code. You have ' . $left . ' attempts left.';
+            }
         } else {
             $_SESSION['otp_verified'] = true;
-            unset($_SESSION['otp'], $_SESSION['otp_expires'], $_SESSION['otp_sent_at']);
+            unset($_SESSION['otp'], $_SESSION['otp_expires'], $_SESSION['otp_sent_at'], $_SESSION['otp_attempts'], $_SESSION['otp_locked_until']);
             header('Location: ' . $nextPage);
             exit;
         }
     }
 }
 
-$remaining = max(0, $_SESSION['otp_expires'] - time());
+$remaining = $locked ? 0 : max(0, $_SESSION['otp_expires'] - time());
 $timerText = sprintf('%02d:%02d', intdiv($remaining, 60), $remaining % 60);
 $cooldown  = max(0, ($_SESSION['otp_sent_at'] ?? 0) + $resendWait - time());   // seconds until "Resend Code" works again
+
+$attemptsLeft = max(0, $maxAttempts - (int) $_SESSION['otp_attempts']);
+$lockLeft     = $locked ? max(0, $_SESSION['otp_locked_until'] - time()) : 0;   // seconds until the page opens again
+$lockText     = sprintf('%02d:%02d', intdiv($lockLeft, 60), $lockLeft % 60);
+$contactLink  = 'mailto:hr@expertise.example';                                    // same address as opening.php
 
 // ---- Logo: project/pic/expertise.png (same logo as the login page) ---------
 $logoSrc = is_file(__DIR__ . '/../pic/expertise.png') ? '../pic/expertise.png' : null;
@@ -111,6 +148,23 @@ $logoSrc = is_file(__DIR__ . '/../pic/expertise.png') ? '../pic/expertise.png' :
         <div class="verify__icon reveal reveal-pop" style="--i:2" aria-hidden="true">
             <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 7l8.5 6.5L20.5 7"/></svg>
         </div>
+
+        <?php if ($locked): ?>
+
+        <h1 class="verify__title reveal" style="--i:3.5">Too Many Attempts</h1>
+        <p class="verify__text reveal" style="--i:4.5">
+            You entered a wrong code <?= (int) $maxAttempts ?> times, so verification is locked<br>
+            to keep <strong class="verify__email"><?= $emailDisplay ?></strong> safe.
+        </p>
+
+        <div class="locked reveal" style="--i:6" role="alert">
+            <p class="locked__label">You can try again in</p>
+            <p class="locked__time"><span id="lockTimer" data-remaining="<?= (int) $lockLeft ?>"><?= $lockText ?></span></p>
+            <p class="locked__hint">A new code will be sent to you when the time is up.</p>
+            <a class="locked__help" href="<?= $contactLink ?>">Need help? Contact HR</a>
+        </div>
+
+        <?php else: ?>
 
         <h1 class="verify__title reveal" style="--i:3.5">Verify Your Email</h1>
         <p class="verify__text reveal" style="--i:4.5">
@@ -162,11 +216,17 @@ $logoSrc = is_file(__DIR__ . '/../pic/expertise.png') ? '../pic/expertise.png' :
                 <div class="banner banner--ok" id="noticeBanner" role="status"><?= htmlspecialchars($notice, ENT_QUOTES, 'UTF-8') ?></div>
             <?php endif; ?>
 
+            <p class="attempts reveal<?= $attemptsLeft === 1 ? ' attempts--last' : '' ?>" id="attempts" style="--i:10.6">
+                <?= (int) $attemptsLeft ?> of <?= (int) $maxAttempts ?> attempt<?= $maxAttempts === 1 ? '' : 's' ?> left
+            </p>
+
             <?php if ($devMode): ?>
                 <p class="dev-hint">DEV MODE &mdash; current code: <strong><?= htmlspecialchars($_SESSION['otp']) ?></strong></p>
             <?php endif; ?>
 
         </form>
+
+        <?php endif; ?>
     </main>
 </div>
 
