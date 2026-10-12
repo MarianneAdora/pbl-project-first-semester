@@ -6,7 +6,8 @@
    when the database is connected.
 
    Who takes from this file
-     applicant/questionnaire.php   static_questionnaire()   the 13 screening questions
+     applicant/questionnaire.php   static_questionnaire()   the screening questions (13 to start with;
+                                                         the Admin adds / edits them in admin/questionlist.php)
      applicant/upload-video.php    static_questionnaire()   (checks every answer is there)
                                    static_video_rules()     seconds / MB / formats of the video
      assets/js/screening-store.js  POSTs to this file       "start" and "submit" (see the bottom)
@@ -57,7 +58,27 @@ function static_video_rules(): array
 // ---------------------------------------------------------------------------
 // The questionnaire (Sections 1 to 5; Section 6 is the video page)
 // ---------------------------------------------------------------------------
+// The questions the applicant sees. The Admin keeps them in the store (admin/questionlist.php: add, edit,
+// delete); until the Admin changes something, the starting list below (static_questionnaire_seed) is used.
+// Questions the Admin deleted (they wait in the Admin Archive) or switched to Inactive are not shown.
+// DATABASE (later): SELECT * FROM questions WHERE archived_at IS NULL ORDER BY section_no, position
 function static_questionnaire(): array
+{
+    $store = static_store_read();
+    if (!isset($store['questions']) || !is_array($store['questions'])) return static_questionnaire_seed();
+
+    $out = [];
+    foreach ($store['questions'] as $q) {
+        if (!empty($q['archived_at'])) continue;
+        if (($q['status'] ?? 'Active') === 'Inactive') continue;      // the Admin switched it off: kept in the Admin list, hidden here
+        unset($q['archived_at'], $q['status'], $q['created']);
+        $out[] = $q;
+    }
+    return $out;
+}
+
+// The STARTING questions (sections 1 to 5). Do not edit here to change live questions: use the Admin > Questions page.
+function static_questionnaire_seed(): array
 {
     $s1 = 'Consent & readiness';
     $s2 = 'Logistics & compliance';

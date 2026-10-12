@@ -65,7 +65,7 @@ function static_accounts(): array
             'password' => 'admin123',
             'role'     => 'admin',
             'name'     => 'Admin',
-            'redirect' => 'admindashboardadmin.php'
+            'redirect' => 'admin/dashboardadmin.php'
         ]
     ];
 }
