@@ -1,0 +1,534 @@
+/* ==========================================================================
+   HR Accounts (admin): page styles.
+   Looks and moves exactly like the HR Screening List (assets/css/screeninglist.css):
+   same search box, same custom dropdown, same table card, row hover, row slide-in and pagination.
+   Shell, sidebar, buttons, modals, toast and the dark theme live in admin-common.css,
+   below (link both BEFORE this file). Colours come from its tokens, so the dark theme works by itself.
+   ========================================================================== */
+
+/* ---------- Custom dropdown (status filter): the same one the HR Screening List uses ---------- */
+:root {
+    --input-line: #cfd3d8;            /* border of the search box and the dropdown button */
+    --input-line-hover: #a3a8af;
+    --soft-red: #fdf1f3;              /* hover / selected tint (the HR pink) */
+    --soft-red-2: #fadadf;
+}
+
+html[data-theme="dark"] {
+    --input-line: #3d434c;
+    --input-line-hover: #5a616c;
+    --soft-red: rgba(255, 107, 128, 0.10);
+    --soft-red-2: rgba(255, 107, 128, 0.22);
+}
+
+/* ---- Custom dropdown (the same one the HR Screening List uses) ---- */
+.dropdown { position: relative; }
+
+.dropdown-btn {
+    width: 100%;
+    height: 46px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 14px;
+    background: var(--surface);
+    border: 1.5px solid var(--input-line);
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ink);
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, transform 0.3s var(--ease-pop);
+}
+
+.dropdown-btn:hover {
+    border-color: var(--input-line-hover);
+    background: var(--surface-2);
+    transform: translateY(-1px);
+}
+
+.dropdown-btn:focus-visible,
+.dropdown.open .dropdown-btn {
+    outline: none;
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 14%, transparent);
+}
+
+/* a filter that is switched on shows it in red, like the HR filter cards */
+.dropdown.is-active .dropdown-btn {
+    border-color: color-mix(in srgb, var(--brand) 55%, transparent);
+    color: var(--red);
+}
+
+.dropdown.is-active .dropdown-chevron { fill: var(--red); }
+
+.dropdown-value {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dropdown-chevron {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    fill: var(--ink);
+    transition: transform 0.35s var(--ease-pop), fill 0.2s ease;
+}
+
+.dropdown.open .dropdown-chevron { transform: rotate(180deg); }
+
+.dot {
+    width: 10px;
+    height: 10px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--dot, #c5c9ce);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--dot, #c5c9ce) 20%, transparent);
+    transition: background-color 0.25s ease, transform 0.3s var(--ease-pop);
+}
+
+.dropdown-btn:hover .dot { transform: scale(1.2); }
+
+.dropdown-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    margin: 0;
+    padding: 6px;
+    list-style: none;
+    background: var(--surface);
+    border: 1px solid var(--edge);
+    border-radius: 14px;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.16), 0 4px 12px rgba(0, 0, 0, 0.06);
+    z-index: 50;
+    opacity: 0;
+    visibility: hidden;
+    transform-origin: top center;
+    transform: translateY(-8px) scale(0.97);
+    transition: opacity 0.2s ease, transform 0.3s var(--ease-pop), visibility 0s linear 0.3s;
+}
+
+.dropdown.open .dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    transition: opacity 0.2s ease, transform 0.3s var(--ease-pop), visibility 0s;
+}
+
+.dropdown-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 42px;
+    padding: 0 12px;
+    border-radius: 9px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.15s ease, color 0.15s ease, transform 0.25s var(--ease-pop);
+}
+
+.dropdown.open .dropdown-option {
+    animation: optionIn 0.35s var(--ease-out) backwards;
+    animation-delay: calc(var(--k, 0) * 35ms + 40ms);
+}
+
+.dropdown-option:hover,
+.dropdown-option.is-focused {
+    background: var(--soft-red);
+    transform: translateX(4px);
+}
+
+.dropdown-option[aria-selected="true"] {
+    color: var(--red);
+    font-weight: 800;
+}
+
+.opt-label { flex: 1; }
+
+.opt-count {
+    min-width: 26px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    background: var(--surface-3);
+    color: var(--ink-soft);
+    font-size: 11.5px;
+    font-weight: 800;
+    text-align: center;
+}
+
+.dropdown-option[aria-selected="true"] .opt-count {
+    background: var(--soft-red-2);
+    color: var(--red);
+}
+
+.opt-check {
+    width: 18px;
+    height: 18px;
+    fill: var(--red);
+    opacity: 0;
+    transform: scale(0.4);
+    transition: opacity 0.2s ease, transform 0.3s var(--ease-pop);
+}
+
+.dropdown-option[aria-selected="true"] .opt-check { opacity: 1; transform: none; }
+
+@keyframes optionIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+
+/* ---- Title + "Add HR" button ---- */
+.page-head .content-header { margin-bottom: 20px; }
+
+.page-head .btn-add {
+    height: 44px;
+    padding: 0 20px;
+    font-size: 13px;
+}
+
+.page-head .btn-add svg { width: 20px; height: 20px; }
+
+/* ---- Search + status dropdown ---- */
+.toolbar {
+    position: relative;
+    z-index: 30;                       /* the dropdown menu opens over the table */
+    margin-bottom: 16px;
+}
+
+.search-box {
+    flex: 1;
+    min-width: 0;
+    height: 46px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 14px;
+    background: var(--surface);
+    border: 1px solid var(--input-line);
+    border-radius: 12px;
+    cursor: text;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.3s var(--ease-pop), background-color 0.3s ease;
+}
+
+.search-box:hover {
+    transform: translateY(-1px);
+    border-color: var(--input-line-hover);
+}
+
+.search-box:focus-within {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 14%, transparent);
+}
+
+.search-icon {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    fill: var(--ink);
+}
+
+.search-box input {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink);
+}
+
+.search-box input::placeholder { color: var(--ink-faint); }
+.search-box input::-webkit-search-cancel-button { display: none; }      /* we have our own clear button */
+
+.search-clear {
+    width: 26px;
+    height: 26px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 50%;
+    background: var(--surface-3);
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.3s var(--ease-pop);
+}
+
+.search-clear[hidden] { display: none; }
+.search-clear svg { width: 15px; height: 15px; fill: var(--ink-soft); }
+.search-clear:hover { background: var(--edge); transform: scale(1.12); }
+
+.toolbar .dropdown { width: 200px; flex-shrink: 0; }
+
+/* ---- Table card ---- */
+.table-card {
+    container: tbl / inline-size;
+    flex: 1 1 0;
+    min-height: 264px;                 /* room for at least 4 rows */
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border: 1px solid var(--edge);
+    border-radius: 14px;
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.table-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-x: hidden;                /* never scroll sideways */
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--edge) transparent;
+}
+
+.table-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.table-scroll::-webkit-scrollbar-thumb { background: var(--edge); border-radius: 6px; }
+
+.hr-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;               /* long names / emails are cut with "..." */
+}
+
+.hr-table th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--th);
+    text-align: left;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    padding: 14px 10px;
+    box-shadow: inset 0 -1px 0 var(--edge);
+    white-space: nowrap;
+}
+
+.hr-table td {
+    height: var(--row-h, auto);        /* rows stretch a little, so the card has no empty band under the last row */
+    padding: 12px 10px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-bottom: 1px solid var(--surface-2);
+    font-variant-numeric: tabular-nums;
+}
+
+.hr-table tbody tr:last-child td { border-bottom: none; }
+.hr-table th:first-child, .hr-table td:first-child { padding-left: 26px; }
+.hr-table th.col-action, .hr-table td.col-action { text-align: center; padding-right: 10px; overflow: visible; }
+
+.hr-table .cell-name strong { font-weight: 700; color: var(--ink); }
+.hr-table .col-num { color: var(--ink-soft); }
+
+/* Column widths (no min-width: the table never needs a sideways scrollbar) */
+.hr-table col.c-num    { width: 70px; }
+.hr-table col.c-name   { width: 22%; }
+.hr-table col.c-role   { width: 130px; }
+.hr-table col.c-status { width: 130px; }
+.hr-table col.c-action { width: 120px; }
+
+@container tbl (max-width: 760px) {
+    .hr-table col.c-role, .hr-table th:nth-child(4), .hr-table td:nth-child(4) { display: none; }
+}
+
+@container tbl (max-width: 600px) {
+    .hr-table col.c-email, .hr-table th:nth-child(3), .hr-table td:nth-child(3) { display: none; }
+}
+
+.hr-table tbody tr {
+    position: relative;
+    transition: background-color 0.2s ease, transform 0.35s var(--ease-pop), opacity 0.3s ease;
+}
+
+/* Row hover: tint + a red edge. The row itself never moves; the pill and the icons pop instead. */
+.hr-table tbody tr:hover { background-color: var(--hover); }
+.hr-table tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--brand); }
+.hr-table tbody tr:hover .status-pill { transform: scale(1.08); }
+
+/* Status pill (same pill as the HR lists) */
+.hr-table .status-pill { padding: 4px 14px; font-size: 11.5px; }
+
+/* ---- Action icons: edit + delete ---- */
+.row-actions { display: inline-flex; align-items: center; gap: 6px; }
+
+.icon-btn {
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--ink-soft);
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.2s ease, color 0.2s ease, transform 0.3s var(--ease-pop), box-shadow 0.2s ease;
+}
+
+.icon-btn svg { width: 22px; height: 22px; fill: currentColor; }
+
+.icon-btn:hover {
+    background: var(--surface-3);
+    color: var(--ink);
+    transform: translateY(-2px) scale(1.12);
+}
+
+.icon-btn.is-edit:hover { background: var(--info-bg); color: var(--blue-ink); box-shadow: 0 6px 14px rgba(0, 162, 255, 0.2); }
+.icon-btn.is-delete:hover { background: var(--soft-red-2); color: var(--red); box-shadow: 0 6px 14px rgba(163, 8, 30, 0.18); }
+.icon-btn:active { transform: scale(0.94); }
+.icon-btn:disabled { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
+
+/* ---- Rows animate in when the list changes ---- */
+.hr-table tbody tr.row-in {
+    animation: hrRowIn 0.35s var(--ease-out) backwards;
+    animation-delay: calc(var(--r, 0) * 35ms);
+}
+
+@keyframes hrRowIn {
+    from { opacity: 0; transform: translate3d(-10px, 0, 0); }
+    to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+/* the row that was just saved glows once */
+.hr-table tbody tr.row-flash { animation: rowFlash 1.6s ease; }
+
+/* ---- New HR account (not looked at yet): red dot + soft tint, the same as HR's "not viewed yet" rows ---- */
+.new-dot { margin-right: 9px; }
+
+.hr-table tbody tr.is-new { background-color: color-mix(in srgb, var(--red-bright) 6%, var(--surface)); }
+.hr-table tbody tr.is-new:hover { background-color: color-mix(in srgb, var(--red-bright) 12%, var(--surface)); }
+.hr-table tbody tr.is-new .cell-name strong { font-weight: 800; }
+
+.new-tag {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    background: var(--red-bright);
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+    vertical-align: middle;
+    animation: popIn 0.4s var(--ease-pop) 0.5s backwards;
+}
+
+/* a row leaving the list (moved to the Archive) */
+.hr-table tbody tr.row-leave { opacity: 0; transform: translateX(28px); pointer-events: none; }
+
+/* ---- Empty state ---- */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 48px 20px;
+}
+
+.empty-state[hidden] { display: none; }
+.empty-state svg { width: 44px; height: 44px; fill: var(--edge); margin-bottom: 10px; }
+.empty-state h3 { font-size: 16px; font-weight: 800; color: var(--ink); margin-bottom: 4px; }
+.empty-state p { font-size: 13px; color: var(--ink-soft); margin-bottom: 16px; }
+
+.btn-clear-filters {
+    height: 36px;
+    padding: 0 20px;
+    border: none;
+    border-radius: 18px;
+    background: var(--brand);
+    color: #ffffff;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    transition: background-color 0.2s ease, transform 0.3s var(--ease-pop), box-shadow 0.2s ease;
+}
+
+.btn-clear-filters:hover {
+    background: var(--brand-dark);
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 6px 14px rgba(163, 8, 30, 0.3);
+}
+
+/* ---- Footer: count + pagination ---- */
+.list-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 14px;
+    flex-shrink: 0;
+}
+
+.showing { font-size: 13px; font-weight: 500; color: var(--ink-soft); }
+
+.pagination { display: flex; align-items: center; gap: 8px; }
+
+.page-btn {
+    min-width: 38px;
+    height: 38px;
+    padding: 0 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface);
+    border: 1px solid var(--input-line);
+    border-radius: 9px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.3s var(--ease-pop);
+}
+
+.page-btn svg { width: 20px; height: 20px; fill: var(--ink); }
+
+.page-btn:hover:not(:disabled):not(.is-current) {
+    transform: translateY(-2px) scale(1.08);
+    border-color: var(--brand);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.1);
+}
+
+.page-btn:active:not(:disabled) { transform: scale(0.95); }
+
+.page-btn.is-current {
+    background: var(--brand);
+    border-color: var(--brand);
+    color: #ffffff;
+    cursor: default;
+    box-shadow: 0 4px 12px rgba(163, 8, 30, 0.3);
+}
+
+.page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.page-gap { min-width: 20px; text-align: center; color: var(--ink-soft); font-weight: 700; }
+
+@media (max-width: 760px) {
+    .toolbar .dropdown { width: 100%; }
+    .page-head .btn-add span { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hr-table tbody tr.row-in { animation: none; }
+}

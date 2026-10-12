@@ -388,7 +388,22 @@
             "status": "Pending",
             "result": null,
             "updated": "2026-10-08 12:18",
-            "archived_at": "2026-10-12 10:06:38"
+            "archived_at": null
+        },
+        {
+            "id": 140,
+            "name": "MARKIE JELO MATRE",
+            "email": "mmatre.8804@umak.edu.ph",
+            "contact": "09876543212",
+            "status": "Pending",
+            "result": null,
+            "updated": "2026-10-12 19:20",
+            "cv": {
+                "name": "Anylogic - Agent Based Modeling Phase 123.pdf",
+                "size": 3716277,
+                "file": "140.pdf"
+            },
+            "archived_at": "2026-10-12 20:21:18"
         }
     ],
     "submissions": [
@@ -1619,6 +1634,449 @@
             "subject": "Your interview is confirmed | Expertise",
             "html": "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head><body style=\"margin:0;padding:0;background:#f4f4f5;font-family:'Plus Jakarta Sans','Segoe UI',Helvetica,Arial,sans-serif;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f4f4f5;\"><tr><td align=\"center\" style=\"padding:28px 12px;\"><table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;\"><tr><td style=\"height:6px;line-height:6px;font-size:0;background:#d1122a;\">&nbsp;</td></tr><tr><td style=\"padding:28px 40px 0 40px;font-size:26px;font-weight:800;color:#a3081e;letter-spacing:.3px;\">Expertise</td></tr><tr><td style=\"padding:26px 40px 0 40px;\"><p style=\"margin:0 0 8px 0;font-size:13px;font-weight:700;color:#d1122a;\">Interview update</p><h1 style=\"margin:0;font-size:26px;line-height:1.25;font-weight:800;color:#1f1f23;\">Your interview is confirmed</h1></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:15px;line-height:1.7;\"><p style=\"margin:0 0 12px 0;color:#1f1f23;font-weight:700;\">Hi Carol,</p><p style=\"margin:0;\">Good news! The schedule you chose is available. Your interview is now confirmed.</p></td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f8f8f9;border:1px solid #e6e7ea;border-radius:12px;\"><tr><td style=\"padding:12px 22px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Date</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">October 14, 2026</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Time</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">11:00 AM</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Interview Type</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">On Site Interview</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Location</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">Expertise Office, BGC, Taguig</td></tr></table></td></tr></table></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:14px;line-height:1.7;\">Please arrive 15 minutes early and bring a valid ID. If you can no longer make it, reply to this email as soon as possible.</td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><a href=\"http://localhost/pbl-project-first-semester/applicant/application-status.php\" style=\"display:inline-block;padding:13px 26px;background:#d1122a;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;border-radius:10px;\">View my interview schedule</a></td></tr><tr><td style=\"padding:12px 40px 0 40px;color:#8a8f96;font-size:12px;line-height:1.6;\">The link opens your application status page. You will be asked to verify your email with a one-time code first.</td></tr><tr><td style=\"padding:26px 40px 30px 40px;color:#8a8f96;font-size:12px;line-height:1.6;border-top:0;\">Thank you,<br><strong style=\"color:#1f1f23;\">Expertise HR Team</strong></td></tr></table></td></tr></table></body></html>",
             "sent_at": "2026-10-10 21:31:33"
+        },
+        {
+            "applicant_id": 0,
+            "kind": "hr_credentials",
+            "to": "hr@expertise.com",
+            "subject": "Your login credentials were updated | Expertise",
+            "html": "<p>Hello HR,</p><p>Your login credentials were updated by the Admin. Log in to the Expertise HR portal with this email and the password the Admin gave you.</p>",
+            "sent_at": "2026-10-12 19:01:41"
+        },
+        {
+            "applicant_id": 0,
+            "kind": "hr_credentials",
+            "to": "hr@expertise.com",
+            "subject": "Your login credentials were updated | Expertise",
+            "html": "<p>Hello HR,</p><p>Your login credentials were updated by the Admin. Log in to the Expertise HR portal with this email and the password the Admin gave you.</p>",
+            "sent_at": "2026-10-12 19:02:09"
+        },
+        {
+            "applicant_id": 0,
+            "kind": "hr_credentials",
+            "to": "mjmatre@gmail.com",
+            "subject": "Your HR account is ready | Expertise",
+            "html": "<p>Hello Markie,</p><p>An HR account was created for you. Log in to the Expertise HR portal with this email and the password the Admin gave you.</p>",
+            "sent_at": "2026-10-12 19:03:31"
+        },
+        {
+            "applicant_id": 0,
+            "kind": "hr_credentials",
+            "to": "mjmatre@gmail.com",
+            "subject": "Your login credentials were updated | Expertise",
+            "html": "<p>Hello Markie,</p><p>Your login credentials were updated by the Admin. Log in to the Expertise HR portal with this email and the password the Admin gave you.</p>",
+            "sent_at": "2026-10-12 19:24:06"
+        },
+        {
+            "applicant_id": 0,
+            "kind": "hr_credentials",
+            "to": "mjmatre@gmail.com",
+            "subject": "Your login credentials were updated | Expertise",
+            "html": "<p>Hello Markie,</p><p>Your login credentials were updated by the Admin. Log in to the Expertise HR portal with this email and the password the Admin gave you.</p>",
+            "sent_at": "2026-10-12 20:08:06"
+        },
+        {
+            "applicant_id": 0,
+            "kind": "hr_credentials",
+            "to": "mjmatre@gmail.com",
+            "subject": "Your login credentials were updated | Expertise",
+            "html": "<p>Hello Markie,</p><p>Your login credentials were updated by the Admin. Log in to the Expertise HR portal with this email and the password the Admin gave you.</p>",
+            "sent_at": "2026-10-12 20:18:20"
+        }
+    ],
+    "hr_accounts": [
+        {
+            "id": 1,
+            "name": "HR",
+            "email": "hr@expertise.com",
+            "password": "hr123",
+            "role": "HR Staff",
+            "status": "Active",
+            "created": "2026-08-03 09:00",
+            "archived_at": null
+        },
+        {
+            "id": 2,
+            "name": "Markie",
+            "email": "mjmatre@gmail.com",
+            "role": "HR Staff",
+            "hash": "$2y$10$STQDNyttoLywTXaHv3QTVevJ/ABwaA5FY/qXS0q/5etGTPu4M6r9y",
+            "status": "Inactive",
+            "created": "2026-10-12 19:03",
+            "archived_at": "2026-10-12 20:20:41"
+        }
+    ],
+    "activity": [
+        {
+            "at": "2026-10-01 13:00",
+            "activity": "Added An Applicant",
+            "details": "Maria Clara Santos",
+            "by": "HR"
+        },
+        {
+            "at": "2026-10-03 14:20",
+            "activity": "Added An Applicant",
+            "details": "Steve Rogers",
+            "by": "HR"
+        },
+        {
+            "at": "2026-10-05 08:15",
+            "activity": "Added An Applicant",
+            "details": "Juan Dela Cruz",
+            "by": "HR"
+        },
+        {
+            "at": "2026-10-08 11:45",
+            "activity": "Questionnaires Edited",
+            "details": "Q5 · Consent & readiness",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 19:31:01"
+        },
+        {
+            "at": "2026-10-12 18:58",
+            "activity": "HR Account Deleted",
+            "details": "HR (HR)",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 19:31:01"
+        },
+        {
+            "at": "2026-10-12 18:58",
+            "activity": "HR Account Restored",
+            "details": "HR (HR)",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 19:31:01"
+        },
+        {
+            "at": "2026-10-12 19:01",
+            "activity": "HR Account Deactivated",
+            "details": "HR (HR)",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 19:31:01"
+        },
+        {
+            "at": "2026-10-12 19:02",
+            "activity": "HR Account Activated",
+            "details": "HR (HR)",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 19:31:01"
+        },
+        {
+            "at": "2026-10-12 19:03",
+            "activity": "HR Account Added",
+            "details": "Markie (HR)",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 19:31:01"
+        },
+        {
+            "at": "2026-10-12 19:20:20",
+            "activity": "Added An Applicant",
+            "details": "MARKIE JELO MATRE",
+            "by": "HR",
+            "admin_seen_at": "2026-10-12 19:31:01"
+        },
+        {
+            "at": "2026-10-12 19:21:57",
+            "activity": "Applicant Deleted",
+            "details": "Juan Dela Cruz",
+            "by": "HR",
+            "admin_seen_at": "2026-10-12 19:31:01"
+        },
+        {
+            "at": "2026-10-12 19:24:06",
+            "activity": "HR Account Deactivated",
+            "details": "Markie (HR)",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 19:31:01"
+        },
+        {
+            "at": "2026-10-12 19:24:50",
+            "activity": "Applicant Restored",
+            "details": "Juan Dela Cruz",
+            "by": "HR",
+            "admin_seen_at": "2026-10-12 19:31:01"
+        },
+        {
+            "at": "2026-10-12 19:31:40",
+            "activity": "Applicant Deleted",
+            "details": "MARKIE JELO MATRE",
+            "by": "HR",
+            "admin_seen_at": "2026-10-12 19:31:49"
+        },
+        {
+            "at": "2026-10-12 19:32:12",
+            "activity": "Applicant Restored",
+            "details": "MARKIE JELO MATRE",
+            "by": "HR",
+            "admin_seen_at": "2026-10-12 19:32:17"
+        },
+        {
+            "at": "2026-10-12 20:00:45",
+            "activity": "Questionnaires Added",
+            "details": "Q14 · Consent & readiness",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 20:00:51"
+        },
+        {
+            "at": "2026-10-12 20:01:35",
+            "activity": "Questionnaires Deleted",
+            "details": "Q14 · Consent & readiness",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 20:01:41"
+        },
+        {
+            "at": "2026-10-12 20:07:25",
+            "activity": "Questionnaires Added",
+            "details": "Q15 · Data Protection",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 20:08:28"
+        },
+        {
+            "at": "2026-10-12 20:07:33",
+            "activity": "Questionnaires Deleted",
+            "details": "Q15 · Data Protection",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 20:08:28"
+        },
+        {
+            "at": "2026-10-12 20:08:06",
+            "activity": "HR Account Activated",
+            "details": "Markie (HR)",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 20:08:28"
+        },
+        {
+            "at": "2026-10-12 20:18:20",
+            "activity": "HR Account Deactivated",
+            "details": "Markie (HR)",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 20:21:10"
+        },
+        {
+            "at": "2026-10-12 20:19:45",
+            "activity": "Questionnaires Added",
+            "details": "Q16 · Consent & readiness",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 20:21:10"
+        },
+        {
+            "at": "2026-10-12 20:20:26",
+            "activity": "Questionnaires Deleted",
+            "details": "Q16 · Consent & readiness",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 20:21:10"
+        },
+        {
+            "at": "2026-10-12 20:20:41",
+            "activity": "HR Account Deleted",
+            "details": "Markie (HR)",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 20:21:10"
+        },
+        {
+            "at": "2026-10-12 20:20:55",
+            "activity": "Questionnaires Deleted Forever",
+            "details": "Q14 · Consent & readiness",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 20:21:10"
+        },
+        {
+            "at": "2026-10-12 20:21:18",
+            "activity": "Applicant Deleted",
+            "details": "MARKIE JELO MATRE",
+            "by": "HR",
+            "admin_seen_at": "2026-10-12 20:21:35"
+        }
+    ],
+    "questions": [
+        {
+            "id": "q1",
+            "section_no": 1,
+            "section": "Consent & readiness",
+            "type": "yesno",
+            "text": "Have you read the {link} thoroughly?",
+            "link": {
+                "text": "job description",
+                "url": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+            },
+            "no_note": "Please read the job description first. The link above opens it in a new tab.",
+            "archived_at": null,
+            "status": "Active",
+            "created": "2026-08-03 09:00"
+        },
+        {
+            "id": "q2",
+            "section_no": 1,
+            "section": "Consent & readiness",
+            "type": "yesno",
+            "text": "Are you willing to work on the schedule as advertised?",
+            "archived_at": null,
+            "status": "Active",
+            "created": "2026-08-03 09:00"
+        },
+        {
+            "id": "q3",
+            "section_no": 1,
+            "section": "Consent & readiness",
+            "type": "yesno",
+            "text": "Are you willing to work on-site in BGC, Taguig?",
+            "archived_at": null,
+            "status": "Active",
+            "created": "2026-08-03 09:00"
+        },
+        {
+            "id": "q4",
+            "section_no": 1,
+            "section": "Consent & readiness",
+            "type": "yesno",
+            "text": "Are you willing to go through the assessment and interviews?",
+            "archived_at": null,
+            "status": "Active",
+            "created": "2026-08-03 09:00"
+        },
+        {
+            "id": "q5",
+            "section_no": 1,
+            "section": "Consent & readiness",
+            "type": "scale",
+            "text": "Rate your interest level in pursuing your application.",
+            "max": 5,
+            "labels": [
+                "Not very interested",
+                "Extremely interested"
+            ],
+            "archived_at": null,
+            "status": "Active",
+            "created": "2026-08-03 09:00"
+        },
+        {
+            "id": "q16",
+            "section_no": 1,
+            "section": "Consent & readiness",
+            "type": "scale",
+            "text": "Pogi Bako?",
+            "status": "Active",
+            "created": "2026-10-12 20:19",
+            "max": 5,
+            "labels": [
+                "LIAR",
+                "NICE"
+            ],
+            "archived_at": "2026-10-12 20:20:26"
+        },
+        {
+            "id": "q6",
+            "section_no": 2,
+            "section": "Logistics & compliance",
+            "type": "date",
+            "text": "When is your earliest possible start date?",
+            "hint": "Choose a date",
+            "archived_at": null,
+            "status": "Active",
+            "created": "2026-08-03 09:00"
+        },
+        {
+            "id": "q7",
+            "section_no": 2,
+            "section": "Logistics & compliance",
+            "type": "yesno_select",
+            "text": "Are you currently employed? If yes, what is your notice period?",
+            "followup": {
+                "when": "Yes",
+                "label": "Your notice period",
+                "options": [
+                    "Less than 1 week",
+                    "1 to 2 weeks",
+                    "3 to 4 weeks (30 days)",
+                    "1 to 2 months",
+                    "More than 2 months"
+                ]
+            },
+            "archived_at": null,
+            "status": "Active",
+            "created": "2026-08-03 09:00"
+        },
+        {
+            "id": "q8",
+            "section_no": 2,
+            "section": "Logistics & compliance",
+            "type": "yesno",
+            "text": "Do you have access to a reliable internet connection and a device suitable for completing the assessment and virtual steps?",
+            "no_note": "A stable connection and a working device are needed for the assessment and the virtual steps.",
+            "archived_at": null,
+            "status": "Active",
+            "created": "2026-08-03 09:00"
+        },
+        {
+            "id": "q9",
+            "section_no": 2,
+            "section": "Logistics & compliance",
+            "type": "yesno",
+            "text": "Are you willing to undergo a background check as part of the hiring process?",
+            "archived_at": null,
+            "status": "Active",
+            "created": "2026-08-03 09:00"
+        },
+        {
+            "id": "q10",
+            "section_no": 2,
+            "section": "Logistics & compliance",
+            "type": "yesno",
+            "text": "Can you provide required pre-employment documents (e.g. NBI clearance, TIN, SSS) upon request?",
+            "archived_at": null,
+            "status": "Active",
+            "created": "2026-08-03 09:00"
+        },
+        {
+            "id": "q11",
+            "section_no": 3,
+            "section": "Confidentiality acknowledgment",
+            "type": "yesno",
+            "text": "This role involves handling sensitive client information. Do you agree to comply with confidentiality and data protection requirements?",
+            "no_note": "Complying with confidentiality and data protection requirements is required for this role.",
+            "archived_at": null,
+            "status": "Active",
+            "created": "2026-08-03 09:00"
+        },
+        {
+            "id": "q12",
+            "section_no": 4,
+            "section": "Comprehension",
+            "type": "text",
+            "text": "In 2-3 sentences, describe what you understand this role to involve based on the job posting.",
+            "hint": "Write it in your own words.",
+            "placeholder": "Type your answer here...",
+            "min_chars": 30,
+            "max_chars": 500,
+            "archived_at": null,
+            "status": "Active",
+            "created": "2026-08-03 09:00"
+        },
+        {
+            "id": "q13",
+            "section_no": 5,
+            "section": "Data Protection",
+            "type": "consent",
+            "text": "Please read and accept the data protection statement.",
+            "body": [
+                "By submitting your application, you agree that Expertise Company will use your data by collecting, processing, storing, and using your personal information for legitimate recruitment and employment purposes only, including applicant screening, assessment, interview scheduling, and communication. Your information will be kept confidential and secure and will only be accessed by authorized personnel or disclosed when required or permitted by law.",
+                "You have the right to access, correct, and request the deletion or restriction of your personal information, subject to applicable laws and regulations.",
+                "In accordance with the Data Privacy Act of 2012 (Republic Act No. 10173), The Company is committed to protecting the privacy and confidentiality of your personal information. Rest assured that Expertise will not use your personal information for purposes unrelated to recruitment without obtaining the appropriate consent or having another lawful basis for such processing.",
+                "To keep the screening fair and secure, we also collect technical information such as your device identifier and IP address, and how you move through the screening (for example, the time spent on each question). This information is used only to protect the integrity of the screening and is reviewed by authorized personnel."
+            ],
+            "checkbox": "I have read and agree to the data protection statement.",
+            "archived_at": null,
+            "status": "Active",
+            "created": "2026-08-03 09:00"
+        },
+        {
+            "id": "q15",
+            "section_no": 5,
+            "section": "Data Protection",
+            "type": "yesno",
+            "text": "huh",
+            "status": "Active",
+            "created": "2026-10-12 20:07",
+            "archived_at": "2026-10-12 20:07:33"
         }
     ]
 }

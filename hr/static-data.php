@@ -54,7 +54,7 @@
 // ---------------------------------------------------------------------------
 function static_accounts(): array
 {
-    return [
+    $accounts = [
         'hr@expertise.com' => [
             'password' => 'hr123',
             'role'     => 'hr',
@@ -68,6 +68,30 @@ function static_accounts(): array
             'redirect' => 'admin/dashboardadmin.php'
         ]
     ];
+
+    // Once the Admin has created / changed an HR account (admin/hrlist.php), the HR logins come from the
+    // store instead: only Active accounts that are not in the Archive can log in, and a password the
+    // Admin typed is kept as a hash ('hash'), checked with password_verify() in index.php.
+    // BACKEND: SELECT name, email, password_hash FROM users WHERE role = 'hr' AND status = 'Active'
+    if (is_file(STATIC_STORE_FILE)) {
+        $store = json_decode((string) @file_get_contents(STATIC_STORE_FILE), true);
+        if (is_array($store) && isset($store['hr_accounts']) && is_array($store['hr_accounts'])) {
+            unset($accounts['hr@expertise.com']);
+            foreach ($store['hr_accounts'] as $a) {
+                if (!is_array($a) || !empty($a['archived_at']) || ($a['status'] ?? 'Active') !== 'Active') continue;
+                $email = strtolower((string) ($a['email'] ?? ''));
+                if ($email === '' || isset($accounts[$email])) continue;
+                $accounts[$email] = [
+                    'password' => isset($a['password']) ? (string) $a['password'] : null,
+                    'hash'     => isset($a['hash']) ? (string) $a['hash'] : null,
+                    'role'     => 'hr',
+                    'name'     => (string) ($a['name'] ?? 'HR'),
+                    'redirect' => 'hr/dashboardhr.php'
+                ];
+            }
+        }
+    }
+    return $accounts;
 }
 
 // ---------------------------------------------------------------------------
@@ -203,6 +227,117 @@ function static_next_id(array $store): int
     $max = 100;
     foreach ($store['applicants'] as $a) $max = max($max, (int) $a['id']);
     return $max + 1;
+}
+
+// ---------------------------------------------------------------------------
+// ACTIVITY LOG: what HR and the Admin did (kept in the store under "activity")
+//   Admin Dashboard > Recent Activities lists every line HR writes here, and the Admin's sidebar
+//   Dashboard badge counts the ones the Admin has not seen yet (see static_admin_notify()).
+//   HR Dashboard > the notification bell lists HR's own lines (static_hr_feed()).
+//   Only real work is logged: applicants (add / delete / restore / delete forever / status) and
+//   interview schedules. Preferences (HR Settings) are NOT logged.
+//   These four helpers used to sit in admin/static-admin.php; the Admin side now uses them from here.
+//   BACKEND: activity_log (id, actor_role, activity, details, created_at); static_log() = one INSERT.
+// ---------------------------------------------------------------------------
+if (!function_exists('static_seed_activity')) {
+    function static_seed_activity(): array
+    {
+        return [
+            ['at' => '2026-10-01 13:00', 'activity' => 'Added An Applicant',    'details' => 'Maria Clara Santos',        'by' => 'HR'],
+            ['at' => '2026-10-03 14:20', 'activity' => 'Added An Applicant',    'details' => 'Steve Rogers',              'by' => 'HR'],
+            ['at' => '2026-10-05 08:15', 'activity' => 'Added An Applicant',    'details' => 'Juan Dela Cruz',            'by' => 'HR'],
+            ['at' => '2026-10-08 11:45', 'activity' => 'Questionnaires Edited', 'details' => 'Q5 · Consent & readiness',  'by' => 'Admin']
+        ];
+    }
+}
+
+if (!function_exists('static_actor')) {
+    function static_actor(): ?string
+    {
+        $role = (string) ($_SESSION['user_role'] ?? '');
+        if ($role === 'hr')    return 'HR';
+        if ($role === 'admin') return 'Admin';
+        return null;
+    }
+}
+
+// Adds one line to the log inside a store you are already changing. The time includes seconds, so two
+// things done in the same minute are still told apart by the "new" badges.
+if (!function_exists('static_log_into')) {
+    function static_log_into(array &$store, string $activity, string $details = '-', ?string $by = null): void
+    {
+        $by = $by ?? static_actor();
+        if ($by === null) return;
+        if (!isset($store['activity']) || !is_array($store['activity'])) $store['activity'] = static_seed_activity();
+        $store['activity'][] = [
+            'at'       => static_now()->format('Y-m-d H:i:s'),
+            'activity' => $activity,
+            'details'  => trim($details) === '' ? '-' : $details,
+            'by'       => $by
+        ];
+        if (count($store['activity']) > 300) $store['activity'] = array_slice($store['activity'], -300);
+    }
+}
+
+// Newest first (two lines with the same time keep the order they were written, newest on top)
+if (!function_exists('static_activity')) {
+    function static_activity(): array
+    {
+        $store = static_store_read();
+        $list  = isset($store['activity']) && is_array($store['activity']) ? $store['activity'] : static_seed_activity();
+        $order = [];
+        foreach (array_values($list) as $i => $row) $order[] = [$row, $i];
+        usort($order, fn($a, $b) => strcmp((string) $b[0]['at'], (string) $a[0]['at']) ?: ($b[1] <=> $a[1]));
+        return array_map(fn($pair) => $pair[0], $order);
+    }
+}
+
+// Reads, adds one line, saves. Used by the HR endpoints once a change has worked.
+// A problem while writing the log line never undoes or blocks the change HR just made.
+function static_log(string $activity, string $details = '-', ?string $by = null): void
+{
+    try {
+        static_store_update(function (array &$store) use ($activity, $details, $by) {
+            static_log_into($store, $activity, $details, $by);
+        });
+    } catch (Throwable $e) {
+        // ignored on purpose
+    }
+}
+
+// What HR did, newest first: the list behind the bell on the HR Dashboard (the Admin's own lines are left out)
+function static_hr_feed(int $limit = 30): array
+{
+    $out = [];
+    foreach (static_activity() as $row) {
+        if (strcasecmp((string) ($row['by'] ?? ''), 'Admin') === 0) continue;
+        $out[] = ['at' => (string) $row['at'], 'activity' => (string) $row['activity'], 'details' => (string) $row['details'], 'by' => (string) $row['by']];
+        if (count($out) >= $limit) break;
+    }
+    return $out;
+}
+
+// Names for the log line. $archived: null = any applicant, false = only active ones, true = only archived ones
+function static_applicant_names(array $ids, ?bool $archived = null): array
+{
+    $ids = array_map('intval', $ids);
+    $out = [];
+    foreach (static_store_read()['applicants'] as $a) {
+        if (!in_array((int) $a['id'], $ids, true)) continue;
+        $isArchived = !empty($a['archived_at']);
+        if ($archived !== null && $archived !== $isArchived) continue;
+        $out[] = (string) $a['name'];
+    }
+    return $out;
+}
+
+// "Maria Clara Santos" / "Maria, Steve" / "Maria, Steve +3 more"
+function static_names_label(array $names): string
+{
+    $names = array_values(array_filter(array_map('trim', $names), fn($n) => $n !== ''));
+    if (!$names) return '-';
+    if (count($names) <= 2) return implode(', ', $names);
+    return $names[0] . ', ' . $names[1] . ' +' . (count($names) - 2) . ' more';
 }
 
 // ---------------------------------------------------------------------------
@@ -502,6 +637,9 @@ function static_purge_expired(): int
        restore  ids = [101, 102]                      Archive "Restore"
        purge    ids = [101, 102]                      Archive "Delete forever"
        status   id, status, result                    Pending | In Progress | Completed (+ Passed | Failed)
+       activity (nothing)                             the latest HR activity, for the bell on the HR Dashboard
+   Every change that worked also writes one line to the activity log (static_log), which the Admin
+   Dashboard shows under Recent Activities.
    Response (JSON):
        { status: 'success', ..., stats: {...}, completed_ids: [...], archived: N }
        { status: 'error', message: '...' }
@@ -548,27 +686,46 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
                     (string) ($input['contact'] ?? ''),
                     isset($_FILES['cv']) && is_array($_FILES['cv']) ? $_FILES['cv'] : null
                 );
+                static_log('Added An Applicant', (string) $extra['applicant']['name']);
                 break;
 
             case 'archive':
+                $names = static_applicant_names($ids, false);          // read BEFORE they move to the Archive
                 $extra['count'] = static_archive($ids, (array) ($input['at'] ?? []));
+                if ($extra['count'] > 0) static_log('Applicant Deleted', static_names_label($names));
                 break;
 
             case 'restore':
+                $names = static_applicant_names($ids, true);
                 $extra['count'] = static_restore($ids);
+                if ($extra['count'] > 0) static_log('Applicant Restored', static_names_label($names));
                 break;
 
             case 'purge':
+                $names = static_applicant_names($ids, true);
                 $extra['count'] = static_purge($ids);
+                if ($extra['count'] > 0) static_log('Applicant Deleted Forever', static_names_label($names));
                 break;
 
             case 'status':
-                $ok = static_set_status(
-                    (int) ($input['id'] ?? 0),
-                    (string) ($input['status'] ?? ''),
-                    isset($input['result']) && $input['result'] !== '' ? (string) $input['result'] : null
-                );
+                $sid       = (int) ($input['id'] ?? 0);
+                $newStatus = (string) ($input['status'] ?? '');
+                $newResult = isset($input['result']) && $input['result'] !== '' ? (string) $input['result'] : null;
+                if ($newStatus !== 'Completed' || !in_array($newResult, ['Passed', 'Failed'], true)) $newResult = null;
+                $before = null;
+                foreach (static_applicants() as $row) {
+                    if ((int) $row['id'] === $sid) { $before = $row; break; }
+                }
+                $ok = static_set_status($sid, $newStatus, $newResult);
                 if (!$ok) static_respond(['status' => 'error', 'message' => 'That applicant or status was not found.'], 404);
+                if ($before && ($before['status'] !== $newStatus || ($before['result'] ?? null) !== $newResult)) {
+                    static_log('Applicant Status Changed', $before['name'] . ' · ' . $newStatus . ($newResult ? ' · ' . $newResult : ''));
+                }
+                break;
+
+            case 'activity':
+                // The bell on the HR Dashboard asks for the latest lines (page restored from the cache, tab back in view)
+                static_respond(['status' => 'success', 'activity' => static_hr_feed()]);
                 break;
 
             default:

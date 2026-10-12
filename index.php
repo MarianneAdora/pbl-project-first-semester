@@ -34,7 +34,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = filter_var(trim($_POST['email'] ?? ''), FILTER_SANITIZE_EMAIL);
     $password = $_POST['password'] ?? '';
 
-    if (isset($credentials[$email]) && $credentials[$email]['password'] === $password) {
+    $email = strtolower($email);
+    $account = $credentials[$email] ?? null;
+    $passwordOk = false;
+    if ($account) {
+        if (!empty($account['hash'])) $passwordOk = password_verify($password, $account['hash']);          // accounts the Admin created
+        elseif (isset($account['password'])) $passwordOk = hash_equals((string) $account['password'], (string) $password);
+    }
+
+    if ($account && $passwordOk) {
         $_SESSION['user_role'] = $credentials[$email]['role'];
         $_SESSION['user_email'] = $email;
         $_SESSION['user_name'] = $credentials[$email]['name'];

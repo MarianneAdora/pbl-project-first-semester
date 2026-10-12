@@ -20,7 +20,8 @@ require_once __DIR__ . '/static-admin.php';
 $overview = static_admin_overview();             // the three summary boxes
 $stats    = static_admin_question_stats();       // Questionnaires Statistics: every question + the answer most applicants chose
 $all_log  = static_activity();                   // everything HR and the Admin did, newest first
-$recent   = array_slice($all_log, 0, 10);        // Recent Activities shows the latest 10 only
+$recent_view = static_admin_recent_activity(10);   // Recent Activities: the latest 10; a line is hidden 3 days after the Admin first saw it
+$recent   = $recent_view['rows'];
 
 // Share of something, used by the little bar on each summary box
 function share(int $part, int $total): int
@@ -41,7 +42,7 @@ $stats_sub = $q_count . ' question' . ($q_count === 1 ? '' : 's') . ' · ' . (
         ? 'from ' . (int) $stats['submissions'] . ' submitted questionnaire' . ($stats['submissions'] === 1 ? '' : 's')
         : 'no applicant has submitted the questionnaire yet'
 );
-$log_total = count($all_log);
+$log_total = (int) $recent_view['total'];
 $log_count = $log_total > 10 ? 'Latest 10 of ' . $log_total : $log_total . ' in total';
 
 $display_name = trim($_SESSION['user_name'] ?? '') !== '' ? $_SESSION['user_name'] : 'Admin';

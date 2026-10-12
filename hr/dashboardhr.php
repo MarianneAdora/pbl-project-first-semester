@@ -55,6 +55,15 @@ $display_name = trim($_SESSION['user_name'] ?? '') !== '' ? $_SESSION['user_name
 // The red mark + the Dashboard notification badge are built from this list; an applicant stops
 // counting as "new" once HR opens their details page.
 $completed_ids = static_completed_ids($all_applicants);
+
+// What HR did (add / delete / restore / interview ...), newest first. It is the list behind the bell in the
+// header, and the same lines the Admin sees under Recent Activities. Preferences (Settings) are never in it.
+// BACKEND: SELECT activity, details, created_at AS at FROM activity_log WHERE actor_role = 'hr' ORDER BY created_at DESC LIMIT 30
+try {
+    $hr_feed = static_hr_feed(30);
+} catch (Throwable $e) {
+    $hr_feed = [];          // the bell stays empty rather than the whole dashboard failing
+}
 /* Original hard-coded list (kept for reference):
 $completed_ids = [103, 104, 106, 108, 109, 111, 114, 116, 119, 121, 124, 126, 129, 131, 135];
 */
@@ -237,9 +246,28 @@ function status_badge(string $status): string
     <!-- Main Content Panel Area -->
     <main class="main-content">
         <!-- Top Greeting Header -->
-        <header class="content-header reveal" style="--i:1">
-            <h1 id="greeting" title="Hello, <?php echo htmlspecialchars($display_name); ?>!">Hello, <?php echo htmlspecialchars($display_name); ?>!</h1>
-            <p>Overview of application activity.</p>
+        <header class="content-header has-bell reveal" style="--i:1">
+            <div class="header-text">
+                <h1 id="greeting" title="Hello, <?php echo htmlspecialchars($display_name); ?>!">Hello, <?php echo htmlspecialchars($display_name); ?>!</h1>
+                <p>Overview of application activity.</p>
+            </div>
+
+            <!-- Notification bell: your recent activity (the Admin sees the same lines) + completed screenings to review -->
+            <div class="notif-wrap">
+                <button type="button" class="notif-bell" id="notifBell" aria-haspopup="true" aria-expanded="false" aria-controls="notifPanel" aria-label="Notifications" title="Notifications">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+                    <span class="notif-count" id="notifBadge" hidden>0</span>
+                </button>
+
+                <div class="notif-panel" id="notifPanel" role="dialog" aria-label="Notifications" hidden>
+                    <div class="notif-head">
+                        <h3>Notifications</h3>
+                        <button type="button" class="notif-markall" id="notifMarkAll">Mark all as read</button>
+                    </div>
+                    <ul class="notif-list" id="notifList"></ul>
+                    <p class="notif-foot">Your activity also appears in the Admin's Recent Activities. Changes to Settings are not included.</p>
+                </div>
+            </div>
         </header>
 
         <!-- Dashboard Grid -->
@@ -421,6 +449,8 @@ function status_badge(string $status): string
         };
         // every applicant with status Completed (drives the red marks + the Dashboard badge)
         const completedIds = <?php echo json_encode(array_map('intval', $completed_ids)); ?>;
+        // HR's recent activity (the bell in the header)
+        window.HR_ACTIVITY = <?php echo json_encode($hr_feed, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
     </script>
     <!-- Shared HR behaviour first, then this page's script -->
     <script>window.HR_SERVER_ARCHIVE = <?php echo json_encode(static_archive_sync(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>

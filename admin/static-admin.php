@@ -22,7 +22,7 @@
 
    THIS FILE IS ALSO THE ENDPOINT the admin JavaScript calls (see the bottom): a POST to static-admin.php
    with  action = question_add | question_update | question_archive | question_restore | question_purge |
-                  account_add | account_update | account_archive | account_restore | account_purge
+                  account_add | account_update | account_archive | account_restore | account_purge | notify
    changes the store and answers with JSON (the fresh lists, so the page can redraw itself).
    Questions have a status (Active / Inactive) and a created date. An Inactive question stays in the Admin
    list but the applicants do not see it. HR accounts have a role ("HR Staff") and a status.
@@ -49,12 +49,11 @@ if (!function_exists('static_store_read') || !function_exists('static_store_writ
 }
 
 if (!function_exists('static_seed_hr_accounts')) {
+    // The ONE HR account the project starts with (the same one index.php lets in)
     function static_seed_hr_accounts(): array
     {
         return [
-            ['id' => 1, 'name' => 'HR',           'email' => 'hr@expertise.com',           'password' => 'hr123',    'status' => 'Active', 'created' => '2026-08-03 09:00', 'archived_at' => null],
-            ['id' => 2, 'name' => 'Maria Santos', 'email' => 'maria.santos@expertise.com', 'password' => 'maria123', 'status' => 'Active', 'created' => '2026-10-08 10:34', 'archived_at' => null],
-            ['id' => 3, 'name' => 'Carlo Reyes',  'email' => 'carlo.reyes@expertise.com',  'password' => 'carlo123', 'status' => 'Active', 'created' => '2026-10-06 09:20', 'archived_at' => null]
+            ['id' => 1, 'name' => 'HR', 'email' => 'hr@expertise.com', 'password' => 'hr123', 'role' => 'HR Staff', 'status' => 'Active', 'created' => '2026-08-03 09:00', 'archived_at' => null]
         ];
     }
 }
@@ -67,55 +66,9 @@ if (!function_exists('static_hr_accounts')) {
     }
 }
 
-if (!function_exists('static_seed_activity')) {
-    function static_seed_activity(): array
-    {
-        return [
-            ['at' => '2026-10-01 13:00', 'activity' => 'Added An Applicant',    'details' => 'Maria Clara Santos',        'by' => 'HR'],
-            ['at' => '2026-10-03 14:20', 'activity' => 'Added An Applicant',    'details' => 'Steve Rogers',              'by' => 'HR'],
-            ['at' => '2026-10-05 08:15', 'activity' => 'Added An Applicant',    'details' => 'Juan Dela Cruz',            'by' => 'HR'],
-            ['at' => '2026-10-06 09:20', 'activity' => 'HR Account Added',      'details' => 'Carlo Reyes (HR)',          'by' => 'Admin'],
-            ['at' => '2026-10-08 10:34', 'activity' => 'HR Account Added',      'details' => 'Maria Santos (HR)',         'by' => 'Admin'],
-            ['at' => '2026-10-08 11:45', 'activity' => 'Questionnaires Edited', 'details' => 'Q5 · Consent & readiness',  'by' => 'Admin']
-        ];
-    }
-}
-
-if (!function_exists('static_actor')) {
-    function static_actor(): ?string
-    {
-        $role = (string) ($_SESSION['user_role'] ?? '');
-        if ($role === 'hr')    return 'HR';
-        if ($role === 'admin') return 'Admin';
-        return null;
-    }
-}
-
-if (!function_exists('static_log_into')) {
-    function static_log_into(array &$store, string $activity, string $details = '-', ?string $by = null): void
-    {
-        $by = $by ?? static_actor();
-        if ($by === null) return;
-        if (!isset($store['activity']) || !is_array($store['activity'])) $store['activity'] = static_seed_activity();
-        $store['activity'][] = [
-            'at'       => static_now()->format('Y-m-d H:i'),
-            'activity' => $activity,
-            'details'  => trim($details) === '' ? '-' : $details,
-            'by'       => $by
-        ];
-        if (count($store['activity']) > 300) $store['activity'] = array_slice($store['activity'], -300);
-    }
-}
-
-if (!function_exists('static_activity')) {
-    function static_activity(): array
-    {
-        $store = static_store_read();
-        $list  = isset($store['activity']) && is_array($store['activity']) ? $store['activity'] : static_seed_activity();
-        usort($list, fn($a, $b) => strcmp($b['at'], $a['at']));
-        return $list;
-    }
-}
+/* The activity log helpers (static_seed_activity, static_actor, static_log_into, static_activity) now live in
+   hr/static-data.php, because HR writes to the same log: everything HR does shows here on the Admin side under
+   Recent Activities. The Admin's own change functions below still call static_log_into() exactly as before. */
 
 if (!defined('STATIC_ARCHIVE_DAYS')) define('STATIC_ARCHIVE_DAYS', 30);
 
@@ -296,11 +249,51 @@ function static_admin_clean_question(array $in, array $all, ?array $old = null):
     return $q;
 }
 
+// Renames a section: every question of it gets the new title (deleted ones too, so a restore keeps the title).
+// $current = the title of the section being renamed. Returns ['no' => , 'from' => , 'to' => ] or null when nothing changes.
+function static_admin_rename_section(array &$all, string $current, string $title): ?array
+{
+    $title = trim($title);
+    if ($title === '') return null;
+    if (mb_strlen($title) > 60) throw new InvalidArgumentException('The section name is too long (60 characters at most).');
+
+    $no  = 0;
+    $old = '';
+    foreach ($all as $q) {
+        if (strcasecmp((string) $q['section'], trim($current)) === 0) { $no = (int) $q['section_no']; $old = (string) $q['section']; break; }
+    }
+    if ($no === 0)     throw new InvalidArgumentException('Choose an existing section to rename.');
+    if ($title === $old) return null;
+
+    foreach ($all as $q) {
+        if ((int) $q['section_no'] !== $no && strcasecmp((string) $q['section'], $title) === 0) {
+            throw new InvalidArgumentException('Another section already uses that title.');
+        }
+    }
+    foreach ($all as &$q) {
+        if ((int) $q['section_no'] === $no) $q['section'] = $title;
+    }
+    unset($q);
+    return ['no' => $no, 'from' => $old, 'to' => $title];
+}
+
+// Applies "section_rename" (sent by the question form when the Admin retitles the section he chose) to $all and
+// points $in['section'] at the new title. Returns what was renamed, or null.
+function static_admin_apply_section_rename(array &$all, array &$in): ?array
+{
+    $title = trim((string) ($in['section_rename'] ?? ''));
+    if ($title === '') return null;
+    $done = static_admin_rename_section($all, (string) ($in['section'] ?? ''), $title);
+    if ($done) $in['section'] = $done['to'];
+    return $done;
+}
+
 function static_admin_add_question(array $in): array
 {
     return static_store_update(function (array &$store) use ($in) {
-        $all = static_admin_all_questions($store);
-        $q   = static_admin_clean_question($in, $all);
+        $all     = static_admin_all_questions($store);
+        $renamed = static_admin_apply_section_rename($all, $in);
+        $q       = static_admin_clean_question($in, $all);
 
         // goes at the end of its section (a new section goes at the very end)
         $at = count($all);
@@ -310,6 +303,7 @@ function static_admin_add_question(array $in): array
         array_splice($all, $at, 0, [$q + ['archived_at' => null]]);
         $store['questions'] = $all;
 
+        if ($renamed) static_log_into($store, 'Section Renamed', 'Sec ' . $renamed['no'] . ' · ' . $renamed['from'] . ' → ' . $renamed['to'], 'Admin');
         static_log_into($store, 'Questionnaires Added', static_admin_question_label($q), 'Admin');
         return $q;
     });
@@ -324,6 +318,8 @@ function static_admin_update_question(string $id, array $in): array
             if ($q['id'] === $id && empty($q['archived_at'])) { $pos = $i; break; }
         }
         if ($pos === null) throw new InvalidArgumentException('That question was not found. It may have been deleted.');
+
+        $renamed = static_admin_apply_section_rename($all, $in);      // the Admin retitled the section he chose
 
         $old = $all[$pos];
         $new = static_admin_clean_question($in, $all, $old);
@@ -343,6 +339,7 @@ function static_admin_update_question(string $id, array $in): array
         }
         $store['questions'] = $all;
 
+        if ($renamed) static_log_into($store, 'Section Renamed', 'Sec ' . $renamed['no'] . ' · ' . $renamed['from'] . ' → ' . $renamed['to'], 'Admin');
         static_log_into($store, 'Questionnaires Edited', static_admin_question_label($new), 'Admin');
         return $new;
     });
@@ -688,6 +685,50 @@ function static_admin_overview(): array
     ];
 }
 
+/* ==========================================================================
+   RECENT ACTIVITIES (Admin Dashboard): an activity stays in the list for 3 days after the Admin first saw it
+   The first time a line is shown on the Dashboard it gets 'admin_seen_at' in the log; once that is 3 days old
+   the line is no longer listed (the next older line takes its place). Nothing is deleted from the log itself,
+   so the HR bell, the "last 7 days" box and the sidebar badge are not affected.
+   BACKEND: activity_log gets a nullable admin_seen_at column; "UPDATE ... SET admin_seen_at = NOW() WHERE admin_seen_at IS NULL AND id IN (shown ids)"
+            and the list query adds "AND (admin_seen_at IS NULL OR admin_seen_at > NOW() - INTERVAL 3 DAY)".
+   ========================================================================== */
+if (!defined('STATIC_ACTIVITY_SHOW_DAYS')) define('STATIC_ACTIVITY_SHOW_DAYS', 3);
+
+// Returns ['rows' => the lines to show (newest first, at most $limit), 'total' => how many lines are still listed]
+function static_admin_recent_activity(int $limit = 10): array
+{
+    $store   = static_store_read();
+    $log     = isset($store['activity']) && is_array($store['activity']) ? array_values($store['activity']) : static_seed_activity();
+    $now     = static_now();
+    $nowText = $now->format('Y-m-d H:i:s');
+    $cut     = $now->modify('-' . STATIC_ACTIVITY_SHOW_DAYS . ' days')->format('Y-m-d H:i:s');
+
+    // newest first (same order as static_activity(): two lines with the same time keep the order they were written)
+    $order = array_keys($log);
+    usort($order, fn($a, $b) => strcmp((string) $log[$b]['at'], (string) $log[$a]['at']) ?: ($b <=> $a));
+
+    $rows    = [];
+    $total   = 0;
+    $changed = false;
+    foreach ($order as $i) {
+        $seen = (string) ($log[$i]['admin_seen_at'] ?? '');
+        if ($seen !== '' && $seen <= $cut) continue;              // seen more than 3 days ago: gone from the list
+        $total++;
+        if (count($rows) >= $limit) continue;                     // listed in total, but not among the latest ones shown
+        if ($seen === '') { $log[$i]['admin_seen_at'] = $nowText; $changed = true; }   // shown now = seen now
+        $row = $log[$i];
+        unset($row['admin_seen_at']);
+        $rows[] = $row;
+    }
+
+    if ($changed) {
+        $store['activity'] = $log;
+        static_store_write($store);
+    }
+    return ['rows' => $rows, 'total' => $total];
+}
+
 // How favourable one answer is, 0 to 100 (null = this question is not scored)
 //   Yes / No  : 100 when the answer is the favourable one (Yes, unless the question says otherwise), else 0
 //   rating    : the rating as a share of the highest rating
@@ -952,6 +993,7 @@ function static_admin_notify(): array
 
    Request (JSON body):  { action: '...', ...fields }
        question_add | question_update   the question fields (see static_admin_clean_question), id for update
+                                        optional question.section_rename = a new title for the section named in question.section
        question_archive | question_restore | question_purge   id = 'q14'
        account_add | account_update     name, email, password (new password; empty on update = unchanged),
                                         status (update), id for update
@@ -1031,6 +1073,10 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
             case 'account_purge':
                 if (!static_admin_purge_account((int) ($input['id'] ?? 0))) static_admin_respond(['status' => 'error', 'message' => $missing], 404);
                 $message = 'HR account deleted forever.';
+                break;
+
+            case 'notify':      // the sidebar badges ask for the fresh numbers every few seconds (admin-common.js)
+                static_admin_respond(['status' => 'success', 'message' => '', 'result' => null, 'data' => ['notify' => static_admin_notify()]]);
                 break;
 
             default:

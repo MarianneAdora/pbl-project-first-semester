@@ -446,7 +446,54 @@ window.ADMIN = (function () {
         refreshBadges();
     }
 
-    const lastCount = { dashboardBadge: -1, archiveBadge: -1 };
+    /* ---- New HR account (sidebar: HR Accounts) ------------------------------------------------
+       Same idea as the HR "new applicant" badge: set when the Admin creates an HR account,
+       cleared as soon as the HR Accounts list is opened (hrlist.js reads the ids first, so the new
+       rows can still be pointed out on that visit).
+       Kept in this browser for now; with the database it becomes a "seen by Admin" flag. */
+    const NEW_HR_KEY = 'admin_new_hr';
+
+    function readNewHr() {
+        try {
+            const v = JSON.parse(localStorage.getItem(NEW_HR_KEY) || '[]');
+            return Array.isArray(v) ? v.map(Number).filter(Boolean) : [];
+        } catch (err) { return []; }
+    }
+
+    function writeNewHr(list) {
+        try { localStorage.setItem(NEW_HR_KEY, JSON.stringify(list)); } catch (err) { /* storage unavailable */ }
+    }
+
+    function hrNotifyOn() { return readSettings().notifications !== false; }      // Settings > Notifications (master switch)
+
+    function noteNewHr(id) {
+        const list = readNewHr();
+        id = Number(id);
+        if (id && !list.includes(id)) { list.push(id); writeNewHr(list); }
+        refreshBadges();
+    }
+
+    function clearNewHr() {
+        writeNewHr([]);
+        refreshBadges();
+    }
+
+    // The badge is added to the "HR Accounts" sidebar item by script, so every admin page gets it
+    function ensureHrBadge() {
+        let badge = document.getElementById('hrBadge');
+        if (!badge) {
+            const link = document.querySelector('.sidebar-nav a[href$="hrlist.php"]');
+            if (!link) return null;
+            badge = document.createElement('span');
+            badge.className = 'nav-badge alert';
+            badge.id = 'hrBadge';
+            badge.hidden = true;
+            link.appendChild(badge);
+        }
+        return badge;
+    }
+
+    const lastCount = { dashboardBadge: -1, archiveBadge: -1, hrBadge: -1 };
     function paintBadge(id, count, title) {
         const badge = document.getElementById(id);
         if (!badge) return;
@@ -464,9 +511,12 @@ window.ADMIN = (function () {
     function refreshBadges() {
         const a = unseenActivity().length;
         const e = notifyOn('archive') ? expiring : 0;
+        const h = hrNotifyOn() ? readNewHr().length : 0;
+        ensureHrBadge();
+        paintBadge('hrBadge', h, h + ' new HR ' + (h === 1 ? 'account' : 'accounts'));
         paintBadge('dashboardBadge', a, a + ' new HR ' + (a === 1 ? 'activity' : 'activities') + ' since you last looked');
         paintBadge('archiveBadge', e, e + ' archived ' + (e === 1 ? 'item' : 'items') + ' will be deleted for good within ' + (notify.days || 7) + ' days');
-        document.dispatchEvent(new CustomEvent('admin:badges', { detail: { activity: a, expiring: e } }));
+        document.dispatchEvent(new CustomEvent('admin:badges', { detail: { activity: a, expiring: e, hr: h } }));
         return { activity: a, expiring: e };
     }
 
@@ -533,24 +583,55 @@ window.ADMIN = (function () {
         return Promise.all(flights);
     }
 
+    /* ---- Live update: the badges follow what HR does, without reloading the page -----------------
+       Every POLL_MS the page asks static-admin.php (action 'notify') for the fresh numbers and repaints
+       the badges. The "seen" rule is the same: the Dashboard badge counts HR activities newer than the
+       last time the Admin opened the Dashboard, so opening (or clicking) the Dashboard clears it.
+       Paused while the tab is hidden; one extra check as soon as the tab is visible again.
+       BACKEND: keep the 'notify' action (or a small endpoint) answering { activity: [...], expiring, days }. */
+    const POLL_MS = 15000;
+    let pollTimer = null;
+
+    function pollNotify() {
+        if (document.hidden) return Promise.resolve();
+        return request('notify')
+            .then(res => {
+                const n = res && res.data && res.data.notify;
+                if (!n) return;
+                notify.activity = Array.isArray(n.activity) ? n.activity : [];
+                if (n.days) notify.days = n.days;
+                expiring = Math.max(0, Number(n.expiring) || 0);
+                refreshBadges();
+            })
+            .catch(() => { /* offline or session ended: keep the numbers on screen, try again next time */ });
+    }
+
+    function startPolling() {
+        if (pollTimer) return;
+        pollTimer = setInterval(pollNotify, POLL_MS);
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) pollNotify(); });
+    }
+
     /* ---- Start ------------------------------------------------------------------------------ */
     applySettings();                                   // the <head> script already did this; harmless backup
     document.addEventListener('DOMContentLoaded', () => {
         applyProfile();
         refreshBadges();
+        startPolling();
     });
 
     window.addEventListener('storage', (e) => {
         if (e.key === SETTINGS_KEY) { applySettings(null, true); refreshBadges(); }   // Settings saved in another tab
         if (e.key === PROFILE_KEY) applyProfile();
-        if (e.key === SEEN_KEY) refreshBadges();
+        if (e.key === SEEN_KEY || e.key === NEW_HR_KEY) refreshBadges();
     });
 
     return {
         request, esc, formatDate, toast, confirm: confirmBox, icons, countUp, noMotion,
         menu: openMenu, closeMenu, pager, showing, flash, showFlash,
         flyToArchive, bumpArchive,
-        notify: { unseen: unseenActivity, markSeen: markActivitySeen, setExpiring: setExpiring, refresh: refreshBadges, on: notifyOn },
+        hr: { note: noteNewHr, clear: clearNewHr, ids: readNewHr },
+        notify: { unseen: unseenActivity, markSeen: markActivitySeen, setExpiring: setExpiring, refresh: refreshBadges, poll: pollNotify, on: notifyOn },
         settings: { get: readSettings, save: saveSettings, apply: applySettings, defaults: SETTINGS_DEFAULTS, profile: readProfile, saveProfile: saveProfile },
         arrivedViaTransition: false
     };

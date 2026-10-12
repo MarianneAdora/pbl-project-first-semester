@@ -714,10 +714,12 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
         switch ($action) {
             case 'interview_approve':
                 [$iv, $email] = details_interview_approve($applicant);
+                static_log('Interview Confirmed', $applicant['name'] . ' · ' . details_date_label($iv['date']) . ', ' . details_time_label($iv['time']));
                 break;
 
             case 'interview_reschedule':
                 [$iv, $email] = details_interview_reschedule($applicant, (string) ($input['date'] ?? ''), (string) ($input['time'] ?? ''));
+                static_log('Interview Rescheduled', $applicant['name'] . ' · ' . details_date_label($iv['date']) . ', ' . details_time_label($iv['time']));
                 break;
 
             default:
