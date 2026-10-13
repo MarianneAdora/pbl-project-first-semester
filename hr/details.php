@@ -98,7 +98,7 @@ $pageData = [
 ];
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-page="details">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -124,13 +124,9 @@ $pageData = [
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <!-- Shared HR styles (sidebar, overlay, modal, pills, toast) -->
-    <link rel="stylesheet" href="../assets/css/hr-common.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/hr-common.css'); ?>">
+    <!-- hr.css = shared hr styles + every hr page (this page is picked by data-page="details" on <html>) -->
+    <link rel="stylesheet" href="../assets/css/hr.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/hr.css'); ?>">
 
-    <!-- Page styles -->
-    <link rel="stylesheet" href="../assets/css/details.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/details.css'); ?>">
-    <!-- Dark theme + animations setting (keep this LAST so it can override the page styles) -->
-    <link rel="stylesheet" href="../assets/css/theme.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/theme.css'); ?>">
 </head>
 <body>
 
@@ -586,7 +582,6 @@ $pageData = [
     </script>
     <!-- Shared HR behaviour first, then this page's script -->
     <script>window.HR_SERVER_ARCHIVE = <?php echo json_encode(static_archive_sync(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
-    <script src="../assets/js/hr-common.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/hr-common.js'); ?>"></script>
-    <script src="../assets/js/details.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/details.js'); ?>"></script>
+    <script src="../assets/js/hr.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/hr.js'); ?>"></script>
 </body>
 </html>

@@ -20,7 +20,7 @@ require_once __DIR__ . '/static-admin.php';
 $archive = static_admin_archive();      // ['questions' => [...], 'accounts' => [...]], each row has 'deleted' + 'days_left'
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-page="archiveadmin">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -45,10 +45,8 @@ $archive = static_admin_archive();      // ['questions' => [...], 'accounts' => 
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <!-- Shared admin styles first (shell, buttons, pills, toast, dark theme), then this page's styles -->
-    <link rel="stylesheet" href="../assets/css/admin-common.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/admin-common.css'); ?>">
-    <link rel="stylesheet" href="../assets/css/hrlist.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/hrlist.css'); ?>">
-    <link rel="stylesheet" href="../assets/css/archiveadmin.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/archiveadmin.css'); ?>">
+    <!-- admin.css = shared admin styles + every admin page (this page is picked by data-page="archiveadmin" on <html>) -->
+    <link rel="stylesheet" href="../assets/css/admin.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/admin.css'); ?>">
 </head>
 <body>
 
@@ -225,7 +223,6 @@ $archive = static_admin_archive();      // ['questions' => [...], 'accounts' => 
         window.ADMIN_NOTIFY = <?php echo json_encode(static_admin_notify(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
         window.ADMIN_ARCHIVE = <?php echo json_encode(['days' => STATIC_ARCHIVE_DAYS, 'archive' => $archive], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
     </script>
-    <script src="../assets/js/admin-common.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/admin-common.js'); ?>"></script>
-    <script src="../assets/js/archiveadmin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/archiveadmin.js'); ?>"></script>
+    <script src="../assets/js/admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/admin.js'); ?>"></script>
 </body>
 </html>

@@ -20,7 +20,7 @@ require_once __DIR__ . '/static-admin.php';
 $accounts = static_admin_accounts();
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-page="hrlist">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -45,9 +45,8 @@ $accounts = static_admin_accounts();
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <!-- Shared admin styles first (shell, buttons, pills, toast, dark theme), then this page's styles -->
-    <link rel="stylesheet" href="../assets/css/admin-common.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/admin-common.css'); ?>">
-    <link rel="stylesheet" href="../assets/css/hrlist.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/hrlist.css'); ?>">
+    <!-- admin.css = shared admin styles + every admin page (this page is picked by data-page="hrlist" on <html>) -->
+    <link rel="stylesheet" href="../assets/css/admin.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/admin.css'); ?>">
 </head>
 <body>
 
@@ -223,7 +222,6 @@ $accounts = static_admin_accounts();
         window.ADMIN_HR = <?php echo json_encode(['accounts' => $accounts], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
     </script>
     <!-- Shared admin behaviour first, then this page's script -->
-    <script src="../assets/js/admin-common.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/admin-common.js'); ?>"></script>
-    <script src="../assets/js/hrlist.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/hrlist.js'); ?>"></script>
+    <script src="../assets/js/admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/admin.js'); ?>"></script>
 </body>
 </html>

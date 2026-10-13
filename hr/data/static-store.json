@@ -404,6 +404,21 @@
                 "file": "140.pdf"
             },
             "archived_at": "2026-10-12 20:21:18"
+        },
+        {
+            "id": 141,
+            "name": "Sungchan",
+            "email": "sungchan@gmail.com",
+            "contact": "098765432",
+            "status": "Pending",
+            "result": null,
+            "updated": "2026-10-13 09:36",
+            "cv": {
+                "name": "Anylogic - Agent Based Modeling Phase 123.pdf",
+                "size": 3716277,
+                "file": "141.pdf"
+            },
+            "archived_at": "2026-10-13 09:36:40"
         }
     ],
     "submissions": [
@@ -1049,6 +1064,62 @@
                 "hash": "50aba4ae9e38e3e307f22d22efb950933b81e476ece93d1ed381385b73dcd104"
             },
             "submitted_at": "2026-10-10 18:30"
+        },
+        {
+            "reference": "SCR-2026-06627",
+            "applicant_id": null,
+            "name": "",
+            "email": "",
+            "answers": {
+                "q1": "Yes",
+                "q2": "Yes",
+                "q3": "Yes",
+                "q4": "Yes",
+                "q5": 5,
+                "q17": "2026-10-20",
+                "q6": "2026-10-19",
+                "q7": "No",
+                "q8": "Yes",
+                "q9": "Yes",
+                "q10": "Yes",
+                "q11": "Yes",
+                "q12": "sdfhtukhli.hrgffetyrytio.retyuuytreg",
+                "q13": true
+            },
+            "timing": {
+                "q1": 2067,
+                "q2": 3067,
+                "q3": 4466,
+                "q4": 3271,
+                "q5": 189137,
+                "q17": 4134,
+                "q6": 3700,
+                "q7": 3358,
+                "q8": 1377,
+                "q9": 1643,
+                "q10": 1362,
+                "q11": 1404,
+                "q12": 7512,
+                "q13": 1815
+            },
+            "device": "eac8c8f765ae4b5f70b43359b3c3ac3f",
+            "ip": "::1",
+            "otp": {
+                "failed": 0,
+                "requests": [
+                    1791855702,
+                    1791855926
+                ],
+                "locked": false
+            },
+            "video": {
+                "name": "video_response.mp4",
+                "size": 1918134,
+                "seconds": 5.2,
+                "source": "recorded",
+                "hash": "e777702fe461a680578a9e9b82ede7363feacb81d15642d1c7d38e46a5c70619"
+            },
+            "submitted_at": "2026-10-13 09:46"
         }
     ],
     "evaluations": [
@@ -1506,6 +1577,71 @@
                 }
             ],
             "evaluated_at": "2026-10-10 18:30"
+        },
+        {
+            "reference": "SCR-2026-06627",
+            "email": "",
+            "points": 2,
+            "band": "Low",
+            "auto_high": [],
+            "outcome": "passed",
+            "factors": [
+                {
+                    "label": "Failed OTP attempts",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "0 wrong code(s). Typos are normal."
+                },
+                {
+                    "label": "OTP requests in 10 minutes",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "2 code request(s). Email delays make this normal."
+                },
+                {
+                    "label": "Questionnaire speed",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "Finished in 228 seconds; 21% of the items were answered in under 1.5 seconds."
+                },
+                {
+                    "label": "Same email or phone as another record",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No other record shares the email or phone number."
+                },
+                {
+                    "label": "Re-applying after a failed screening",
+                    "points": 2,
+                    "max": 2,
+                    "reason": "The last screening was failed 2 day(s) ago."
+                },
+                {
+                    "label": "Same device or IP as other applicants",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No suspicious sharing (a shared IP alone is not scored)."
+                },
+                {
+                    "label": "Contradictory logistics answers",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "The logistics answers agree with each other."
+                },
+                {
+                    "label": "Time on the video page",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "Not scored, because applicants can upload a file instead of recording live."
+                },
+                {
+                    "label": "Video matches another applicant",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No other applicant sent this video."
+                }
+            ],
+            "evaluated_at": "2026-10-13 09:46"
         }
     ],
     "interviews": {
@@ -1568,6 +1704,16 @@
             "time": "11:00",
             "source": "sample",
             "updated": "2026-10-10 21:31"
+        },
+        "114": {
+            "status": "confirmed",
+            "preferred_date": "2026-10-20",
+            "preferred_time": "11:00",
+            "type": "On Site Interview",
+            "date": "2026-10-20",
+            "time": "11:00",
+            "source": "sample",
+            "updated": "2026-10-13 09:38"
         }
     },
     "outbox": [
@@ -1682,6 +1828,46 @@
             "subject": "Your login credentials were updated | Expertise",
             "html": "<p>Hello Markie,</p><p>Your login credentials were updated by the Admin. Log in to the Expertise HR portal with this email and the password the Admin gave you.</p>",
             "sent_at": "2026-10-12 20:18:20"
+        },
+        {
+            "applicant_id": 0,
+            "kind": "hr_credentials",
+            "to": "hr@expertise.com",
+            "subject": "Your login credentials were updated | Expertise",
+            "html": "<p>Hello HR,</p><p>Your login credentials were updated by the Admin. Log in to the Expertise HR portal with this email and the password the Admin gave you.</p>",
+            "sent_at": "2026-10-13 09:33:56"
+        },
+        {
+            "applicant_id": 114,
+            "kind": "confirmed",
+            "to": "victorstone@gmail.com",
+            "subject": "Your interview is confirmed | Expertise",
+            "html": "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head><body style=\"margin:0;padding:0;background:#f4f4f5;font-family:'Plus Jakarta Sans','Segoe UI',Helvetica,Arial,sans-serif;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f4f4f5;\"><tr><td align=\"center\" style=\"padding:28px 12px;\"><table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;\"><tr><td style=\"height:6px;line-height:6px;font-size:0;background:#d1122a;\">&nbsp;</td></tr><tr><td style=\"padding:28px 40px 0 40px;font-size:26px;font-weight:800;color:#a3081e;letter-spacing:.3px;\">Expertise</td></tr><tr><td style=\"padding:26px 40px 0 40px;\"><p style=\"margin:0 0 8px 0;font-size:13px;font-weight:700;color:#d1122a;\">Interview update</p><h1 style=\"margin:0;font-size:26px;line-height:1.25;font-weight:800;color:#1f1f23;\">Your interview is confirmed</h1></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:15px;line-height:1.7;\"><p style=\"margin:0 0 12px 0;color:#1f1f23;font-weight:700;\">Hi Victor,</p><p style=\"margin:0;\">Good news! The schedule you chose is available. Your interview is now confirmed.</p></td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f8f8f9;border:1px solid #e6e7ea;border-radius:12px;\"><tr><td style=\"padding:12px 22px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Date</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">October 20, 2026</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Time</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">11:00 AM</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Interview Type</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">On Site Interview</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Location</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">Expertise Office, BGC, Taguig</td></tr></table></td></tr></table></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:14px;line-height:1.7;\">Please arrive 15 minutes early and bring a valid ID. If you can no longer make it, reply to this email as soon as possible.</td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><a href=\"http://localhost/pbl-project-first-semester/applicant/application-status.php\" style=\"display:inline-block;padding:13px 26px;background:#d1122a;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;border-radius:10px;\">View my interview schedule</a></td></tr><tr><td style=\"padding:12px 40px 0 40px;color:#8a8f96;font-size:12px;line-height:1.6;\">The link opens your application status page. You will be asked to verify your email with a one-time code first.</td></tr><tr><td style=\"padding:26px 40px 30px 40px;color:#8a8f96;font-size:12px;line-height:1.6;border-top:0;\">Thank you,<br><strong style=\"color:#1f1f23;\">Expertise HR Team</strong></td></tr></table></td></tr></table></body></html>",
+            "sent_at": "2026-10-13 09:38:00"
+        },
+        {
+            "applicant_id": 0,
+            "kind": "hr_credentials",
+            "to": "hr@expertise.com",
+            "subject": "Your login credentials were updated | Expertise",
+            "html": "<p>Hello HR,</p><p>Your login credentials were updated by the Admin. Log in to the Expertise HR portal with this email and the password the Admin gave you.</p>",
+            "sent_at": "2026-10-13 09:39:19"
+        },
+        {
+            "applicant_id": 0,
+            "kind": "hr_credentials",
+            "to": "hr@expertise.com",
+            "subject": "Your login credentials were updated | Expertise",
+            "html": "<p>Hello HR,</p><p>Your login credentials were updated by the Admin. Log in to the Expertise HR portal with this email and the password the Admin gave you.</p>",
+            "sent_at": "2026-10-13 09:39:35"
+        },
+        {
+            "applicant_id": 0,
+            "kind": "hr_credentials",
+            "to": "mmatre.8804@umak.edu.ph",
+            "subject": "Your HR account is ready | Expertise",
+            "html": "<p>Hello MARKIE JELO MATRE,</p><p>An HR account was created for you. Log in to the Expertise HR portal with this email and the password the Admin gave you.</p>",
+            "sent_at": "2026-10-13 09:39:55"
         }
     ],
     "hr_accounts": [
@@ -1704,6 +1890,16 @@
             "status": "Inactive",
             "created": "2026-10-12 19:03",
             "archived_at": "2026-10-12 20:20:41"
+        },
+        {
+            "id": 3,
+            "name": "MARKIE JELO MATRE",
+            "email": "mmatre.8804@umak.edu.ph",
+            "role": "HR Staff",
+            "hash": "$2y$10$QEJhENaRT/L4jPqTgPmOKO3goXrnqrop6ns7t83DvWMZ2.4ci0X.6",
+            "status": "Active",
+            "created": "2026-10-13 09:39",
+            "archived_at": "2026-10-13 09:40:07"
         }
     ],
     "activity": [
@@ -1885,6 +2081,125 @@
             "details": "MARKIE JELO MATRE",
             "by": "HR",
             "admin_seen_at": "2026-10-12 20:21:35"
+        },
+        {
+            "at": "2026-10-13 09:33:56",
+            "activity": "HR Account Edited",
+            "details": "HR (HR)",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-13 09:38:30"
+        },
+        {
+            "at": "2026-10-13 09:34:05",
+            "activity": "HR Account Deleted",
+            "details": "HR (HR)",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-13 09:38:30"
+        },
+        {
+            "at": "2026-10-13 09:34:12",
+            "activity": "HR Account Restored",
+            "details": "HR (HR)",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-13 09:38:30"
+        },
+        {
+            "at": "2026-10-13 09:36:17",
+            "activity": "Added An Applicant",
+            "details": "Sungchan",
+            "by": "HR",
+            "admin_seen_at": "2026-10-13 09:38:30"
+        },
+        {
+            "at": "2026-10-13 09:36:40",
+            "activity": "Applicant Deleted",
+            "details": "Sungchan",
+            "by": "HR",
+            "admin_seen_at": "2026-10-13 09:38:30"
+        },
+        {
+            "at": "2026-10-13 09:38:00",
+            "activity": "Interview Confirmed",
+            "details": "Victor Stone · October 20, 2026, 11:00 AM",
+            "by": "HR",
+            "admin_seen_at": "2026-10-13 09:38:30"
+        },
+        {
+            "at": "2026-10-13 09:39:19",
+            "activity": "HR Account Deactivated",
+            "details": "HR (HR)",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-13 09:40:26"
+        },
+        {
+            "at": "2026-10-13 09:39:35",
+            "activity": "HR Account Activated",
+            "details": "HR (HR)",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-13 09:40:26"
+        },
+        {
+            "at": "2026-10-13 09:39:55",
+            "activity": "HR Account Added",
+            "details": "MARKIE JELO MATRE (HR)",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-13 09:40:26"
+        },
+        {
+            "at": "2026-10-13 09:40:07",
+            "activity": "HR Account Deleted",
+            "details": "MARKIE JELO MATRE (HR)",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-13 09:40:26"
+        },
+        {
+            "at": "2026-10-13 09:40:24",
+            "activity": "Questionnaires Edited",
+            "details": "Q1 · Consent & readiness",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-13 09:40:26"
+        },
+        {
+            "at": "2026-10-13 09:40:40",
+            "activity": "Questionnaires Edited",
+            "details": "Q1 · Consent & readiness",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-13 09:40:47"
+        },
+        {
+            "at": "2026-10-13 09:40:46",
+            "activity": "Questionnaires Edited",
+            "details": "Q1 · Consent & readiness",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-13 09:40:47"
+        },
+        {
+            "at": "2026-10-13 09:41:07",
+            "activity": "Questionnaires Edited",
+            "details": "Q1 · Consent & readiness",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-13 09:41:27"
+        },
+        {
+            "at": "2026-10-13 09:41:25",
+            "activity": "Questionnaires Added",
+            "details": "Q17 · Consent & readiness",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-13 09:41:27"
+        },
+        {
+            "at": "2026-10-13 09:42:15",
+            "activity": "Questionnaires Deleted",
+            "details": "Q17 · Consent & readiness",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-13 09:44:31"
+        },
+        {
+            "at": "2026-10-13 09:44:48",
+            "activity": "Questionnaires Deleted Forever",
+            "details": "Q17 · Consent & readiness",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-13 09:44:49"
         }
     ],
     "questions": [
@@ -1894,14 +2209,14 @@
             "section": "Consent & readiness",
             "type": "yesno",
             "text": "Have you read the {link} thoroughly?",
+            "status": "Active",
+            "created": "2026-08-03 09:00",
+            "no_note": "Please read the job description first. The link above opens it in a new tab.",
             "link": {
                 "text": "job description",
                 "url": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
             },
-            "no_note": "Please read the job description first. The link above opens it in a new tab.",
-            "archived_at": null,
-            "status": "Active",
-            "created": "2026-08-03 09:00"
+            "archived_at": null
         },
         {
             "id": "q2",

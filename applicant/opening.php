@@ -48,7 +48,7 @@ $steps = [
 ];
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-page="opening">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -65,8 +65,8 @@ $steps = [
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@500;600&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="../assets/css/applicant-common.css?v=<?= @filemtime(__DIR__ . '/../assets/css/applicant-common.css') ?>">
-    <link rel="stylesheet" href="../assets/css/opening.css?v=<?= @filemtime(__DIR__ . '/../assets/css/opening.css') ?>">
+    <!-- applicant.css = shared applicant styles + every applicant page (this page is picked by data-page="opening" on <html>) -->
+    <link rel="stylesheet" href="../assets/css/applicant.css?v=<?= @filemtime(__DIR__ . '/../assets/css/applicant.css') ?>">
 </head>
 <body>
 
@@ -114,7 +114,6 @@ $steps = [
     </div>
 </main>
 
-<script src="../assets/js/applicant-common.js?v=<?= @filemtime(__DIR__ . '/../assets/js/applicant-common.js') ?>"></script>
-<script src="../assets/js/opening.js?v=<?= @filemtime(__DIR__ . '/../assets/js/opening.js') ?>"></script>
+<script src="../assets/js/applicant.js?v=<?= @filemtime(__DIR__ . '/../assets/js/applicant.js') ?>"></script>
 </body>
 </html>

@@ -173,7 +173,7 @@ $bigLoad  = '<svg class="eval-spin" viewBox="0 0 80 80" aria-hidden="true"><circ
 $iconChevron  = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-page="application-status">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -196,8 +196,8 @@ $iconChevron  = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="../assets/css/applicant-common.css?v=<?= @filemtime(__DIR__ . '/../assets/css/applicant-common.css') ?>">
-    <link rel="stylesheet" href="../assets/css/applicant-status.css?v=<?= @filemtime(__DIR__ . '/../assets/css/applicant-status.css') ?>">
+    <!-- applicant.css = shared applicant styles + every applicant page (this page is picked by data-page="application-status" on <html>) -->
+    <link rel="stylesheet" href="../assets/css/applicant.css?v=<?= @filemtime(__DIR__ . '/../assets/css/applicant.css') ?>">
 </head>
 <body>
 
@@ -384,7 +384,6 @@ $iconChevron  = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6
 
 </main>
 
-<script src="../assets/js/applicant-common.js?v=<?= @filemtime(__DIR__ . '/../assets/js/applicant-common.js') ?>"></script>
-<script src="../assets/js/application-status.js?v=<?= @filemtime(__DIR__ . '/../assets/js/application-status.js') ?>"></script>
+<script src="../assets/js/applicant.js?v=<?= @filemtime(__DIR__ . '/../assets/js/applicant.js') ?>"></script>
 </body>
 </html>

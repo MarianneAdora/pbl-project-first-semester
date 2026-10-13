@@ -48,7 +48,7 @@ $screening = [
 ];
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-page="upload-video">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -65,9 +65,8 @@ $screening = [
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="../assets/css/applicant-common.css?v=<?= @filemtime(__DIR__ . '/../assets/css/applicant-common.css') ?>">
-    <link rel="stylesheet" href="../assets/css/stepper.css?v=<?= @filemtime(__DIR__ . '/../assets/css/stepper.css') ?>">
-    <link rel="stylesheet" href="../assets/css/upload-video.css?v=<?= @filemtime(__DIR__ . '/../assets/css/upload-video.css') ?>">
+    <!-- applicant.css = shared applicant styles + every applicant page (this page is picked by data-page="upload-video" on <html>) -->
+    <link rel="stylesheet" href="../assets/css/applicant.css?v=<?= @filemtime(__DIR__ . '/../assets/css/applicant.css') ?>">
 </head>
 <body>
 
@@ -211,8 +210,6 @@ $screening = [
 <script>
     window.SCREENING = <?= json_encode($screening, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?>;
 </script>
-<script src="../assets/js/applicant-common.js?v=<?= @filemtime(__DIR__ . '/../assets/js/applicant-common.js') ?>"></script>
-<script src="../assets/js/screening-store.js?v=<?= @filemtime(__DIR__ . '/../assets/js/screening-store.js') ?>"></script>
-<script src="../assets/js/upload-video.js?v=<?= @filemtime(__DIR__ . '/../assets/js/upload-video.js') ?>"></script>
+<script src="../assets/js/applicant.js?v=<?= @filemtime(__DIR__ . '/../assets/js/applicant.js') ?>"></script>
 </body>
 </html>
