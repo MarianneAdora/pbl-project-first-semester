@@ -12,7 +12,9 @@
    same device ID as 2 or more other applicants).
 
    The system NEVER fails an applicant on risk alone. The result the applicant sees is:
-       failed    an answer to a "must have" question is No (see 'knockout' below)
+       failed    an answer does not match the passing answer of a KNOCK-OUT question. The Admin marks the
+                 questions and sets the passing answer (admin/addquestion.php); the rule is read with
+                 static_knockout_check() in static-applicant.php
        review    the risk band is High (or an automatic High): HR checks first, no result yet
        passed    everything else -> the applicant schedules the interview
 
@@ -65,8 +67,8 @@ function static_risk_config(): array
             'More than 2 months'     => 60
         ],
 
-        // "must have" questions: an answer of No means the applicant does not meet the requirements
-        'knockout' => ['q2', 'q3', 'q4', 'q8', 'q9', 'q10', 'q11'],
+        // the knock-out ("must have") questions are no longer listed here: each question carries its own
+        // knock-out setting + passing answer (set by the Admin). See static_question_rule() in static-applicant.php.
 
         // how long the "your screening is being evaluated" page shows before the result (milliseconds)
         'loading_ms' => 8000
@@ -96,7 +98,9 @@ function static_eval_digits(string $value): string
 //   $c['others']       earlier submissions (everyone else)   $c['applicants']   the applicant list
 //   $c['evaluations']  earlier results (for "re-applying after a failed screening")
 //   $c['now']          DateTimeImmutable
-// Returns: points, band, auto_high, outcome, unmet (texts of the must-have questions answered No), factors[]
+// Returns: points, band, auto_high, outcome, factors[],
+//          unmet (texts of the knock-out questions that did not pass), unmet_detail (the same, with answer + reason),
+//          knockouts (EVERY knock-out question with the answer, the passing answer and met / not met)
 // ---------------------------------------------------------------------------
 function static_evaluate(array $c): array
 {
@@ -290,21 +294,27 @@ function static_evaluate(array $c): array
     $band = $points <= $cfg['bands']['low_max'] ? 'Low' : ($points <= $cfg['bands']['medium_max'] ? 'Medium' : 'High');
     if (count($autoWhy) > 0) $band = 'High';
 
-    $unmet = [];
+    // knock-out questions: every answer is checked against the passing answer the Admin set
+    $knockouts = [];
+    $failedKo  = [];
     foreach ((array) ($c['questions'] ?? []) as $q) {
-        if (in_array($q['id'], $cfg['knockout'], true) && ($answers[$q['id']] ?? '') === 'No') {
-            $unmet[] = (string) $q['text'];
-        }
+        $check = static_knockout_check($q, $answers);
+        if ($check === null) continue;
+        $knockouts[] = $check;
+        if ($check['met'] === false) $failedKo[] = $check;
     }
-    $outcome = count($unmet) > 0 ? 'failed' : ($band === 'High' ? 'review' : 'passed');
+    $unmet   = array_map(fn($k) => (string) $k['question'], $failedKo);
+    $outcome = count($failedKo) > 0 ? 'failed' : ($band === 'High' ? 'review' : 'passed');
 
     return [
-        'points'    => $points,
-        'band'      => $band,
-        'auto_high' => $autoWhy,
-        'outcome'   => $outcome,
-        'unmet'     => $unmet,
-        'factors'   => $factors
+        'points'       => $points,
+        'band'         => $band,
+        'auto_high'    => $autoWhy,
+        'outcome'      => $outcome,
+        'unmet'        => $unmet,
+        'unmet_detail' => $failedKo,
+        'knockouts'    => $knockouts,
+        'factors'      => $factors
     ];
 }
 
@@ -351,14 +361,15 @@ function static_run_evaluation(): array
             'auto_high'    => $result['auto_high'],
             'outcome'      => $result['outcome'],
             'factors'      => $result['factors'],
+            'knockouts'    => $result['knockouts'],        // the rubric as it was when the applicant sent the screening (HR reads this)
             'evaluated_at' => static_now()->format('Y-m-d H:i')
         ];
     });
 
-    // the HR lists: Passed / Failed; a held (review) applicant stays "Completed" without a result
+    // the HR lists: Passed / Rejected; a held (review) applicant stays "Completed" without a result
     if ($me) {
         if ($result['outcome'] === 'passed')      static_set_status((int) $me['id'], 'Completed', 'Passed');
-        elseif ($result['outcome'] === 'failed')  static_set_status((int) $me['id'], 'Completed', 'Failed');
+        elseif ($result['outcome'] === 'failed')  static_set_status((int) $me['id'], 'Completed', 'Rejected');
         else                                      static_set_status((int) $me['id'], 'Completed', null);
     }
 

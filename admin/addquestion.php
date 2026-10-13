@@ -366,6 +366,42 @@ function q_dropdown(string $id, string $labelId, array $options, string $selecte
                         </div>
                     </div>
 
+                    <!-- ===== Screening rubric: knock-out question + the passing answer (Yes/No, Yes/No + list and rating questions) ===== -->
+                    <div class="sub-fields" data-for="knockout" hidden>
+                        <p class="sub-title">Screening rubric</p>
+                        <label class="check-row">
+                            <input type="checkbox" id="knockout" name="knockout">
+                            <span class="box"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+                            This is a knock-out question
+                        </label>
+                        <p class="field-hint ko-hint">An applicant whose answer does not match the passing answer fails the screening. HR sees which question it was and why in the applicant's Questionnaires tab.</p>
+
+                        <div class="ko-fields" id="koFields" hidden>
+                            <!-- Yes / No (and Yes / No + a list) -->
+                            <div class="field" data-field="pass_answer" id="passAnswerField">
+                                <label id="passLabel">Passing answer <span class="req">*</span></label>
+                                <?php q_dropdown('passDropdown', 'passLabel', [['Yes', 'Yes', '#159a43'], ['No', 'No', '#c0392b']], 'Yes'); ?>
+                                <p class="field-error" role="alert"></p>
+                                <p class="field-hint">Any other answer fails the screening.</p>
+                            </div>
+
+                            <!-- Yes / No + a list: which choices still pass (shown while the passing answer is the one that opens the list) -->
+                            <div class="field" data-field="pass_follow" id="passFollowField" hidden>
+                                <label id="passFollowLabel">Choices that still pass <span class="optional">(optional)</span></label>
+                                <div class="ko-choices" id="passFollowList"></div>
+                                <p class="field-hint">Tick the choices that pass. Leave all unticked to accept every choice.</p>
+                            </div>
+
+                            <!-- Rating scale -->
+                            <div class="field" data-field="pass_min" id="passMinField" hidden>
+                                <label for="pass_min">Lowest passing rating <span class="req">*</span></label>
+                                <div class="input-box no-icon"><input type="text" id="pass_min" name="pass_min" inputmode="numeric" maxlength="2" placeholder="3"></div>
+                                <p class="field-error" role="alert"></p>
+                                <p class="field-hint" id="passMinHint">A rating lower than this fails the screening.</p>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- shown while the question contains {link} -->
                     <div class="sub-fields" data-for="link" hidden>
                         <p class="sub-title">The link inside the question</p>

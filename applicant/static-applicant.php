@@ -25,6 +25,11 @@
      date          date picker               (hint)
      text          a text box                (hint, placeholder, max_chars, min_chars)
      consent       a statement to read + one checkbox   (body = [paragraphs], checkbox)
+   Knock-out (screening rubric), set by the Admin on yesno / yesno_select / scale questions
+     knockout      true  = an answer that does not match the passing answer FAILS the screening
+     pass_answer   yesno, yesno_select: 'Yes' or 'No'      scale: the lowest rating that still passes (number)
+     pass_follow   yesno_select only (optional): the list choices that still pass; empty = any choice passes
+     Read the rule with static_question_rule(), check an answer with static_knockout_check().
    Link inside a question: put {link} in "text" and give  'link' => ['text' => ..., 'url' => ...]
      (the link is drawn in the sentence, opens in a new tab)
 
@@ -96,15 +101,18 @@ function static_questionnaire_seed(): array
         ],
         [
             'id' => 'q2', 'section_no' => 1, 'section' => $s1, 'type' => 'yesno',
-            'text' => 'Are you willing to work on the schedule as advertised?'
+            'text' => 'Are you willing to work on the schedule as advertised?',
+            'knockout' => true, 'pass_answer' => 'Yes'
         ],
         [
             'id' => 'q3', 'section_no' => 1, 'section' => $s1, 'type' => 'yesno',
-            'text' => 'Are you willing to work on-site in BGC, Taguig?'
+            'text' => 'Are you willing to work on-site in BGC, Taguig?',
+            'knockout' => true, 'pass_answer' => 'Yes'
         ],
         [
             'id' => 'q4', 'section_no' => 1, 'section' => $s1, 'type' => 'yesno',
-            'text' => 'Are you willing to go through the assessment and interviews?'
+            'text' => 'Are you willing to go through the assessment and interviews?',
+            'knockout' => true, 'pass_answer' => 'Yes'
         ],
         [
             'id' => 'q5', 'section_no' => 1, 'section' => $s1, 'type' => 'scale',
@@ -130,22 +138,26 @@ function static_questionnaire_seed(): array
         [
             'id' => 'q8', 'section_no' => 2, 'section' => $s2, 'type' => 'yesno',
             'text' => 'Do you have access to a reliable internet connection and a device suitable for completing the assessment and virtual steps?',
-            'no_note' => 'A stable connection and a working device are needed for the assessment and the virtual steps.'
+            'no_note' => 'A stable connection and a working device are needed for the assessment and the virtual steps.',
+            'knockout' => true, 'pass_answer' => 'Yes'
         ],
         [
             'id' => 'q9', 'section_no' => 2, 'section' => $s2, 'type' => 'yesno',
-            'text' => 'Are you willing to undergo a background check as part of the hiring process?'
+            'text' => 'Are you willing to undergo a background check as part of the hiring process?',
+            'knockout' => true, 'pass_answer' => 'Yes'
         ],
         [
             'id' => 'q10', 'section_no' => 2, 'section' => $s2, 'type' => 'yesno',
-            'text' => 'Can you provide required pre-employment documents (e.g. NBI clearance, TIN, SSS) upon request?'
+            'text' => 'Can you provide required pre-employment documents (e.g. NBI clearance, TIN, SSS) upon request?',
+            'knockout' => true, 'pass_answer' => 'Yes'
         ],
 
         // ---- Section 3: Confidentiality acknowledgment --------------------
         [
             'id' => 'q11', 'section_no' => 3, 'section' => $s3, 'type' => 'yesno',
             'text' => 'This role involves handling sensitive client information. Do you agree to comply with confidentiality and data protection requirements?',
-            'no_note' => 'Complying with confidentiality and data protection requirements is required for this role.'
+            'no_note' => 'Complying with confidentiality and data protection requirements is required for this role.',
+            'knockout' => true, 'pass_answer' => 'Yes'
         ],
 
         // ---- Section 4: Comprehension -------------------------------------
@@ -170,6 +182,110 @@ function static_questionnaire_seed(): array
             'checkbox' => 'I have read and agree to the data protection statement.'
         ]
     ];
+}
+
+// ---------------------------------------------------------------------------
+// KNOCK-OUT QUESTIONS (the screening rubric)
+// The Admin marks a question as knock-out and sets the PASSING ANSWER (admin/addquestion.php).
+// An applicant whose answer does not match fails the screening (static-evaluation.php), and HR sees which
+// question it was and why (hr/details.php > Questionnaires).
+// Only Yes/No, Yes/No + list and rating questions can be knock-out questions.
+// DATABASE (later): questions.knockout (bool), questions.pass_answer, questions.pass_follow (JSON)
+// ---------------------------------------------------------------------------
+
+// Questions saved BEFORE the knock-out setting existed: these were the "must have" questions (answer Yes to pass).
+// They only count while the question has no 'knockout' value of its own; once the Admin saves it, its own value wins.
+const STATIC_LEGACY_KNOCKOUT_IDS = ['q2', 'q3', 'q4', 'q8', 'q9', 'q10', 'q11'];
+
+// The question sentence as the applicant reads it ({link} replaced by its clickable words)
+function static_question_plain(array $q): string
+{
+    $text = (string) ($q['text'] ?? '');
+    if (strpos($text, '{link}') !== false) $text = str_replace('{link}', (string) ($q['link']['text'] ?? 'link'), $text);
+    return $text;
+}
+
+// The knock-out rule of a question, or null when it is not a knock-out question
+//   ['pass' => 'Yes'|'No'|number, 'follow' => [choices that pass], 'max' => highest rating (scale only)]
+function static_question_rule(array $q): ?array
+{
+    $type = (string) ($q['type'] ?? '');
+    if (!in_array($type, ['yesno', 'yesno_select', 'scale'], true)) return null;
+
+    if (array_key_exists('knockout', $q)) {
+        if (empty($q['knockout'])) return null;
+    } elseif ($type === 'yesno' && in_array((string) ($q['id'] ?? ''), STATIC_LEGACY_KNOCKOUT_IDS, true)) {
+        return ['pass' => 'Yes', 'follow' => []];
+    } else {
+        return null;
+    }
+
+    if ($type === 'scale') {
+        $max = max(1, (int) ($q['max'] ?? 5));
+        return ['pass' => max(1, min($max, (int) ($q['pass_answer'] ?? 1))), 'follow' => [], 'max' => $max];
+    }
+
+    $follow = [];
+    if ($type === 'yesno_select' && !empty($q['followup']['options'])) {
+        $follow = array_values(array_intersect(array_map('strval', (array) ($q['pass_follow'] ?? [])), array_map('strval', $q['followup']['options'])));
+    }
+    return ['pass' => (($q['pass_answer'] ?? 'Yes') === 'No') ? 'No' : 'Yes', 'follow' => $follow];
+}
+
+// The passing answer written for people: "Yes", "At least 3 of 5", "Yes, with Your notice period: 1 to 2 weeks or Less than 1 week"
+function static_knockout_expected(array $q, array $rule): string
+{
+    if ($q['type'] === 'scale') return 'At least ' . $rule['pass'] . ' of ' . $rule['max'];
+    $text = (string) $rule['pass'];
+    $when = (string) ($q['followup']['when'] ?? '');
+    if ($rule['follow'] && $rule['pass'] === $when) {
+        $text .= ', with ' . trim((string) ($q['followup']['label'] ?? 'the choice')) . ': ' . implode(' or ', $rule['follow']);
+    }
+    return $text;
+}
+
+// Checks one applicant's answer against the rule. null = not a knock-out question.
+// Otherwise: id, question, expected (the passing answer), given (what the applicant answered),
+//            met (true = passes, false = does not pass, null = no answer to judge), reason (why it did not pass)
+function static_knockout_check(array $q, array $answers): ?array
+{
+    $rule = static_question_rule($q);
+    if ($rule === null) return null;
+
+    $id  = (string) $q['id'];
+    $v   = $answers[$id] ?? null;
+    $out = [
+        'id' => $id, 'question' => static_question_plain($q),
+        'expected' => static_knockout_expected($q, $rule), 'given' => 'No answer', 'met' => null, 'reason' => ''
+    ];
+
+    if ($q['type'] === 'scale') {
+        if (!is_numeric($v) || (int) $v < 1) return $out;
+        $n = (int) $v;
+        $out['given'] = $n . ' of ' . $rule['max'];
+        $out['met']   = $n >= $rule['pass'];
+        if (!$out['met']) $out['reason'] = 'Rated ' . $n . ' of ' . $rule['max'] . '; the lowest passing rating is ' . $rule['pass'] . '.';
+        return $out;
+    }
+
+    if ($v !== 'Yes' && $v !== 'No') return $out;
+    $out['given'] = (string) $v;
+    $follow = (string) ($answers[$id . ':follow'] ?? '');
+    $when   = (string) ($q['followup']['when'] ?? '');
+    if ($q['type'] === 'yesno_select' && !empty($q['followup']) && $v === $when && $follow !== '') {
+        $out['given'] .= ', ' . trim((string) ($q['followup']['label'] ?? 'choice')) . ': ' . $follow;
+    }
+
+    if ($v !== $rule['pass']) {
+        $out['met']    = false;
+        $out['reason'] = 'Answered "' . $v . '"; the passing answer is "' . $rule['pass'] . '".';
+    } elseif ($rule['follow'] && $v === $when && !in_array($follow, $rule['follow'], true)) {
+        $out['met']    = false;
+        $out['reason'] = 'Answered "' . $v . '" but chose "' . ($follow !== '' ? $follow : 'nothing') . '"; the passing choices are: ' . implode(', ', $rule['follow']) . '.';
+    } else {
+        $out['met'] = true;
+    }
+    return $out;
 }
 
 // ---------------------------------------------------------------------------
@@ -227,7 +343,7 @@ function static_validate_answer(array $q, array $answers): string
    The applicant pages POST here (the applicant has passed the email check, there is no HR login):
        start    the applicant opened the questionnaire       -> status "In Progress"
        submit   answers + video info                         -> status "Completed" (no result yet:
-                                                                 Passed / Failed comes from the scoring)
+                                                                 Passed / Rejected comes from the scoring)
    Response (JSON):  { status: 'success' }   or   { status: 'error', message: '...' }
    (after "submit" the reference number is kept in $_SESSION['screening_reference'])
    ========================================================================== */

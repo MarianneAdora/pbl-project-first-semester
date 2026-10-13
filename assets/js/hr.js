@@ -2090,7 +2090,7 @@ document.addEventListener('DOMContentLoaded', () => {
             new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Passed', 'Failed'],
+                    labels: ['Passed', 'Rejected'],
                     datasets: [{
                         data: [chartData.passed, chartData.failed],
                         backgroundColor: ['#12b700', '#e60000'],
@@ -2117,7 +2117,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (elements.length) {
                             const i = elements[0].index;
                             const n = i === 0 ? chartData.passed : chartData.failed;
-                            showCenter(n, (i === 0 ? 'Passed' : 'Failed') + ' · ' + Math.round(n / total * 100) + '%');
+                            showCenter(n, (i === 0 ? 'Passed' : 'Rejected') + ' · ' + Math.round(n / total * 100) + '%');
                         } else {
                             showCenter(defaults.value, defaults.label);
                         }
@@ -2125,7 +2125,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     onClick: (evt, elements) => {
                         if (elements.length > 0) {
                             const index = elements[0].index;
-                            const statusFilter = index === 0 ? 'Passed' : 'Failed';
+                            const statusFilter = index === 0 ? 'Passed' : 'Rejected';
                             window.location.href = `screeninglist.php?status=${statusFilter}`;
                         }
                     },
@@ -2141,7 +2141,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.addEventListener('mouseleave', () => showCenter(defaults.value, defaults.label));
 
         // Legend chips: click (or Enter) to filter, hover to preview in the centre
-        [['legendPassed', 'Passed', chartData.passed], ['legendFailed', 'Failed', chartData.failed]].forEach(([id, status, n]) => {
+        [['legendPassed', 'Passed', chartData.passed], ['legendFailed', 'Rejected', chartData.failed]].forEach(([id, status, n]) => {
             const el = document.getElementById(id);
             if (!el) return;
             const go = () => { window.location.href = `screeninglist.php?status=${status}`; };
@@ -3846,10 +3846,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const status = norm(p.get('status'));
         const result = norm(p.get('result'));
         const statusMap = { 'pending': 'Pending', 'in progress': 'In Progress', 'completed': 'Completed' };
-        const resultMap = { 'passed': 'Passed', 'failed': 'Failed', 'rejected': 'Failed', 'none': 'none' };
+        const resultMap = { 'passed': 'Passed', 'failed': 'Rejected', 'rejected': 'Rejected', 'none': 'none' };
 
         if (statusMap[status]) state.status = statusMap[status];
-        // The dashboard pie chart links with ?status=Passed / ?status=Failed
+        // The dashboard pie chart links with ?status=Passed / ?status=Rejected
         if (resultMap[status]) state.result = resultMap[status];
         if (resultMap[result]) state.result = resultMap[result];
 

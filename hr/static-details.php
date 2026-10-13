@@ -95,7 +95,7 @@ function details_find_applicant(int $id): ?array
 // Which tabs are open for this applicant
 //   Questionnaires / Video    the screening is Completed
 //   Interview Schedule        Completed AND Passed
-//   AI Evaluation             Completed AND an evaluation exists (Passed or Failed, and also an applicant
+//   AI Evaluation             Completed AND an evaluation exists (Passed or Rejected, and also an applicant
 //                             held for HR review: that is the one HR most needs to read)
 // ---------------------------------------------------------------------------
 function details_access(array $a, ?array $evaluation = null): array
@@ -144,7 +144,7 @@ function details_submission(array $a): ?array
 function details_demo_submission(array $a): array
 {
     $id     = (int) $a['id'];
-    $failed = strcasecmp((string) ($a['result'] ?? ''), 'Failed') === 0;
+    $failed = strcasecmp((string) ($a['result'] ?? ''), 'Rejected') === 0;
 
     $goodText = [
         'The role handles customer calls and chats for our clients, solves their concerns, documents every case and keeps client information confidential. It is an on-site, shifting job in BGC.',
@@ -193,7 +193,8 @@ function details_demo_submission(array $a): array
 // ---------------------------------------------------------------------------
 // The questionnaire summary: every real question with the answer given
 // ---------------------------------------------------------------------------
-function details_answer_view(array $q, array $answers): array
+// $ko = the knock-out check of this question for this applicant (static_knockout_check), or null when it is not a knock-out question
+function details_answer_view(array $q, array $answers, ?array $ko = null): array
 {
     $id = $q['id'];
     $v  = $answers[$id] ?? null;
@@ -204,7 +205,12 @@ function details_answer_view(array $q, array $answers): array
     $out = [
         'id' => $id, 'type' => $q['type'], 'question' => $text,
         'value' => '', 'tone' => 'neutral', 'extra' => '', 'scale' => null, 'max' => null,
-        'flag' => '', 'missing' => false
+        'flag' => '', 'missing' => false,
+        // screening rubric: is this a knock-out question, what passes, and did the applicant pass it
+        'knockout' => $ko !== null,
+        'expected' => $ko['expected'] ?? '',
+        'ko_met'   => $ko['met'] ?? null,          // true = passed, false = did not pass, null = nothing to judge
+        'reason'   => $ko['reason'] ?? ''
     ];
 
     switch ($q['type']) {
@@ -216,8 +222,9 @@ function details_answer_view(array $q, array $answers): array
             if (!empty($q['followup']) && $v === $q['followup']['when']) {
                 $out['extra'] = trim(($q['followup']['label'] ?? '') . ': ' . ($answers[$id . ':follow'] ?? '-'));
             }
-            // "No" to a requirement is worth a look (question 7 is a fact, not a requirement)
-            if ($q['type'] === 'yesno' && $v === 'No') $out['flag'] = 'Answered No';
+            // "No" to a plain Yes/No is worth a look (question 7 is a fact, not a requirement).
+            // A knock-out question is judged by its passing answer instead (see 'ko_met').
+            if ($ko === null && $q['type'] === 'yesno' && $v === 'No') $out['flag'] = 'Answered No';
             break;
 
         case 'scale':
@@ -226,7 +233,7 @@ function details_answer_view(array $q, array $answers): array
             $out['scale'] = $n;
             $out['max']   = (int) ($q['max'] ?? 5);
             $out['value'] = $n . ' / ' . $out['max'];
-            if ($n <= 2) $out['flag'] = 'Low interest rating';
+            if ($ko === null && $n <= 2) $out['flag'] = 'Low interest rating';
             break;
 
         case 'date':
@@ -248,7 +255,10 @@ function details_answer_view(array $q, array $answers): array
     return $out;
 }
 
-function details_questionnaire(array $submission): array
+// $evaluation = details_evaluation() of this applicant. Its 'knockouts' are the rubric as it was when the applicant
+// sent the screening, so the page still tells the truth after the Admin changes a passing answer. Without an
+// evaluation the questions' current rules are used.
+function details_questionnaire(array $submission, ?array $evaluation = null): array
 {
     $answers  = is_array($submission['answers'] ?? null) ? $submission['answers'] : [];
     $sections = [];
@@ -256,11 +266,26 @@ function details_questionnaire(array $submission): array
     $flags    = [];
     $total    = 0;
 
+    $saved = null;
+    if ($evaluation !== null && is_array($evaluation['knockouts'] ?? null)) {
+        $saved = [];
+        foreach ($evaluation['knockouts'] as $k) $saved[(string) $k['id']] = $k;
+    }
+    $koTotal  = 0;
+    $koMet    = 0;
+    $koFailed = [];
+
     foreach (static_questionnaire() as $q) {
         $total++;
-        $view = details_answer_view($q, $answers);
+        $ko = $saved !== null ? ($saved[(string) $q['id']] ?? null) : static_knockout_check($q, $answers);
+        $view = details_answer_view($q, $answers, $ko);
         if (!$view['missing']) $answered++;
         if ($view['flag'] !== '') $flags[] = ['question' => $view['question'], 'note' => $view['flag']];
+        if ($ko !== null) {
+            $koTotal++;
+            if ($ko['met'] === true)  $koMet++;
+            if ($ko['met'] === false) $koFailed[] = ['question' => $view['question'], 'given' => (string) $ko['given'], 'expected' => (string) $ko['expected'], 'reason' => (string) $ko['reason']];
+        }
 
         $no = (int) $q['section_no'];
         if (!isset($sections[$no])) $sections[$no] = ['no' => $no, 'title' => $q['section'], 'items' => []];
@@ -268,7 +293,11 @@ function details_questionnaire(array $submission): array
     }
     ksort($sections);
 
-    return ['sections' => array_values($sections), 'answered' => $answered, 'total' => $total, 'flags' => $flags];
+    return [
+        'sections' => array_values($sections), 'answered' => $answered, 'total' => $total, 'flags' => $flags,
+        // the knock-out result: how many knock-out questions there are, how many passed, and the ones that did not (with the reason)
+        'ko' => ['total' => $koTotal, 'met' => $koMet, 'failed' => $koFailed]
+    ];
 }
 
 // ---------------------------------------------------------------------------
@@ -353,7 +382,7 @@ function details_find_evaluation(array $a, ?array $submission): ?array
     return [
         'reference' => $submission['reference'], 'email' => $a['email'],
         'points' => $run['points'], 'band' => $run['band'], 'auto_high' => $run['auto_high'],
-        'outcome' => $run['outcome'], 'factors' => $run['factors'],
+        'outcome' => $run['outcome'], 'factors' => $run['factors'], 'knockouts' => $run['knockouts'],
         'evaluated_at' => $a['updated'], 'demo' => true
     ];
 }
@@ -386,20 +415,26 @@ function details_evaluation(array $a, ?array $submission): ?array
         ];
     }
 
-    // the "must have" questions answered No (these make the screening Not passed)
+    // the knock-out questions (these make the screening Not passed when the answer is not the passing answer).
+    // Saved with the evaluation = the rubric when the applicant sent the screening; older evaluations use the current rules.
     $answers = is_array($submission['answers'] ?? null) ? $submission['answers'] : [];
-    $unmet   = [];
-    $must    = 0;
-    foreach (static_questionnaire() as $q) {
-        if (!in_array($q['id'], $cfg['knockout'], true)) continue;
-        $must++;
-        if (($answers[$q['id']] ?? '') === 'No') $unmet[] = (string) $q['text'];
+    if (is_array($e['knockouts'] ?? null)) {
+        $checks = array_values($e['knockouts']);
+    } else {
+        $checks = [];
+        foreach (static_questionnaire() as $q) {
+            $check = static_knockout_check($q, $answers);
+            if ($check !== null) $checks[] = $check;
+        }
     }
+    $failedChecks = array_values(array_filter($checks, fn($k) => ($k['met'] ?? null) === false));
+    $unmet = array_map(fn($k) => (string) $k['question'], $failedChecks);
+    $must  = count($checks);
 
     $favor = [];
     $watch = [];
-    if (!$unmet) $favor[] = 'Answered Yes to all ' . $must . ' must-have questions.';
-    foreach ($unmet as $text) $watch[] = 'Answered No to a must-have question: "' . $text . '"';
+    if ($must > 0 && !$failedChecks) $favor[] = 'Met the passing answer of all ' . $must . ' knock-out questions.';
+    foreach ($failedChecks as $k) $watch[] = 'Did not meet a knock-out question: "' . $k['question'] . '". ' . $k['reason'];
     $clean = 0;
     foreach ($factors as $f) {
         if ($f['level'] === 'none') $clean++;
@@ -410,14 +445,15 @@ function details_evaluation(array $a, ?array $submission): ?array
 
     if ($outcome === 'passed') {
         $title   = 'Why this applicant passed';
-        $summary = 'No must-have question was answered No and the risk band is ' . $band . ' (' . $points . ' of ' . $max . ' points), so the applicant moved on to schedule the interview.';
+        $summary = ($must > 0 ? 'The applicant met the passing answer of every knock-out question (' . $must . ') and the' : 'The questionnaire has no knock-out questions and the')
+                 . ' risk band is ' . $band . ' (' . $points . ' of ' . $max . ' points), so the applicant moved on to schedule the interview.';
         $recommendation = 'Proceeds to Interview';
         $label   = 'Passed';
     } elseif ($outcome === 'failed') {
         $title   = 'Why this applicant failed';
-        $summary = 'The applicant answered No to ' . count($unmet) . ' must-have question' . (count($unmet) === 1 ? '' : 's') . ', so the screening was not passed. Risk alone never fails an applicant: the risk band here is ' . $band . ' (' . $points . ' of ' . $max . ' points).';
+        $summary = 'The applicant did not meet the passing answer of ' . count($unmet) . ' of ' . $must . ' knock-out question' . ($must === 1 ? '' : 's') . ', so the screening was not passed. Risk alone never fails an applicant: the risk band here is ' . $band . ' (' . $points . ' of ' . $max . ' points).';
         $recommendation = 'Does not meet the requirements';
-        $label   = 'Failed';
+        $label   = 'Rejected';
     } else {
         $title   = 'Why this applicant is under review';
         $summary = 'The risk band is High (' . $points . ' of ' . $max . ' points), so the applicant is held for HR to check before any result is released. Risk alone never fails an applicant.';
@@ -435,6 +471,7 @@ function details_evaluation(array $a, ?array $submission): ?array
         'factors'        => $factors,
         'auto_high'      => array_values((array) ($e['auto_high'] ?? [])),
         'unmet'          => $unmet,
+        'knockouts'      => $checks,
         'favor'          => $favor,
         'watch'          => $watch,
         'title'          => $title,

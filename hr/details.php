@@ -39,7 +39,7 @@ if (!$applicant) {                                 // unknown, archived or delet
 $submission    = details_submission($applicant);                       // answers + video (real, or sample for the seed applicants)
 $evaluation    = details_evaluation($applicant, $submission);          // the risk rubric result (applicant/static-evaluation.php)
 $access        = details_access($applicant, $evaluation);
-$questionnaire = ($access['questionnaires'] && $submission) ? details_questionnaire($submission) : null;
+$questionnaire = ($access['questionnaires'] && $submission) ? details_questionnaire($submission, $evaluation) : null;
 $interview     = $access['interview'] ? details_interview_view(details_interview($applicant, $submission)) : null;   // null = the applicant has not picked a date yet
 $cv            = details_cv($applicant);
 $video         = ($access['video'] && $submission) ? ($submission['video'] ?? null) : null;
@@ -58,7 +58,7 @@ if (!isset($tabs[$tab]) || empty($access[$tab])) $tab = 'overview';
 // Pills use the shared classes of hr-common.css
 $pillClass = [
     'Pending' => 'status-pending', 'In Progress' => 'status-progress', 'Completed' => 'status-completed',
-    'Passed'  => 'status-passed',  'Failed' => 'status-failed'
+    'Passed'  => 'status-passed',  'Rejected' => 'status-failed'
 ];
 $status = (string) $applicant['status'];
 $result = (string) ($applicant['result'] ?? '');
@@ -67,7 +67,7 @@ $result = (string) ($applicant['result'] ?? '');
 $resultLabel = $result;
 $resultClass = $pillClass[$result] ?? 'status-default';
 if ($result === '' && $evaluation && $evaluation['outcome'] === 'review') {
-    $resultLabel = 'Under Review';                       // held for HR: Completed, no Passed / Failed yet
+    $resultLabel = 'Under Review';                       // held for HR: Completed, no Passed / Rejected yet
     $resultClass = 'status-pending';
 }
 if ($evaluation) {
@@ -353,6 +353,33 @@ $pageData = [
                     </div>
                 </div>
 
+                <?php $ko = $questionnaire['ko']; ?>
+                <?php if ($ko['failed']): ?>
+                    <!-- Screening rubric: the knock-out questions the applicant did not pass (this is why the screening was failed) -->
+                    <div class="notice notice-bad ko-notice" role="note">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z"/></svg>
+                        <div>
+                            <strong>Failed the screening: <?php echo count($ko['failed']); ?> of <?php echo (int) $ko['total']; ?> knock-out question<?php echo $ko['total'] === 1 ? '' : 's'; ?> did not match the passing answer</strong>
+                            <ul>
+                                <?php foreach ($ko['failed'] as $f): ?>
+                                    <li>
+                                        <?php echo $h($f['question']); ?>
+                                        <span class="ko-line">Applicant answered: <b><?php echo $h($f['given']); ?></b> &middot; Passing answer: <b><?php echo $h($f['expected']); ?></b></span>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </div>
+                    </div>
+                <?php elseif ($ko['total'] > 0): ?>
+                    <div class="notice notice-ok ko-notice" role="note">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                        <div>
+                            <strong>Passed the knock-out questions</strong>
+                            <ul><li>The applicant matched the passing answer of all <?php echo (int) $ko['total']; ?> knock-out question<?php echo $ko['total'] === 1 ? '' : 's'; ?>.</li></ul>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
                 <?php if ($questionnaire['flags']): ?>
                     <div class="notice notice-warn" role="note">
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
@@ -371,8 +398,13 @@ $pageData = [
                     <div class="q-section">
                         <h4 class="q-section-title"><span class="q-no">Section <?php echo (int) $sec['no']; ?></span><?php echo $h($sec['title']); ?></h4>
                         <?php foreach ($sec['items'] as $it): ?>
-                            <div class="q-row<?php echo $it['type'] === 'text' || $it['type'] === 'consent' ? ' is-wide' : ''; ?><?php echo $it['flag'] !== '' ? ' is-flag' : ''; ?>">
-                                <p class="q-text"><?php echo $h($it['question']); ?></p>
+                            <div class="q-row<?php echo $it['type'] === 'text' || $it['type'] === 'consent' ? ' is-wide' : ''; ?><?php echo $it['flag'] !== '' ? ' is-flag' : ''; ?><?php echo $it['ko_met'] === false ? ' is-fail' : ''; ?>">
+                                <div class="q-main">
+                                    <p class="q-text"><?php echo $h($it['question']); ?></p>
+                                    <?php if ($it['knockout']): ?>
+                                        <p class="q-rule"><span class="ko-tag">Knock-out</span> Passing answer: <b><?php echo $h($it['expected']); ?></b></p>
+                                    <?php endif; ?>
+                                </div>
                                 <div class="q-answer">
                                     <?php if ($it['missing']): ?>
                                         <span class="muted">Not answered</span>
@@ -389,7 +421,13 @@ $pageData = [
                                     <?php else: ?>
                                         <strong><?php echo $h($it['value']); ?></strong>
                                     <?php endif; ?>
+                                    <?php if ($it['knockout'] && $it['ko_met'] !== null): ?>
+                                        <span class="ko-result <?php echo $it['ko_met'] ? 'is-met' : 'is-fail'; ?>"><?php echo $it['ko_met'] ? 'Met' : 'Did not meet'; ?></span>
+                                    <?php endif; ?>
                                 </div>
+                                <?php if ($it['ko_met'] === false && $it['reason'] !== ''): ?>
+                                    <p class="q-why"><?php echo $h($it['reason']); ?></p>
+                                <?php endif; ?>
                             </div>
                         <?php endforeach; ?>
                     </div>

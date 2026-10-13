@@ -24,6 +24,9 @@
    with  action = question_add | question_update | question_archive | question_restore | question_purge |
                   account_add | account_update | account_archive | account_restore | account_purge | notify
    changes the store and answers with JSON (the fresh lists, so the page can redraw itself).
+   Questions can be KNOCK-OUT questions (question.knockout + question.pass_answer, and pass_follow for a Yes/No + list):
+   an applicant whose answer does not match the passing answer fails the screening (applicant/static-evaluation.php)
+   and HR sees why in the applicant's Questionnaires tab. The rule itself lives in applicant/static-applicant.php.
    Questions have a status (Active / Inactive) and a created date. An Inactive question stays in the Admin
    list but the applicants do not see it. HR accounts have a role ("HR Staff") and a status.
    When the Admin ticks "Send login credentials via email", a line is written to the store's "outbox".
@@ -94,7 +97,14 @@ function static_question_types(): array
 // A question saved before status / created existed gets them here (Active, created with the first HR account)
 function static_admin_question_fill(array $q): array
 {
-    return $q + ['status' => 'Active', 'created' => '2026-08-03 09:00'];
+    $q += ['status' => 'Active', 'created' => '2026-08-03 09:00'];
+    // a question saved before the knock-out setting existed: show the rule it was already screened with
+    if (!array_key_exists('knockout', $q)) {
+        $rule = static_question_rule($q);
+        $q['knockout'] = $rule !== null;
+        if ($rule !== null) $q['pass_answer'] = $rule['pass'];
+    }
+    return $q;
 }
 
 // Every question, in order, INCLUDING deleted ones (they have archived_at). Not saved until a change is made.
@@ -234,6 +244,35 @@ function static_admin_clean_question(array $in, array $all, ?array $old = null):
             $q['body']     = $body;
             $q['checkbox'] = $line('checkbox');
             break;
+    }
+
+    // Knock-out question (screening rubric): the passing answer. Only Yes/No, Yes/No + list and rating questions.
+    $ko = !empty($in['knockout']) && in_array($type, ['yesno', 'yesno_select', 'scale'], true);
+    $q['knockout'] = $ko;
+    unset($q['pass_answer'], $q['pass_follow']);
+    if ($ko) {
+        if ($type === 'scale') {
+            $max  = (int) $q['max'];
+            $pass = trim((string) ($in['pass_answer'] ?? ''));
+            if (!ctype_digit($pass) || (int) $pass < 1 || (int) $pass > $max) {
+                throw new InvalidArgumentException('The lowest passing rating must be a whole number from 1 up to the highest rating (' . $max . ').');
+            }
+            $q['pass_answer'] = (int) $pass;
+        } else {
+            $pass = (string) ($in['pass_answer'] ?? '');
+            if ($pass !== 'Yes' && $pass !== 'No') throw new InvalidArgumentException('Choose the passing answer (Yes or No) for the knock-out question.');
+            $q['pass_answer'] = $pass;
+            if ($type === 'yesno') {
+                // the Questionnaires Statistics count the passing answer as the good one
+                unset($q['favorable']);
+                if ($pass === 'No') $q['favorable'] = 'No';
+            } elseif ($pass === $q['followup']['when']) {
+                // optional: only some of the list choices pass (none ticked = every choice passes)
+                $raw      = is_array($in['pass_follow'] ?? null) ? $in['pass_follow'] : preg_split('/\R/', (string) ($in['pass_follow'] ?? ''));
+                $accepted = array_values(array_intersect($q['followup']['options'], array_map('trim', array_map('strval', $raw))));
+                if ($accepted && count($accepted) < count($q['followup']['options'])) $q['pass_follow'] = $accepted;
+            }
+        }
     }
 
     // {link} inside the question text: the word that is clickable + where it goes

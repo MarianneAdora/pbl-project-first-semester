@@ -2016,6 +2016,32 @@ html:where([data-page="addhr"],[data-page="addquestion"])[data-theme="dark"] .in
 :where(html[data-page="addquestion"]) .field-hint code { padding: 1px 6px; border-radius: 6px; background: var(--surface-3); font-size: 11.5px; font-weight: 700; color: var(--ink); }
 :where(html[data-page="addquestion"]) .form-card .field-hint { min-height: 1em; }
 
+/* Screening rubric (knock-out question): the box under the type's own settings */
+:where(html[data-page="addquestion"]) .ko-hint { margin: 2px 0 16px; max-width: 640px; }
+:where(html[data-page="addquestion"]) .ko-fields { margin-top: 2px; }
+:where(html[data-page="addquestion"]) .ko-fields[hidden],
+:where(html[data-page="addquestion"]) .ko-fields .field[hidden],
+:where(html[data-page="addquestion"]) .form-grid .field[hidden] { display: none !important; }
+:where(html[data-page="addquestion"]) .ko-choices { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; background: var(--field); border: 1px solid var(--edge); border-radius: 10px; }
+:where(html[data-page="addquestion"]) .ko-choices .check-row { margin: 0; font-size: 13.5px; }
+
+/* the small "Knock-out" tag next to a question (here and in the Questions list) */
+.ko-tag {
+    display: inline-block;
+    margin-left: 10px;
+    padding: 2px 9px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--red-bright) 45%, transparent);
+    background: color-mix(in srgb, var(--red-bright) 10%, transparent);
+    color: var(--red-bright);
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
 /* the label next to the Section list says what the box does ("New Section" / "Rename Section") */
 :where(html[data-page="addquestion"]) #sectionTitleLabel { transition: color 0.2s ease; }
 

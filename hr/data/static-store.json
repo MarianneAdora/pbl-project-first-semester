@@ -36,7 +36,7 @@
             "email": "dianaprince@gmail.com",
             "contact": "091234567780",
             "status": "Completed",
-            "result": "Failed",
+            "result": "Rejected",
             "updated": "2026-10-04 16:30",
             "archived_at": null
         },
@@ -86,7 +86,7 @@
             "email": "natasharomanoff@gmail.com",
             "contact": "091234567595",
             "status": "Completed",
-            "result": "Failed",
+            "result": "Rejected",
             "updated": "2026-09-30 15:25",
             "archived_at": null
         },
@@ -156,7 +156,7 @@
             "email": "oliverqueen@gmail.com",
             "contact": "091234567336",
             "status": "Completed",
-            "result": "Failed",
+            "result": "Rejected",
             "updated": "2026-09-26 11:20",
             "archived_at": null
         },
@@ -236,7 +236,7 @@
             "email": "samwilson@gmail.com",
             "contact": "091234567040",
             "status": "Completed",
-            "result": "Failed",
+            "result": "Rejected",
             "updated": "2026-09-22 11:10",
             "archived_at": null
         },
@@ -306,7 +306,7 @@
             "email": "clintbarton@gmail.com",
             "contact": "091234566781",
             "status": "Completed",
-            "result": "Failed",
+            "result": "Rejected",
             "updated": "2026-09-18 15:55",
             "archived_at": null
         },
@@ -378,7 +378,7 @@
             "status": "Pending",
             "result": null,
             "updated": "2026-10-08 11:13",
-            "archived_at": "2026-10-08 11:50:49"
+            "archived_at": "2026-10-13 19:11:30"
         },
         {
             "id": 139,
@@ -388,7 +388,7 @@
             "status": "Pending",
             "result": null,
             "updated": "2026-10-08 12:18",
-            "archived_at": null
+            "archived_at": "2026-10-13 19:11:30"
         },
         {
             "id": 140,
@@ -403,7 +403,7 @@
                 "size": 3716277,
                 "file": "140.pdf"
             },
-            "archived_at": "2026-10-12 20:21:18"
+            "archived_at": "2026-10-13 19:11:30"
         },
         {
             "id": 141,
@@ -418,7 +418,7 @@
                 "size": 3716277,
                 "file": "141.pdf"
             },
-            "archived_at": "2026-10-13 09:36:40"
+            "archived_at": "2026-10-13 19:11:30"
         }
     ],
     "submissions": [
@@ -1120,6 +1120,220 @@
                 "hash": "e777702fe461a680578a9e9b82ede7363feacb81d15642d1c7d38e46a5c70619"
             },
             "submitted_at": "2026-10-13 09:46"
+        },
+        {
+            "reference": "SCR-2026-95406",
+            "applicant_id": null,
+            "name": "",
+            "email": "",
+            "answers": {
+                "q1": "Yes",
+                "q2": "Yes",
+                "q3": "Yes",
+                "q4": "Yes",
+                "q5": 3,
+                "q6": "2026-10-23",
+                "q7": "No",
+                "q8": "No",
+                "q9": "No",
+                "q10": "No",
+                "q11": "No",
+                "q12": "lkjyutdgfxcvhjkyutdf.hiuytdfxcvhguyt6r5etf\n",
+                "q13": true
+            },
+            "timing": {
+                "q1": 3006,
+                "q2": 1247,
+                "q3": 1411,
+                "q4": 1895,
+                "q5": 4624,
+                "q6": 2178,
+                "q7": 2153,
+                "q8": 1646,
+                "q9": 1272,
+                "q10": 1372,
+                "q11": 1308,
+                "q12": 4449,
+                "q13": 1786
+            },
+            "device": "eac8c8f765ae4b5f70b43359b3c3ac3f",
+            "ip": "::1",
+            "otp": {
+                "failed": 0,
+                "requests": [
+                    1791856338
+                ],
+                "locked": false
+            },
+            "video": {
+                "name": "video_response.mp4",
+                "size": 2413670,
+                "seconds": 7,
+                "source": "recorded",
+                "hash": "2eeed1d39294193ab308d694ceb43c3b70fa4c6c94659422dea83b3228783f65"
+            },
+            "submitted_at": "2026-10-13 09:53"
+        },
+        {
+            "reference": "SCR-2026-17443",
+            "applicant_id": null,
+            "name": "",
+            "email": "",
+            "answers": {
+                "q1": "Yes",
+                "q2": "Yes",
+                "q3": "Yes",
+                "q4": "Yes",
+                "q5": 5,
+                "q17": "YEAAAAAAA",
+                "q6": "2026-10-24",
+                "q7": "No",
+                "q8": "Yes",
+                "q9": "Yes",
+                "q10": "Yes",
+                "q11": "Yes",
+                "q12": "dfghdsfdfhghrdfhg.rtjgweerhggh",
+                "q13": true
+            },
+            "timing": {
+                "q1": 6959,
+                "q2": 1445,
+                "q3": 1500,
+                "q4": 1340,
+                "q5": 2613,
+                "q17": 6572,
+                "q6": 3938,
+                "q7": 2625,
+                "q8": 1322,
+                "q9": 1371,
+                "q10": 1223,
+                "q11": 1699,
+                "q12": 3771,
+                "q13": 3043
+            },
+            "device": "9e2645853e0010bb193fb87d69a9219b",
+            "ip": "::1",
+            "otp": {
+                "failed": 0,
+                "requests": [
+                    1791856947
+                ],
+                "locked": false
+            },
+            "video": {
+                "name": "video_response.mp4",
+                "size": 344625,
+                "seconds": 1.9,
+                "source": "recorded",
+                "hash": "358e4ca3707a481ff1a5ee01b7db123e20515696a97f542cfa663d0f2a9412b3"
+            },
+            "submitted_at": "2026-10-13 10:03"
+        },
+        {
+            "reference": "SCR-2026-61660",
+            "applicant_id": null,
+            "name": "",
+            "email": "",
+            "answers": {
+                "q1": "Yes",
+                "q2": "No",
+                "q3": "No",
+                "q4": "Yes",
+                "q5": 3,
+                "q6": "2026-10-23",
+                "q7": "No",
+                "q8": "Yes",
+                "q9": "Yes",
+                "q10": "Yes",
+                "q11": "Yes",
+                "q12": "uiytrsdfghjk.liytrsdfghijo.iuytredfghjiuyg",
+                "q13": true
+            },
+            "timing": {
+                "q1": 2618,
+                "q2": 1716,
+                "q3": 1533,
+                "q4": 1032,
+                "q5": 2468,
+                "q6": 2764,
+                "q7": 2385,
+                "q8": 3743,
+                "q9": 1802,
+                "q10": 1159,
+                "q11": 1031,
+                "q12": 7755,
+                "q13": 3136
+            },
+            "device": "eac8c8f765ae4b5f70b43359b3c3ac3f",
+            "ip": "::1",
+            "otp": {
+                "failed": 0,
+                "requests": [
+                    1791890004
+                ],
+                "locked": false
+            },
+            "video": {
+                "name": "video_response.mp4",
+                "size": 990223,
+                "seconds": 3.1,
+                "source": "recorded",
+                "hash": "bde9ee21cfec04f6355d2a079a86b81a89e643a00d6c4320215caa1c874b8756"
+            },
+            "submitted_at": "2026-10-13 19:14"
+        },
+        {
+            "reference": "SCR-2026-04937",
+            "applicant_id": null,
+            "name": "",
+            "email": "",
+            "answers": {
+                "q1": "Yes",
+                "q2": "No",
+                "q3": "No",
+                "q4": "No",
+                "q5": 2,
+                "q6": "2026-10-16",
+                "q7": "No",
+                "q8": "Yes",
+                "q9": "Yes",
+                "q10": "Yes",
+                "q11": "Yes",
+                "q12": "y7t6ewasdghjklpiutredsxcfbnklouytrd.oiuyftcvbjuyhgtf",
+                "q13": true
+            },
+            "timing": {
+                "q1": 2768,
+                "q2": 2939,
+                "q3": 1610,
+                "q4": 1969,
+                "q5": 2160,
+                "q6": 1995,
+                "q7": 3350,
+                "q8": 1990,
+                "q9": 1162,
+                "q10": 1087,
+                "q11": 1421,
+                "q12": 6075,
+                "q13": 2589
+            },
+            "device": "ed7757fbd5737a2c680f41eb3c070536",
+            "ip": "::1",
+            "otp": {
+                "failed": 0,
+                "requests": [
+                    1791890229
+                ],
+                "locked": false
+            },
+            "video": {
+                "name": "video_response.mp4",
+                "size": 835378,
+                "seconds": 2.7,
+                "source": "recorded",
+                "hash": "4710619fa7e3428c43c66a1c43925fe6d9ea68450b4e9242d53b9291269905c8"
+            },
+            "submitted_at": "2026-10-13 19:18"
         }
     ],
     "evaluations": [
@@ -1642,6 +1856,382 @@
                 }
             ],
             "evaluated_at": "2026-10-13 09:46"
+        },
+        {
+            "reference": "SCR-2026-95406",
+            "email": "",
+            "points": 4,
+            "band": "Medium",
+            "auto_high": [],
+            "outcome": "failed",
+            "factors": [
+                {
+                    "label": "Failed OTP attempts",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "0 wrong code(s). Typos are normal."
+                },
+                {
+                    "label": "OTP requests in 10 minutes",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "1 code request(s). Email delays make this normal."
+                },
+                {
+                    "label": "Questionnaire speed",
+                    "points": 2,
+                    "max": 3,
+                    "reason": "Finished in 28 seconds; 38% of the items were answered in under 1.5 seconds."
+                },
+                {
+                    "label": "Same email or phone as another record",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No other record shares the email or phone number."
+                },
+                {
+                    "label": "Re-applying after a failed screening",
+                    "points": 2,
+                    "max": 2,
+                    "reason": "The last screening was failed 2 day(s) ago."
+                },
+                {
+                    "label": "Same device or IP as other applicants",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No suspicious sharing (a shared IP alone is not scored)."
+                },
+                {
+                    "label": "Contradictory logistics answers",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "The logistics answers agree with each other."
+                },
+                {
+                    "label": "Time on the video page",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "Not scored, because applicants can upload a file instead of recording live."
+                },
+                {
+                    "label": "Video matches another applicant",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No other applicant sent this video."
+                }
+            ],
+            "evaluated_at": "2026-10-13 09:53"
+        },
+        {
+            "reference": "SCR-2026-17443",
+            "email": "",
+            "points": 4,
+            "band": "Medium",
+            "auto_high": [],
+            "outcome": "passed",
+            "factors": [
+                {
+                    "label": "Failed OTP attempts",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "0 wrong code(s). Typos are normal."
+                },
+                {
+                    "label": "OTP requests in 10 minutes",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "1 code request(s). Email delays make this normal."
+                },
+                {
+                    "label": "Questionnaire speed",
+                    "points": 2,
+                    "max": 3,
+                    "reason": "Finished in 39 seconds; 36% of the items were answered in under 1.5 seconds."
+                },
+                {
+                    "label": "Same email or phone as another record",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No other record shares the email or phone number."
+                },
+                {
+                    "label": "Re-applying after a failed screening",
+                    "points": 2,
+                    "max": 2,
+                    "reason": "The last screening was failed 0 day(s) ago."
+                },
+                {
+                    "label": "Same device or IP as other applicants",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No suspicious sharing (a shared IP alone is not scored)."
+                },
+                {
+                    "label": "Contradictory logistics answers",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "The logistics answers agree with each other."
+                },
+                {
+                    "label": "Time on the video page",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "Not scored, because applicants can upload a file instead of recording live."
+                },
+                {
+                    "label": "Video matches another applicant",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No other applicant sent this video."
+                }
+            ],
+            "evaluated_at": "2026-10-13 10:03"
+        },
+        {
+            "reference": "SCR-2026-61660",
+            "email": "",
+            "points": 4,
+            "band": "Medium",
+            "auto_high": [],
+            "outcome": "failed",
+            "factors": [
+                {
+                    "label": "Failed OTP attempts",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "0 wrong code(s). Typos are normal."
+                },
+                {
+                    "label": "OTP requests in 10 minutes",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "1 code request(s). Email delays make this normal."
+                },
+                {
+                    "label": "Questionnaire speed",
+                    "points": 2,
+                    "max": 3,
+                    "reason": "Finished in 33 seconds; 23% of the items were answered in under 1.5 seconds."
+                },
+                {
+                    "label": "Same email or phone as another record",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No other record shares the email or phone number."
+                },
+                {
+                    "label": "Re-applying after a failed screening",
+                    "points": 2,
+                    "max": 2,
+                    "reason": "The last screening was failed 0 day(s) ago."
+                },
+                {
+                    "label": "Same device or IP as other applicants",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No suspicious sharing (a shared IP alone is not scored)."
+                },
+                {
+                    "label": "Contradictory logistics answers",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "The logistics answers agree with each other."
+                },
+                {
+                    "label": "Time on the video page",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "Not scored, because applicants can upload a file instead of recording live."
+                },
+                {
+                    "label": "Video matches another applicant",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No other applicant sent this video."
+                }
+            ],
+            "knockouts": [
+                {
+                    "id": "q2",
+                    "question": "Are you willing to work on the schedule as advertised?",
+                    "expected": "Yes",
+                    "given": "No",
+                    "met": false,
+                    "reason": "Answered \"No\"; the passing answer is \"Yes\"."
+                },
+                {
+                    "id": "q3",
+                    "question": "Are you willing to work on-site in BGC, Taguig?",
+                    "expected": "Yes",
+                    "given": "No",
+                    "met": false,
+                    "reason": "Answered \"No\"; the passing answer is \"Yes\"."
+                },
+                {
+                    "id": "q4",
+                    "question": "Are you willing to go through the assessment and interviews?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q8",
+                    "question": "Do you have access to a reliable internet connection and a device suitable for completing the assessment and virtual steps?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q9",
+                    "question": "Are you willing to undergo a background check as part of the hiring process?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q10",
+                    "question": "Can you provide required pre-employment documents (e.g. NBI clearance, TIN, SSS) upon request?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q11",
+                    "question": "This role involves handling sensitive client information. Do you agree to comply with confidentiality and data protection requirements?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                }
+            ],
+            "evaluated_at": "2026-10-13 19:14"
+        },
+        {
+            "reference": "SCR-2026-04937",
+            "email": "",
+            "points": 4,
+            "band": "Medium",
+            "auto_high": [],
+            "outcome": "failed",
+            "factors": [
+                {
+                    "label": "Failed OTP attempts",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "0 wrong code(s). Typos are normal."
+                },
+                {
+                    "label": "OTP requests in 10 minutes",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "1 code request(s). Email delays make this normal."
+                },
+                {
+                    "label": "Questionnaire speed",
+                    "points": 2,
+                    "max": 3,
+                    "reason": "Finished in 31 seconds; 23% of the items were answered in under 1.5 seconds."
+                },
+                {
+                    "label": "Same email or phone as another record",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No other record shares the email or phone number."
+                },
+                {
+                    "label": "Re-applying after a failed screening",
+                    "points": 2,
+                    "max": 2,
+                    "reason": "The last screening was failed 0 day(s) ago."
+                },
+                {
+                    "label": "Same device or IP as other applicants",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No suspicious sharing (a shared IP alone is not scored)."
+                },
+                {
+                    "label": "Contradictory logistics answers",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "The logistics answers agree with each other."
+                },
+                {
+                    "label": "Time on the video page",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "Not scored, because applicants can upload a file instead of recording live."
+                },
+                {
+                    "label": "Video matches another applicant",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No other applicant sent this video."
+                }
+            ],
+            "knockouts": [
+                {
+                    "id": "q2",
+                    "question": "Are you willing to work on the schedule as advertised?",
+                    "expected": "Yes",
+                    "given": "No",
+                    "met": false,
+                    "reason": "Answered \"No\"; the passing answer is \"Yes\"."
+                },
+                {
+                    "id": "q3",
+                    "question": "Are you willing to work on-site in BGC, Taguig?",
+                    "expected": "Yes",
+                    "given": "No",
+                    "met": false,
+                    "reason": "Answered \"No\"; the passing answer is \"Yes\"."
+                },
+                {
+                    "id": "q4",
+                    "question": "Are you willing to go through the assessment and interviews?",
+                    "expected": "Yes",
+                    "given": "No",
+                    "met": false,
+                    "reason": "Answered \"No\"; the passing answer is \"Yes\"."
+                },
+                {
+                    "id": "q8",
+                    "question": "Do you have access to a reliable internet connection and a device suitable for completing the assessment and virtual steps?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q9",
+                    "question": "Are you willing to undergo a background check as part of the hiring process?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q10",
+                    "question": "Can you provide required pre-employment documents (e.g. NBI clearance, TIN, SSS) upon request?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q11",
+                    "question": "This role involves handling sensitive client information. Do you agree to comply with confidentiality and data protection requirements?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                }
+            ],
+            "evaluated_at": "2026-10-13 19:18"
         }
     ],
     "interviews": {
@@ -1660,10 +2250,10 @@
             "preferred_date": "2026-10-14",
             "preferred_time": "10:00",
             "type": "On Site Interview",
-            "date": "2026-10-15",
+            "date": "2026-10-16",
             "time": "13:00",
             "source": "sample",
-            "updated": "2026-10-10 21:31"
+            "updated": "2026-10-13 19:13"
         },
         "108": {
             "status": "rescheduled",
@@ -1868,6 +2458,14 @@
             "subject": "Your HR account is ready | Expertise",
             "html": "<p>Hello MARKIE JELO MATRE,</p><p>An HR account was created for you. Log in to the Expertise HR portal with this email and the password the Admin gave you.</p>",
             "sent_at": "2026-10-13 09:39:55"
+        },
+        {
+            "applicant_id": 106,
+            "kind": "rescheduled",
+            "to": "joseprotaciorizalmercadoyalonsorealonda@gmail.com",
+            "subject": "New interview schedule | Expertise",
+            "html": "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head><body style=\"margin:0;padding:0;background:#f4f4f5;font-family:'Plus Jakarta Sans','Segoe UI',Helvetica,Arial,sans-serif;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f4f4f5;\"><tr><td align=\"center\" style=\"padding:28px 12px;\"><table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;\"><tr><td style=\"height:6px;line-height:6px;font-size:0;background:#d1122a;\">&nbsp;</td></tr><tr><td style=\"padding:28px 40px 0 40px;font-size:26px;font-weight:800;color:#a3081e;letter-spacing:.3px;\">Expertise</td></tr><tr><td style=\"padding:26px 40px 0 40px;\"><p style=\"margin:0 0 8px 0;font-size:13px;font-weight:700;color:#d1122a;\">Interview update</p><h1 style=\"margin:0;font-size:26px;line-height:1.25;font-weight:800;color:#1f1f23;\">We have a new schedule for you</h1></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:15px;line-height:1.7;\"><p style=\"margin:0 0 12px 0;color:#1f1f23;font-weight:700;\">Hi Jose,</p><p style=\"margin:0;\">Thank you for choosing a schedule. Unfortunately, that date and time is not available, so we set a new one for your interview.</p></td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f8f8f9;border:1px solid #e6e7ea;border-radius:12px;\"><tr><td style=\"padding:12px 22px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Date</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">October 16, 2026</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Time</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">01:00 PM</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Interview Type</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">On Site Interview</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Location</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">Expertise Office, BGC, Taguig</td></tr></table></td></tr></table></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:14px;line-height:1.7;\">If this schedule does not work for you, please reply to this email and we will find another time. Please arrive 15 minutes early and bring a valid ID.</td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><a href=\"http://localhost/pbl-project-first-semester/applicant/application-status.php\" style=\"display:inline-block;padding:13px 26px;background:#d1122a;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;border-radius:10px;\">View my interview schedule</a></td></tr><tr><td style=\"padding:12px 40px 0 40px;color:#8a8f96;font-size:12px;line-height:1.6;\">The link opens your application status page. You will be asked to verify your email with a one-time code first.</td></tr><tr><td style=\"padding:26px 40px 30px 40px;color:#8a8f96;font-size:12px;line-height:1.6;border-top:0;\">Thank you,<br><strong style=\"color:#1f1f23;\">Expertise HR Team</strong></td></tr></table></td></tr></table></body></html>",
+            "sent_at": "2026-10-13 19:13:11"
         }
     ],
     "hr_accounts": [
@@ -2200,6 +2798,69 @@
             "details": "Q17 · Consent & readiness",
             "by": "Admin",
             "admin_seen_at": "2026-10-13 09:44:49"
+        },
+        {
+            "at": "2026-10-13 09:58:37",
+            "activity": "Added An Applicant",
+            "details": "Ian Dick",
+            "by": "HR",
+            "admin_seen_at": "2026-10-13 10:00:09"
+        },
+        {
+            "at": "2026-10-13 09:58:58",
+            "activity": "Applicant Deleted",
+            "details": "Ian Dick",
+            "by": "HR",
+            "admin_seen_at": "2026-10-13 10:00:09"
+        },
+        {
+            "at": "2026-10-13 09:59:21",
+            "activity": "Applicant Deleted Forever",
+            "details": "Ian Dick",
+            "by": "HR",
+            "admin_seen_at": "2026-10-13 10:00:09"
+        },
+        {
+            "at": "2026-10-13 10:01:34",
+            "activity": "Questionnaires Added",
+            "details": "Q17 · Consent & readiness",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-13 10:01:37"
+        },
+        {
+            "at": "2026-10-13 10:04:24",
+            "activity": "Questionnaires Deleted",
+            "details": "Q17 · Consent & readiness",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-13 10:10:51"
+        },
+        {
+            "at": "2026-10-13 19:11:12",
+            "activity": "Applicant Deleted",
+            "details": "Juan Dela Cruz, Bruce Wayne +36 more",
+            "by": "HR",
+            "admin_seen_at": "2026-10-13 19:11:52"
+        },
+        {
+            "at": "2026-10-13 19:11:18",
+            "activity": "Applicant Restored",
+            "details": "Juan Dela Cruz, Bruce Wayne +39 more",
+            "by": "HR",
+            "admin_seen_at": "2026-10-13 19:11:52"
+        },
+        {
+            "at": "2026-10-13 19:11:30",
+            "activity": "Applicant Deleted",
+            "details": "Carlo S. Hilario, Carlo Hilario +2 more",
+            "by": "HR",
+            "admin_seen_at": "2026-10-13 19:11:52"
+        },
+        {
+            "at": "2026-10-13 19:13:11",
+            "activity": "Interview Rescheduled",
+            "details": "Jose Protacio Rizal Mercado y Alonso Realonda · October 16, 2026, 01:00 PM",
+            "by": "HR",
+            "admin_seen_at": "2026-10-13 19:16:22"
         }
     ],
     "questions": [
@@ -2277,6 +2938,19 @@
                 "NICE"
             ],
             "archived_at": "2026-10-12 20:20:26"
+        },
+        {
+            "id": "q17",
+            "section_no": 1,
+            "section": "Consent & readiness",
+            "type": "text",
+            "text": "IAN GAe",
+            "status": "Active",
+            "created": "2026-10-13 10:01",
+            "placeholder": "Type your answer here...",
+            "min_chars": 0,
+            "max_chars": 500,
+            "archived_at": "2026-10-13 10:04:24"
         },
         {
             "id": "q6",

@@ -1328,7 +1328,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const typeDD = dd('typeDropdown', () => { showTypeBox(); hideBanner(); validateField('type', false); });
     const statusDD = dd('statusDropdown', () => hideBanner());
     const favorableDD = dd('favorableDropdown');
-    const followupWhenDD = dd('followupWhenDropdown');
+    const followupWhenDD = dd('followupWhenDropdown', () => syncKnockout());
+    const passDD = dd('passDropdown', () => { syncKnockout(); hideBanner(); setError('pass_answer', ''); });
+
+    /* ---------- Knock-out question (screening rubric): which answer passes ---------- */
+    const KO_TYPES = ['yesno', 'yesno_select', 'scale'];
+    const koCheck = document.getElementById('knockout');
+    const koFields = document.getElementById('koFields');
+    const passFollowField = document.getElementById('passFollowField');
+    const passFollowList = document.getElementById('passFollowList');
+    const passMinField = document.getElementById('passMinField');
+    const passMinHint = document.getElementById('passMinHint');
+    let acceptedFollow = new Set();       // the list choices ticked as "still pass"
+
+    const koOn = () => KO_TYPES.indexOf(typeDD.getValue()) !== -1 && koCheck.checked;
 
     /* ---------- Section: pick one (and rename it) or type a new one ---------- */
     function matchSectionByTitle(title, exceptNo) {
@@ -1379,12 +1392,69 @@ document.addEventListener('DOMContentLoaded', () => {
         const type = typeDD.getValue();
         form.querySelectorAll('.sub-fields[data-for]').forEach(box => {
             const f = box.dataset.for;
-            box.hidden = f === 'link' ? !hasLink() : f !== type;
+            if (f === 'link') box.hidden = !hasLink();
+            else if (f === 'knockout') box.hidden = KO_TYPES.indexOf(type) === -1;
+            else box.hidden = f !== type;
         });
+        syncKnockout();
+    }
+
+    // Shows what the knock-out box needs for the chosen type (Yes/No: passing answer, list: + choices, rating: lowest rating)
+    function syncKnockout() {
+        const type = typeDD.getValue();
+        const on = koOn();
+        koFields.hidden = !on;
+
+        // knock-out Yes/No: the passing answer is the good answer, so the separate "good answer" box is not needed
+        const fav = fieldOf('favorable');
+        if (fav) fav.hidden = on && type === 'yesno';
+        if (on && type === 'yesno') favorableDD.setValue(passDD.getValue(), true);
+
+        fieldOf('pass_answer').hidden = !(on && (type === 'yesno' || type === 'yesno_select'));
+        passMinField.hidden = !(on && type === 'scale');
+        const showChoices = on && type === 'yesno_select' && passDD.getValue() === followupWhenDD.getValue();
+        passFollowField.hidden = !showChoices;
+        if (showChoices) renderFollowChoices();
+        if (on && type === 'scale') {
+            const max = val('max').trim();
+            passMinHint.textContent = isWhole(max) && Number(max) >= 3 && Number(max) <= 10
+                ? 'The scale goes from 1 to ' + max + '. A rating lower than this fails the screening.'
+                : 'A rating lower than this fails the screening.';
+        }
+        if (!on) { setError('pass_answer', ''); setError('pass_min', ''); }
+    }
+
+    // One tick box per choice of the list (the choices come from the "Choices in the list" box)
+    function renderFollowChoices() {
+        const options = lines(val('followup_options'));
+        passFollowList.textContent = '';
+        options.forEach(text => {
+            const label = document.createElement('label');
+            label.className = 'check-row';
+            const input = document.createElement('input');
+            input.type = 'checkbox';
+            input.checked = acceptedFollow.has(text);
+            input.addEventListener('change', () => {
+                if (input.checked) acceptedFollow.add(text); else acceptedFollow.delete(text);
+                hideBanner();
+            });
+            const box = document.createElement('span');
+            box.className = 'box';
+            box.innerHTML = '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+            label.append(input, box, document.createTextNode(text));
+            passFollowList.appendChild(label);
+        });
+        if (!options.length) {
+            const empty = document.createElement('p');
+            empty.className = 'field-hint';
+            empty.textContent = 'Write the choices of the list above first.';
+            passFollowList.appendChild(empty);
+        }
     }
 
     function activeFields() {
         const list = ['text', 'section', 'section_title', 'type'].concat(TYPE_FIELDS[typeDD.getValue()] || []);
+        if (koOn() && typeDD.getValue() === 'scale') list.push('pass_min');
         if (hasLink()) list.push('link_text', 'link_url');
         return list;
     }
@@ -1444,6 +1514,14 @@ document.addEventListener('DOMContentLoaded', () => {
         max_chars(v) {
             const t = v.trim();
             if (!isWhole(t) || Number(t) < 10 || Number(t) > 2000) return 'The longest answer must be between 10 and 2000 characters.';
+            return '';
+        },
+        pass_min(v) {
+            if (!koOn() || typeDD.getValue() !== 'scale') return '';
+            const t = v.trim();
+            const max = val('max').trim();
+            if (!isWhole(t) || Number(t) < 1) return 'Enter the lowest rating that still passes (1 or more).';
+            if (isWhole(max) && Number(t) > Number(max)) return 'The lowest passing rating cannot be higher than the highest rating (' + max + ').';
             return '';
         },
         body(v) { return v.trim() ? '' : 'Please write the statement the applicant has to read.'; },
@@ -1519,6 +1597,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // changing the longest answer re-checks the shortest one
     form.elements.max_chars.addEventListener('input', () => { if (touched.has('min_chars')) validateField('min_chars', false); });
 
+    // knock-out: the switch, the highest rating (re-checks the passing rating) and the list choices (the tick boxes follow them)
+    koCheck.addEventListener('change', () => { hideBanner(); syncKnockout(); });
+    form.elements.max.addEventListener('input', () => { syncKnockout(); if (touched.has('pass_min')) validateField('pass_min', false); });
+    form.elements.followup_options.addEventListener('input', () => { if (!passFollowField.hidden) renderFollowChoices(); });
+
     function showBanner(message) { banner.textContent = message; banner.classList.add('show'); }
     function hideBanner() { banner.classList.remove('show'); }
 
@@ -1561,6 +1644,19 @@ document.addEventListener('DOMContentLoaded', () => {
             q.link_text = val('link_text').trim();
             q.link_url = val('link_url').trim();
         }
+
+        // screening rubric
+        q.knockout = koOn();
+        if (q.knockout) {
+            if (type === 'scale') {
+                q.pass_answer = Number(val('pass_min').trim());
+            } else {
+                q.pass_answer = passDD.getValue();
+                if (type === 'yesno_select' && q.pass_answer === followupWhenDD.getValue()) {
+                    q.pass_follow = lines(val('followup_options')).filter(o => acceptedFollow.has(o)).join('\n');
+                }
+            }
+        }
         return q;
     }
 
@@ -1572,6 +1668,7 @@ document.addEventListener('DOMContentLoaded', () => {
     form.elements.max.value = '5';
     form.elements.min_chars.value = '0';
     form.elements.max_chars.value = '500';
+    form.elements.pass_min.value = '3';
 
     if (isEdit) {
         put('no_note', Q.no_note);
@@ -1600,6 +1697,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (Q.link) {
             put('link_text', Q.link.text || '');
             put('link_url', Q.link.url || '');
+        }
+        if (Q.knockout) {
+            koCheck.checked = true;
+            if (Q.type === 'scale') put('pass_min', Q.pass_answer);
+            else passDD.setValue(Q.pass_answer === 'No' ? 'No' : 'Yes', true);
+            acceptedFollow = new Set(Array.isArray(Q.pass_follow) ? Q.pass_follow : []);
         }
         const own = sectionByNo(sectionDD.getValue());
         if (own) titleInput.value = own.name;
@@ -1650,12 +1753,14 @@ document.addEventListener('DOMContentLoaded', () => {
     function focusField(name) {
         const input = form.elements[name];
         if (input && input.focus) { input.focus({ preventScroll: false }); return; }
-        const dropdown = { section: sectionDD, type: typeDD, status: statusDD }[name];
+        const dropdown = { section: sectionDD, type: typeDD, status: statusDD, pass_answer: passDD }[name];
         if (dropdown) dropdown.btn.focus();
     }
 
     // The server refused something: put the message under the field it is about
     const SERVER_FIELDS = [
+        [/passing rating/i, 'pass_min'],
+        [/passing answer/i, 'pass_answer'],
         [/type of question/i, 'type'],
         [/write the question|question is too long/i, 'text'],
         [/another section|section (title|name)|existing section/i, 'section_title'],
@@ -2706,6 +2811,14 @@ document.addEventListener('DOMContentLoaded', () => {
         syncUrl();
     }
 
+    // the passing answer of a knock-out question, written out (for the tag's tooltip)
+    function koPassText(q) {
+        if (q.type === 'scale') return 'at least ' + q.pass_answer + ' of ' + (q.max || 5);
+        let t = String(q.pass_answer || 'Yes');
+        if (q.type === 'yesno_select' && Array.isArray(q.pass_follow) && q.pass_follow.length) t += ' (' + q.pass_follow.join(' or ') + ')';
+        return t;
+    }
+
     function buildRow(q, index, number) {
         const tr = document.createElement('tr');
         tr.dataset.id = q.id;
@@ -2725,6 +2838,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const tdTitle = el('td', 'cell-name');
         tdTitle.title = plain(q);
         tdTitle.appendChild(el('strong', null, plain(q)));
+        if (q.knockout) {
+            const ko = el('span', 'ko-tag', 'Knock-out');
+            ko.title = 'Knock-out question. Passing answer: ' + koPassText(q);
+            tdTitle.appendChild(ko);
+        }
 
         const tdDate = el('td', null, ADMIN.formatDate(q.created, false));
 

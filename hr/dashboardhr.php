@@ -71,19 +71,19 @@ $completed_ids = [103, 104, 106, 108, 109, 111, 114, 116, 119, 121, 124, 126, 12
 // Recent applicants = new applicants + applicants whose status just changed.
 // 'updated' is the time of the newest event (applied OR status change).
 // Backend: ORDER BY updated_at DESC LIMIT 10
-//   status: 'Pending' | 'In Progress' | 'Completed'    result: 'Passed' | 'Failed' | null
+//   status: 'Pending' | 'In Progress' | 'Completed'    result: 'Passed' | 'Rejected' | null
 $recent_applicants = static_recent($all_applicants, 10);
 /* Original hard-coded list (kept for reference):
 $recent_applicants = [
     ['id' => 101, 'name' => 'Juan Dela Cruz',    'updated' => '2026-10-05 08:15', 'status' => 'Pending',     'result' => null],
     ['id' => 103, 'name' => 'Clark Kent',        'updated' => '2026-10-05 10:52', 'status' => 'Completed',   'result' => 'Passed'],
-    ['id' => 104, 'name' => 'Diana Prince',      'updated' => '2026-10-04 16:30', 'status' => 'Completed',   'result' => 'Failed'],
+    ['id' => 104, 'name' => 'Diana Prince',      'updated' => '2026-10-04 16:30', 'status' => 'Completed',   'result' => 'Rejected'],
     ['id' => 102, 'name' => 'Bruce Wayne',       'updated' => '2026-10-04 11:05', 'status' => 'In Progress', 'result' => null],
     ['id' => 110, 'name' => 'Steve Rogers',      'updated' => '2026-10-03 14:20', 'status' => 'Pending',     'result' => null],
     ['id' => 108, 'name' => 'Tony Stark',        'updated' => '2026-10-02 17:45', 'status' => 'Completed',   'result' => 'Passed'],
     ['id' => 107, 'name' => 'Peter Parker',      'updated' => '2026-10-02 09:10', 'status' => 'In Progress', 'result' => null],
     ['id' => 105, 'name' => 'Maria Clara Santos','updated' => '2026-10-01 13:00', 'status' => 'Pending',     'result' => null],
-    ['id' => 109, 'name' => 'Natasha Romanoff',  'updated' => '2026-09-30 15:25', 'status' => 'Completed',   'result' => 'Failed'],
+    ['id' => 109, 'name' => 'Natasha Romanoff',  'updated' => '2026-09-30 15:25', 'status' => 'Completed',   'result' => 'Rejected'],
     ['id' => 106, 'name' => 'Jose Protacio Rizal Mercado y Alonso Realonda', 'updated' => '2026-09-29 10:00', 'status' => 'Completed', 'result' => 'Passed']
 ];
 */
@@ -354,7 +354,7 @@ function status_badge(string $status): string
                     </span>
                     <span class="legend-item" id="legendFailed" role="link" tabindex="0">
                         <span class="legend-dot red"></span>
-                        <span class="legend-text">Failed</span>
+                        <span class="legend-text">Rejected</span>
                         <span class="legend-num"><?php echo (int) $stats['failed']; ?></span>
                     </span>
                 </div>

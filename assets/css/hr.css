@@ -2746,6 +2746,32 @@ html:where([data-page="details"])[data-theme="dark"] .q-no { color: #1f2329; }
 :where(html[data-page="details"]) .ans-yes { background: var(--d-green-soft); color: var(--d-green); border-color: var(--d-green-bar); }
 :where(html[data-page="details"]) .ans-no  { background: var(--d-bad-soft); color: var(--d-bad); border-color: var(--d-bad); }
 
+/* Screening rubric: knock-out questions in the Questionnaires tab */
+:where(html[data-page="details"]) .q-main { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+:where(html[data-page="details"]) .q-rule { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--d-soft); }
+:where(html[data-page="details"]) .q-rule b { font-weight: 800; color: var(--d-ink); }
+:where(html[data-page="details"]) .ko-tag {
+    padding: 2px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--d-line);
+    background: var(--d-sub);
+    color: var(--d-ink);
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+}
+:where(html[data-page="details"]) .ko-result { padding: 4px 14px; border-radius: 12px; font-size: 12px; font-weight: 800; border: 1px solid; }
+:where(html[data-page="details"]) .ko-result.is-met  { background: var(--d-green-soft); color: var(--d-green); border-color: var(--d-green-bar); }
+:where(html[data-page="details"]) .ko-result.is-fail { background: var(--d-bad-soft); color: var(--d-bad); border-color: var(--d-bad); }
+:where(html[data-page="details"]) .q-row.is-fail { background: var(--d-bad-soft); border-radius: 10px; border-bottom-color: transparent; }
+:where(html[data-page="details"]) .q-why { grid-column: 1 / -1; font-size: 12.5px; font-weight: 700; line-height: 1.5; color: var(--d-bad); }
+:where(html[data-page="details"]) .notice-ok { background: var(--d-green-soft); color: var(--d-green); }
+:where(html[data-page="details"]) .ko-notice { margin-bottom: 14px; }
+:where(html[data-page="details"]) .ko-notice li { margin-top: 6px; }
+:where(html[data-page="details"]) .ko-line { display: block; margin-top: 2px; font-size: 12.5px; font-weight: 600; opacity: 0.95; }
+:where(html[data-page="details"]) .ko-line b { font-weight: 800; }
+
 :where(html[data-page="details"]) .scale { display: inline-flex; gap: 6px; }
 :where(html[data-page="details"]) .scale i { width: 12px; height: 12px; border-radius: 50%; background: var(--d-line); display: block; }
 :where(html[data-page="details"]) .scale i.on { background: #c4120d; }
