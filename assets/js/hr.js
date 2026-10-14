@@ -882,7 +882,7 @@ document.addEventListener('DOMContentLoaded', () => {
            if (data.status !== 'success') throw new Error(data.message);
            return data;
 
-       The email itself is designed in email.html. When the server sends it, it replaces:
+       The email itself is designed in shortlist-email.html. When the server sends it, it replaces:
            {{FIRST_NAME}}  first word of the applicant's name
            {{LINK}}        the applicant's personal link:  .../applicant/opening.php?token=...
            {{YEAR}}        current year

@@ -577,7 +577,7 @@ function details_interview_reschedule(array $a, string $date, string $time): arr
 }
 
 // ---------------------------------------------------------------------------
-// The emails (HTML written the same way as hr/email.html: tables + inline styles)
+// The emails (HTML written the same way as shortlist-email.html: tables + inline styles)
 // ---------------------------------------------------------------------------
 // The address of the applicant's status page (the link inside the emails).
 // Set APP_URL (config/constants.php) to the real site address when it is online, for example
