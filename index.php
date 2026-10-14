@@ -101,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <!-- Logo Header -->
         <div class="logo-container">
             <div class="logo-crop reveal" style="--i:0">
-                <img src="assets/pic/expertise.png" alt="Expertise Logo">
+                <img src="assets/images/expertise.png" alt="Expertise Logo">
             </div>
             <div class="portal-title reveal" style="--i:1">MANAGEMENT PORTAL</div>
         </div>

@@ -20,8 +20,8 @@
    follows the window (a short window = a slightly smaller page), so it always fits.
    Phones (under 800px) are allowed to scroll.
 
-   Folders (same as the HR side):   project/assets/pic/expertise.png   project/assets/pic/Short BG.png
-   This file lives in project/assets/css/, so the pic folder is  ../pic/
+   Folders (same as the HR side):   project/assets/images/expertise.png   project/assets/images/Short BG.png
+   This file lives in project/assets/css/, so the images folder is  ../images/
    ========================================================================== */
 
 :root {
@@ -64,7 +64,7 @@
    like the wireframe and always fits. The background image is on <html> itself. */
 html {
     font-size: clamp(11px, min(1.95vh, 1.4vw), 26px);
-    background: #f4f4f5 url("../pic/Short%20BG.png") no-repeat right center / cover;
+    background: #f4f4f5 url("../images/Short%20BG.png") no-repeat right center / cover;
     background-attachment: fixed;
 }
 
@@ -76,7 +76,7 @@ body {
     background: transparent;     /* a solid body colour would paint over the background image */
 }
 
-/* ---------- Background: assets/pic/Short BG.png is set on <html> above ---------- */
+/* ---------- Background: assets/images/Short BG.png is set on <html> above ---------- */
 
 /* the top-level box of each page */
 .stage {

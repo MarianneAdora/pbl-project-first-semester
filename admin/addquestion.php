@@ -146,7 +146,7 @@ function q_dropdown(string $id, string $labelId, array $options, string $selecte
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header reveal" style="--i:0">
             <div class="brand-container">
-                <img src="../assets/pic/expertise2.png" alt="Expertise Logo" class="brand-logo">
+                <img src="../assets/images/expertise2.png" alt="Expertise Logo" class="brand-logo">
             </div>
             <button type="button" class="toggle-btn" id="sidebarToggle" title="Toggle Sidebar" aria-label="Toggle sidebar">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>

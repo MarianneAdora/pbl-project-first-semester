@@ -106,8 +106,8 @@ $lockLeft     = $locked ? max(0, $_SESSION['otp_locked_until'] - time()) : 0;   
 $lockText     = sprintf('%02d:%02d', intdiv($lockLeft, 60), $lockLeft % 60);
 $contactLink  = 'mailto:hr@expertise.example';                                    // same address as opening.php
 
-// ---- Logo: project/assets/pic/expertise.png (same logo as the login page) ---------
-$logoSrc = is_file(__DIR__ . '/../assets/pic/expertise.png') ? '../assets/pic/expertise.png' : null;
+// ---- Logo: project/assets/images/expertise.png (same logo as the login page) ---------
+$logoSrc = is_file(__DIR__ . '/../assets/images/expertise.png') ? '../assets/images/expertise.png' : null;
 ?>
 <!DOCTYPE html>
 <html lang="en" data-page="verify-otp">
