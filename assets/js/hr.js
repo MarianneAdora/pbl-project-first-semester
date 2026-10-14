@@ -684,6 +684,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const sentModal = document.getElementById('sentModal');
     const discardModal = document.getElementById('discardModal');
 
+    // CV upload is disabled for now (backend ignores the file): don't block submit on it.
+    const CV_DISABLED = true;
     const MAX_CV = 5 * 1024 * 1024;
     const CV_TYPES = ['pdf', 'doc', 'docx'];
     let sending = false;
@@ -729,6 +731,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return '';
         },
         cv() {
+            if (CV_DISABLED) return '';   // CV upload not functional yet: optional, never blocks
             const f = fileInput.files[0];
             if (!f) return 'Please upload the applicant\'s CV.';
             const ext = f.name.includes('.') ? f.name.split('.').pop().toLowerCase() : '';
@@ -888,12 +891,14 @@ document.addEventListener('DOMContentLoaded', () => {
            {{YEAR}}        current year
        and, before redirecting from that link to opening.php, sets the session values
        listed at the top of opening.php (applicant_name, applicant_email). */
-    /* Real request: saves the applicant through static-data.php (it is the endpoint too),
-       so the Screening List, Dashboard cards, chart and Recent Applicants all show the new person.
-       BACKEND: when the database is ready, the backend answers this same POST; this stays the same. */
+    /* Real request: saves the applicant through addapplicants.php (it is the endpoint too),
+       so the Screening List, Dashboard cards and Recent Applicants all show the new person.
+       CV upload + invitation email are NOT functional yet: the CV file is not sent and no
+       email goes out; only name / email / contact are stored. */
     async function sendInvitation(formData) {
-        formData.append('action', 'add');
-        const res = await fetch('static-data.php', { method: 'POST', body: formData, credentials: 'same-origin' });
+        formData.delete('cv');   // CV upload disabled for now (backend ignores it)
+        formData.delete('note'); // no notes column yet
+        const res = await fetch('addapplicants.php', { method: 'POST', body: formData, credentials: 'same-origin' });
         let data;
         try { data = await res.json(); }
         catch (e) { throw new Error('The server did not answer correctly. Please try again.'); }

@@ -11,56 +11,36 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {
 header('Cache-Control: no-store, no-cache, must-revalidate');
 header('Pragma: no-cache');
 
-// All applicant data comes from static-data.php (the one place for sample data)
-require_once __DIR__ . '/static-data.php';
+// All applicant data comes from the database (PostgreSQL via PDO).
+// DB status (pending/in_progress/submitted/reviewed/rejected/accepted) is mapped to the
+// UI labels Pending / In Progress / Completed (+ Passed/Rejected) in src/Helpers/display.php.
+require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
 
 // Rows per page
 $per_page = 6;
 
-// Sample data (Replace with a MySQL query).
+// Live data from the database (soft-deleted rows are excluded = the Archive).
 // Keep these keys: id, name, email, contact, status, result.
-//   status: 'Pending' | 'In Progress' | 'Completed'
+//   status: 'Pending' | 'In Progress' | 'Completed' (mapped from the DB pipeline)
 //   result: 'Passed' | 'Rejected' | null (null = no result yet)
-$applicants = static_applicants();      // active applicants (archived ones are not listed)
-/* Original hard-coded list (kept for reference):
-$applicants = [
-    ['id' => 101, 'name' => 'Juan Dela Cruz', 'email' => 'juandelacruz@gmail.com', 'contact' => '091234567891', 'status' => 'Pending', 'result' => null],
-    ['id' => 102, 'name' => 'Bruce Wayne', 'email' => 'brucewayne@gmail.com', 'contact' => '091234567854', 'status' => 'In Progress', 'result' => null],
-    ['id' => 103, 'name' => 'Clark Kent', 'email' => 'clarkkent@gmail.com', 'contact' => '091234567817', 'status' => 'Completed', 'result' => 'Passed'],
-    ['id' => 104, 'name' => 'Diana Prince', 'email' => 'dianaprince@gmail.com', 'contact' => '091234567780', 'status' => 'Completed', 'result' => 'Rejected'],
-    ['id' => 105, 'name' => 'Maria Clara Santos', 'email' => 'mariaclarasantos@gmail.com', 'contact' => '091234567743', 'status' => 'Pending', 'result' => null],
-    ['id' => 106, 'name' => 'Jose Protacio Rizal Mercado y Alonso Realonda', 'email' => 'joseprotaciorizalmercadoyalonsorealonda@gmail.com', 'contact' => '091234567706', 'status' => 'Completed', 'result' => 'Passed'],
-    ['id' => 107, 'name' => 'Peter Parker', 'email' => 'peterparker@gmail.com', 'contact' => '091234567669', 'status' => 'In Progress', 'result' => null],
-    ['id' => 108, 'name' => 'Tony Stark', 'email' => 'tonystark@gmail.com', 'contact' => '091234567632', 'status' => 'Completed', 'result' => 'Passed'],
-    ['id' => 109, 'name' => 'Natasha Romanoff', 'email' => 'natasharomanoff@gmail.com', 'contact' => '091234567595', 'status' => 'Completed', 'result' => 'Rejected'],
-    ['id' => 110, 'name' => 'Steve Rogers', 'email' => 'steverogers@gmail.com', 'contact' => '091234567558', 'status' => 'Pending', 'result' => null],
-    ['id' => 111, 'name' => 'Barry Allen', 'email' => 'barryallen@gmail.com', 'contact' => '091234567521', 'status' => 'Completed', 'result' => 'Passed'],
-    ['id' => 112, 'name' => 'Hal Jordan', 'email' => 'haljordan@gmail.com', 'contact' => '091234567484', 'status' => 'Pending', 'result' => null],
-    ['id' => 113, 'name' => 'Arthur Curry', 'email' => 'arthurcurry@gmail.com', 'contact' => '091234567447', 'status' => 'In Progress', 'result' => null],
-    ['id' => 114, 'name' => 'Victor Stone', 'email' => 'victorstone@gmail.com', 'contact' => '091234567410', 'status' => 'Completed', 'result' => 'Passed'],
-    ['id' => 115, 'name' => 'Selina Kyle', 'email' => 'selinakyle@gmail.com', 'contact' => '091234567373', 'status' => 'Pending', 'result' => null],
-    ['id' => 116, 'name' => 'Oliver Queen', 'email' => 'oliverqueen@gmail.com', 'contact' => '091234567336', 'status' => 'Completed', 'result' => 'Rejected'],
-    ['id' => 117, 'name' => 'Kara Danvers', 'email' => 'karadanvers@gmail.com', 'contact' => '091234567299', 'status' => 'Pending', 'result' => null],
-    ['id' => 118, 'name' => 'Bruce Banner', 'email' => 'brucebanner@gmail.com', 'contact' => '091234567262', 'status' => 'In Progress', 'result' => null],
-    ['id' => 119, 'name' => 'Wanda Maximoff', 'email' => 'wandamaximoff@gmail.com', 'contact' => '091234567225', 'status' => 'Completed', 'result' => 'Passed'],
-    ['id' => 120, 'name' => 'Stephen Strange', 'email' => 'stephenstrange@gmail.com', 'contact' => '091234567188', 'status' => 'Pending', 'result' => null],
-    ['id' => 121, 'name' => 'Carol Danvers', 'email' => 'caroldanvers@gmail.com', 'contact' => '091234567151', 'status' => 'Completed', 'result' => 'Passed'],
-    ['id' => 122, 'name' => 'Scott Lang', 'email' => 'scottlang@gmail.com', 'contact' => '091234567114', 'status' => 'Pending', 'result' => null],
-    ['id' => 123, 'name' => 'Hope Van Dyne', 'email' => 'hopevandyne@gmail.com', 'contact' => '091234567077', 'status' => 'In Progress', 'result' => null],
-    ['id' => 124, 'name' => 'Sam Wilson', 'email' => 'samwilson@gmail.com', 'contact' => '091234567040', 'status' => 'Completed', 'result' => 'Rejected'],
-    ['id' => 125, 'name' => 'Bucky Barnes', 'email' => 'buckybarnes@gmail.com', 'contact' => '091234567003', 'status' => 'Pending', 'result' => null],
-    ['id' => 126, 'name' => 'Matt Murdock', 'email' => 'mattmurdock@gmail.com', 'contact' => '091234566966', 'status' => 'Completed', 'result' => 'Passed'],
-    ['id' => 127, 'name' => 'Jessica Jones', 'email' => 'jessicajones@gmail.com', 'contact' => '091234566929', 'status' => 'Pending', 'result' => null],
-    ['id' => 128, 'name' => 'Luke Cage', 'email' => 'lukecage@gmail.com', 'contact' => '091234566892', 'status' => 'In Progress', 'result' => null],
-    ['id' => 129, 'name' => 'Danny Rand', 'email' => 'dannyrand@gmail.com', 'contact' => '091234566855', 'status' => 'Completed', 'result' => 'Passed'],
-    ['id' => 130, 'name' => 'Kate Bishop', 'email' => 'katebishop@gmail.com', 'contact' => '091234566818', 'status' => 'Pending', 'result' => null],
-    ['id' => 131, 'name' => 'Clint Barton', 'email' => 'clintbarton@gmail.com', 'contact' => '091234566781', 'status' => 'Completed', 'result' => 'Rejected'],
-    ['id' => 132, 'name' => 'Pepper Potts', 'email' => 'pepperpotts@gmail.com', 'contact' => '091234566744', 'status' => 'Pending', 'result' => null],
-    ['id' => 133, 'name' => 'Maria Hill', 'email' => 'mariahill@gmail.com', 'contact' => '091234566707', 'status' => 'In Progress', 'result' => null],
-    ['id' => 134, 'name' => 'Nick Fury', 'email' => 'nickfury@gmail.com', 'contact' => '091234566670', 'status' => 'Pending', 'result' => null],
-    ['id' => 135, 'name' => 'Gabriel Antonio Dela Rosa Villanueva', 'email' => 'gabrielantoniodelarosavillanueva@gmail.com', 'contact' => '091234566633', 'status' => 'Completed', 'result' => 'Passed']
-];
-*/
+try {
+    $applicants = repo_applicants_active();
+} catch (Throwable $e) {
+    $applicants = [];
+    error_log('screeninglist DB error: ' . $e->getMessage());
+}
+try {
+    $archived_rows = repo_applicants_archived();
+} catch (Throwable $e) {
+    error_log('screeninglist archive DB error: ' . $e->getMessage());
+    $archived_rows = [];
+}
+// Server-side archive sync (replaces the old static JSON + localStorage mirror).
+// The Archive page is whoever has deleted_at set; localStorage is only cleared, never read as truth.
+$archive_sync = ['ids' => array_map(fn($a) => (int) $a['id'], $archived_rows), 'at' => []];
+foreach ($archived_rows as $a) {
+    if (!empty($a['archived_at'])) $archive_sync['at'][(int) $a['id']] = (int) (strtotime((string) $a['archived_at']) * 1000);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en" data-page="screeninglist">
@@ -348,7 +328,7 @@ $applicants = [
         };
     </script>
     <!-- Shared HR behaviour first, then this page's script -->
-    <script>window.HR_SERVER_ARCHIVE = <?php echo json_encode(static_archive_sync(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
+    <script>window.HR_SERVER_ARCHIVE = <?php echo json_encode($archive_sync, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
     <script src="../assets/js/hr.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/hr.js'); ?>"></script>
 </body>
 </html>

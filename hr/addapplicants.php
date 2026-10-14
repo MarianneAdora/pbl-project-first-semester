@@ -11,8 +11,64 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {
     exit();
 }
 
-// Keeps the browser copy of the Archive in step with static-data.php
-require_once __DIR__ . '/static-data.php';
+// Add Applicant writes straight to the database (PostgreSQL via PDO).
+// This page is also its own POST endpoint (replaces the old static-data.php call).
+// CV upload + invitation email are NOT functional yet: the CV is ignored, cv_file_url
+// stays NULL, and no email is sent. Only name / email / contact are stored.
+require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    header('Content-Type: application/json');
+    $respond = function (array $data, int $code = 200): void {
+        http_response_code($code);
+        echo json_encode($data, JSON_UNESCAPED_UNICODE);
+        exit;
+    };
+
+    if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {
+        $respond(['status' => 'error', 'message' => 'Your session has ended. Please log in again.'], 403);
+    }
+
+    $input = $_POST;
+    $ct = (string) ($_SERVER['CONTENT_TYPE'] ?? '');
+    if (stripos($ct, 'application/json') !== false) {
+        $json = json_decode((string) file_get_contents('php://input'), true);
+        if (is_array($json)) $input = $json;
+    }
+
+    try {
+        $applicant = repo_add_applicant(
+            (string) ($input['name'] ?? ''),
+            (string) ($input['email'] ?? ''),
+            (string) ($input['contact'] ?? '')
+        );
+        // Fresh numbers so the page can update badges (same shape the old endpoint sent).
+        $respond([
+            'status' => 'success',
+            'applicant' => $applicant,
+            'stats' => repo_dashboard_stats(),
+            'completed_ids' => [],
+            'archived' => count(repo_applicants_archived()),
+            'email_sent' => false,
+        ]);
+    } catch (InvalidArgumentException $e) {
+        $respond(['status' => 'error', 'message' => $e->getMessage()], 422);
+    } catch (Throwable $e) {
+        error_log('addapplicants DB error: ' . $e->getMessage());
+        $respond(['status' => 'error', 'message' => 'Something went wrong while saving. Please try again.'], 500);
+    }
+}
+
+try {
+    $archive_sync = ['ids' => [], 'at' => []];
+    foreach (repo_applicants_archived() as $a) {
+        $archive_sync['ids'][] = (int) $a['id'];
+        if (!empty($a['archived_at'])) $archive_sync['at'][(int) $a['id']] = (int) (strtotime((string) $a['archived_at']) * 1000);
+    }
+} catch (Throwable $e) {
+    error_log('addapplicants archive DB error: ' . $e->getMessage());
+    $archive_sync = ['ids' => [], 'at' => []];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en" data-page="addapplicants">
@@ -203,9 +259,9 @@ require_once __DIR__ . '/static-data.php';
                     </div>
 
                     <div class="field" data-field="cv">
-                        <label for="cv">CV Upload <span class="req">*</span></label>
+                        <label for="cv">CV Upload <span class="opt">(Optional — disabled for now)</span></label>
                         <div class="input-box file-box" id="fileBox">
-                            <input type="file" id="cv" name="cv" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required>
+                            <input type="file" id="cv" name="cv" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
                             <label for="cv" class="choose-btn">
                                 <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
                                 Choose File
@@ -233,7 +289,7 @@ require_once __DIR__ . '/static-data.php';
                     <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
                     <div>
                         <h4>Screening Invitation</h4>
-                        <p>The applicant will receive an email with a personal link to complete the screening process.</p>
+                        <p>Email invites are disabled for now — the applicant is saved to the database and will appear in the screening list.</p>
                     </div>
                 </div>
 
@@ -274,7 +330,7 @@ require_once __DIR__ . '/static-data.php';
     </main>
 
     <!-- Shared HR behaviour first, then this page's script -->
-    <script>window.HR_SERVER_ARCHIVE = <?php echo json_encode(static_archive_sync(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
+    <script>window.HR_SERVER_ARCHIVE = <?php echo json_encode($archive_sync, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
     <script src="../assets/js/hr.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/hr.js'); ?>"></script>
 </body>
 </html>

@@ -13,15 +13,32 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
 
 date_default_timezone_set('Asia/Manila');
 
-require_once __DIR__ . '/static-admin.php';
+require_once __DIR__ . '/../src/Repositories/AdminRepository.php';
+require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
 
-// Every number on this page comes from static-admin.php (the one place for the admin sample data).
-// BACKEND: when the database is ready, only static-admin.php changes.
-$overview = static_admin_overview();             // the three summary boxes
-$stats    = static_admin_question_stats();       // Questionnaires Statistics: every question + the answer most applicants chose
-$all_log  = static_activity();                   // everything HR and the Admin did, newest first
-$recent_view = static_admin_recent_activity(10);   // Recent Activities: the latest 10; a line is hidden 3 days after the Admin first saw it
-$recent   = $recent_view['rows'];
+// Every number on this page comes from the database (PostgreSQL via PDO).
+// Activity is derived from created_at timestamps (no activity_log table); the 3-day
+// "seen" behaviour is a frontend concern now (ADMIN.notify in localStorage).
+try {
+    $overview = repo_admin_overview();
+} catch (Throwable $e) {
+    error_log('dashboardadmin overview DB error: ' . $e->getMessage());
+    $overview = ['hr_active' => 0, 'hr_total' => 0, 'questions' => 0, 'sections' => 0, 'activities_week' => 0];
+}
+try {
+    $stats = repo_admin_question_stats();   // Questionnaires Statistics from question_config + response.answers_json
+} catch (Throwable $e) {
+    error_log('dashboardadmin stats DB error: ' . $e->getMessage());
+    $stats = ['submissions' => 0, 'sections' => [], 'questions' => []];
+}
+try {
+    $recent = repo_recent_activity(null, 10);   // latest 10, newest first
+} catch (Throwable $e) {
+    error_log('dashboardadmin activity DB error: ' . $e->getMessage());
+    $recent = [];
+}
+$recent_view = ['rows' => $recent, 'total' => count($recent)];
+$all_log = $recent;
 
 // Share of something, used by the little bar on each summary box
 function share(int $part, int $total): int
@@ -277,7 +294,12 @@ $greeting     = 'Hello, ' . $display_name . '!';
 
     <!-- Pass PHP Variables to JavaScript -->
     <script>
-        window.ADMIN_NOTIFY = <?php echo json_encode(static_admin_notify(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+        <?php
+        // Derived notify payload (no activity_log table): every derived HR activity timestamp
+        // counts as unseen until ADMIN.notify marks it seen in the browser.
+        $notify_at = array_values(array_unique(array_map(fn($r) => (string) ($r['at'] ?? ''), array_filter($recent, fn($r) => strtolower((string) ($r['by'] ?? '')) !== 'admin'))));
+        ?>
+        window.ADMIN_NOTIFY = <?php echo json_encode(['activity' => $notify_at, 'expiring' => 0], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
         window.ADMIN_DASH = <?php echo json_encode(['stats' => $stats, 'activity' => $recent], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
     </script>
     <!-- Shared admin behaviour first, then this page's script -->
