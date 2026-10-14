@@ -72,7 +72,7 @@ $steps = [
 
 <main class="invite stage">
 
-    <img class="corner-logo reveal" style="--i:0" src="../pic/expertise.png" alt="Expertise">
+    <img class="corner-logo reveal" style="--i:0" src="../assets/pic/expertise.png" alt="Expertise">
 
     <div class="invite__content">
 

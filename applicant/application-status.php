@@ -203,7 +203,7 @@ $iconChevron  = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6
 
 <main class="page stage">
 
-    <img class="corner-logo reveal" style="--i:0" src="../pic/expertise.png" alt="Expertise">
+    <img class="corner-logo reveal" style="--i:0" src="../assets/pic/expertise.png" alt="Expertise">
 
 <?php if ($interview): ?>
     <?php
