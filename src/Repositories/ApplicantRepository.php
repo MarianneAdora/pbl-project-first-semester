@@ -64,6 +64,57 @@ function repo_add_applicant(string $name, string $email, string $phone, PDO $pdo
     return ['id' => $id, 'name' => $name, 'email' => $email, 'contact' => $phone, 'status' => 'Pending', 'result' => null];
 }
 
+function repo_find_applicant(int $id, PDO $pdo = null): ?array
+{
+    $pdo = $pdo ?: db();
+    $st = $pdo->prepare(
+        "SELECT applicant_id, name, email, phone_number, status, result, reference_code, secure_token, cv_file_url, created_at" .
+        " FROM applicant WHERE applicant_id = :id AND deleted_at IS NULL LIMIT 1"
+    );
+    $st->execute([':id' => $id]);
+    $row = $st->fetch();
+    if (!$row) return null;
+    $d = applicant_to_display($row);
+    $d['reference_code'] = (string) ($row['reference_code'] ?? '');
+    $d['secure_token'] = (string) ($row['secure_token'] ?? '');
+    $d['cv_file_url'] = $row['cv_file_url'] ?? null;
+    $d['updated'] = $row['created_at'] ? date('Y-m-d H:i', strtotime((string) $row['created_at'])) : '';
+    $d['created_at'] = (string) ($row['created_at'] ?? '');
+    return $d;
+}
+
+/**
+ * Archive (soft-delete) applicants: Screening List Delete -> Archive page.
+ * Sets deleted_at = NOW(); archived rows disappear from the list, appear in Archive.
+ * Returns number of rows actually archived.
+ */
+function repo_archive_applicants(array $ids, PDO $pdo = null): int
+{
+    $pdo = $pdo ?: db();
+    $ids = array_values(array_unique(array_map('intval', $ids)));
+    $ids = array_filter($ids, fn($i) => $i > 0);
+    if (!$ids) return 0;
+    $ph = implode(',', array_fill(0, count($ids), '?'));
+    $st = $pdo->prepare("UPDATE applicant SET deleted_at = NOW() WHERE applicant_id IN ($ph) AND deleted_at IS NULL");
+    $st->execute($ids);
+    return $st->rowCount();
+}
+
+/**
+ * Restore archived applicants: Archive Restore -> back to Screening List.
+ */
+function repo_restore_applicants(array $ids, PDO $pdo = null): int
+{
+    $pdo = $pdo ?: db();
+    $ids = array_values(array_unique(array_map('intval', $ids)));
+    $ids = array_filter($ids, fn($i) => $i > 0);
+    if (!$ids) return 0;
+    $ph = implode(',', array_fill(0, count($ids), '?'));
+    $st = $pdo->prepare("UPDATE applicant SET deleted_at = NULL WHERE applicant_id IN ($ph) AND deleted_at IS NOT NULL");
+    $st->execute($ids);
+    return $st->rowCount();
+}
+
 function repo_applicants_archived(PDO $pdo = null): array
 {
     $pdo = $pdo ?: db();

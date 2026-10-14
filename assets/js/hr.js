@@ -155,11 +155,11 @@ window.HR = (function () {
         else if (mq.addListener) mq.addListener(onScheme);
     }
 
-    // ---- Server link (static-data.php) --------------------------------------------------------
-    // The server is the truth. Every HR page prints window.HR_SERVER_ARCHIVE before this file, and
-    // the three browser keys below are rewritten from it, so the Screening List, the Archive and
-    // the Dashboard always agree. The browser copy is only a mirror that the page scripts read.
-    const SERVER_API = 'static-data.php';      // same folder as the HR pages
+    // ---- Server link (archive-action.php) -----------------------------------------------------
+    // The server is the truth: Delete sets deleted_at (Archive), Restore clears it.
+    // Every HR page prints window.HR_SERVER_ARCHIVE before this file; the browser keys below
+    // are rewritten from it. Purge (delete forever) is not wired yet.
+    const SERVER_API = 'archive-action.php';      // same folder as the HR pages
 
     function syncArchiveFromServer() {
         const s = window.HR_SERVER_ARCHIVE;
@@ -1770,6 +1770,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function purgeIds(ids) {
+        // Delete-forever is NOT wired to the DB yet: tell HR instead of failing silently.
+        HR.toast('Delete forever is not available yet. Applicants stay in the Archive.', { error: true, duration: 5000 });
+        busy = false;
+        updateSelectionUi();
+        return;
         if (!ids.length || busy) return;
         busy = true;
         updateSelectionUi();
