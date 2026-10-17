@@ -529,8 +529,11 @@ window.ADMIN = (function () {
         return { activity: a, expiring: e };
     }
 
-    function bumpArchive() {
-        const link = document.getElementById('archiveLink');
+    function bumpArchive() { bumpNav('#archiveLink'); }
+
+    // The sidebar item pops when something lands on it (selector = the link, e.g. '#archiveLink')
+    function bumpNav(selector) {
+        const link = document.querySelector(selector);
         if (!link) return;
         link.classList.remove('bump');
         void link.offsetWidth;
@@ -541,8 +544,12 @@ window.ADMIN = (function () {
     /* ---- Row flies to the Archive (same animation as the HR Screening List) ---------------------
          ADMIN.flyToArchive(rows, label)  rows = <tr> elements, label(tr) = the text on the flying chip
        Resolves when every chip has landed. Without motion the rows simply fade (class row-leave). */
-    function flyToArchive(rows, label) {
-        const link = document.getElementById('archiveLink');
+    function flyToArchive(rows, label) { return flyToNav(rows, label, '#archiveLink'); }
+
+    /* ---- Row flies to ANY sidebar item (used by Restore in the Archive: the row flies back to
+         "HR Accounts" or "Questions"). Same chip, same flight as flyToArchive. ------------------- */
+    function flyToNav(rows, label, selector) {
+        const link = document.querySelector(selector);
         const icon = link ? link.querySelector('.nav-icon') : null;
         if (!rows.length || !icon || noMotion() || !document.body.animate) {
             rows.forEach(tr => tr.classList.add('row-leave'));
@@ -638,7 +645,7 @@ window.ADMIN = (function () {
     return {
         request, esc, formatDate, toast, confirm: confirmBox, icons, countUp, noMotion,
         menu: openMenu, closeMenu, pager, showing, flash, showFlash,
-        flyToArchive, bumpArchive,
+        flyToArchive, flyToNav, bumpArchive, bumpNav,
         hr: { note: noteNewHr, clear: clearNewHr, ids: readNewHr },
         notify: { unseen: unseenActivity, markSeen: markActivitySeen, setExpiring: setExpiring, refresh: refreshBadges, poll: pollNotify, on: notifyOn },
         settings: { get: readSettings, save: saveSettings, apply: applySettings, defaults: SETTINGS_DEFAULTS, profile: readProfile, saveProfile: saveProfile },
@@ -1994,9 +2001,26 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally { busy = false; }
     }
 
-    function restoreItem(it, btn) {
+    // Restore: the row turns into a chip and flies back to where it belongs in the sidebar
+    // (HR Accounts / Questions), the same animation as the HR Archive.
+    async function restoreItem(it, btn) {
         if (busy) return;
-        act(it.kind + '_restore', it, btn, it.kind === 'account' ? 'HR account restored.' : 'Question restored.');
+        const isAccount = it.kind === 'account';
+        const target = isAccount ? '.sidebar-nav a[href="hrlist.php"]' : '.sidebar-nav a[href="questionlist.php"]';
+        const tr = btn.closest('tr');
+        busy = true; btn.disabled = true;
+        try {
+            const request = ADMIN.request(it.kind + '_restore', { id: it.id });
+            const [res] = await Promise.all([request, ADMIN.flyToNav(tr ? [tr] : [], () => short(it.title, 28), target)]);
+            load(res.data.archive);
+            render();
+            ADMIN.bumpNav(target);
+            ADMIN.toast(isAccount ? 'HR account restored.' : 'Question restored.');
+        } catch (err) {
+            if (tr) tr.classList.remove('row-leave');
+            btn.disabled = false;
+            ADMIN.toast(err.message || 'Something went wrong. Please try again.', { error: true, duration: 6000 });
+        } finally { busy = false; }
     }
 
     async function purgeItem(it, btn) {

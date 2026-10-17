@@ -3216,6 +3216,18 @@
             "details": "Jose Protacio Rizal Mercado y Alonso Realonda · October 16, 2026, 01:00 PM",
             "by": "HR",
             "admin_seen_at": "2026-10-13 19:16:22"
+        },
+        {
+            "at": "2026-10-17 11:44:49",
+            "activity": "Questionnaires Deleted",
+            "details": "Q1 · Consent & readiness",
+            "by": "Admin"
+        },
+        {
+            "at": "2026-10-17 11:44:57",
+            "activity": "Questionnaires Restored",
+            "details": "Q1 · Consent & readiness",
+            "by": "Admin"
         }
     ],
     "questions": [
@@ -3232,7 +3244,8 @@
                 "text": "job description",
                 "url": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
             },
-            "archived_at": null
+            "archived_at": null,
+            "knockout": false
         },
         {
             "id": "q2",
@@ -3242,7 +3255,9 @@
             "text": "Are you willing to work on the schedule as advertised?",
             "archived_at": null,
             "status": "Active",
-            "created": "2026-08-03 09:00"
+            "created": "2026-08-03 09:00",
+            "knockout": true,
+            "pass_answer": "Yes"
         },
         {
             "id": "q3",
@@ -3252,7 +3267,9 @@
             "text": "Are you willing to work on-site in BGC, Taguig?",
             "archived_at": null,
             "status": "Active",
-            "created": "2026-08-03 09:00"
+            "created": "2026-08-03 09:00",
+            "knockout": true,
+            "pass_answer": "Yes"
         },
         {
             "id": "q4",
@@ -3262,7 +3279,9 @@
             "text": "Are you willing to go through the assessment and interviews?",
             "archived_at": null,
             "status": "Active",
-            "created": "2026-08-03 09:00"
+            "created": "2026-08-03 09:00",
+            "knockout": true,
+            "pass_answer": "Yes"
         },
         {
             "id": "q5",
@@ -3277,7 +3296,8 @@
             ],
             "archived_at": null,
             "status": "Active",
-            "created": "2026-08-03 09:00"
+            "created": "2026-08-03 09:00",
+            "knockout": false
         },
         {
             "id": "q16",
@@ -3292,7 +3312,8 @@
                 "LIAR",
                 "NICE"
             ],
-            "archived_at": "2026-10-12 20:20:26"
+            "archived_at": "2026-10-12 20:20:26",
+            "knockout": false
         },
         {
             "id": "q17",
@@ -3305,7 +3326,8 @@
             "placeholder": "Type your answer here...",
             "min_chars": 0,
             "max_chars": 500,
-            "archived_at": "2026-10-13 10:04:24"
+            "archived_at": "2026-10-13 10:04:24",
+            "knockout": false
         },
         {
             "id": "q6",
@@ -3316,7 +3338,8 @@
             "hint": "Choose a date",
             "archived_at": null,
             "status": "Active",
-            "created": "2026-08-03 09:00"
+            "created": "2026-08-03 09:00",
+            "knockout": false
         },
         {
             "id": "q7",
@@ -3337,7 +3360,8 @@
             },
             "archived_at": null,
             "status": "Active",
-            "created": "2026-08-03 09:00"
+            "created": "2026-08-03 09:00",
+            "knockout": false
         },
         {
             "id": "q8",
@@ -3348,7 +3372,9 @@
             "no_note": "A stable connection and a working device are needed for the assessment and the virtual steps.",
             "archived_at": null,
             "status": "Active",
-            "created": "2026-08-03 09:00"
+            "created": "2026-08-03 09:00",
+            "knockout": true,
+            "pass_answer": "Yes"
         },
         {
             "id": "q9",
@@ -3358,7 +3384,9 @@
             "text": "Are you willing to undergo a background check as part of the hiring process?",
             "archived_at": null,
             "status": "Active",
-            "created": "2026-08-03 09:00"
+            "created": "2026-08-03 09:00",
+            "knockout": true,
+            "pass_answer": "Yes"
         },
         {
             "id": "q10",
@@ -3368,7 +3396,9 @@
             "text": "Can you provide required pre-employment documents (e.g. NBI clearance, TIN, SSS) upon request?",
             "archived_at": null,
             "status": "Active",
-            "created": "2026-08-03 09:00"
+            "created": "2026-08-03 09:00",
+            "knockout": true,
+            "pass_answer": "Yes"
         },
         {
             "id": "q11",
@@ -3379,7 +3409,9 @@
             "no_note": "Complying with confidentiality and data protection requirements is required for this role.",
             "archived_at": null,
             "status": "Active",
-            "created": "2026-08-03 09:00"
+            "created": "2026-08-03 09:00",
+            "knockout": true,
+            "pass_answer": "Yes"
         },
         {
             "id": "q12",
@@ -3393,7 +3425,8 @@
             "max_chars": 500,
             "archived_at": null,
             "status": "Active",
-            "created": "2026-08-03 09:00"
+            "created": "2026-08-03 09:00",
+            "knockout": false
         },
         {
             "id": "q13",
@@ -3410,7 +3443,8 @@
             "checkbox": "I have read and agree to the data protection statement.",
             "archived_at": null,
             "status": "Active",
-            "created": "2026-08-03 09:00"
+            "created": "2026-08-03 09:00",
+            "knockout": false
         },
         {
             "id": "q15",
@@ -3420,7 +3454,8 @@
             "text": "huh",
             "status": "Active",
             "created": "2026-10-12 20:07",
-            "archived_at": "2026-10-12 20:07:33"
+            "archived_at": "2026-10-12 20:07:33",
+            "knockout": false
         }
     ]
 }
