@@ -4,14 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="x-apple-disable-message-reformatting">
-<title>Your interview is confirmed | Expertise</title>
+<title>New interview schedule | Expertise</title>
 <!--
   EMAIL TEMPLATE (design only). Tables + inline styles on purpose: Gmail/Outlook ignore most CSS.
   Same design as email.html (brand stripe, logo, Plus Jakarta Sans, red button, maroon footer).
   The backend replaces:
     {{FIRST_NAME}}      -> applicant's first name
-    {{DATE}}            -> e.g. Monday, October 20, 2026
-    {{TIME}}            -> e.g. 10:00 AM
+    {{DATE}}            -> the NEW date, e.g. Tuesday, October 21, 2026
+    {{TIME}}            -> the NEW time, e.g. 2:00 PM
     {{INTERVIEW_TYPE}}  -> e.g. Face-to-face
     {{LOCATION}}        -> interview venue
     {{LINK}}            -> link to applicant/application-status.php   (used twice)
@@ -37,7 +37,7 @@
 
 <!-- preheader (the preview text next to the subject line) -->
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f4f4f5;font-size:1px;line-height:1px;">
-    Good news! The schedule you chose is available. Your interview is confirmed.
+    That date is not available, so we set a new schedule for your interview.
 </div>
 
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f4f5;">
@@ -50,23 +50,25 @@
 
         <!-- logo -->
         <tr><td class="px" align="left" style="padding:30px 44px 0 44px;">
-            <img src="../pic/expertise.png" alt="Expertise" height="44" style="display:block;height:44px;width:auto;border:0;">
+            <img src="assets/images/expertise.png" alt="Expertise" height="44" style="display:block;height:44px;width:auto;border:0;">
         </td></tr>
 
         <!-- heading -->
         <tr><td class="px" style="padding:30px 44px 0 44px;">
             <p style="margin:0 0 10px 0;font-size:13px;font-weight:700;letter-spacing:.3px;color:#d1122a;">Interview update</p>
-            <h1 class="h1" style="margin:0;font-size:30px;line-height:1.25;font-weight:800;color:#1f1f23;">Your interview is confirmed</h1>
+            <h1 class="h1" style="margin:0;font-size:30px;line-height:1.25;font-weight:800;color:#1f1f23;">We have a new schedule for you</h1>
         </td></tr>
 
         <!-- message -->
         <tr><td class="px" style="padding:22px 44px 0 44px;color:#3a3d44;font-size:15px;line-height:1.7;font-weight:500;">
             <p style="margin:0 0 14px 0;color:#1f1f23;font-weight:700;">Hi {{FIRST_NAME}},</p>
-            <p style="margin:0;">Good news! The schedule you chose is available. Your interview is now confirmed.</p>
+            <p style="margin:0;">Thank you for choosing a schedule. Unfortunately, that date and time is not available, so we set a new one for your interview.</p>
         </td></tr>
 
+        <tr><td class="px" style="padding:26px 44px 0 44px;"><p style="margin:0;font-size:13px;font-weight:700;color:#d1122a;">Your new schedule</p></td></tr>
+
         <!-- schedule details -->
-        <tr><td class="px" style="padding:26px 44px 0 44px;">
+        <tr><td class="px" style="padding:10px 44px 0 44px;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8f8f9;border:1px solid #e6e7ea;border-radius:12px;">
                 <tr><td style="padding:10px 22px;">
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -92,8 +94,8 @@
         </td></tr>
 
         <tr><td class="px" style="padding:26px 44px 0 44px;color:#3a3d44;font-size:13.5px;line-height:1.65;font-weight:500;">
-            <p style="margin:0 0 4px 0;font-weight:700;color:#1f1f23;">Before you begin</p>
-            <p style="margin:0;">Please arrive 15 minutes early and bring a valid ID. If you can no longer make it, reply to our team as soon as possible.</p>
+            <p style="margin:0 0 4px 0;font-weight:700;color:#1f1f23;">Does this not work for you?</p>
+            <p style="margin:0;">Please reply to our team and we will find another time. Please arrive 15 minutes early and bring a valid ID.</p>
         </td></tr>
 
         <!-- button -->

@@ -1,5 +1,55 @@
 <?php
 class EmailService {
+    private const LOGO_URL = 'https://res.cloudinary.com/y0s0brvb/image/upload/v1791998232/expertise.png';
+
+    private function templatePath(string $file): string
+    {
+        // All email HTML templates live in the project root.
+        $root = realpath(__DIR__ . '/../../');
+        $rootFile = $root ? $root . DIRECTORY_SEPARATOR . $file : __DIR__ . '/../../' . $file;
+        if (is_file($rootFile)) return $rootFile;
+        // Fallback: legacy hr/ copies (kept working until deleted).
+        $legacy = $root ? $root . DIRECTORY_SEPARATOR . 'hr' . DIRECTORY_SEPARATOR . $file : __DIR__ . '/../../hr/' . $file;
+        return $legacy;
+    }
+
+    private function loadTemplate(string $file): string
+    {
+        $path = $this->templatePath($file);
+        $html = is_file($path) ? file_get_contents($path) : false;
+        if ($html === false || $html === '') {
+            die("Error: email template '{$file}' not found at project root.");
+        }
+        // Browser preview uses a relative logo path; real emails need an absolute URL.
+        $html = str_replace('assets/images/expertise.png', self::LOGO_URL, $html);
+        $html = str_replace('../assets/images/expertise.png', self::LOGO_URL, $html);
+        $html = str_replace('../pic/expertise.png', self::LOGO_URL, $html);
+        return $html;
+    }
+
+    private function brevoSend(array $data, bool $echoError = true): bool
+    {
+        $env = parse_ini_file(__DIR__ . '/../../.env');
+        $apiKey = $env['BREVO_API_KEY'] ?? '';
+        if (empty($apiKey)) {
+            die("Error: BREVO_API_KEY is missing from your .env file.");
+        }
+        $ch = curl_init("https://api.brevo.com/v3/smtp/email");
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            "accept: application/json",
+            "api-key: " . $apiKey,
+            "content-type: application/json"
+        ]);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        if ($httpCode === 201) return true;
+        if ($echoError) echo "<strong>Brevo API Error:</strong> " . $response . "<br>";
+        return false;
+    }
     public function sendTestEmail($toEmail) {
         // 1. Manually load the .env file just for this test
         $env = parse_ini_file(__DIR__ . '/../../.env');
@@ -40,58 +90,36 @@ class EmailService {
     }
 
     public function sendOtpEmail($toEmail, $toName, $otpCode) {
-        $env = parse_ini_file(__DIR__ . '/../../.env');
-        $apiKey = $env['BREVO_API_KEY'] ?? '';
+        $firstName = trim(explode(' ', trim((string) $toName))[0] ?? (string) $toName);
+        $htmlContent = $this->loadTemplate('otp-email.html');
+        $htmlContent = str_replace('{{FIRST_NAME}}', htmlspecialchars($firstName, ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $htmlContent = str_replace('{{OTP_CODE}}', htmlspecialchars((string) $otpCode, ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $htmlContent = str_replace('{{YEAR}}', date('Y'), $htmlContent);
 
         $data = [
             "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@gmail.com"],
             "to" => [["email" => $toEmail, "name" => $toName]],
             "subject" => "Your Screening Verification Code",
-            "htmlContent" => "<h2>Hello {$toName},</h2>
-                            <p>Your 6-digit verification code is:</p>
-                            <h1 style='font-size: 32px; letter-spacing: 5px;'>{$otpCode}</h1>
-                            <p>This code will expire in 5 minutes.</p>"
+            "htmlContent" => $htmlContent
         ];
 
-        $ch = curl_init("https://api.brevo.com/v3/smtp/email");
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            "accept: application/json",
-            "api-key: " . $apiKey,
-            "content-type: application/json"
-        ]);
-
-        curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        return $httpCode === 201;
+        return $this->brevoSend($data, false);
     }
 
     public function sendInviteEmail($toEmail, $firstName, $secureToken) {
-        $env = parse_ini_file(__DIR__ . '/../../.env');
-        $apiKey = $env['BREVO_API_KEY'] ?? '';
-
         // 1. Build the personal link using the secure token
         // NOTE: Change 'localhost' to your real domain when you deploy
         $link = "http://localhost/pbl-project-first-semester/applicant/opening.php?token=" . $secureToken;
 
-        // 2. Load the HTML template
-        $htmlContent = file_get_contents(__DIR__ . '/../../shortlist-email.html');
+        // 2. Load the HTML template from project root
+        $htmlContent = $this->loadTemplate('shortlist-email.html');
 
         // 3. Replace the placeholders
-        $htmlContent = str_replace('{{FIRST_NAME}}', $firstName, $htmlContent);
-        $htmlContent = str_replace('{{LINK}}', $link, $htmlContent);
+        $htmlContent = str_replace('{{FIRST_NAME}}', htmlspecialchars($firstName, ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $htmlContent = str_replace('{{LINK}}', htmlspecialchars($link, ENT_QUOTES, 'UTF-8'), $htmlContent);
         $htmlContent = str_replace('{{YEAR}}', date('Y'), $htmlContent);
 
-        // 4. CRITICAL FIX: Replace the relative image path with an absolute URL
-        // Email clients cannot read local files. You must host this image publicly.
-        // If you don't have it hosted yet, you can use a placeholder URL for testing.
-        $htmlContent = str_replace('../assets/images/expertise.png', 'https://your-domain.com/assets/images/expertise.png', $htmlContent);
-
-        // 5. Prepare Brevo payload
+        // 4. Prepare Brevo payload
         $data = [
             "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@gmail.com"], // USE YOUR VERIFIED SENDER
             "to" => [["email" => $toEmail, "name" => $firstName]],
@@ -99,25 +127,61 @@ class EmailService {
             "htmlContent" => $htmlContent
         ];
 
-        $ch = curl_init("https://api.brevo.com/v3/smtp/email");
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            "accept: application/json",
-            "api-key: " . $apiKey,
-            "content-type: application/json"
-        ]);
+        return $this->brevoSend($data, true);
+    }
 
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+    public function sendScheduleApprovedEmail($toEmail, $firstName, $date, $time, $type, $location, $link) {
+        $htmlContent = $this->loadTemplate('schedule-approved-email.html');
+        $htmlContent = str_replace('{{FIRST_NAME}}', htmlspecialchars($firstName, ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $htmlContent = str_replace('{{DATE}}', htmlspecialchars($date, ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $htmlContent = str_replace('{{TIME}}', htmlspecialchars($time, ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $htmlContent = str_replace('{{INTERVIEW_TYPE}}', htmlspecialchars($type, ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $htmlContent = str_replace('{{LOCATION}}', htmlspecialchars($location, ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $htmlContent = str_replace('{{LINK}}', htmlspecialchars($link, ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $htmlContent = str_replace('{{YEAR}}', date('Y'), $htmlContent);
 
-        if ($httpCode === 201) {
-            return true;
-        } else {
-            echo "<strong>Brevo API Error:</strong> " . $response . "<br>";
-            return false;
-        }
+        $data = [
+            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@gmail.com"],
+            "to" => [["email" => $toEmail, "name" => $firstName]],
+            "subject" => "Your interview is confirmed | Expertise",
+            "htmlContent" => $htmlContent
+        ];
+
+        return $this->brevoSend($data, true);
+    }
+
+    public function sendScheduleRescheduledEmail($toEmail, $firstName, $date, $time, $type, $location, $link) {
+        $htmlContent = $this->loadTemplate('schedule-rescheduled-email.html');
+        $htmlContent = str_replace('{{FIRST_NAME}}', htmlspecialchars($firstName, ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $htmlContent = str_replace('{{DATE}}', htmlspecialchars($date, ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $htmlContent = str_replace('{{TIME}}', htmlspecialchars($time, ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $htmlContent = str_replace('{{INTERVIEW_TYPE}}', htmlspecialchars($type, ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $htmlContent = str_replace('{{LOCATION}}', htmlspecialchars($location, ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $htmlContent = str_replace('{{LINK}}', htmlspecialchars($link, ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $htmlContent = str_replace('{{YEAR}}', date('Y'), $htmlContent);
+
+        $data = [
+            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@gmail.com"],
+            "to" => [["email" => $toEmail, "name" => $firstName]],
+            "subject" => "New interview schedule | Expertise",
+            "htmlContent" => $htmlContent
+        ];
+
+        return $this->brevoSend($data, true);
+    }
+
+    public function sendScreeningRejectedEmail($toEmail, $firstName) {
+        $htmlContent = $this->loadTemplate('screening-rejected-email.html');
+        $htmlContent = str_replace('{{FIRST_NAME}}', htmlspecialchars($firstName, ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $htmlContent = str_replace('{{YEAR}}', date('Y'), $htmlContent);
+
+        $data = [
+            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@gmail.com"],
+            "to" => [["email" => $toEmail, "name" => $firstName]],
+            "subject" => "Your application update | Expertise",
+            "htmlContent" => $htmlContent
+        ];
+
+        return $this->brevoSend($data, true);
     }
 }

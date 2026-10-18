@@ -585,7 +585,8 @@ function details_interview_reschedule(array $a, string $date, string $time): arr
 }
 
 // ---------------------------------------------------------------------------
-// The emails (HTML written the same way as shortlist-email.html: tables + inline styles)
+// The emails load the shared HTML templates from the project root
+// (schedule-approved-email.html / schedule-rescheduled-email.html).
 // ---------------------------------------------------------------------------
 // The address of the applicant's status page (the link inside the emails).
 // Set APP_URL (config/constants.php) to the real site address when it is online, for example
@@ -613,24 +614,61 @@ function details_last_email(int $applicantId): ?array
     return null;
 }
 
+function details_email_template(string $file): ?string
+{
+    // All email HTML templates live in the project root.
+    $root = realpath(__DIR__ . '/..');
+    $candidates = [];
+    if ($root) {
+        $candidates[] = $root . DIRECTORY_SEPARATOR . $file;
+        $candidates[] = $root . DIRECTORY_SEPARATOR . 'hr' . DIRECTORY_SEPARATOR . $file; // legacy fallback
+    }
+    $candidates[] = __DIR__ . '/../' . $file;
+    foreach ($candidates as $path) {
+        if (is_file($path)) {
+            $html = file_get_contents($path);
+            if ($html !== false && $html !== '') return $html;
+        }
+    }
+    return null;
+}
+
 function details_email(string $kind, array $a, array $iv): array
 {
-    $first   = details_h(details_first_name((string) $a['name']));
+    $firstRaw = details_first_name((string) $a['name']);
+    $first   = details_h($firstRaw);
     $date    = details_h(details_date_label($iv['date']));
     $time    = details_h(details_time_label($iv['time']));
     $type    = details_h($iv['type']);
     $venue   = details_h(DETAILS_VENUE);
     $company = details_h(DETAILS_COMPANY);
     $link    = details_h(details_status_url());
+    $year    = date('Y');
 
     if ($kind === 'confirmed') {
         $subject = 'Your interview is confirmed | ' . DETAILS_COMPANY;
+        $template = details_email_template('schedule-approved-email.html');
+    } else {
+        $subject = 'New interview schedule | ' . DETAILS_COMPANY;
+        $template = details_email_template('schedule-rescheduled-email.html');
+    }
+
+    if ($template !== null) {
+        $html = str_replace(
+            ['{{FIRST_NAME}}', '{{DATE}}', '{{TIME}}', '{{INTERVIEW_TYPE}}', '{{LOCATION}}', '{{LINK}}', '{{YEAR}}'],
+            [$first, $date, $time, $type, $venue, $link, $year],
+            $template
+        );
+        return ['to' => (string) $a['email'], 'subject' => $subject, 'html' => $html];
+    }
+
+    // Fallback (template file missing): inline email, same content as the templates.
+    if ($kind === 'confirmed') {
         $kicker  = 'Interview update';
         $title   = 'Your interview is confirmed';
         $lead    = 'Good news! The schedule you chose is available. Your interview is now confirmed.';
         $closing = 'Please arrive 15 minutes early and bring a valid ID. If you can no longer make it, reply to this email as soon as possible.';
     } else {
-        $subject = 'New interview schedule | ' . DETAILS_COMPANY;
         $kicker  = 'Interview update';
         $title   = 'We have a new schedule for you';
         $lead    = 'Thank you for choosing a schedule. Unfortunately, that date and time is not available, so we set a new one for your interview.';
