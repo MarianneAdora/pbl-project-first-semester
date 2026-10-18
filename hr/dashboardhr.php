@@ -70,9 +70,16 @@ $completed_ids = [103, 104, 106, 108, 109, 111, 114, 116, 119, 121, 124, 126, 12
 
 // Recent applicants = new applicants + applicants whose status just changed.
 // 'updated' is the time of the newest event (applied OR status change).
-// Backend: ORDER BY updated_at DESC LIMIT 10
+// LIVE DATA: newest rows from the applicant table (ORDER BY created_at DESC LIMIT 10).
+// Falls back to the sample list when the DB is unreachable, so the page never breaks.
 //   status: 'Pending' | 'In Progress' | 'Completed'    result: 'Passed' | 'Rejected' | null
-$recent_applicants = static_recent($all_applicants, 10);
+try {
+    require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
+    $recent_applicants = repo_applicants_recent(null, 10);
+    if (empty($recent_applicants)) $recent_applicants = static_recent($all_applicants, 10);
+} catch (Throwable $e) {
+    $recent_applicants = static_recent($all_applicants, 10);
+}
 /* Original hard-coded list (kept for reference):
 $recent_applicants = [
     ['id' => 101, 'name' => 'Juan Dela Cruz',    'updated' => '2026-10-05 08:15', 'status' => 'Pending',     'result' => null],
