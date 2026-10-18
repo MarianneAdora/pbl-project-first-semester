@@ -616,13 +616,15 @@ function details_last_email(int $applicantId): ?array
 
 function details_email_template(string $file): ?string
 {
-    // All email HTML templates live in the project root.
+    // All email HTML templates live in includes/emails/.
     $root = realpath(__DIR__ . '/..');
     $candidates = [];
     if ($root) {
-        $candidates[] = $root . DIRECTORY_SEPARATOR . $file;
+        $candidates[] = $root . DIRECTORY_SEPARATOR . 'includes' . DIRECTORY_SEPARATOR . 'emails' . DIRECTORY_SEPARATOR . $file;
+        $candidates[] = $root . DIRECTORY_SEPARATOR . $file; // legacy: project root
         $candidates[] = $root . DIRECTORY_SEPARATOR . 'hr' . DIRECTORY_SEPARATOR . $file; // legacy fallback
     }
+    $candidates[] = __DIR__ . '/../includes/emails/' . $file;
     $candidates[] = __DIR__ . '/../' . $file;
     foreach ($candidates as $path) {
         if (is_file($path)) {

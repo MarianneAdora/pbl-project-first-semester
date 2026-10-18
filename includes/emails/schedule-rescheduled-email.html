@@ -4,13 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="x-apple-disable-message-reformatting">
-<title>You've been shortlisted | Expertise</title>
+<title>New interview schedule | Expertise</title>
 <!--
   EMAIL TEMPLATE (design only). Tables + inline styles on purpose: Gmail/Outlook ignore most CSS.
+  Same design as email.html (brand stripe, logo, Plus Jakarta Sans, red button, maroon footer).
   The backend replaces:
-    {{FIRST_NAME}}  -> applicant's first name
-    {{LINK}}        -> personal link to the opening page (opening.php?token=...)   (used twice)
-    {{YEAR}}        -> current year
+    {{FIRST_NAME}}      -> applicant's first name
+    {{DATE}}            -> the NEW date, e.g. Tuesday, October 21, 2026
+    {{TIME}}            -> the NEW time, e.g. 2:00 PM
+    {{INTERVIEW_TYPE}}  -> e.g. Face-to-face
+    {{LOCATION}}        -> interview venue
+    {{LINK}}            -> link to applicant/application-status.php   (used twice)
+    {{YEAR}}            -> current year
   Font: Plus Jakarta Sans, same as the system. It loads in Apple Mail, iOS Mail and most
   mobile apps; Gmail and Outlook fall back to Segoe UI / Arial, which is expected.
   The logo src is a relative path so this file previews in the browser. In the real email use
@@ -24,6 +29,7 @@
     .px { padding-left:24px !important; padding-right:24px !important; }
     .h1 { font-size:26px !important; }
     .btn a { display:block !important; }
+    .otp { font-size:30px !important; letter-spacing:8px !important; padding-left:8px !important; }
   }
 </style>
 </head>
@@ -31,7 +37,7 @@
 
 <!-- preheader (the preview text next to the subject line) -->
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f4f4f5;font-size:1px;line-height:1px;">
-    You've been shortlisted. Complete the screening to move on to the interview.
+    That date is not available, so we set a new schedule for your interview.
 </div>
 
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f4f5;">
@@ -44,66 +50,66 @@
 
         <!-- logo -->
         <tr><td class="px" align="left" style="padding:30px 44px 0 44px;">
-            <img src="assets/images/expertise.png" alt="Expertise" height="44" style="display:block;height:44px;width:auto;border:0;">
+            <img src="../../assets/images/expertise.png" alt="Expertise" height="44" style="display:block;height:44px;width:auto;border:0;">
         </td></tr>
 
         <!-- heading -->
         <tr><td class="px" style="padding:30px 44px 0 44px;">
-            <p style="margin:0 0 10px 0;font-size:13px;font-weight:700;letter-spacing:.3px;color:#d1122a;">Application update</p>
-            <h1 class="h1" style="margin:0;font-size:30px;line-height:1.25;font-weight:800;color:#1f1f23;">You've been shortlisted</h1>
+            <p style="margin:0 0 10px 0;font-size:13px;font-weight:700;letter-spacing:.3px;color:#d1122a;">Interview update</p>
+            <h1 class="h1" style="margin:0;font-size:30px;line-height:1.25;font-weight:800;color:#1f1f23;">We have a new schedule for you</h1>
         </td></tr>
 
         <!-- message -->
         <tr><td class="px" style="padding:22px 44px 0 44px;color:#3a3d44;font-size:15px;line-height:1.7;font-weight:500;">
             <p style="margin:0 0 14px 0;color:#1f1f23;font-weight:700;">Hi {{FIRST_NAME}},</p>
-            <p style="margin:0 0 14px 0;">Thank you for applying to <strong style="color:#1f1f23;">Expertise</strong>. After reviewing your application, we would like to move you forward to the screening stage.</p>
-            <p style="margin:0;">Please complete the two steps below. Once we have reviewed your responses, our team will contact you about the interview.</p>
+            <p style="margin:0;">Thank you for choosing a schedule. Unfortunately, that date and time is not available, so we set a new one for your interview.</p>
         </td></tr>
 
-        <!-- steps -->
-        <tr><td class="px" style="padding:26px 44px 0 44px;">
+        <tr><td class="px" style="padding:26px 44px 0 44px;"><p style="margin:0;font-size:13px;font-weight:700;color:#d1122a;">Your new schedule</p></td></tr>
+
+        <!-- schedule details -->
+        <tr><td class="px" style="padding:10px 44px 0 44px;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8f8f9;border:1px solid #e6e7ea;border-radius:12px;">
-                <tr><td style="padding:20px 22px 6px 22px;">
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-                        <td valign="top" style="padding-right:14px;">
-                            <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" valign="middle" width="30" height="30" style="width:30px;height:30px;border-radius:15px;background:#d1122a;color:#ffffff;font-size:13px;font-weight:800;line-height:30px;">1</td></tr></table>
-                        </td>
-                        <td valign="top">
-                            <p style="margin:0;font-size:15px;font-weight:700;color:#1f1f23;line-height:1.4;">Questionnaire</p>
-                            <p style="margin:2px 0 0 0;font-size:13.5px;font-weight:500;color:#5b5f66;line-height:1.55;">Answer a short set of questions about your experience and skills.</p>
-                        </td>
-                    </tr></table>
-                </td></tr>
-                <tr><td style="padding:14px 22px 20px 22px;">
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-                        <td valign="top" style="padding-right:14px;">
-                            <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" valign="middle" width="30" height="30" style="width:30px;height:30px;border-radius:15px;background:#d1122a;color:#ffffff;font-size:13px;font-weight:800;line-height:30px;">2</td></tr></table>
-                        </td>
-                        <td valign="top">
-                            <p style="margin:0;font-size:15px;font-weight:700;color:#1f1f23;line-height:1.4;">Video response</p>
-                            <p style="margin:2px 0 0 0;font-size:13.5px;font-weight:500;color:#5b5f66;line-height:1.55;">Upload your required video response.</p>
-                        </td>
-                    </tr></table>
-                </td></tr>
-                <tr><td style="padding:0 22px 18px 22px;">
-                    <p style="margin:0;padding-top:14px;border-top:1px solid #e6e7ea;font-size:13px;font-weight:600;color:#3a3d44;">Estimated time: 15&ndash;20 minutes</p>
+                <tr><td style="padding:10px 22px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                    <td style="padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;">Date</td>
+                    <td style="padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;">{{DATE}}</td>
+                </tr>
+                <tr>
+                    <td style="padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;border-top:1px solid #e6e7ea;">Time</td>
+                    <td style="padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;border-top:1px solid #e6e7ea;">{{TIME}}</td>
+                </tr>
+                <tr>
+                    <td style="padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;border-top:1px solid #e6e7ea;">Interview Type</td>
+                    <td style="padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;border-top:1px solid #e6e7ea;">{{INTERVIEW_TYPE}}</td>
+                </tr>
+                <tr>
+                    <td style="padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;border-top:1px solid #e6e7ea;">Location</td>
+                    <td style="padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;border-top:1px solid #e6e7ea;">{{LOCATION}}</td>
+                </tr>
+                    </table>
                 </td></tr>
             </table>
+        </td></tr>
+
+        <tr><td class="px" style="padding:26px 44px 0 44px;color:#3a3d44;font-size:13.5px;line-height:1.65;font-weight:500;">
+            <p style="margin:0 0 4px 0;font-weight:700;color:#1f1f23;">Does this not work for you?</p>
+            <p style="margin:0;">Please reply to our team and we will find another time. Please arrive 15 minutes early and bring a valid ID.</p>
         </td></tr>
 
         <!-- button -->
         <tr><td class="px btn" align="left" style="padding:28px 44px 0 44px;">
             <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
                 <td align="center" bgcolor="#d1122a" style="border-radius:8px;">
-                    <a href="{{LINK}}" target="_blank" style="display:inline-block;padding:15px 40px;font-family:'Plus Jakarta Sans','Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:8px;background:#d1122a;">Start screening</a>
+                    <a href="{{LINK}}" target="_blank" style="display:inline-block;padding:15px 40px;font-family:'Plus Jakarta Sans','Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:8px;background:#d1122a;">View my interview schedule</a>
                 </td>
             </tr></table>
         </td></tr>
 
-        <!-- before you begin -->
-        <tr><td class="px" style="padding:26px 44px 0 44px;color:#3a3d44;font-size:13.5px;line-height:1.65;font-weight:500;">
-            <p style="margin:0 0 4px 0;font-weight:700;color:#1f1f23;">Before you begin</p>
-            <p style="margin:0;">Use a stable internet connection and find a quiet, well-lit place for your video. This link is personal to you, so please do not share it.</p>
+        <tr><td class="px" style="padding:22px 44px 0 44px;color:#3a3d44;font-size:13.5px;line-height:1.65;font-weight:500;">
+            <p style="margin:0 0 4px 0;font-weight:700;color:#1f1f23;">Good to know</p>
+            <p style="margin:0;">The link opens your application status page. You will be asked to verify your email with a one-time code first.</p>
         </td></tr>
 
         <!-- fallback link -->

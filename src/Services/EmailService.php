@@ -4,13 +4,19 @@ class EmailService {
 
     private function templatePath(string $file): string
     {
-        // All email HTML templates live in the project root.
+        // All email HTML templates live in includes/emails/.
         $root = realpath(__DIR__ . '/../../');
-        $rootFile = $root ? $root . DIRECTORY_SEPARATOR . $file : __DIR__ . '/../../' . $file;
-        if (is_file($rootFile)) return $rootFile;
-        // Fallback: legacy hr/ copies (kept working until deleted).
-        $legacy = $root ? $root . DIRECTORY_SEPARATOR . 'hr' . DIRECTORY_SEPARATOR . $file : __DIR__ . '/../../hr/' . $file;
-        return $legacy;
+        $candidates = [];
+        if ($root) {
+            $candidates[] = $root . DIRECTORY_SEPARATOR . 'includes' . DIRECTORY_SEPARATOR . 'emails' . DIRECTORY_SEPARATOR . $file;
+            $candidates[] = $root . DIRECTORY_SEPARATOR . $file; // legacy: project root
+            $candidates[] = $root . DIRECTORY_SEPARATOR . 'hr' . DIRECTORY_SEPARATOR . $file; // legacy: hr/
+        }
+        $candidates[] = __DIR__ . '/../../includes/emails/' . $file;
+        foreach ($candidates as $path) {
+            if (is_file($path)) return $path;
+        }
+        return $candidates[0];
     }
 
     private function loadTemplate(string $file): string
@@ -18,11 +24,12 @@ class EmailService {
         $path = $this->templatePath($file);
         $html = is_file($path) ? file_get_contents($path) : false;
         if ($html === false || $html === '') {
-            die("Error: email template '{$file}' not found at project root.");
+            die("Error: email template '{$file}' not found in includes/emails/.");
         }
         // Browser preview uses a relative logo path; real emails need an absolute URL.
-        $html = str_replace('assets/images/expertise.png', self::LOGO_URL, $html);
+        $html = str_replace('../../assets/images/expertise.png', self::LOGO_URL, $html);
         $html = str_replace('../assets/images/expertise.png', self::LOGO_URL, $html);
+        $html = str_replace('assets/images/expertise.png', self::LOGO_URL, $html);
         $html = str_replace('../pic/expertise.png', self::LOGO_URL, $html);
         return $html;
     }
