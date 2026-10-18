@@ -57,8 +57,13 @@ echo "</form>";
 
 if (!empty($_FILES['cv']) && $_FILES['cv']['error'] === UPLOAD_ERR_OK) {
     try {
-        $url = $cloud->uploadCV($_FILES['cv']['tmp_name'], 'test');
+        // Flat ebsmi_cvs layout; returns ['url','public_id','name'].
+        $uploaded = $cloud->uploadCV($_FILES['cv']['tmp_name'], 'test', 'ebsmi_cvs', (string) ($_FILES['cv']['name'] ?? ''), (string) ($_FILES['cv']['type'] ?? ''));
+        $url = is_array($uploaded) ? ($uploaded['url'] ?? '') : (string) $uploaded;
         echo "SUCCESS! CV uploaded: <a href='" . htmlspecialchars($url) . "' target='_blank'>" . htmlspecialchars($url) . "</a><br>";
+        echo "Public ID: <code>" . htmlspecialchars(is_array($uploaded) ? ($uploaded['public_id'] ?? '') : '') . "</code> (flat inside ebsmi_cvs, no subfolder)<br>";
+        if (stripos($url, '/image/upload/') !== false) echo "Type: image (PDF previewable — Gemini can fetch this URL later)<br>";
+        else echo "Type: raw (DOC/DOCX — downloads instead of previewing)<br>";
     } catch (Exception $e) {
         echo "CV upload FAILED: " . htmlspecialchars($e->getMessage()) . "<br>";
     }

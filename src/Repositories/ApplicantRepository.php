@@ -30,10 +30,10 @@ function repo_generate_reference_code(PDO $pdo): string
 
 /**
  * Insert a new applicant (Add Applicant page).
- * CV upload + invitation email are intentionally NOT functional yet: cv_file_url stays NULL
- * and no email is sent. Returns the new row mapped for the frontend.
+ * Pass $cvUrl (Cloudinary secure URL) to store the uploaded CV; otherwise cv_file_url stays NULL.
+ * Invitation email is still not sent here. Returns the new row mapped for the frontend.
  */
-function repo_add_applicant(string $name, string $email, string $phone, PDO $pdo = null): array
+function repo_add_applicant(string $name, string $email, string $phone, PDO $pdo = null, ?string $cvUrl = null): array
 {
     $pdo = $pdo ?: db();
 
@@ -53,15 +53,15 @@ function repo_add_applicant(string $name, string $email, string $phone, PDO $pdo
     }
 
     $st = $pdo->prepare(
-        "INSERT INTO applicant (reference_code, secure_token, encoded_by_user_id, name, email, phone_number, status)" .
-        " VALUES (:ref, :tok, :enc, :name, :email, :phone, 'pending') RETURNING applicant_id"
+        "INSERT INTO applicant (reference_code, secure_token, encoded_by_user_id, name, email, phone_number, cv_file_url, status)" .
+        " VALUES (:ref, :tok, :enc, :name, :email, :phone, :cv, 'pending') RETURNING applicant_id"
     );
     $enc = null;
     if (session_status() === PHP_SESSION_ACTIVE && isset($_SESSION['user_id'])) $enc = (int) $_SESSION['user_id'];
-    $st->execute([':ref' => $ref, ':tok' => $token, ':enc' => $enc, ':name' => $name, ':email' => $email, ':phone' => $phone]);
+    $st->execute([':ref' => $ref, ':tok' => $token, ':enc' => $enc, ':name' => $name, ':email' => $email, ':phone' => $phone, ':cv' => $cvUrl]);
     $id = (int) $st->fetchColumn();
 
-    return ['id' => $id, 'name' => $name, 'email' => $email, 'contact' => $phone, 'status' => 'Pending', 'result' => null];
+    return ['id' => $id, 'name' => $name, 'email' => $email, 'contact' => $phone, 'status' => 'Pending', 'result' => null, 'cv_file_url' => $cvUrl];
 }
 
 function repo_find_applicant(int $id, PDO $pdo = null): ?array

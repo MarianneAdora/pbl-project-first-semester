@@ -13,9 +13,10 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {
 
 // Add Applicant writes straight to the database (PostgreSQL via PDO).
 // This page is also its own POST endpoint (replaces the old static-data.php call).
-// CV upload + invitation email are NOT functional yet: the CV is ignored, cv_file_url
-// stays NULL, and no email is sent. Only name / email / contact are stored.
+// CV upload goes to Cloudinary under the ebsmi_cvs folder and cv_file_url stores the secure URL.
+// Invitation email is still NOT sent: only name / email / contact (+ CV) are stored.
 require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
+require_once __DIR__ . '/../src/Services/CloudinaryService.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');
@@ -36,12 +37,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (is_array($json)) $input = $json;
     }
 
+    // ---- CV validation (optional file, PDF/DOC/DOCX, 5 MB max) ----
+    $cvUpload = isset($_FILES['cv']) && is_array($_FILES['cv']) ? $_FILES['cv'] : null;
+    if ($cvUpload && ($cvUpload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+        if (($cvUpload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            $respond(['status' => 'error', 'message' => 'The CV upload failed. Please try again.'], 422);
+        }
+        $cvExt = strtolower(pathinfo((string) ($cvUpload['name'] ?? ''), PATHINFO_EXTENSION));
+        if (!in_array($cvExt, ['pdf', 'doc', 'docx'], true)) {
+            $respond(['status' => 'error', 'message' => 'Upload a PDF, DOC or DOCX file.'], 422);
+        }
+        if (($cvUpload['size'] ?? 0) > 5 * 1024 * 1024) {
+            $respond(['status' => 'error', 'message' => 'The CV must be 5 MB or smaller.'], 422);
+        }
+        if (($cvUpload['size'] ?? 0) === 0) {
+            $respond(['status' => 'error', 'message' => 'This file is empty. Choose a different CV.'], 422);
+        }
+    } else {
+        $cvUpload = null; // no file chosen: CV stays optional
+    }
+
     try {
+        // 1. Insert first so the Cloudinary subfolder uses the real applicant id: ebsmi_cvs/{id}
         $applicant = repo_add_applicant(
             (string) ($input['name'] ?? ''),
             (string) ($input['email'] ?? ''),
             (string) ($input['contact'] ?? '')
         );
+
+        // 2. Upload the CV (if any) and save its URL on the row.
+        // Flat layout: ebsmi_cvs/cv-{id}-{filename} (no subfolders), PDF = previewable image type.
+        $cvUrl = null;
+        $cvName = null;
+        if ($cvUpload) {
+            try {
+                $cloud = new CloudinaryService();
+                $uploaded = $cloud->uploadCV(
+                    $cvUpload['tmp_name'],
+                    $applicant['id'],
+                    'ebsmi_cvs',
+                    (string) ($cvUpload['name'] ?? ''),
+                    (string) ($cvUpload['type'] ?? '')
+                );
+                $cvUrl = is_array($uploaded) ? ($uploaded['url'] ?? '') : (string) $uploaded;
+                $cvName = is_array($uploaded) ? ($uploaded['name'] ?? '') : (string) ($cvUpload['name'] ?? '');
+                if ($cvUrl === '') throw new Exception('Cloudinary returned an empty URL.');
+                $cvName = (string) ($cvUpload['name'] ?? '');
+            } catch (Throwable $e) {
+                error_log('addapplicants Cloudinary error: ' . $e->getMessage());
+                $respond(['status' => 'error', 'message' => 'Applicant saved, but the CV upload failed: ' . $e->getMessage() . ' (cv_file_url left empty)'], 502);
+            }
+            try {
+                $pdo = db();
+                $st = $pdo->prepare("UPDATE applicant SET cv_file_url = :url WHERE applicant_id = :id");
+                $st->execute([':url' => $cvUrl, ':id' => $applicant['id']]);
+            } catch (Throwable $e) {
+                error_log('addapplicants cv_file_url DB error: ' . $e->getMessage());
+            }
+            $applicant['cv_file_url'] = $cvUrl;
+            $applicant['cv_name'] = $cvName;
+        }
+
         // Fresh numbers so the page can update badges (same shape the old endpoint sent).
         $respond([
             'status' => 'success',
@@ -50,6 +106,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'completed_ids' => [],
             'archived' => count(repo_applicants_archived()),
             'email_sent' => false,
+            'cv_uploaded' => $cvUrl !== null,
+            'cv_url' => $cvUrl,
         ]);
     } catch (InvalidArgumentException $e) {
         $respond(['status' => 'error', 'message' => $e->getMessage()], 422);
@@ -259,7 +317,7 @@ try {
                     </div>
 
                     <div class="field" data-field="cv">
-                        <label for="cv">CV Upload <span class="opt">(Optional — disabled for now)</span></label>
+                        <label for="cv">CV Upload</label>
                         <div class="input-box file-box" id="fileBox">
                             <input type="file" id="cv" name="cv" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
                             <label for="cv" class="choose-btn">
@@ -289,7 +347,7 @@ try {
                     <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
                     <div>
                         <h4>Screening Invitation</h4>
-                        <p>Email invites are disabled for now — the applicant is saved to the database and will appear in the screening list.</p>
+                        <p>The applicant is saved to the database with their CV (uploaded to Cloudinary) and will appear in the screening list. Email invites are disabled for now.</p>
                     </div>
                 </div>
 

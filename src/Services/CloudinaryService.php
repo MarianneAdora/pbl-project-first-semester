@@ -18,26 +18,84 @@ class CloudinaryService {
     }
 
     /**
-     * Uploads a CV file (PDF/DOC/DOCX) to Cloudinary.
-     * @return string The secure URL of the uploaded file.
+     * Build a Cloudinary upload signature.
+     * IMPORTANT: Cloudinary expects the raw "key=value&..." string with NO URL-encoding
+     * (http_build_query encodes "/" as %2F, which produces an Invalid Signature error
+     * whenever the folder contains a slash, e.g. ebsmi_cvs/7).
      */
-    public function uploadCV($filePath, $applicantId = null) {
-        $timestamp = time();
-        $folder = "applicant_cvs/" . ($applicantId ?? 'unassigned');
-        
-        // 1. Generate Signature (Required by Cloudinary for secure uploads)
-        $params = ['folder' => $folder, 'timestamp' => $timestamp];
+    private function signParams(array $params): string
+    {
         ksort($params);
-        $signatureString = http_build_query($params) . $this->apiSecret;
-        $signature = sha1($signatureString);
+        $parts = [];
+        foreach ($params as $key => $value) {
+            $parts[] = $key . '=' . $value;
+        }
+        return sha1(implode('&', $parts) . $this->apiSecret);
+    }
 
-        // 2. Prepare POST request (Note: '/raw/upload' for CVs)
-        $url = "https://api.cloudinary.com/v1_1/{$this->cloudName}/raw/upload";
+    /**
+     * Uploads a CV file (PDF/DOC/DOCX) to Cloudinary.
+     * Layout: flat inside $folderBase (default 'ebsmi_cvs') — NO per-applicant subfolders.
+     * Filename: cv-{applicantId}-{original}, e.g. ebsmi_cvs/cv-9-resume.pdf
+     * (unique_filename=false, so re-uploading the same applicant's CV overwrites it).
+     * Type: resource_type=image, so PDFs are PREVIEWABLE in the dashboard AND can be
+     * fetched server-side later for Gemini text extraction (raw/ uploads download instead).
+     * Returns ['url', 'public_id', 'name'].
+     * @param string $filePath     Local temp path of the uploaded file.
+     * @param mixed $applicantId  Applicant id (used in the filename, NOT a subfolder).
+     * @param string $folderBase  Cloudinary folder (default 'ebsmi_cvs').
+     * @param string|null $originalName Original client filename (e.g. $_FILES['cv']['name']).
+     * @param string|null $mimeType     MIME type (auto-detected when omitted).
+     */
+    public function uploadCV($filePath, $applicantId = null, $folderBase = 'ebsmi_cvs', $originalName = null, $mimeType = null) {
+        $timestamp = time();
+        $folderBase = trim((string) $folderBase) !== '' ? trim((string) $folderBase) : 'ebsmi_cvs';
+        $folderBase = trim($folderBase, '/');
+
+        // Keep the real filename: strip any path, keep only safe chars, fall back to cv.pdf.
+        $originalName = basename(trim((string) ($originalName ?? '')));
+        if ($originalName === '' || $originalName === '.') $originalName = 'cv.pdf';
+        $safe = preg_replace('/[^A-Za-z0-9._-]+/', '-', $originalName);
+        $safe = trim($safe, '-.');
+        if ($safe === '') $safe = 'cv.pdf';
+        // Cloudinary public_id must not contain the extension when use_filename... instead we
+        // pass public_id explicitly: cv-{id}-{basename-without-ext}. Extension comes from the file.
+        $base = pathinfo($safe, PATHINFO_FILENAME);
+        $base = trim(preg_replace('/[^A-Za-z0-9_-]+/', '-', $base), '-');
+        if ($base === '') $base = 'cv';
+        $publicId = 'cv-' . ($applicantId ?? 'unassigned') . '-' . substr($base, 0, 60);
+
+        if (!$mimeType) {
+            $detected = function_exists('mime_content_type') ? @mime_content_type($filePath) : false;
+            $mimeType = $detected ?: 'application/octet-stream';
+        }
+
+        // 1. Generate Signature (must cover every signed param exactly as posted,
+        //    minus file / api_key / signature).
+        $signed = [
+            'folder' => $folderBase,
+            'public_id' => $publicId,
+            'timestamp' => $timestamp,
+            'unique_filename' => 'false',
+            'use_filename' => 'true',
+        ];
+        // PDFs go up as resource_type=image so they render inline (previewable);
+        // resource_type is part of the URL path, NOT a signed param.
+        $isPdf = strtolower(pathinfo($safe, PATHINFO_EXTENSION)) === 'pdf'
+            || stripos((string) $mimeType, 'pdf') !== false;
+        $signature = $this->signParams($signed);
+
+        // 2. Prepare POST request (image/upload for PDFs = previewable; raw/upload otherwise)
+        $resource = $isPdf ? 'image' : 'raw';
+        $url = "https://api.cloudinary.com/v1_1/{$this->cloudName}/{$resource}/upload";
         $postData = [
-            'file' => new CURLFile($filePath),
+            'file' => new CURLFile($filePath, $mimeType, $safe),
             'api_key' => $this->apiKey,
             'timestamp' => $timestamp,
-            'folder' => $folder,
+            'folder' => $folderBase,
+            'public_id' => $publicId,
+            'use_filename' => 'true',
+            'unique_filename' => 'false',
             'signature' => $signature
         ];
 
@@ -51,7 +109,11 @@ class CloudinaryService {
 
         if ($httpCode === 200) {
             $result = json_decode($response, true);
-            return $result['secure_url'];
+            return [
+                'url' => $result['secure_url'] ?? '',
+                'public_id' => $result['public_id'] ?? ($folderBase . '/' . $publicId),
+                'name' => $safe,
+            ];
         } else {
             throw new Exception("Cloudinary CV upload failed: " . $response);
         }
@@ -70,10 +132,7 @@ class CloudinaryService {
         $videoHash = hash_file('sha256', $filePath);
 
         // 2. Generate Signature
-        $params = ['folder' => $folder, 'timestamp' => $timestamp];
-        ksort($params);
-        $signatureString = http_build_query($params) . $this->apiSecret;
-        $signature = sha1($signatureString);
+        $signature = $this->signParams(['folder' => $folder, 'timestamp' => $timestamp]);
 
         // 3. Prepare POST request (Note: '/video/upload' for videos)
         $url = "https://api.cloudinary.com/v1_1/{$this->cloudName}/video/upload";

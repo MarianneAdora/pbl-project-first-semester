@@ -684,8 +684,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const sentModal = document.getElementById('sentModal');
     const discardModal = document.getElementById('discardModal');
 
-    // CV upload is disabled for now (backend ignores the file): don't block submit on it.
-    const CV_DISABLED = true;
+    // CV upload is enabled: the file is sent to addapplicants.php -> Cloudinary (ebsmi_cvs/{id}).
+    // Optional: validated client-side (PDF/DOC/DOCX, 5 MB max) and again on the server.
+    const CV_DISABLED = false;
     const MAX_CV = 5 * 1024 * 1024;
     const CV_TYPES = ['pdf', 'doc', 'docx'];
     let sending = false;
@@ -893,10 +894,10 @@ document.addEventListener('DOMContentLoaded', () => {
        listed at the top of opening.php (applicant_name, applicant_email). */
     /* Real request: saves the applicant through addapplicants.php (it is the endpoint too),
        so the Screening List, Dashboard cards and Recent Applicants all show the new person.
-       CV upload + invitation email are NOT functional yet: the CV file is not sent and no
-       email goes out; only name / email / contact are stored. */
+       The CV file (if chosen) is uploaded flat to ebsmi_cvs as cv-{id}-{filename}
+       (PDFs = previewable image type) and its URL is saved as cv_file_url.
+       Invitation email still not sent. */
     async function sendInvitation(formData) {
-        formData.delete('cv');   // CV upload disabled for now (backend ignores it)
         formData.delete('note'); // no notes column yet
         const res = await fetch('addapplicants.php', { method: 'POST', body: formData, credentials: 'same-origin' });
         let data;
