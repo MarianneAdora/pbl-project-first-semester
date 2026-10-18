@@ -40,6 +40,7 @@ require_once __DIR__ . '/../applicant/static-evaluation.php';   // the risk rubr
 const DETAILS_CV_DIR    = __DIR__ . '/data/cv';     // where Add Applicant keeps the uploaded CVs
 const DETAILS_COMPANY   = 'Expertise';
 const DETAILS_VENUE     = 'Expertise Office, BGC, Taguig';
+const DETAILS_LOGO_URL  = 'https://res.cloudinary.com/y0s0brvb/image/upload/v1791998232/expertise.png'; // email logo (absolute URL)
 
 // ---------------------------------------------------------------------------
 // Small helpers
@@ -656,6 +657,12 @@ function details_email(string $kind, array $a, array $iv): array
     }
 
     if ($template !== null) {
+        // Real emails need an absolute logo URL (email clients can't load relative paths).
+        $template = str_replace(
+            ['../../assets/images/expertise.png', '../assets/images/expertise.png', 'assets/images/expertise.png', '../pic/expertise.png'],
+            DETAILS_LOGO_URL,
+            $template
+        );
         $html = str_replace(
             ['{{FIRST_NAME}}', '{{DATE}}', '{{TIME}}', '{{INTERVIEW_TYPE}}', '{{LOCATION}}', '{{LINK}}', '{{YEAR}}'],
             [$first, $date, $time, $type, $venue, $link, $year],
