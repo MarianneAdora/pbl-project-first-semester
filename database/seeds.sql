@@ -48,4 +48,4 @@ INSERT INTO question_config (section, question_text, answer_type, passing_answer
 -- ============================================================
 -- This creates an applicant you can use to test your API endpoints and UI.
 INSERT INTO applicant (reference_code, secure_token, name, email, phone_number, status) VALUES 
-('APP-2026-0001', 'test-token-abc123', 'Clark Kent', 'marianneangelaa12@gmail.com', '09123456789', 'pending');
+('APP-2026-0001', 'test-token-abc123', 'Clark Kent', 'ebsmi.screening@gmail.com', '09123456789', 'pending');

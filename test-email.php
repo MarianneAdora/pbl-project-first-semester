@@ -2,5 +2,5 @@
 require_once 'src/Services/EmailService.php';
 
 $emailService = new EmailService();
-// REPLACE THIS WITH YOUR REAL PERSONAL EMAIL
-$emailService->sendTestEmail('marianneangelaa12@gmail.com'); 
+// Sender AND receiver: ebsmi.screening@gmail.com
+$emailService->sendTestEmail('ebsmi.screening@gmail.com'); 

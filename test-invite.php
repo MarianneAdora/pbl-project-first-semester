@@ -5,7 +5,7 @@ require_once 'src/Services/EmailService.php';
 $emailService = new EmailService();
 
 // Use Clark Kent's details from your database
-$toEmail = 'marianneangelaa12@gmail.com'; // CHANGE TO YOUR EMAIL
+$toEmail = 'ebsmi.screening@gmail.com'; // sender + receiver inbox
 $firstName = 'Clark';
 $secureToken = 'test-token-abc123'; // From your applicant table
 
