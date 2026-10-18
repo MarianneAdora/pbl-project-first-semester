@@ -13,13 +13,20 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {
 
 date_default_timezone_set('Asia/Manila');
 
-// Every number on this page comes from static-data.php (the one place for sample data).
-// BACKEND: when the database is ready, only static-data.php changes.
+// Numbers on this page: summary cards + chart are LIVE from the applicant table
+// (repo_dashboard_stats); Recent Applicants is live too. The rest still uses static-data.php sample data.
 require_once __DIR__ . '/static-data.php';
 $all_applicants = static_applicants();      // active applicants only (archived ones are not counted)
 
-// Sample Dynamic Data (Replace with MySQL DB queries)
-$stats = static_stats($all_applicants);
+// LIVE DATA: summary cards + Passed/Rejected chart come from the applicant table
+// (repo_dashboard_stats: GROUP BY status/result, mapped to Pending/In Progress/Completed + Passed/Rejected).
+// Falls back to the sample list when the DB is unreachable, so the page never breaks.
+require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
+try {
+    $stats = repo_dashboard_stats();
+} catch (Throwable $e) {
+    $stats = static_stats($all_applicants);
+}
 /* Original hard-coded numbers (kept for reference):
 $stats = [
     'total'       => 35,
