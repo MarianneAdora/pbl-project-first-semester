@@ -26,6 +26,13 @@ $archive_days = 30;
 // Keep these keys: id, name, email, contact, status, result.
 //   status: 'Pending' | 'In Progress' | 'Completed' (mapped from the DB pipeline)
 //   result: 'Passed' | 'Rejected' | null (null = no result yet)
+// Anything archived longer than $archive_days is purged for good first, so the
+// "stays here for 30 days before they are permanently deleted" promise holds.
+try {
+    repo_purge_expired_applicants($archive_days);
+} catch (Throwable $e) {
+    error_log('archive purge-expired DB error: ' . $e->getMessage());
+}
 try {
     $applicants = repo_applicants_archived();
 } catch (Throwable $e) {

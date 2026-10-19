@@ -1,7 +1,7 @@
 <?php
-// hr/archive-action.php — shared POST endpoint for Screening List Delete / Archive Restore.
-// Body: JSON { action: 'archive' | 'restore', ids: [int, ...] }
-// Archive = soft-delete (deleted_at = NOW()); Restore clears it. No purge yet.
+// hr/archive-action.php — shared POST endpoint for Screening List Delete / Archive Restore / Archive Delete forever.
+// Body: JSON { action: 'archive' | 'restore' | 'purge', ids: [int, ...] }
+// Archive = soft-delete (deleted_at = NOW()); Restore clears it; Purge = hard DELETE (only archived rows).
 
 session_start();
 header('Content-Type: application/json');
@@ -24,10 +24,18 @@ $action = (string) ($input['action'] ?? '');
 $ids = array_map('intval', (array) ($input['ids'] ?? []));
 
 try {
+    // Keep the 30-day promise: anything archived too long is gone for good first.
+    try { repo_purge_expired_applicants(30); } catch (Throwable $ignored) { /* page still works */ }
+
     if ($action === 'archive') {
         $n = repo_archive_applicants($ids);
     } elseif ($action === 'restore') {
         $n = repo_restore_applicants($ids);
+    } elseif ($action === 'purge') {
+        $n = repo_purge_applicants($ids);
+        if ($n <= 0 && count($ids) > 0) {
+            $respond(['status' => 'error', 'message' => 'Those applicants were already removed from the Archive.'], 404);
+        }
     } else {
         $respond(['status' => 'error', 'message' => 'Unknown action.'], 400);
     }

@@ -115,6 +115,41 @@ function repo_restore_applicants(array $ids, PDO $pdo = null): int
     return $st->rowCount();
 }
 
+/**
+ * Delete forever: permanently removes ARCHIVED applicants (deleted_at IS NOT NULL).
+ * Only archived rows are deleted — active Screening List rows are never touched,
+ * so an applicant must be archived first. Child rows (otp, response, schedule,
+ * score via response) are removed automatically by ON DELETE CASCADE.
+ * Returns number of rows actually deleted.
+ */
+function repo_purge_applicants(array $ids, PDO $pdo = null): int
+{
+    $pdo = $pdo ?: db();
+    $ids = array_values(array_unique(array_map('intval', $ids)));
+    $ids = array_filter($ids, fn($i) => $i > 0);
+    if (!$ids) return 0;
+    $ph = implode(',', array_fill(0, count($ids), '?'));
+    $st = $pdo->prepare("DELETE FROM applicant WHERE applicant_id IN ($ph) AND deleted_at IS NOT NULL");
+    $st->execute($ids);
+    return $st->rowCount();
+}
+
+/**
+ * Auto-expiry: permanently removes applicants archived longer than $days days.
+ * Runs on the Archive page load and after every archive-action call, so the
+ * "stays here for 30 days before they are permanently deleted" promise holds.
+ * Returns number of rows removed.
+ */
+function repo_purge_expired_applicants(int $days = 30, PDO $pdo = null): int
+{
+    $pdo = $pdo ?: db();
+    $days = max(1, $days);
+    $st = $pdo->prepare("DELETE FROM applicant WHERE deleted_at IS NOT NULL AND deleted_at < NOW() - (:days || ' days')::INTERVAL");
+    $st->bindValue(':days', (string) $days, PDO::PARAM_STR);
+    $st->execute();
+    return $st->rowCount();
+}
+
 function repo_applicants_archived(PDO $pdo = null): array
 {
     $pdo = $pdo ?: db();

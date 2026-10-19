@@ -156,9 +156,10 @@ window.HR = (function () {
     }
 
     // ---- Server link (archive-action.php) -----------------------------------------------------
-    // The server is the truth: Delete sets deleted_at (Archive), Restore clears it.
-    // Every HR page prints window.HR_SERVER_ARCHIVE before this file; the browser keys below
-    // are rewritten from it. Purge (delete forever) is not wired yet.
+    // The server is the truth: Delete sets deleted_at (Archive), Restore clears it,
+    // Delete forever hard-deletes archived rows. Every HR page prints
+    // window.HR_SERVER_ARCHIVE before this file; the browser keys below
+    // are rewritten from it.
     const SERVER_API = 'archive-action.php';      // same folder as the HR pages
 
     function syncArchiveFromServer() {
@@ -1822,11 +1823,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function purgeIds(ids) {
-        // Delete-forever is NOT wired to the DB yet: tell HR instead of failing silently.
-        HR.toast('Delete forever is not available yet. Applicants stay in the Archive.', { error: true, duration: 5000 });
-        busy = false;
-        updateSelectionUi();
-        return;
         if (!ids.length || busy) return;
         busy = true;
         updateSelectionUi();
