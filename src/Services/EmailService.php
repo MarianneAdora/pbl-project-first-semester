@@ -1,7 +1,5 @@
 <?php
 class EmailService {
-    private const LOGO_URL = 'https://res.cloudinary.com/y0s0brvb/image/upload/v1791998232/expertise.png';
-
     private function templatePath(string $file): string
     {
         // All email HTML templates live in includes/emails/.
@@ -26,11 +24,8 @@ class EmailService {
         if ($html === false || $html === '') {
             die("Error: email template '{$file}' not found in includes/emails/.");
         }
-        // Browser preview uses a relative logo path; real emails need an absolute URL.
-        $html = str_replace('../../assets/images/expertise.png', self::LOGO_URL, $html);
-        $html = str_replace('../assets/images/expertise.png', self::LOGO_URL, $html);
-        $html = str_replace('assets/images/expertise.png', self::LOGO_URL, $html);
-        $html = str_replace('../pic/expertise.png', self::LOGO_URL, $html);
+        // Template keeps its local logo path (assets/images/expertise.png) for both
+        // browser preview and email sending — no Cloudinary swap anymore.
         return $html;
     }
 
