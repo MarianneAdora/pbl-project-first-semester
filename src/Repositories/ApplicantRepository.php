@@ -61,7 +61,7 @@ function repo_add_applicant(string $name, string $email, string $phone, PDO $pdo
     $st->execute([':ref' => $ref, ':tok' => $token, ':enc' => $enc, ':name' => $name, ':email' => $email, ':phone' => $phone, ':cv' => $cvUrl]);
     $id = (int) $st->fetchColumn();
 
-    return ['id' => $id, 'name' => $name, 'email' => $email, 'contact' => $phone, 'status' => 'Pending', 'result' => null, 'cv_file_url' => $cvUrl];
+    return ['id' => $id, 'name' => $name, 'email' => $email, 'contact' => $phone, 'status' => 'Pending', 'result' => null, 'cv_file_url' => $cvUrl, 'secure_token' => $token];
 }
 
 function repo_find_applicant(int $id, PDO $pdo = null): ?array

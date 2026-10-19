@@ -14,9 +14,10 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {
 // Add Applicant writes straight to the database (PostgreSQL via PDO).
 // This page is also its own POST endpoint (replaces the old static-data.php call).
 // CV upload goes to Cloudinary under the ebsmi_cvs folder and cv_file_url stores the secure URL.
-// Invitation email is still NOT sent: only name / email / contact (+ CV) are stored.
+// After saving, a shortlist invite email is sent to the applicant's email address.
 require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
 require_once __DIR__ . '/../src/Services/CloudinaryService.php';
+require_once __DIR__ . '/../src/Services/EmailService.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');
@@ -127,6 +128,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $applicant['cv_name'] = $cvName;
         }
 
+        // 3. Send shortlist invite email to the applicant's email (extracted from CV or typed in).
+        $emailSent = false;
+        try {
+            $emailService = new EmailService();
+            $emailSent = $emailService->sendInviteEmail(
+                (string) ($applicant['email'] ?? ''),
+                (string) ($applicant['name'] ?? ''),
+                (string) ($applicant['secure_token'] ?? '')
+            );
+        } catch (Throwable $e) {
+            error_log('addapplicants invite email error: ' . $e->getMessage());
+            $emailSent = false;
+        }
+
         // Fresh numbers so the page can update badges (same shape the old endpoint sent).
         $respond([
             'status' => 'success',
@@ -134,7 +149,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'stats' => repo_dashboard_stats(),
             'completed_ids' => [],
             'archived' => count(repo_applicants_archived()),
-            'email_sent' => false,
+            'email_sent' => $emailSent,
             'cv_uploaded' => $cvUrl !== null,
             'cv_url' => $cvUrl,
         ]);
