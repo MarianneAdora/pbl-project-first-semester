@@ -37,6 +37,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (is_array($json)) $input = $json;
     }
 
+    // ---- CV autofill: POST addapplicants.php with action=parse_cv + cv file ----
+    // Returns { status, parsed: {name, email, contact} } WITHOUT saving anything.
+    if (($input['action'] ?? '') === 'parse_cv') {
+        $cv = isset($_FILES['cv']) && is_array($_FILES['cv']) ? $_FILES['cv'] : null;
+        if (!$cv || ($cv['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            $respond(['status' => 'error', 'message' => 'Choose a CV file first.'], 422);
+        }
+        $ext = strtolower(pathinfo((string) ($cv['name'] ?? ''), PATHINFO_EXTENSION));
+        if (!in_array($ext, ['pdf', 'doc', 'docx', 'txt'], true)) {
+            $respond(['status' => 'error', 'message' => 'Upload a PDF, DOC or DOCX file.'], 422);
+        }
+        if (($cv['size'] ?? 0) > 5 * 1024 * 1024) {
+            $respond(['status' => 'error', 'message' => 'The CV must be 5 MB or smaller.'], 422);
+        }
+        try {
+            require_once __DIR__ . '/../src/Services/CvParserService.php';
+            $parser = new CvParserService();
+            $parsed = $parser->parseFile($cv['tmp_name'], (string) ($cv['name'] ?? ''), (string) ($cv['type'] ?? ''));
+            $respond(['status' => 'success', 'parsed' => [
+                'name' => (string) ($parsed['name'] ?? ''),
+                'email' => (string) ($parsed['email'] ?? ''),
+                'contact' => (string) ($parsed['contact'] ?? ''),
+            ]]);
+        } catch (Throwable $e) {
+            error_log('addapplicants parse_cv error: ' . $e->getMessage());
+            $respond(['status' => 'error', 'message' => 'Could not read that CV: ' . $e->getMessage()], 500);
+        }
+    }
+
     // ---- CV validation (optional file, PDF/DOC/DOCX, 5 MB max) ----
     $cvUpload = isset($_FILES['cv']) && is_array($_FILES['cv']) ? $_FILES['cv'] : null;
     if ($cvUpload && ($cvUpload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
@@ -329,6 +358,7 @@ try {
                                 <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
                             </button>
                         </div>
+                        <p class="cv-autofill" id="cvAutofill" role="status" aria-live="polite"></p>
                         <p class="field-error" role="alert"></p>
                     </div>
 

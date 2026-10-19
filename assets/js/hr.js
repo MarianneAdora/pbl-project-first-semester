@@ -816,7 +816,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     fileInput.addEventListener('change', () => {
         showFile();
-        if (!fileInput.files[0]) { setError('cv', ''); return; }
+        if (!fileInput.files[0]) { setError('cv', ''); setAutofill(''); return; }
         const ok = validateField('cv', true);          // wrong type / too big: show why
         if (!ok) {
             // drop the unusable file so the box is empty again, but keep the message visible
@@ -824,10 +824,61 @@ document.addEventListener('DOMContentLoaded', () => {
             fileInput.value = '';
             showFile();
             setError('cv', msg, false);
+            return;
         }
+        parseCvAutofill(fileInput.files[0]);           // valid file: read name/email/contact into the form
     });
 
-    fileRemove.addEventListener('click', () => { clearFile(); setError('cv', ''); });
+    fileRemove.addEventListener('click', () => { clearFile(); setError('cv', ''); setAutofill(''); });
+
+    /* ---------- CV autofill: Gemini reads the CV, fills name / email / contact ---------- */
+    const cvAutofill = document.getElementById('cvAutofill');
+    let cvParsing = false;
+
+    function setAutofill(message, isError) {
+        if (!cvAutofill) return;
+        cvAutofill.textContent = message || '';
+        cvAutofill.classList.toggle('is-error', !!isError);
+        cvAutofill.classList.toggle('is-loading', message === 'Reading CV…');
+    }
+
+    function fillField(name, value) {
+        value = (value || '').trim();
+        if (!value) return false;
+        const input = form.elements[name];
+        if (!input) return false;
+        input.value = value;
+        touched.add(name);
+        validateField(name, false);
+        fieldOf(name).classList.add('autofilled');
+        setTimeout(() => fieldOf(name).classList.remove('autofilled'), 2500);
+        return true;
+    }
+
+    async function parseCvAutofill(file) {
+        if (cvParsing) return;
+        cvParsing = true;
+        setAutofill('Reading CV…');
+        try {
+            const fd = new FormData();
+            fd.append('action', 'parse_cv');
+            fd.append('cv', file, file.name);
+            const res = await fetch('addapplicants.php', { method: 'POST', body: fd, credentials: 'same-origin' });
+            let data;
+            try { data = await res.json(); }
+            catch (e) { throw new Error('The server did not answer correctly. Please type the details manually.'); }
+            if (data.status !== 'success' || !data.parsed) throw new Error(data.message || 'Could not read that CV. Please type the details manually.');
+            const filled = ['name', 'email', 'contact'].filter(n => fillField(n, data.parsed[n]));
+            setAutofill(
+                filled.length ? 'Details filled from CV — please review before sending.' : 'Could not find contact details in this CV. Please type them manually.',
+                !filled.length
+            );
+        } catch (err) {
+            setAutofill(err.message || 'Could not read that CV. Please type the details manually.', true);
+        } finally {
+            cvParsing = false;
+        }
+    }
 
     ['dragenter', 'dragover'].forEach(type => fileBox.addEventListener(type, (e) => {
         e.preventDefault();

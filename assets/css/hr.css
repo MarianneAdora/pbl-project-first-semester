@@ -1107,6 +1107,35 @@ html.js.is-ready.is-leaving .reveal {
 :where(html[data-page="addapplicants"]) .file-remove:hover { background: #f1d9dc; transform: scale(1.12); }
 :where(html[data-page="addapplicants"]) .file-remove:hover svg { fill: var(--red); }
 
+/* ---------- CV autofill status + filled-field flash ---------- */
+:where(html[data-page="addapplicants"]) .cv-autofill {
+    display: none;
+    margin: 8px 2px 0 2px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1a7f37;
+}
+:where(html[data-page="addapplicants"]) .cv-autofill:not(:empty) { display: block; }
+:where(html[data-page="addapplicants"]) .cv-autofill.is-error { color: var(--red); }
+:where(html[data-page="addapplicants"]) .cv-autofill.is-loading { color: var(--ink-soft); }
+:where(html[data-page="addapplicants"]) .cv-autofill.is-loading::after {
+    content: '';
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-left: 8px;
+    vertical-align: -2px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+:where(html[data-page="addapplicants"]) .field.autofilled .input-box {
+    border-color: #1a7f37;
+    box-shadow: 0 0 0 3px rgba(26, 127, 55, 0.15);
+    transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
 /* ---------- Info box ---------- */
 :where(html[data-page="addapplicants"]) .info-box {
     display: flex;
