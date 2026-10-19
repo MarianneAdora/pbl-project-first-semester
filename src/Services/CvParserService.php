@@ -30,10 +30,14 @@ class CvParserService {
         } catch (Exception $e) {
             $ai = [];
         }
+        $name  = $this->pick($ai['name'] ?? '', $fallback['name'] ?? '');
+        $email = $this->pick($ai['email'] ?? '', $fallback['email'] ?? '');
+        $phone = $this->pick($ai['contact'] ?? '', $fallback['contact'] ?? '');
+
         return [
-            'name'     => $this->pick($ai['name'] ?? '', $fallback['name'] ?? ''),
-            'email'    => $this->pick($ai['email'] ?? '', $fallback['email'] ?? ''),
-            'contact'  => $this->pick($ai['contact'] ?? '', $fallback['contact'] ?? ''),
+            'name'     => $this->normalizeName($name),
+            'email'    => strtolower(trim($email)),
+            'contact'  => $this->normalizePhone($phone),
             'raw_text' => mb_substr($text, 0, 20000),
         ];
     }
@@ -98,5 +102,103 @@ class CvParserService {
         $ai = trim((string) $ai);
         $fallback = trim((string) $fallback);
         return $ai !== '' ? $ai : $fallback;
+    }
+
+    /** Normalize a person's name: title-case with initials/suffixes preserved correctly. */
+    private function normalizeName(string $name): string {
+        $name = trim((string) $name);
+        if ($name === '') return '';
+
+        // Suffixes that should keep their case/format (Jr, Sr, II, III, IV, etc.)
+        $suffixes = ['jr', 'sr', 'ii', 'iii', 'iv', 'v', 'vi', 'jr.', 'sr.'];
+
+        // Particles that stay lowercase unless at the start (de, la, van, von, mc, mac, etc.)
+        $lowercase_particles = ['de', 'del', 'di', 'du', 'la', 'le', 'van', 'von', 'mc', 'mac', 'o\'', 'd\'', 'l\''];
+
+        // Split into words, keeping punctuation attached to the word for suffix detection
+        $words = preg_split('/\s+/', $name);
+        $result = [];
+        $count = count($words);
+
+        foreach ($words as $i => $word) {
+            $lower = strtolower($word);
+            $isLast = ($i === $count - 1);
+            $isFirst = ($i === 0);
+
+            // Suffix detection (last word matches a known suffix)
+            if ($isLast && in_array($lower, $suffixes, true)) {
+                // Preserve Roman numerals uppercase, title-case Jr/Sr
+                if (preg_match('/^[ivxlcdm]+$/i', $lower) && $lower !== 'jr' && $lower !== 'sr') {
+                    $result[] = strtoupper($word);
+                } else {
+                    $result[] = ucfirst(strtolower($word)); // Jr, Sr
+                }
+                continue;
+            }
+
+            // Initials: single letter with optional period (A., J.D., etc.)
+            if (preg_match('/^[A-Z]\.?$/', $word) || preg_match('/^[A-Za-z]\.$/', $word)) {
+                $result[] = strtoupper(preg_replace('/\.$/', '', $word)) . '.';
+                continue;
+            }
+
+            // Double initials like J.D. or A.B. (letters with periods, no spaces)
+            if (preg_match('/^[A-Z]\.[A-Z]\.?$/', $word)) {
+                $result[] = strtoupper($word);
+                continue;
+            }
+
+            // Lowercase particles (stay lowercase unless first word)
+            if (in_array($lower, $lowercase_particles, true) && !$isFirst) {
+                $result[] = $lower;
+                continue;
+            }
+
+            // Everything else: title-case (first letter uppercase, rest lowercase)
+            $result[] = ucfirst(strtolower($word));
+        }
+
+        return implode(' ', $result);
+    }
+
+    /** Normalize Philippine phone numbers: +63 -> 09, strip spaces/dashes/parens. */
+    private function normalizePhone(string $phone): string {
+        $phone = trim((string) $phone);
+        if ($phone === '') return '';
+
+        // Strip everything except digits and leading +
+        $digits = preg_replace('/[^\d+]/', '', $phone);
+
+        // If it starts with +63 or 63, convert to 09 format
+        if (preg_match('/^\+?63(\d+)$/', $digits, $m)) {
+            $rest = $m[1];
+            // Philippine mobile: after 63 comes 9xx..., convert to 09xx...
+            if (preg_match('/^9\d{9}$/', $rest)) {
+                return '0' . $rest; // 639123456789 -> 09123456789
+            }
+            // Landline: 632xxxxxxx -> 02xxxxxxx
+            if (preg_match('/^2\d{7,8}$/', $rest)) {
+                return '0' . $rest;
+            }
+            return '0' . $rest;
+        }
+
+        // Already local format starting with 09
+        if (preg_match('/^09\d{9}$/', $digits)) {
+            return $digits;
+        }
+
+        // Local format starting with 0 (landline or mobile)
+        if (preg_match('/^0\d{7,10}$/', $digits)) {
+            return $digits;
+        }
+
+        // Just digits, 10-11 digits starting with 9 (assume mobile, prepend 0)
+        if (preg_match('/^9\d{9}$/', $digits)) {
+            return '0' . $digits;
+        }
+
+        // Fallback: return cleaned digits as-is
+        return $digits;
     }
 }
