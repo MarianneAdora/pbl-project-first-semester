@@ -24,10 +24,18 @@ class EmailService {
         if ($html === false || $html === '') {
             die("Error: email template '{$file}' not found in includes/emails/.");
         }
-        // Template keeps its local logo path (assets/images/expertise.png) for both
-        // browser preview and email sending — no Cloudinary swap anymore.
+        // Swap relative logo paths to the Cloudinary URL so the logo displays in email clients.
+        $html = str_replace(
+            ['../../assets/images/expertise.png', '../assets/images/expertise.png',
+             'assets/images/expertise.png', '../pic/expertise.png'],
+            self::LOGO_URL,
+            $html
+        );
         return $html;
     }
+
+    // Cloudinary logo URL used in sent emails (relative paths don't work in email clients).
+    private const LOGO_URL = 'https://res.cloudinary.com/y0s0brvb/image/upload/v1792442818/expertise.png';
 
     private function brevoSend(array $data, bool $echoError = true): bool
     {
