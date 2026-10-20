@@ -21,7 +21,6 @@ CREATE TABLE applicant (
     email VARCHAR(255) NOT NULL,
     phone_number VARCHAR(20),
     cv_file_url VARCHAR(512),
-    parsed_cv_json JSONB,               
     device_fingerprint VARCHAR(255),
     ip_address VARCHAR(45),
     status VARCHAR(20) NOT NULL DEFAULT 'pending'
