@@ -23,16 +23,23 @@ if ($requireVerification) {
 }
 
 // ---- Questions --------------------------------------------------------------
-// The questions are edited by HR, so they live in applicant/static-applicant.php for now (one place, like the
-// applicants in hr/static-data.php). BACKEND: replace static_questionnaire() with a query on the questions table.
+// Served from the database (question_config via AdminRepository) so Admin edits
+// show up here. Falls back to the static list when the DB is unreachable.
 require_once __DIR__ . '/static-applicant.php';
-$questions = static_questionnaire();
+try {
+    require_once __DIR__ . '/../src/Repositories/AdminRepository.php';
+    $questions = db_questions_for_applicant();
+    if (!$questions) $questions = static_questionnaire();
+} catch (Throwable $e) {
+    error_log('questionnaire DB error: ' . $e->getMessage());
+    $questions = static_questionnaire();
+}
 
 // What the scripts need (printed as JSON below)
 $screening = [
     'questions' => $questions,
-    'endpoint'  => 'static-applicant.php',        // sample server: moves the applicant to "In Progress" in the HR lists
-    'session'   => substr(sha1(session_id()), 0, 16),   // lets the browser forget old answers when a new applicant starts
+    'endpoint'  => '../api/submit-response.php',
+    'session'   => substr(sha1(session_id()), 0, 16),
     'live'      => $requireVerification,
     'nextPage'  => $nextPage,
     'backPage'  => $backPage

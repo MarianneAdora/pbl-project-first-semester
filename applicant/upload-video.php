@@ -9,10 +9,8 @@ $requireVerification = true;      // TODO: keep true in production
 $nextPage = 'application-status.php';
 $backPage = 'questionnaire.php';
 
-// Upload while testing: true = the progress bar is pretend (no server needed).
-// BACKEND: set to false once api/upload-file.php (Cloudinary) answers; the real upload code is already
-// in upload-video.js and sends the video to $uploadUrl.
-$simulateUpload = true;           // TODO: set to false when the backend upload exists
+// Real upload: api/upload-file.php (Cloudinary, folder shortlist_applicant_videos).
+$simulateUpload = false;
 $uploadUrl      = '../api/upload-file.php';
 
 // Stepper (same as the other applicant pages): 0 = Verification, 1 = Instructions, 2 = Questionnaires, 3 = Video, 4 = Submit
@@ -28,17 +26,23 @@ if ($requireVerification) {
     if (!empty($_SESSION['screening_submitted'])) { header('Location: application-status.php'); exit; }   // already sent: no second try
 }
 
-// ---- Video rules + questions (static-data.php for now, the database later) -----
+// ---- Video rules + questions (DB first, static fallback) -----
 require_once __DIR__ . '/static-applicant.php';
-$video     = static_video_rules();      // max_seconds, max_mb, formats
-$questions = static_questionnaire();    // only used to check the answers are all there
-
+$video = static_video_rules();
+try {
+    require_once __DIR__ . '/../src/Repositories/AdminRepository.php';
+    $questions = db_questions_for_applicant();
+    if (!$questions) $questions = static_questionnaire();
+} catch (Throwable $e) {
+    error_log('upload-video DB error: ' . $e->getMessage());
+    $questions = static_questionnaire();
+}
 $formatsText = strtoupper(implode(', ', $video['formats']));
 
 $screening = [
     'questions'      => $questions,
     'video'          => $video,
-    'endpoint'       => 'static-applicant.php',
+    'endpoint'       => '../api/submit-response.php',
     'session'        => substr(sha1(session_id()), 0, 16),
     'live'           => $requireVerification,
     'nextPage'       => $nextPage,

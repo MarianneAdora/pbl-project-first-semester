@@ -2,17 +2,45 @@
 session_start();
 
 // ---- Applicant identity -------------------------------------------------------
-// BACKEND: the email link opens this page (opening.php?token=...). Look the token up and set these
-// two session values BEFORE the page renders. Nothing below needs to change, it only reads them:
-//     $_SESSION['applicant_name']  = 'Juan Dela Cruz';
-//     $_SESSION['applicant_email'] = 'juandelacruz@gmail.com';   // verify-otp.php reads this one
-//
-// FRONT-END TESTING ONLY: while that does not exist, open
+// The email link opens this page (opening.php?token=...). The token is looked up
+// in the applicant table and these session values are set BEFORE rendering:
+//     $_SESSION['applicant_id']     the applicant_id (drives OTP + submissions)
+//     $_SESSION['applicant_token']  the secure_token from the link
+//     $_SESSION['applicant_name']   full name (this page's greeting)
+//     $_SESSION['applicant_email']  verify-otp.php reads this one
+// A new token resets any previous applicant's screening state (OTP, progress).
+require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
+
+$tokenParam = trim((string) ($_GET['token'] ?? ''));
+if ($tokenParam !== '') {
+    try {
+        $found = repo_find_applicant_by_token($tokenParam);
+    } catch (Throwable $e) {
+        error_log('opening token DB error: ' . $e->getMessage());
+        $found = null;
+    }
+    if ($found) {
+        $isNewApplicant = empty($_SESSION['applicant_token'])
+            || $_SESSION['applicant_token'] !== (string) ($found['secure_token'] ?? '');
+        if ($isNewApplicant) {
+            foreach (['otp_verified', 'otp', 'otp_expires', 'otp_sent_at', 'otp_attempts', 'otp_locked_until',
+                      'otp_failed_total', 'otp_request_times', 'otp_was_locked',
+                      'screening_submitted', 'screening_reference', 'screening_result', 'interview'] as $k) {
+                unset($_SESSION[$k]);
+            }
+        }
+        $_SESSION['applicant_id']    = (int) $found['id'];
+        $_SESSION['applicant_token'] = (string) ($found['secure_token'] ?? '');
+        $_SESSION['applicant_name']  = (string) $found['name'];
+        $_SESSION['applicant_email'] = (string) $found['email'];
+    }
+}
+
+// FRONT-END TESTING ONLY: while no email link exists, open
 //     opening.php?name=Juan Dela Cruz&email=juan@gmail.com
 // and both values are kept in the session, so the OTP page shows the email too.
-// TODO: set $devMode to false once the backend sets the session.
-$devMode = true;
-if ($devMode) {
+// (A real token link above always wins over these.)
+if ($tokenParam === '') {
     if (!empty($_GET['name']))  $_SESSION['applicant_name']  = trim((string) $_GET['name']);
     if (!empty($_GET['email'])) $_SESSION['applicant_email'] = trim((string) $_GET['email']);
 }

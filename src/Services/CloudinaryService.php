@@ -121,18 +121,32 @@ class CloudinaryService {
 
     /**
      * Uploads an applicant video to Cloudinary and returns its URL + SHA-256 hash.
+     * Layout: flat inside $folderBase (default 'shortlist_applicant_videos') — NO per-applicant subfolders.
+     * Filename: video-{applicantId}-{timestamp}, e.g. shortlist_applicant_videos/video-9-1729...
+     * (unique_filename=false + explicit public_id, so retries overwrite instead of duplicating).
      * @return array ['success' => bool, 'url' => string, 'hash' => string]
      */
-    public function uploadVideo($filePath, $applicantId = null) {
+    public function uploadVideo($filePath, $applicantId = null, $folderBase = 'shortlist_applicant_videos') {
         $timestamp = time();
-        $folder = "applicant_videos/" . ($applicantId ?? 'unassigned');
-        
+        $folderBase = trim((string) $folderBase) !== '' ? trim((string) $folderBase) : 'shortlist_applicant_videos';
+        $folderBase = trim($folderBase, '/');
+
         // 1. Generate a SHA-256 hash BEFORE uploading (for risk scoring)
         // This is required for your rubric's "reused video" check.
         $videoHash = hash_file('sha256', $filePath);
 
-        // 2. Generate Signature
-        $signature = $this->signParams(['folder' => $folder, 'timestamp' => $timestamp]);
+        // Flat layout: one public_id per applicant, retries overwrite.
+        $publicId = 'video-' . ($applicantId ?? 'unassigned') . '-' . $timestamp;
+
+        // 2. Generate Signature (folder + public_id + timestamp + overwrite, raw key=value string)
+        $signed = [
+            'folder' => $folderBase,
+            'overwrite' => 'true',
+            'public_id' => $publicId,
+            'timestamp' => $timestamp,
+            'unique_filename' => 'false',
+        ];
+        $signature = $this->signParams($signed);
 
         // 3. Prepare POST request (Note: '/video/upload' for videos)
         $url = "https://api.cloudinary.com/v1_1/{$this->cloudName}/video/upload";
@@ -140,7 +154,10 @@ class CloudinaryService {
             'file' => new CURLFile($filePath),
             'api_key' => $this->apiKey,
             'timestamp' => $timestamp,
-            'folder' => $folder,
+            'folder' => $folderBase,
+            'public_id' => $publicId,
+            'overwrite' => 'true',
+            'unique_filename' => 'false',
             'signature' => $signature
         ];
 

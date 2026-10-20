@@ -20,6 +20,62 @@ function repo_admin_overview(PDO $pdo = null): array
     ];
 }
 
+/**
+ * Active screening questions shaped for the applicant questionnaire page
+ * (same keys applicant.js expects: id, section, text, type, followup/max/labels/...).
+ * DB answer_type -> page type: BOOLEAN=yesno, SCALE=scale, DATE=date,
+ * TEXT=text, MULTIPLE_CHOICE=yesno_select. Knockout rules ride along so the
+ * evaluation sees the same rubric the Admin configured.
+ */
+function db_questions_for_applicant(PDO $pdo = null): array
+{
+    $pdo = $pdo ?: db();
+    $rows = $pdo->query(
+        "SELECT question_id, section, question_text, answer_type, passing_answer, is_knockout," .
+        " reminder_text FROM question_config" .
+        " WHERE deleted_at IS NULL AND is_active = TRUE ORDER BY question_id ASC"
+    )->fetchAll();
+
+    $secNo = [];
+    $out = [];
+    foreach ($rows as $r) {
+        if (!isset($secNo[$r['section']])) $secNo[$r['section']] = count($secNo) + 1;
+        $type = 'text';
+        switch (strtoupper(trim((string) $r['answer_type']))) {
+            case 'BOOLEAN': $type = 'yesno'; break;
+            case 'SCALE': $type = 'scale'; break;
+            case 'DATE': $type = 'date'; break;
+            case 'MULTIPLE_CHOICE': $type = 'yesno_select'; break;
+        }
+        $q = [
+            'id' => 'q' . $r['question_id'],
+            'section_no' => $secNo[$r['section']],
+            'section' => (string) $r['section'],
+            'text' => (string) $r['question_text'],
+            'type' => $type,
+        ];
+        if ($type === 'scale') { $q['max'] = 10; $q['labels'] = ['Not interested', 'Very interested']; }
+        if ($type === 'date') $q['hint'] = 'Choose your earliest available date.';
+        if ($type === 'text') { $q['hint'] = ''; $q['placeholder'] = 'Type your answer here...'; $q['min_chars'] = 10; $q['max_chars'] = 2000; }
+        $reminder = trim((string) ($r['reminder_text'] ?? ''));
+        if ($reminder !== '') $q['no_note'] = $reminder;
+        if (!empty($r['is_knockout'])) {
+            $q['knockout'] = true;
+            if ($type === 'scale') $q['pass_answer'] = max(1, (int) ($r['passing_answer'] ?? 1));
+            elseif (in_array($type, ['yesno', 'yesno_select'], true)) $q['pass_answer'] = ($r['passing_answer'] ?? 'Yes') === 'No' ? 'No' : 'Yes';
+        }
+        // Consent copy: the data-protection question renders as a checkbox statement.
+        if ($type === 'yesno' && stripos((string) $r['section'], 'data protection') !== false) {
+            $q['type'] = 'consent';
+            $q['body'] = [(string) $r['question_text']];
+            $q['checkbox'] = 'I agree';
+            unset($q['text']);
+        }
+        $out[] = $q;
+    }
+    return $out;
+}
+
 function repo_admin_questions(PDO $pdo = null): array
 {
     $pdo = $pdo ?: db();

@@ -84,6 +84,43 @@ function repo_find_applicant(int $id, PDO $pdo = null): ?array
 }
 
 /**
+ * Find an applicant by their email-link token (opening.php?token=...).
+ * Only non-deleted rows; archived applicants cannot start screening.
+ */
+function repo_find_applicant_by_token(string $token, PDO $pdo = null): ?array
+{
+    $pdo = $pdo ?: db();
+    $token = trim($token);
+    if ($token === '') return null;
+    $st = $pdo->prepare(
+        "SELECT applicant_id, name, email, phone_number, status, result, reference_code, secure_token, cv_file_url, created_at" .
+        " FROM applicant WHERE secure_token = :t AND deleted_at IS NULL LIMIT 1"
+    );
+    $st->execute([':t' => $token]);
+    $row = $st->fetch();
+    if (!$row) return null;
+    $d = applicant_to_display($row);
+    $d['reference_code'] = (string) ($row['reference_code'] ?? '');
+    $d['secure_token'] = (string) ($row['secure_token'] ?? '');
+    $d['cv_file_url'] = $row['cv_file_url'] ?? null;
+    $d['updated'] = $row['created_at'] ? date('Y-m-d H:i', strtotime((string) $row['created_at'])) : '';
+    $d['created_at'] = (string) ($row['created_at'] ?? '');
+    return $d;
+}
+
+/**
+ * Mark an applicant In Progress when they open the questionnaire
+ * (Screening.startOnce). No-op for other statuses.
+ */
+function repo_mark_in_progress(int $id, PDO $pdo = null): int
+{
+    $pdo = $pdo ?: db();
+    $st = $pdo->prepare("UPDATE applicant SET status = 'in_progress' WHERE applicant_id = :id AND status = 'pending' AND deleted_at IS NULL");
+    $st->execute([':id' => $id]);
+    return $st->rowCount();
+}
+
+/**
  * Archive (soft-delete) applicants: Screening List Delete -> Archive page.
  * Sets deleted_at = NOW(); archived rows disappear from the list, appear in Archive.
  * Returns number of rows actually archived.

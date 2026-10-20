@@ -32,11 +32,12 @@ CREATE TABLE applicant (
 
 CREATE TABLE otp (
     otp_id SERIAL PRIMARY KEY,
-    applicant_id INT NOT NULL REFERENCES applicant(applicant_id) ON DELETE CASCADE,
+    applicant_id INT NOT NULL UNIQUE REFERENCES applicant(applicant_id) ON DELETE CASCADE,
     otp_code_hash VARCHAR(255) NOT NULL,
     request_count INT NOT NULL DEFAULT 0 CHECK (request_count >= 0),
     attempt_count INT NOT NULL DEFAULT 0 CHECK (attempt_count >= 0),
     expires_at TIMESTAMP NOT NULL,
+    locked_until TIMESTAMP NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

@@ -116,7 +116,10 @@ class EmailService {
         return $this->brevoSend($data, false);
     }
 
-    public function sendInviteEmail($toEmail, $firstName, $secureToken) {
+    public function sendInviteEmail($toEmail, $toName, $secureToken) {
+        // $toName may be the full name ("Juan Dela Cruz") — the template wants the first name only.
+        $firstName = trim(explode(' ', trim((string) $toName))[0] ?? (string) $toName);
+        if ($firstName === '') $firstName = (string) $toName;
         // 1. Build the personal link using the secure token
         // NOTE: Change 'localhost' to your real domain when you deploy
         $link = "http://localhost/pbl-project-first-semester/applicant/opening.php?token=" . $secureToken;
@@ -132,7 +135,7 @@ class EmailService {
         // 4. Prepare Brevo payload
         $data = [
             "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@gmail.com"], // USE YOUR VERIFIED SENDER
-            "to" => [["email" => $toEmail, "name" => $firstName]],
+            "to" => [["email" => $toEmail, "name" => (string) $toName]],
             "subject" => "You've been shortlisted | Expertise",
             "htmlContent" => $htmlContent
         ];

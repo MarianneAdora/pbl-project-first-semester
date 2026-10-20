@@ -136,6 +136,17 @@ function details_locked_message(string $tab): string
 // ---------------------------------------------------------------------------
 function details_submission(array $a): ?array
 {
+    // Database first: real submissions from api/submit-response.php (response table).
+    try {
+        require_once __DIR__ . '/../src/Repositories/ResponseRepository.php';
+        require_once __DIR__ . '/../src/Repositories/AdminRepository.php';
+        $dbRow = repo_response_find((int) $a['id']);
+        if ($dbRow && !empty($dbRow['submitted_at'])) {
+            return details_db_submission($a, $dbRow);
+        }
+    } catch (Throwable $e) {
+        error_log('details_submission DB error: ' . $e->getMessage());
+    }
     $found = null;
     foreach (static_store_read()['submissions'] ?? [] as $s) {
         $sameId    = (int) ($s['applicant_id'] ?? 0) === (int) $a['id'];
@@ -148,6 +159,49 @@ function details_submission(array $a): ?array
     }
     if (strcasecmp((string) $a['status'], 'Completed') === 0) return details_demo_submission($a);
     return null;
+}
+
+/**
+ * Shape a DB response row like the static submission details.php renders:
+ * answers keyed by 'q{question_id}', video with the Cloudinary URL.
+ */
+function details_db_submission(array $a, array $dbRow): array
+{
+    $answers = is_array($dbRow['answers'] ?? null) ? $dbRow['answers'] : [];
+    $shaped = [];
+    foreach ($answers as $k => $v) {
+        $key = (string) $k;
+        // DB stores bare question_ids ("7"); the page renders q-ids ("q7").
+        if (preg_match('/^\d+$/', $key)) $key = 'q' . $key;
+        elseif (preg_match('/^(\d+)[:_]follow$/', $key, $m)) $key = 'q' . $m[1] . ':follow';
+        $shaped[$key] = $v;
+    }
+    // Consent was stored as 'Yes' in answers_json; the renderer expects boolean true.
+    try {
+        foreach (db_questions_for_applicant() as $q) {
+            if (($q['type'] ?? '') === 'consent' && ($shaped[$q['id']] ?? '') === 'Yes') {
+                $shaped[$q['id']] = true;
+            }
+        }
+    } catch (Throwable $e) { /* static fallback keeps 'Yes', still renders */ }
+
+    $submittedAt = (string) ($dbRow['submitted_at'] ?? '');
+    return [
+        'reference'    => 'SCR-' . substr($submittedAt, 0, 4) . '-' . str_pad((string) $a['id'], 5, '0', STR_PAD_LEFT),
+        'applicant_id' => (int) $a['id'],
+        'email'        => $a['email'],
+        'answers'      => $shaped,
+        'video'        => [
+            'name'    => 'video_response.mp4',
+            'size'    => 0,
+            'seconds' => null,
+            'source'  => 'upload',
+            'url'     => (string) ($dbRow['video_file_url'] ?? ''),
+            'hash'    => (string) ($dbRow['video_file_hash'] ?? ''),
+        ],
+        'submitted_at' => $submittedAt ? date('Y-m-d H:i', strtotime($submittedAt)) : '',
+        'demo'         => false,
+    ];
 }
 
 function details_demo_submission(array $a): array
@@ -284,7 +338,7 @@ function details_questionnaire(array $submission, ?array $evaluation = null): ar
     $koMet    = 0;
     $koFailed = [];
 
-    foreach (static_questionnaire() as $q) {
+    foreach (details_questions_live() as $q) {
         $total++;
         $ko = $saved !== null ? ($saved[(string) $q['id']] ?? null) : static_knockout_check($q, $answers);
         $view = details_answer_view($q, $answers, $ko);
@@ -352,6 +406,19 @@ function details_size(int $bytes): string
     if ($bytes >= 1048576) return round($bytes / 1048576, 1) . ' MB';
     if ($bytes >= 1024)    return round($bytes / 1024) . ' KB';
     return $bytes . ' B';
+}
+
+/** Questions for the HR details renderer: DB first (Admin edits), static fallback. */
+function details_questions_live(): array
+{
+    try {
+        require_once __DIR__ . '/../src/Repositories/AdminRepository.php';
+        $questions = db_questions_for_applicant();
+        if ($questions) return $questions;
+    } catch (Throwable $e) {
+        error_log('details questions DB error: ' . $e->getMessage());
+    }
+    return static_questionnaire();
 }
 
 // ---------------------------------------------------------------------------
