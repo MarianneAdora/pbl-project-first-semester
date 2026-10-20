@@ -596,6 +596,12 @@ if (['questionnaire', 'upload-video'].indexOf(document.documentElement.getAttrib
         var out = {};
         Object.keys(answers || {}).forEach(function (k) { out[k] = answers[k]; });
         (cfg().questions || []).forEach(function (q) {
+            // Consent questions (data protection statement) are stored as boolean by the checkbox,
+            // but the server expects Yes/No strings. Convert them here so the answer is persisted
+            // correctly to data_protection_agreed_at in the response table.
+            if (q.type === 'consent') {
+                out[q.id] = (out[q.id] === true) ? 'Yes' : 'No';
+            }
             if (q.followup && out[q.id] !== q.followup.when) delete out[q.id + ':follow'];
         });
         return out;
