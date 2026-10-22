@@ -23,16 +23,19 @@ if ($requireVerification) {
 }
 
 // ---- Questions --------------------------------------------------------------
-// Served from the database (question_config via AdminRepository) so Admin edits
-// show up here. Falls back to the static list when the DB is unreachable.
+// Served from the same store the Admin uses (admin/questionlist.php) so whatever
+// the Admin adds/edits/deletes is exactly what applicants answer. Falls back to
+// the DB only when the store has no questions, then to the hard-coded seed list.
 require_once __DIR__ . '/static-applicant.php';
-try {
-    require_once __DIR__ . '/../src/Repositories/AdminRepository.php';
-    $questions = db_questions_for_applicant();
-    if (!$questions) $questions = static_questionnaire();
-} catch (Throwable $e) {
-    error_log('questionnaire DB error: ' . $e->getMessage());
-    $questions = static_questionnaire();
+$questions = static_questionnaire();
+if (empty($questions)) {
+    try {
+        require_once __DIR__ . '/../src/Repositories/AdminRepository.php';
+        $dbQuestions = db_questions_for_applicant();
+        if ($dbQuestions) $questions = $dbQuestions;
+    } catch (Throwable $e) {
+        error_log('questionnaire DB error: ' . $e->getMessage());
+    }
 }
 
 // What the scripts need (printed as JSON below)

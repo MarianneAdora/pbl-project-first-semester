@@ -35,10 +35,21 @@ function db_questions_for_applicant(PDO $pdo = null): array
         " WHERE deleted_at IS NULL AND is_active = TRUE ORDER BY question_id ASC"
     )->fetchAll();
 
+    // DB column question_type is uppercase (BOOLEAN, SCALE, DATE, TEXT, MULTIPLE_CHOICE).
+    // The applicant page expects lowercase page types (yesno, scale, date, text, yesno_select, consent).
+    $dbToPage = [
+        'BOOLEAN'        => 'yesno',
+        'SCALE'          => 'scale',
+        'DATE'           => 'date',
+        'TEXT'           => 'text',
+        'MULTIPLE_CHOICE'=> 'yesno_select',
+    ];
+
     $out = [];
     foreach ($rows as $r) {
 
-        $type = (string) ($r['question_type'] ?? 'text');
+        $dbType = (string) ($r['question_type'] ?? 'text');
+        $type   = $dbToPage[strtoupper(trim($dbType))] ?? 'text';
 
         $q = [
             'id' => 'q' . $r['question_id'],

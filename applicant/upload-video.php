@@ -26,16 +26,18 @@ if ($requireVerification) {
     if (!empty($_SESSION['screening_submitted'])) { header('Location: application-status.php'); exit; }   // already sent: no second try
 }
 
-// ---- Video rules + questions (DB first, static fallback) -----
+// ---- Video rules + questions (same store as Admin, DB fallback) -----
 require_once __DIR__ . '/static-applicant.php';
 $video = static_video_rules();
-try {
-    require_once __DIR__ . '/../src/Repositories/AdminRepository.php';
-    $questions = db_questions_for_applicant();
-    if (!$questions) $questions = static_questionnaire();
-} catch (Throwable $e) {
-    error_log('upload-video DB error: ' . $e->getMessage());
-    $questions = static_questionnaire();
+$questions = static_questionnaire();
+if (empty($questions)) {
+    try {
+        require_once __DIR__ . '/../src/Repositories/AdminRepository.php';
+        $dbQuestions = db_questions_for_applicant();
+        if ($dbQuestions) $questions = $dbQuestions;
+    } catch (Throwable $e) {
+        error_log('upload-video DB error: ' . $e->getMessage());
+    }
 }
 $formatsText = strtoupper(implode(', ', $video['formats']));
 
