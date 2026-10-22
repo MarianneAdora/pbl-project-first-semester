@@ -54,6 +54,7 @@ foreach ($sections as $s) {
     $section_options[] = [(string) $s['no'], 'Sec ' . $s['no'] . ' · ' . $s['name'], $palette[($s['no'] - 1 + count($palette)) % count($palette)]];
 }
 
+// Derived from answer_config JSONB; see static_question_types()
 $type_colors  = ['yesno' => '#159a43', 'yesno_select' => '#1c8adb', 'scale' => '#f6c453', 'date' => '#8f8aea', 'text' => '#f8a09a', 'consent' => '#74cfb9'];
 $type_options = [];
 foreach (static_question_types() as $key => $label) $type_options[] = [$key, $label, $type_colors[$key] ?? '#8a8f96'];

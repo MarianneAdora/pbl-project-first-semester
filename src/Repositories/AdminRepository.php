@@ -23,33 +23,37 @@ function repo_admin_overview(PDO $pdo = null): array
 /**
  * Active screening questions shaped for the applicant questionnaire page
  * (same keys applicant.js expects: id, section, text, type, followup/max/labels/...).
- * DB question_type -> page type: BOOLEAN=yesno, SCALE=scale, DATE=date,
- * TEXT=text, MULTIPLE_CHOICE=yesno_select. Knockout rules ride along so the
- * evaluation sees the same rubric the Admin configured.
+ * Type is derived from the answer_config JSONB content (statement+checkbox_label => consent,
+ * choices => yesno_select, max+labels => scale, hint => date, else text).
  */
 function db_questions_for_applicant(PDO $pdo = null): array
 {
     $pdo = $pdo ?: db();
     $rows = $pdo->query(
-        "SELECT question_id, section_no, section, question_text, question_type, answer_config, passing_answer, is_knockout," . " is_consent, is_data_protection, reminder_text FROM question_config" .
+        "SELECT question_id, section_no, section, question_text, answer_config, passing_answer, is_knockout," . " is_consent, is_data_protection, reminder_text FROM question_config" .
         " WHERE deleted_at IS NULL AND is_active = TRUE ORDER BY question_id ASC"
     )->fetchAll();
 
-    // DB column question_type is uppercase (BOOLEAN, SCALE, DATE, TEXT, MULTIPLE_CHOICE).
-    // The applicant page expects lowercase page types (yesno, scale, date, text, yesno_select, consent).
-    $dbToPage = [
-        'BOOLEAN'        => 'yesno',
-        'SCALE'          => 'scale',
-        'DATE'           => 'date',
-        'TEXT'           => 'text',
-        'MULTIPLE_CHOICE'=> 'yesno_select',
-    ];
+    // Type is derived from the answer_config JSONB content (statement+checkbox_label => consent, choices => yesno_select, max+labels => scale, etc.)
 
     $out = [];
     foreach ($rows as $r) {
 
-        $dbType = (string) ($r['question_type'] ?? 'text');
-        $type   = $dbToPage[strtoupper(trim($dbType))] ?? 'text';
+        $cfg = $r['answer_config'];
+        if (is_string($cfg)) { $cfg = json_decode($cfg, true); }
+        if (!is_array($cfg)) $cfg = [];
+
+        // Derive the page type from the answer_config content
+        $type = 'text';
+        if (!empty($cfg['statement']) && !empty($cfg['checkbox_label'])) {
+            $type = 'consent';
+        } elseif (!empty($cfg['choices'])) {
+            $type = 'yesno_select';
+        } elseif (!empty($cfg['max']) && !empty($cfg['labels'])) {
+            $type = 'scale';
+        } elseif (!empty($cfg['hint'])) {
+            $type = 'date';
+        }
 
         $q = [
             'id' => 'q' . $r['question_id'],
@@ -119,7 +123,7 @@ function repo_admin_questions(PDO $pdo = null): array
 {
     $pdo = $pdo ?: db();
     return $pdo->query(
-        "SELECT question_id, section, question_text, question_type, answer_config, passing_answer, is_knockout," .
+        "SELECT question_id, section, question_text, answer_config, passing_answer, is_knockout," .
         " is_consent, is_data_protection, reminder_text, is_active, created_at FROM question_config" .
         " WHERE deleted_at IS NULL ORDER BY question_id ASC"
     )->fetchAll();
@@ -148,19 +152,22 @@ function repo_admin_question_stats(PDO $pdo = null): array
     }
     foreach ($questions as $q) $sections[$secNo[$q['section']] - 1]['count']++;
 
-    $typeOf = function (string $dbType): string {
-        $t = strtoupper(trim($dbType));
-        if ($t === 'BOOLEAN') return 'yesno';
-        if ($t === 'SCALE') return 'scale';
-        if ($t === 'DATE') return 'date';
-        if ($t === 'TEXT') return 'text';
-        if ($t === 'MULTIPLE_CHOICE') return 'yesno_select';
-        return 'text';
-    };
-
     $out = [];
     foreach ($questions as $q) {
-        $type = $typeOf((string) $q['question_type']);
+        // Derive the page type from the answer_config JSONB content
+        $cfg = $q['answer_config'];
+        if (is_string($cfg)) { $cfg = json_decode($cfg, true); }
+        if (!is_array($cfg)) $cfg = [];
+        $type = 'text';
+        if (!empty($cfg['statement']) && !empty($cfg['checkbox_label'])) {
+            $type = 'consent';
+        } elseif (!empty($cfg['choices'])) {
+            $type = 'yesno_select';
+        } elseif (!empty($cfg['max']) && !empty($cfg['labels'])) {
+            $type = 'scale';
+        } elseif (!empty($cfg['hint'])) {
+            $type = 'date';
+        }
         $counts = [];
         $answered = 0;
         $written = 0;

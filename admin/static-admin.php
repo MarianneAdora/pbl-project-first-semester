@@ -76,8 +76,10 @@ if (!function_exists('static_hr_accounts')) {
 if (!defined('STATIC_ARCHIVE_DAYS')) define('STATIC_ARCHIVE_DAYS', 30);
 
 // ---------------------------------------------------------------------------
-// The kinds of question the applicant page can draw (see applicant/static-applicant.php)
-// ---------------------------------------------------------------------------
+// The kinds of question the applicant page can draw (see applicant/static-applicant.php).
+// Type is derived from the answer_config JSONB in the DB (statement+checkbox_label => consent,
+// choices => yesno_select, max+labels => scale, hint => date, else text).
+// Admin selects the type when creating/editing a question; it is not stored in the database.
 function static_question_types(): array
 {
     return [
@@ -149,7 +151,8 @@ function static_admin_question_label(array $q): string
     return strtoupper((string) $q['id']) . ' · ' . $q['section'];
 }
 
-// Checks what the Admin typed and builds the question exactly like the ones in static_questionnaire_seed().
+// Checks what the Admin typed (section, type, status, etc.) and builds the question.
+// The question_type is derived from the answer_config JSONB stored in the DB.
 // Throws InvalidArgumentException with a message that is safe to show.
 function static_admin_clean_question(array $in, array $all, ?array $old = null): array
 {

@@ -76,22 +76,24 @@ function repo_response_submit(int $applicantId, array $answers, array $video = [
     $active = array_values(array_filter($questions, fn($q) => !empty($q['is_active'])));
     if (!$active) throw new RuntimeException('No active screening questions found.');
 
-    $typeOf = function (string $dbType): string {
-        switch (strtoupper(trim($dbType))) {
-            case 'BOOLEAN': return 'yesno';
-            case 'SCALE': return 'scale';
-            case 'DATE': return 'date';
-            case 'TEXT': return 'text';
-            case 'MULTIPLE_CHOICE': return 'yesno_select';
-            default: return 'text';
-        }
-    };
-
     $clean = [];
     $consentAt = null;
     foreach ($active as $q) {
         $qid = (string) $q['question_id'];
-        $type = $typeOf($q['question_type'] ?? 'text');
+        // Derive the page type from the answer_config JSONB content
+        $cfg = $q['answer_config'];
+        if (is_string($cfg)) { $cfg = json_decode($cfg, true); }
+        if (!is_array($cfg)) $cfg = [];
+        $type = 'text';
+        if (!empty($cfg['statement']) && !empty($cfg['checkbox_label'])) {
+            $type = 'consent';
+        } elseif (!empty($cfg['choices'])) {
+            $type = 'yesno_select';
+        } elseif (!empty($cfg['max']) && !empty($cfg['labels'])) {
+            $type = 'scale';
+        } elseif (!empty($cfg['hint'])) {
+            $type = 'date';
+        }
         // Frontend sends page keys ("q7", "q7:follow"); accept those AND bare DB ids ("7").
         $raw = $answers[$qid] ?? $answers[(int) $qid] ?? $answers['q' . $qid] ?? null;
         if (is_string($raw)) $raw = trim($raw);
