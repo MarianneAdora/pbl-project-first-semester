@@ -91,7 +91,7 @@ function repo_response_submit(int $applicantId, array $answers, array $video = [
     $consentAt = null;
     foreach ($active as $q) {
         $qid = (string) $q['question_id'];
-        $type = (string) ($q['question_type'] ?? 'text');
+        $type = $typeOf($q['question_type'] ?? 'text');
         // Frontend sends page keys ("q7", "q7:follow"); accept those AND bare DB ids ("7").
         $raw = $answers[$qid] ?? $answers[(int) $qid] ?? $answers['q' . $qid] ?? null;
         if (is_string($raw)) $raw = trim($raw);
