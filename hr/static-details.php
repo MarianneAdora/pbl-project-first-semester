@@ -340,7 +340,22 @@ function details_questionnaire(array $submission, ?array $evaluation = null): ar
 
     foreach (details_questions_live() as $q) {
         $total++;
-        $ko = $saved !== null ? ($saved[(string) $q['id']] ?? null) : static_knockout_check($q, $answers);
+        $ko = null;
+        if ($saved !== null && array_key_exists((string) $q['id'], $saved)) {
+            $ko = $saved[(string) $q['id']];
+            // The stored evaluation's knock-outs are read from the static store, which is only
+            // a cached snapshot of the submissions. The real (DB) submission can be newer, or the
+            // store can be out of sync, so an applicant who answered "Yes" may show knock-outs
+            // computed from an older "No" submission. Verify the stored knock-out's "given" against
+            // the current submission answer, and recompute from the real answers when they differ.
+            $cur = $answers[$q['id']] ?? null;
+            $given = $ko['given'] ?? null;
+            if ($cur !== null && $given !== null && strcasecmp((string) $cur, (string) $given) !== 0) {
+                $ko = static_knockout_check($q, $answers);
+            }
+        } else {
+            $ko = static_knockout_check($q, $answers);
+        }
         $view = details_answer_view($q, $answers, $ko);
         if (!$view['missing']) $answered++;
         if ($view['flag'] !== '') $flags[] = ['question' => $view['question'], 'note' => $view['flag']];
