@@ -36,6 +36,60 @@ try {
         $video = is_array($input['video'] ?? null) ? $input['video'] : [];
         $video['device'] = (string) ($input['device'] ?? '');
         repo_response_submit($applicantId, $answers, $video);
+
+        // ---------------------------------------------------------------------------
+        // Sync the static store so the applicant-side evaluation (static-evaluation.php)
+        // reads this just-sent submission instead of stale earlier ones. The store is
+        // only written here because the applicant pages read submissions from it
+        // (static_run_evaluation() in static-evaluation.php), while the database is
+        // authoritative for HR (details.php reads the response table directly).
+        // ---------------------------------------------------------------------------
+        $storePdo = db();
+        $appStmt  = $storePdo->prepare(
+            "SELECT id, name, email FROM applicant WHERE applicant_id = :id AND deleted_at IS NULL LIMIT 1"
+        );
+        $appStmt->execute([':id' => $applicantId]);
+        $app = $appStmt->fetch();
+
+        $timing = [];
+        foreach ((array) ($input['timing'] ?? []) as $key => $ms) {
+            if (is_string($key) && preg_match('/^q\d+$/', $key) && is_numeric($ms)) {
+                $timing[$key] = (int) min(max(0, $ms), 3600000);
+            }
+        }
+        $videoDevice = (string) ($input['device'] ?? '');
+        $device      = substr(preg_replace('/[^A-Za-z0-9\\-]/', '', $videoDevice), 0, 64);
+        $hash        = substr(preg_replace('/[^a-f0-9]/', '', strtolower((string) ($video['hash'] ?? ''))), 0, 64);
+        $otp = [
+            'failed'   => (int) ($_SESSION['otp_failed_total'] ?? 0),
+            'requests' => array_values(array_map('intval', (array) ($_SESSION['otp_request_times'] ?? []))),
+            'locked'   => !empty($_SESSION['otp_was_locked'])
+        ];
+        $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+
+        require_once __DIR__ . '/../hr/static-data.php';
+        static_store_update(function (array &$store) use ($applicantId, $app, $answers, $video, $timing, $device, $hash, $otp, $ip) {
+            $store['submissions'][] = [
+                'reference'    => 'SCR-' . date('Y') . '-' . str_pad((string) $applicantId, 5, '0', STR_PAD_LEFT),
+                'applicant_id' => $app['id'] ?? null,
+                'name'         => $app['name'] ?? '',
+                'email'        => $app['email'] ?? '',
+                'answers'      => $answers,
+                'timing'       => $timing,
+                'device'       => $device,
+                'ip'           => $ip,
+                'otp'          => $otp,
+                'video'        => [
+                    'name'    => (string) ($video['name'] ?? ''),
+                    'size'    => (int) ($video['size'] ?? 0),
+                    'seconds' => isset($video['seconds']) ? round((float) $video['seconds'], 1) : null,
+                    'source'  => (string) ($video['source'] ?? ''),
+                    'hash'    => $hash
+                ],
+                'submitted_at' => static_now()->format('Y-m-d H:i')
+            ];
+        });
+
         $_SESSION['screening_submitted'] = true;
         $respond(['status' => 'success']);
     }
