@@ -43,11 +43,20 @@ CREATE TABLE otp (
 
 CREATE TABLE question_config (
     question_id SERIAL PRIMARY KEY,
+    section_no INT NOT NULL,
     section VARCHAR(50) NOT NULL,
     question_text VARCHAR(400) NOT NULL,
-    answer_type VARCHAR(50) NOT NULL,
+    question_type VARCHAR(50) NOT NULL DEFAULT 'text',
+    -- explicit types: 'yesno', 'yesno_select', 'scale', 'date', 'text', 'consent'
+    answer_config JSONB,
+    -- type-specific settings: scale max/labels, yesno_select choices,
+    -- text hint/placeholder/min/max, consent statement/checkbox label, {link} word/url
     passing_answer VARCHAR(255),
     is_knockout BOOLEAN NOT NULL DEFAULT FALSE,
+    -- explicit flag for consent questions (data protection statement)
+    is_consent BOOLEAN NOT NULL DEFAULT FALSE,
+    -- explicit flag for data protection questions
+    is_data_protection BOOLEAN NOT NULL DEFAULT FALSE,
     reminder_text VARCHAR(255),
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_by_user_id INT REFERENCES users(user_id),

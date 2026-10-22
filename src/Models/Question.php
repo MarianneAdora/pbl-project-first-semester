@@ -3,7 +3,7 @@ class Question {
     private $question_id;
     private $section;
     private $question_text;
-    private $answer_type;
+    private $question_type;
     private $passing_answer;
     private $is_knockout;
     private $reminder_text;
@@ -16,7 +16,7 @@ class Question {
         $this->question_id = $data['question_id'] ?? null;
         $this->section = $data['section'] ?? null;
         $this->question_text = $data['question_text'] ?? null;
-        $this->answer_type = $data['answer_type'] ?? 'BOOLEAN';
+        $this->question_type = $data['question_type'] ?? 'text';
         $this->passing_answer = $data['passing_answer'] ?? null;
         $this->is_knockout = $data['is_knockout'] ?? false;
         $this->reminder_text = $data['reminder_text'] ?? null;
@@ -29,7 +29,7 @@ class Question {
     public function getQuestionId() { return $this->question_id; }
     public function getSection() { return $this->section; }
     public function getQuestionText() { return $this->question_text; }
-    public function getAnswerType() { return $this->answer_type; }
+    public function getQuestionType() { return $this->question_type; }
     public function getPassingAnswer() { return $this->passing_answer; }
     public function getIsKnockout() { return $this->is_knockout; }
     public function getReminderText() { return $this->reminder_text; }
