@@ -24,10 +24,15 @@ $input = is_array($json) ? $json : $_POST;
 $action = (string) ($input['action'] ?? '');
 
 require_once __DIR__ . '/../src/Repositories/ResponseRepository.php';
+require_once __DIR__ . '/../hr/static-data.php';
 
 try {
     if ($action === 'start') {
-        repo_response_start($applicantId);
+        try {
+            repo_response_start($applicantId);
+        } catch (Throwable $e) {
+            error_log('submit-response start DB error: ' . $e->getMessage());
+        }
         $respond(['status' => 'success']);
     }
 
@@ -35,21 +40,22 @@ try {
         $answers = is_array($input['answers'] ?? null) ? $input['answers'] : [];
         $video = is_array($input['video'] ?? null) ? $input['video'] : [];
         $video['device'] = (string) ($input['device'] ?? '');
-        repo_response_submit($applicantId, $answers, $video);
+        // Try the database path first (validation + response table insert).
+        // If the database is unavailable, fall back to static-store-only saving.
+        try {
+            repo_response_submit($applicantId, $answers, $video);
+        } catch (Throwable $e) {
+            error_log('submit-response DB error (falling back to static store): ' . $e->getMessage());
+        }
 
-        // ---------------------------------------------------------------------------
-        // Sync the static store so the applicant-side evaluation (static-evaluation.php)
-        // reads this just-sent submission instead of stale earlier ones. The store is
-        // only written here because the applicant pages read submissions from it
-        // (static_run_evaluation() in static-evaluation.php), while the database is
-        // authoritative for HR (details.php reads the response table directly).
-        // ---------------------------------------------------------------------------
-        $storePdo = db();
-        $appStmt  = $storePdo->prepare(
-            "SELECT id, name, email FROM applicant WHERE applicant_id = :id AND deleted_at IS NULL LIMIT 1"
-        );
-        $appStmt->execute([':id' => $applicantId]);
-        $app = $appStmt->fetch();
+        // Get applicant info from static store (works without a database connection).
+        $app = null;
+        foreach (static_applicants() as $a) {
+            if ((int) ($a['id'] ?? 0) === $applicantId) {
+                $app = $a;
+                break;
+            }
+        }
 
         $timing = [];
         foreach ((array) ($input['timing'] ?? []) as $key => $ms) {
@@ -67,7 +73,6 @@ try {
         ];
         $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
 
-        require_once __DIR__ . '/../hr/static-data.php';
         static_store_update(function (array &$store) use ($applicantId, $app, $answers, $video, $timing, $device, $hash, $otp, $ip) {
             $store['submissions'][] = [
                 'reference'    => 'SCR-' . date('Y') . '-' . str_pad((string) $applicantId, 5, '0', STR_PAD_LEFT),

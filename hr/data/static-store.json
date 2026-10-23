@@ -1334,6 +1334,58 @@
                 "hash": "4710619fa7e3428c43c66a1c43925fe6d9ea68450b4e9242d53b9291269905c8"
             },
             "submitted_at": "2026-10-13 19:18"
+        },
+        {
+            "reference": "SCR-2026-00003",
+            "applicant_id": null,
+            "name": "",
+            "email": "",
+            "answers": {
+                "q1": "Yes",
+                "q2": "Yes",
+                "q3": "Yes",
+                "q4": "Yes",
+                "q5": 4,
+                "q6": "2026-10-31",
+                "q7": "Yes",
+                "q7:follow": "1 to 2 weeks",
+                "q8": "Yes",
+                "q9": "Yes",
+                "q10": "Yes",
+                "q11": "Yes",
+                "q12": "ertyuiodfbdsbcsndv jdsvsk3djvbdksvsdnmv s fihsif s",
+                "q13": "Yes"
+            },
+            "timing": {
+                "q1": 3181,
+                "q2": 3007,
+                "q3": 2616,
+                "q4": 2418,
+                "q5": 4511,
+                "q6": 3548,
+                "q7": 16932,
+                "q8": 4415,
+                "q9": 6663,
+                "q10": 3101,
+                "q11": 7194,
+                "q12": 9738,
+                "q13": 3757
+            },
+            "device": "7f53019f3b93737592aa6b0ac697ca5f",
+            "ip": "::1",
+            "otp": {
+                "failed": 0,
+                "requests": [],
+                "locked": false
+            },
+            "video": {
+                "name": "video_response.mp4",
+                "size": 250249,
+                "seconds": 6,
+                "source": "recorded",
+                "hash": "3a9eac46e331e78a2945967d328f0f42fa56644c1220805cfe66d6c86233a0d5"
+            },
+            "submitted_at": "2026-10-24 00:44"
         }
     ],
     "evaluations": [
@@ -2601,6 +2653,129 @@
                 }
             ],
             "evaluated_at": "2026-10-22 12:07"
+        },
+        {
+            "reference": "",
+            "email": "ebsmi.screening@gmail.com",
+            "points": 2,
+            "band": "Low",
+            "auto_high": [],
+            "outcome": "passed",
+            "factors": [
+                {
+                    "label": "Failed OTP attempts",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "0 wrong code(s). Typos are normal."
+                },
+                {
+                    "label": "OTP requests in 10 minutes",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "0 code request(s). Email delays make this normal."
+                },
+                {
+                    "label": "Questionnaire speed",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "Finished in 71 seconds; 0% of the items were answered in under 1.5 seconds."
+                },
+                {
+                    "label": "Same email or phone as another record",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No other record shares the email or phone number."
+                },
+                {
+                    "label": "Re-applying after a failed screening",
+                    "points": 2,
+                    "max": 2,
+                    "reason": "The last screening was failed 1 day(s) ago."
+                },
+                {
+                    "label": "Same device or IP as other applicants",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No suspicious sharing (a shared IP alone is not scored)."
+                },
+                {
+                    "label": "Contradictory logistics answers",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "The logistics answers agree with each other."
+                },
+                {
+                    "label": "Time on the video page",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "Not scored, because applicants can upload a file instead of recording live."
+                },
+                {
+                    "label": "Video matches another applicant",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No other applicant sent this video."
+                }
+            ],
+            "knockouts": [
+                {
+                    "id": "q2",
+                    "question": "Are you willing to work on the schedule as advertised?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q3",
+                    "question": "Are you willing to work on-site in BGC, Taguig?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q4",
+                    "question": "Are you willing to go through the assessment and interviews?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q8",
+                    "question": "Do you have access to a reliable internet connection and a device suitable for completing the assessment and virtual steps?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q9",
+                    "question": "Are you willing to undergo a background check as part of the hiring process?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q10",
+                    "question": "Can you provide required pre-employment documents (e.g. NBI clearance, TIN, SSS) upon request?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q11",
+                    "question": "This role involves handling sensitive client information. Do you agree to comply with confidentiality and data protection requirements?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                }
+            ],
+            "evaluated_at": "2026-10-24 00:44"
         }
     ],
     "interviews": {

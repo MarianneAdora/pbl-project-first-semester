@@ -13,7 +13,7 @@ function db(): PDO
     $name = getenv('DB_NAME') ?: 'ebsmi_screening';
     $user = getenv('DB_USER') ?: 'postgres';
     $pass = getenv('DB_PASS');
-    if ($pass === false) $pass = '';
+    if ($pass === false) $pass = 'tina';
 
     $pdo = new PDO("pgsql:host={$host};port={$port};dbname={$name}", $user, (string) $pass);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
