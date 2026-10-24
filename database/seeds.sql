@@ -43,9 +43,4 @@ INSERT INTO question_config (section_no, section, question_text, answer_config, 
 (5, 'Sec 5 - Data Protection', 'Please read and accept the data protection statement.', jsonb_build_object('statement', 'I agree to the data protection terms.', 'checkbox_label', 'I agree'), 'Yes', true, true, true, 'You must agree to proceed.');
 
 
--- ============================================================
--- 3. SEED A TEST APPLICANT (For testing the OTP flow)
--- ============================================================
--- This creates an applicant you can use to test your API endpoints and UI.
-INSERT INTO applicant (reference_code, secure_token, name, email, phone_number, status) VALUES 
-('APP-2026-0001', 'test-token-abc123', 'Clark Kent', 'ebsmi.screening@gmail.com', '09123456789', 'pending');
+-- (No sample applicants — the application creates applicants via the web form; seeds only core reference tables.)

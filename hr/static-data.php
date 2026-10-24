@@ -102,22 +102,7 @@ function static_accounts(): array
 // ---------------------------------------------------------------------------
 function static_seed_applicants(): array
 {
-    return [
-        ['id' => 101, 'name' => 'Juan Dela Cruz', 'email' => 'juandelacruz@gmail.com', 'contact' => '091234567891', 'status' => 'Pending', 'result' => null, 'updated' => '2026-10-05 08:15'],
-        ['id' => 102, 'name' => 'Bruce Wayne', 'email' => 'brucewayne@gmail.com', 'contact' => '091234567854', 'status' => 'In Progress', 'result' => null, 'updated' => '2026-10-04 11:05'],
-        ['id' => 103, 'name' => 'Clark Kent', 'email' => 'clarkkent@gmail.com', 'contact' => '091234567817', 'status' => 'Completed', 'result' => 'Passed', 'updated' => '2026-10-05 10:52'],
-        ['id' => 104, 'name' => 'Diana Prince', 'email' => 'dianaprince@gmail.com', 'contact' => '091234567780', 'status' => 'Completed', 'result' => 'Rejected', 'updated' => '2026-10-04 16:30'],
-        ['id' => 105, 'name' => 'Maria Clara Santos', 'email' => 'mariaclarasantos@gmail.com', 'contact' => '091234567743', 'status' => 'Pending', 'result' => null, 'updated' => '2026-10-01 13:00'],
-        ['id' => 106, 'name' => 'Jose Protacio Rizal Mercado y Alonso Realonda', 'email' => 'joseprotaciorizalmercadoyalonsorealonda@gmail.com', 'contact' => '091234567706', 'status' => 'Completed', 'result' => 'Passed', 'updated' => '2026-09-29 10:00'],
-        ['id' => 107, 'name' => 'Peter Parker', 'email' => 'peterparker@gmail.com', 'contact' => '091234567669', 'status' => 'In Progress', 'result' => null, 'updated' => '2026-10-02 09:10'],
-        ['id' => 108, 'name' => 'Tony Stark', 'email' => 'tonystark@gmail.com', 'contact' => '091234567632', 'status' => 'Completed', 'result' => 'Passed', 'updated' => '2026-10-02 17:45'],
-        ['id' => 109, 'name' => 'Natasha Romanoff', 'email' => 'natasharomanoff@gmail.com', 'contact' => '091234567595', 'status' => 'Completed', 'result' => 'Rejected', 'updated' => '2026-09-30 15:25'],
-        ['id' => 110, 'name' => 'Steve Rogers', 'email' => 'steverogers@gmail.com', 'contact' => '091234567558', 'status' => 'Pending', 'result' => null, 'updated' => '2026-10-03 14:20'],
-        ['id' => 111, 'name' => 'Barry Allen', 'email' => 'barryallen@gmail.com', 'contact' => '091234567521', 'status' => 'Completed', 'result' => 'Passed', 'updated' => '2026-09-28 16:40'],
-        ['id' => 112, 'name' => 'Hal Jordan', 'email' => 'haljordan@gmail.com', 'contact' => '091234567484', 'status' => 'Pending', 'result' => null, 'updated' => '2026-09-28 09:05'],
-        ['id' => 113, 'name' => 'Arthur Curry', 'email' => 'arthurcurry@gmail.com', 'contact' => '091234567447', 'status' => 'In Progress', 'result' => null, 'updated' => '2026-09-27 14:30'],
-        ['id' => 114, 'name' => 'Victor Stone', 'email' => 'victorstone@gmail.com', 'contact' => '091234567410', 'status' => 'Completed', 'result' => 'Passed', 'updated' => '2026-09-27 10:15'],
-        ['id' => 115, 'name' => 'Selina Kyle', 'email' => 'selinakyle@gmail.com', 'contact' => '091234567373', 'status' => 'Pending', 'result' => null, 'updated' => '2026-09-26 15:50'],
+    return [];
         ['id' => 116, 'name' => 'Oliver Queen', 'email' => 'oliverqueen@gmail.com', 'contact' => '091234567336', 'status' => 'Completed', 'result' => 'Rejected', 'updated' => '2026-09-26 11:20'],
         ['id' => 117, 'name' => 'Kara Danvers', 'email' => 'karadanvers@gmail.com', 'contact' => '091234567299', 'status' => 'Pending', 'result' => null, 'updated' => '2026-09-25 13:45'],
         ['id' => 118, 'name' => 'Bruce Banner', 'email' => 'brucebanner@gmail.com', 'contact' => '091234567262', 'status' => 'In Progress', 'result' => null, 'updated' => '2026-09-25 09:30'],
@@ -245,12 +230,7 @@ function static_next_id(array $store): int
 if (!function_exists('static_seed_activity')) {
     function static_seed_activity(): array
     {
-        return [
-            ['at' => '2026-10-01 13:00', 'activity' => 'Added An Applicant',    'details' => 'Maria Clara Santos',        'by' => 'HR'],
-            ['at' => '2026-10-03 14:20', 'activity' => 'Added An Applicant',    'details' => 'Steve Rogers',              'by' => 'HR'],
-            ['at' => '2026-10-05 08:15', 'activity' => 'Added An Applicant',    'details' => 'Juan Dela Cruz',            'by' => 'HR'],
-            ['at' => '2026-10-08 11:45', 'activity' => 'Questionnaires Edited', 'details' => 'Q5 · Consent & readiness',  'by' => 'Admin']
-        ];
+        return [];
     }
 }
 
@@ -334,7 +314,7 @@ function static_applicant_names(array $ids, ?bool $archived = null): array
     return $out;
 }
 
-// "Maria Clara Santos" / "Maria, Steve" / "Maria, Steve +3 more"
+// These helpers derive labels purely from the applicant list (empty today).
 function static_names_label(array $names): string
 {
     $names = array_values(array_filter(array_map('trim', $names), fn($n) => $n !== ''));

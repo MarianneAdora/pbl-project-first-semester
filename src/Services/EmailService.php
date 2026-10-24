@@ -117,7 +117,7 @@ class EmailService {
     }
 
     public function sendInviteEmail($toEmail, $toName, $secureToken) {
-        // $toName may be the full name ("Juan Dela Cruz") — the template wants the first name only.
+        // $toName may be the full name — the template wants the first name only.
         $firstName = trim(explode(' ', trim((string) $toName))[0] ?? (string) $toName);
         if ($firstName === '') $firstName = (string) $toName;
         // 1. Build the personal link using the secure token

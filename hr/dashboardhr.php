@@ -88,18 +88,7 @@ try {
     $recent_applicants = static_recent($all_applicants, 10);
 }
 /* Original hard-coded list (kept for reference):
-$recent_applicants = [
-    ['id' => 101, 'name' => 'Juan Dela Cruz',    'updated' => '2026-10-05 08:15', 'status' => 'Pending',     'result' => null],
-    ['id' => 103, 'name' => 'Clark Kent',        'updated' => '2026-10-05 10:52', 'status' => 'Completed',   'result' => 'Passed'],
-    ['id' => 104, 'name' => 'Diana Prince',      'updated' => '2026-10-04 16:30', 'status' => 'Completed',   'result' => 'Rejected'],
-    ['id' => 102, 'name' => 'Bruce Wayne',       'updated' => '2026-10-04 11:05', 'status' => 'In Progress', 'result' => null],
-    ['id' => 110, 'name' => 'Steve Rogers',      'updated' => '2026-10-03 14:20', 'status' => 'Pending',     'result' => null],
-    ['id' => 108, 'name' => 'Tony Stark',        'updated' => '2026-10-02 17:45', 'status' => 'Completed',   'result' => 'Passed'],
-    ['id' => 107, 'name' => 'Peter Parker',      'updated' => '2026-10-02 09:10', 'status' => 'In Progress', 'result' => null],
-    ['id' => 105, 'name' => 'Maria Clara Santos','updated' => '2026-10-01 13:00', 'status' => 'Pending',     'result' => null],
-    ['id' => 109, 'name' => 'Natasha Romanoff',  'updated' => '2026-09-30 15:25', 'status' => 'Completed',   'result' => 'Rejected'],
-    ['id' => 106, 'name' => 'Jose Protacio Rizal Mercado y Alonso Realonda', 'updated' => '2026-09-29 10:00', 'status' => 'Completed', 'result' => 'Passed']
-];
+$recent_applicants = [];
 */
 
 // Newest activity first, and never more than 10, even if the query returns more

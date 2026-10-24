@@ -36,10 +36,8 @@ if ($tokenParam !== '') {
     }
 }
 
-// FRONT-END TESTING ONLY: while no email link exists, open
-//     opening.php?name=Juan Dela Cruz&email=juan@gmail.com
-// and both values are kept in the session, so the OTP page shows the email too.
-// (A real token link above always wins over these.)
+// No sample data — applicant details come only from the invite email link (token) or the
+// name/email query parameters submitted from the invitation page.
 if ($tokenParam === '') {
     if (!empty($_GET['name']))  $_SESSION['applicant_name']  = trim((string) $_GET['name']);
     if (!empty($_GET['email'])) $_SESSION['applicant_email'] = trim((string) $_GET['email']);
