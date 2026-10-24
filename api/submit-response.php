@@ -73,27 +73,33 @@ try {
         $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
 
         require_once __DIR__ . '/../hr/static-data.php';
-        static_store_update(function (array &$store) use ($applicantId, $app, $answers, $video, $timing, $device, $hash, $otp, $ip) {
-            $store['submissions'][] = [
-                'reference'    => 'SCR-' . date('Y') . '-' . str_pad((string) $applicantId, 5, '0', STR_PAD_LEFT),
-                'applicant_id' => $app['id'] ?? null,
-                'name'         => $app['name'] ?? '',
-                'email'        => $app['email'] ?? '',
-                'answers'      => $answers,
-                'timing'       => $timing,
-                'device'       => $device,
-                'ip'           => $ip,
-                'otp'          => $otp,
-                'video'        => [
-                    'name'    => (string) ($video['name'] ?? ''),
-                    'size'    => (int) ($video['size'] ?? 0),
-                    'seconds' => isset($video['seconds']) ? round((float) $video['seconds'], 1) : null,
-                    'source'  => (string) ($video['source'] ?? ''),
-                    'hash'    => $hash
-                ],
-                'submitted_at' => static_now()->format('Y-m-d H:i')
-            ];
-        });
+        // Static store sync is best-effort: the DB save above is authoritative.
+        // If the store sync throws, the submission still counts as successful.
+        try {
+            static_store_update(function (array &$store) use ($applicantId, $app, $answers, $video, $timing, $device, $hash, $otp, $ip) {
+                $store['submissions'][] = [
+                    'reference'    => 'SCR-' . date('Y') . '-' . str_pad((string) $applicantId, 5, '0', STR_PAD_LEFT),
+                    'applicant_id' => $app['id'] ?? null,
+                    'name'         => $app['name'] ?? '',
+                    'email'        => $app['email'] ?? '',
+                    'answers'      => $answers,
+                    'timing'       => $timing,
+                    'device'       => $device,
+                    'ip'           => $ip,
+                    'otp'          => $otp,
+                    'video'        => [
+                        'name'    => (string) ($video['name'] ?? ''),
+                        'size'    => (int) ($video['size'] ?? 0),
+                        'seconds' => isset($video['seconds']) ? round((float) $video['seconds'], 1) : null,
+                        'source'  => (string) ($video['source'] ?? ''),
+                        'hash'    => $hash
+                    ],
+                    'submitted_at' => static_now()->format('Y-m-d H:i')
+                ];
+            });
+        } catch (Throwable $e) {
+            error_log('submit-response store sync error: ' . $e->getMessage());
+        }
 
         $respond(['status' => 'success']);
     }

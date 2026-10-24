@@ -196,7 +196,10 @@ function static_store_write(array $store): bool
     $dir = dirname(STATIC_STORE_FILE);
     if (!is_dir($dir)) @mkdir($dir, 0775, true);
     $json = json_encode($store, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    return file_put_contents(STATIC_STORE_FILE, $json, LOCK_EX) !== false;
+    if (file_put_contents(STATIC_STORE_FILE, $json, LOCK_EX) === false) {
+        throw new RuntimeException('Could not write to static store file: ' . STATIC_STORE_FILE);
+    }
+    return true;
 }
 
 // Reads the whole store. First run (or a broken file): starts from the seed list.
