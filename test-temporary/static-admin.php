@@ -807,19 +807,10 @@ function static_admin_answer_score(array $q, array $answers): ?float
     return null;
 }
 
-// Earlier months for the chart. SAMPLE numbers (the real submissions only start this month), used only
-// for a month that has no real submission yet; a month with real submissions always uses those.
-// Keys: 'YYYY-MM' => [section number => average %].  BACKEND: delete this, the query returns the real months.
+// Earlier months for the chart. BACKEND: delete this, the query returns the real months.
 function static_admin_sample_history(): array
 {
-    return [
-        '2026-04' => [1 => 71.8, 2 => 64.5, 3 => 58.0],
-        '2026-05' => [1 => 78.4, 2 => 71.2, 3 => 66.0],
-        '2026-06' => [1 => 82.1, 2 => 68.5, 3 => 74.3],
-        '2026-07' => [1 => 75.9, 2 => 64.8, 3 => 70.2],
-        '2026-08' => [1 => 84.6, 2 => 73.1, 3 => 79.5],
-        '2026-09' => [1 => 88.2, 2 => 76.7, 3 => 81.4]
-    ];
+    return [];
 }
 
 // Questionnaires Statistics: for each month (last $months) and each scored section, the average

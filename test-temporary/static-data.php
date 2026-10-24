@@ -102,28 +102,7 @@ function static_accounts(): array
 // ---------------------------------------------------------------------------
 function static_seed_applicants(): array
 {
-    return [
-        ['id' => 116, 'name' => 'Oliver Queen', 'email' => 'oliverqueen@gmail.com', 'contact' => '091234567336', 'status' => 'Completed', 'result' => 'Rejected', 'updated' => '2026-09-26 11:20'],
-        ['id' => 117, 'name' => 'Kara Danvers', 'email' => 'karadanvers@gmail.com', 'contact' => '091234567299', 'status' => 'Pending', 'result' => null, 'updated' => '2026-09-25 13:45'],
-        ['id' => 118, 'name' => 'Bruce Banner', 'email' => 'brucebanner@gmail.com', 'contact' => '091234567262', 'status' => 'In Progress', 'result' => null, 'updated' => '2026-09-25 09:30'],
-        ['id' => 119, 'name' => 'Wanda Maximoff', 'email' => 'wandamaximoff@gmail.com', 'contact' => '091234567225', 'status' => 'Completed', 'result' => 'Passed', 'updated' => '2026-09-24 16:10'],
-        ['id' => 120, 'name' => 'Stephen Strange', 'email' => 'stephenstrange@gmail.com', 'contact' => '091234567188', 'status' => 'Pending', 'result' => null, 'updated' => '2026-09-24 10:00'],
-        ['id' => 121, 'name' => 'Carol Danvers', 'email' => 'caroldanvers@gmail.com', 'contact' => '091234567151', 'status' => 'Completed', 'result' => 'Passed', 'updated' => '2026-09-23 14:25'],
-        ['id' => 122, 'name' => 'Scott Lang', 'email' => 'scottlang@gmail.com', 'contact' => '091234567114', 'status' => 'Pending', 'result' => null, 'updated' => '2026-09-23 09:40'],
-        ['id' => 123, 'name' => 'Hope Van Dyne', 'email' => 'hopevandyne@gmail.com', 'contact' => '091234567077', 'status' => 'In Progress', 'result' => null, 'updated' => '2026-09-22 15:35'],
-        ['id' => 124, 'name' => 'Sam Wilson', 'email' => 'samwilson@gmail.com', 'contact' => '091234567040', 'status' => 'Completed', 'result' => 'Rejected', 'updated' => '2026-09-22 11:10'],
-        ['id' => 125, 'name' => 'Bucky Barnes', 'email' => 'buckybarnes@gmail.com', 'contact' => '091234567003', 'status' => 'Pending', 'result' => null, 'updated' => '2026-09-21 13:00'],
-        ['id' => 126, 'name' => 'Matt Murdock', 'email' => 'mattmurdock@gmail.com', 'contact' => '091234566966', 'status' => 'Completed', 'result' => 'Passed', 'updated' => '2026-09-21 09:20'],
-        ['id' => 127, 'name' => 'Jessica Jones', 'email' => 'jessicajones@gmail.com', 'contact' => '091234566929', 'status' => 'Pending', 'result' => null, 'updated' => '2026-09-20 16:45'],
-        ['id' => 128, 'name' => 'Luke Cage', 'email' => 'lukecage@gmail.com', 'contact' => '091234566892', 'status' => 'In Progress', 'result' => null, 'updated' => '2026-09-20 10:30'],
-        ['id' => 129, 'name' => 'Danny Rand', 'email' => 'dannyrand@gmail.com', 'contact' => '091234566855', 'status' => 'Completed', 'result' => 'Passed', 'updated' => '2026-09-19 14:05'],
-        ['id' => 130, 'name' => 'Kate Bishop', 'email' => 'katebishop@gmail.com', 'contact' => '091234566818', 'status' => 'Pending', 'result' => null, 'updated' => '2026-09-19 09:15'],
-        ['id' => 131, 'name' => 'Clint Barton', 'email' => 'clintbarton@gmail.com', 'contact' => '091234566781', 'status' => 'Completed', 'result' => 'Rejected', 'updated' => '2026-09-18 15:55'],
-        ['id' => 132, 'name' => 'Pepper Potts', 'email' => 'pepperpotts@gmail.com', 'contact' => '091234566744', 'status' => 'Pending', 'result' => null, 'updated' => '2026-09-18 11:25'],
-        ['id' => 133, 'name' => 'Maria Hill', 'email' => 'mariahill@gmail.com', 'contact' => '091234566707', 'status' => 'In Progress', 'result' => null, 'updated' => '2026-09-17 13:35'],
-        ['id' => 134, 'name' => 'Nick Fury', 'email' => 'nickfury@gmail.com', 'contact' => '091234566670', 'status' => 'Pending', 'result' => null, 'updated' => '2026-09-17 09:50'],
-        ['id' => 135, 'name' => 'Gabriel Antonio Dela Rosa Villanueva', 'email' => 'gabrielantoniodelarosavillanueva@gmail.com', 'contact' => '091234566633', 'status' => 'Completed', 'result' => 'Passed', 'updated' => '2026-09-16 14:15']
-    ];
+    return [];
 }
 
 // ---------------------------------------------------------------------------
@@ -194,9 +173,12 @@ function static_store_read(): array
     if (is_file(STATIC_STORE_FILE)) {
         $store = json_decode((string) @file_get_contents(STATIC_STORE_FILE), true);
     }
-    if (!is_array($store) || !isset($store['applicants']) || !is_array($store['applicants'])) {
-        $store = ['applicants' => array_map(fn($a) => $a + ['archived_at' => null], static_seed_applicants())];
+    if (!is_array($store)) {
+        $store = ['applicants' => []];
         static_store_write($store);
+    }
+    if (!isset($store['applicants']) || !is_array($store['applicants'])) {
+        $store['applicants'] = [];
     }
     return $store;
 }
