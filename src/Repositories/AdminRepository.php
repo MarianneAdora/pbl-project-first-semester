@@ -255,14 +255,13 @@ function db_questions_for_applicant(PDO $pdo = null): array
             'section_no' => (int) $r['section_no'],
             'section'    => (string) $r['section'],
             'type'       => $type,
+            'text'       => (string) $r['question_text'],
         ];
 
-        // consent questions replace 'text' with 'body' + 'checkbox'
+        // consent questions also carry body + checkbox
         if ($type === 'consent') {
             $q['body']     = is_array($cfg['body'] ?? null) ? $cfg['body'] : [(string) $r['question_text']];
             $q['checkbox'] = $cfg['checkbox'] ?? 'I agree';
-        } else {
-            $q['text'] = (string) $r['question_text'];
         }
 
         if (!empty($cfg['link'])) {

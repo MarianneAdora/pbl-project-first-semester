@@ -262,7 +262,7 @@ function details_answer_view(array $q, array $answers, ?array $ko = null): array
     $id = $q['id'];
     $v  = $answers[$id] ?? null;
 
-    $text = (string) $q['text'];
+    $text = (string) ($q['text'] ?? $q['question_text'] ?? '');
     if (!empty($q['link']['text'])) $text = str_replace('{link}', $q['link']['text'], $text);
 
     $out = [
