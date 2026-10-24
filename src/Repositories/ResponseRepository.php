@@ -92,17 +92,21 @@ function repo_response_submit(int $applicantId, array $answers, array $video = [
         if (is_string($passCfg)) { $passCfg = json_decode($passCfg, true); }
         if (!is_array($passCfg)) $passCfg = [];
 
-        $type = 'text';
-        if (!empty($cfg['statement']) && !empty($cfg['checkbox_label'])) {
-            $type = 'consent';
-        } elseif (!empty($cfg['choices'])) {
-            $type = 'yesno_select';
-        } elseif (!empty($cfg['max']) && !empty($cfg['labels'])) {
-            $type = 'scale';
-        } elseif (!empty($passCfg['max']) && !empty($passCfg['labels'])) {
-            $type = 'scale';
-        } elseif (!empty($cfg['hint'])) {
-            $type = 'date';
+        $type = (string) ($q['question_type'] ?? '');
+        if ($type === '') {
+            if (!empty($cfg['statement']) && !empty($cfg['checkbox_label'])) {
+                $type = 'consent';
+            } elseif (!empty($cfg['choices'])) {
+                $type = 'yesno_select';
+            } elseif (!empty($cfg['max']) && !empty($cfg['labels'])) {
+                $type = 'scale';
+            } elseif (!empty($passCfg['max']) && !empty($passCfg['labels'])) {
+                $type = 'scale';
+            } elseif (!empty($cfg['hint'])) {
+                $type = 'date';
+            } else {
+                $type = 'text';
+            }
         }
         // Frontend sends page keys ("q7", "q7:follow"); accept those AND bare DB ids ("7").
         $raw = $answers[$qid] ?? $answers[(int) $qid] ?? $answers['q' . $qid] ?? null;
