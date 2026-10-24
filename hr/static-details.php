@@ -404,6 +404,19 @@ function details_personal(array $a, ?array $submission): array
 // ---------------------------------------------------------------------------
 function details_cv(array $a): array
 {
+    // DB applicants: cv_file_url is a Cloudinary URL stored on the applicant row.
+    // Serve through cv-proxy.php so Cloudinary ACL restrictions are bypassed.
+    $cvUrl = trim((string) ($a['cv_file_url'] ?? ''));
+    if ($cvUrl !== '') {
+        $name = basename(parse_url($cvUrl, PHP_URL_PATH) ?: 'cv');
+        return [
+            'available' => true,
+            'name'      => $name,
+            'size'      => 0,
+            'url'       => 'cv-proxy.php?id=' . (int) $a['id']
+        ];
+    }
+    // Legacy static-store applicants: cv saved as a local file.
     $cv = $a['cv'] ?? null;
     if (is_array($cv) && !empty($cv['file']) && is_file(DETAILS_CV_DIR . '/' . basename((string) $cv['file']))) {
         return [

@@ -52,14 +52,11 @@ class CloudinaryService {
         $folderBase = trim((string) $folderBase) !== '' ? trim((string) $folderBase) : 'ebsmi_cvs';
         $folderBase = trim($folderBase, '/');
 
-        // Keep the real filename: strip any path, keep only safe chars, fall back to cv.pdf.
         $originalName = basename(trim((string) ($originalName ?? '')));
         if ($originalName === '' || $originalName === '.') $originalName = 'cv.pdf';
         $safe = preg_replace('/[^A-Za-z0-9._-]+/', '-', $originalName);
         $safe = trim($safe, '-.');
         if ($safe === '') $safe = 'cv.pdf';
-        // Cloudinary public_id must not contain the extension when use_filename... instead we
-        // pass public_id explicitly: cv-{id}-{basename-without-ext}. Extension comes from the file.
         $base = pathinfo($safe, PATHINFO_FILENAME);
         $base = trim(preg_replace('/[^A-Za-z0-9_-]+/', '-', $base), '-');
         if ($base === '') $base = 'cv';
@@ -70,33 +67,25 @@ class CloudinaryService {
             $mimeType = $detected ?: 'application/octet-stream';
         }
 
-        // 1. Generate Signature (must cover every signed param exactly as posted,
-        //    minus file / api_key / signature).
         $signed = [
-            'folder' => $folderBase,
-            'public_id' => $publicId,
-            'timestamp' => $timestamp,
+            'folder'          => $folderBase,
+            'public_id'       => $publicId,
+            'timestamp'       => $timestamp,
             'unique_filename' => 'false',
-            'use_filename' => 'true',
+            'use_filename'    => 'true',
         ];
-        // PDFs go up as resource_type=image so they render inline (previewable);
-        // resource_type is part of the URL path, NOT a signed param.
-        $isPdf = strtolower(pathinfo($safe, PATHINFO_EXTENSION)) === 'pdf'
-            || stripos((string) $mimeType, 'pdf') !== false;
         $signature = $this->signParams($signed);
 
-        // 2. Prepare POST request (image/upload for PDFs = previewable; raw/upload otherwise)
-        $resource = $isPdf ? 'image' : 'raw';
-        $url = "https://api.cloudinary.com/v1_1/{$this->cloudName}/{$resource}/upload";
+        $url = "https://api.cloudinary.com/v1_1/{$this->cloudName}/raw/upload";
         $postData = [
-            'file' => new CURLFile($filePath, $mimeType, $safe),
-            'api_key' => $this->apiKey,
-            'timestamp' => $timestamp,
-            'folder' => $folderBase,
-            'public_id' => $publicId,
-            'use_filename' => 'true',
+            'file'            => new CURLFile($filePath, $mimeType, $safe),
+            'api_key'         => $this->apiKey,
+            'timestamp'       => $timestamp,
+            'folder'          => $folderBase,
+            'public_id'       => $publicId,
+            'use_filename'    => 'true',
             'unique_filename' => 'false',
-            'signature' => $signature
+            'signature'       => $signature,
         ];
 
         $ch = curl_init($url);
@@ -110,12 +99,12 @@ class CloudinaryService {
         if ($httpCode === 200) {
             $result = json_decode($response, true);
             return [
-                'url' => $result['secure_url'] ?? '',
+                'url'       => $result['secure_url'] ?? '',
                 'public_id' => $result['public_id'] ?? ($folderBase . '/' . $publicId),
-                'name' => $safe,
+                'name'      => $safe,
             ];
         } else {
-            throw new Exception("Cloudinary CV upload failed: " . $response);
+            throw new Exception('Cloudinary CV upload failed: ' . $response);
         }
     }
 
