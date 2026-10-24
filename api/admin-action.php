@@ -8,6 +8,8 @@ header('Content-Type: application/json; charset=UTF-8');
 date_default_timezone_set('Asia/Manila');
 
 require_once __DIR__ . '/../src/Repositories/AdminRepository.php';
+require_once __DIR__ . '/../src/Services/EmailService.php';
+require_once __DIR__ . '/../src/Helpers/db.php';
 
 function admin_respond(array $data, int $code = 200): void
 {
@@ -31,6 +33,84 @@ try {
     $missing = 'That item was not found. It may have been removed already.';
 
     switch ($action) {
+        case 'account_add':
+            $acc = $input['account'] ?? [];
+            $name     = trim((string) ($acc['name']     ?? ''));
+            $email    = strtolower(trim((string) ($acc['email']    ?? '')));
+            $password = (string) ($acc['password'] ?? '');
+            $status   = ($acc['status'] ?? 'Active') === 'Inactive' ? 'inactive' : 'active';
+            $sendMail = !empty($acc['send_email']);
+
+            if (!$name)  admin_respond(['status' => 'error', 'message' => 'Please enter the full name.'], 422);
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) admin_respond(['status' => 'error', 'message' => 'Please enter a valid email address.'], 422);
+            if (strlen($password) < 8 || !preg_match('/[A-Za-z]/', $password) || !preg_match('/\d/', $password))
+                admin_respond(['status' => 'error', 'message' => 'Password must be at least 8 characters with letters and a number.'], 422);
+
+            $pdo = db();
+            $exists = $pdo->prepare("SELECT 1 FROM users WHERE email = :e AND deleted_at IS NULL");
+            $exists->execute([':e' => $email]);
+            if ($exists->fetchColumn()) admin_respond(['status' => 'error', 'message' => 'That email address is already in use.'], 422);
+
+            $hash = password_hash($password, PASSWORD_DEFAULT);
+            $ins = $pdo->prepare("INSERT INTO users (name, email, password_hash, role, created_at) VALUES (:n, :e, :p, 'hr', NOW()) RETURNING user_id");
+            $ins->execute([':n' => $name, ':e' => $email, ':p' => $hash]);
+            $newId = (int) $ins->fetchColumn();
+
+            $emailed = false;
+            if ($sendMail) {
+                $emailed = (new EmailService())->sendHrCredentialsEmail($email, $name, $password);
+            }
+
+            admin_respond([
+                'status'  => 'success',
+                'message' => 'HR account created.',
+                'result'  => ['id' => $newId, 'name' => $name, 'email' => $email, 'role' => 'HR Staff', 'emailed' => $emailed],
+                'data'    => ['accounts' => repo_admin_accounts(), 'questions' => repo_admin_questions_list(), 'archive' => repo_admin_archive()],
+            ]);
+            break;
+
+        case 'account_update':
+            $id  = (int) ($input['id'] ?? 0);
+            $acc = $input['account'] ?? [];
+            $name     = trim((string) ($acc['name']     ?? ''));
+            $email    = strtolower(trim((string) ($acc['email']    ?? '')));
+            $password = (string) ($acc['password'] ?? '');
+            $sendMail = !empty($acc['send_email']);
+
+            if (!$id)   admin_respond(['status' => 'error', 'message' => 'Invalid account ID.'], 422);
+            if (!$name) admin_respond(['status' => 'error', 'message' => 'Please enter the full name.'], 422);
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) admin_respond(['status' => 'error', 'message' => 'Please enter a valid email address.'], 422);
+
+            $pdo = db();
+            $dup = $pdo->prepare("SELECT 1 FROM users WHERE email = :e AND user_id != :id AND deleted_at IS NULL");
+            $dup->execute([':e' => $email, ':id' => $id]);
+            if ($dup->fetchColumn()) admin_respond(['status' => 'error', 'message' => 'That email address is already in use.'], 422);
+
+            if ($password !== '') {
+                if (strlen($password) < 8 || !preg_match('/[A-Za-z]/', $password) || !preg_match('/\d/', $password))
+                    admin_respond(['status' => 'error', 'message' => 'Password must be at least 8 characters with letters and a number.'], 422);
+                $hash = password_hash($password, PASSWORD_DEFAULT);
+                $upd = $pdo->prepare("UPDATE users SET name=:n, email=:e, password_hash=:p WHERE user_id=:id AND role='hr' AND deleted_at IS NULL");
+                $upd->execute([':n' => $name, ':e' => $email, ':p' => $hash, ':id' => $id]);
+            } else {
+                $upd = $pdo->prepare("UPDATE users SET name=:n, email=:e WHERE user_id=:id AND role='hr' AND deleted_at IS NULL");
+                $upd->execute([':n' => $name, ':e' => $email, ':id' => $id]);
+            }
+            if (!$upd->rowCount()) admin_respond(['status' => 'error', 'message' => 'Account not found or already deleted.'], 404);
+
+            $emailed = false;
+            if ($sendMail && $password !== '') {
+                $emailed = (new EmailService())->sendHrCredentialsEmail($email, $name, $password);
+            }
+
+            admin_respond([
+                'status'  => 'success',
+                'message' => 'HR account updated.',
+                'result'  => ['id' => $id, 'name' => $name, 'email' => $email, 'role' => 'HR Staff', 'emailed' => $emailed],
+                'data'    => ['accounts' => repo_admin_accounts(), 'questions' => repo_admin_questions_list(), 'archive' => repo_admin_archive()],
+            ]);
+            break;
+
         case 'account_archive':
             if (!repo_account_archive((int) ($input['id'] ?? 0))) admin_respond(['status' => 'error', 'message' => $missing], 404);
             $message = 'HR account moved to the Archive.';

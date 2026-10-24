@@ -13,18 +13,17 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
 
 date_default_timezone_set('Asia/Manila');
 
-// The HR accounts + the sidebar badges (static-admin.php is the endpoint of this page too)
-require_once __DIR__ . '/static-admin.php';
+require_once __DIR__ . '/../src/Repositories/AdminRepository.php';
 
 // add-hr.php          -> Create HR Account
 // add-hr.php?id=2     -> Edit HR Account (the pencil in the HR Accounts list)
 $editId  = (int) ($_GET['id'] ?? 0);
 $editing = null;
 if ($editId > 0) {
-    foreach (static_admin_accounts() as $a) {
+    foreach (repo_admin_accounts() as $a) {
         if ((int) $a['id'] === $editId) { $editing = $a; break; }
     }
-    if ($editing === null) {                       // deleted meanwhile, or a wrong id
+    if ($editing === null) {
         header('Location: hr-list.php');
         exit();
     }
@@ -324,7 +323,7 @@ $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
 
     <!-- Pass PHP variables to JavaScript -->
     <script>
-        window.ADMIN_NOTIFY = <?php echo json_encode(static_admin_notify(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+        window.ADMIN_NOTIFY = <?php echo json_encode(repo_admin_notify(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
         window.ADMIN_HR_FORM = <?php echo json_encode([
             'mode'    => $isEdit ? 'edit' : 'create',
             'account' => $isEdit ? ['id' => (int) $editing['id'], 'name' => $editing['name'], 'email' => $editing['email'], 'role' => $editing['role'], 'status' => $editing['status']] : null

@@ -183,6 +183,25 @@ class EmailService {
         return $this->brevoSend($data, true);
     }
 
+    public function sendHrCredentialsEmail($toEmail, $toName, $password) {
+        $firstName = trim(explode(' ', trim((string) $toName))[0] ?? (string) $toName);
+        if ($firstName === '') $firstName = (string) $toName;
+        $htmlContent = $this->loadTemplate('hr-credentials-email.html');
+        $htmlContent = str_replace('{{FIRST_NAME}}', htmlspecialchars($firstName, ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $htmlContent = str_replace('{{EMAIL}}',      htmlspecialchars((string) $toEmail,   ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $htmlContent = str_replace('{{PASSWORD}}',   htmlspecialchars((string) $password,  ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $htmlContent = str_replace('{{YEAR}}', date('Y'), $htmlContent);
+
+        $data = [
+            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@gmail.com"],
+            "to" => [["email" => $toEmail, "name" => (string) $toName]],
+            "subject" => "Your Expertise HR account credentials",
+            "htmlContent" => $htmlContent
+        ];
+
+        return $this->brevoSend($data, false);
+    }
+
     public function sendScreeningRejectedEmail($toEmail, $firstName) {
         $htmlContent = $this->loadTemplate('screening-rejected-email.html');
         $htmlContent = str_replace('{{FIRST_NAME}}', htmlspecialchars($firstName, ENT_QUOTES, 'UTF-8'), $htmlContent);
