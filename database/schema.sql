@@ -88,7 +88,10 @@ CREATE TABLE otp_request_log (
 --   yesno / yesno_select  { "answer": "Yes"|"No",
 --                           "pass_follow": ["choice1", ...] }
 --   scale                 { "min": 3 }
--- UNIQUE (section_no, section): one name per number; prevents rename drift.
+-- No UNIQUE (section_no, section): many questions share one section, so a
+--   unique pair would allow only one question per section. Keeping one name
+--   per section_no is the application's job (renaming a section updates every
+--   question in that section).
 -- ------------------------------------------------------------
 CREATE TABLE question_config (
     question_id         SERIAL PRIMARY KEY,
@@ -106,8 +109,7 @@ CREATE TABLE question_config (
     is_active           BOOLEAN      NOT NULL DEFAULT TRUE,
     created_by_user_id  INT REFERENCES users(user_id),
     deleted_at          TIMESTAMP,
-    created_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uq_question_config_section UNIQUE (section_no, section)
+    created_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ------------------------------------------------------------
