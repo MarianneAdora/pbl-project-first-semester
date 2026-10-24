@@ -21,108 +21,94 @@ function repo_admin_overview(PDO $pdo = null): array
 }
 
 /**
- * Active screening questions shaped for the applicant questionnaire page
- * (same keys applicant.js expects: id, section, text, type, followup/max/labels/...).
- * Type is derived from the answer_config JSONB content (statement+checkbox_label => consent,
- * choices => yesno_select, max+labels => scale, hint => date, else text).
+ * Active screening questions shaped for the applicant questionnaire page.
+ * Reads question_type directly (no derivation). answer_config and passing_answer
+ * use the same normalized keys that static_admin_clean_question() writes.
  */
 function db_questions_for_applicant(PDO $pdo = null): array
 {
     $pdo = $pdo ?: db();
     $rows = $pdo->query(
-        "SELECT question_id, section_no, section, question_text, answer_config, passing_answer, is_knockout," . " is_consent, is_data_protection, reminder_text FROM question_config" .
-        " WHERE deleted_at IS NULL AND is_active = TRUE ORDER BY question_id ASC"
+        'SELECT question_id, section_no, section, question_text, question_type, answer_config,' .
+        ' passing_answer, is_knockout, is_consent, is_data_protection, reminder_text' .
+        ' FROM question_config WHERE deleted_at IS NULL AND is_active = TRUE ORDER BY section_no, question_id'
     )->fetchAll();
-
-    // Type is derived from the answer_config JSONB content (statement+checkbox_label => consent, choices => yesno_select, max+labels => scale, etc.)
 
     $out = [];
     foreach ($rows as $r) {
-
-        $cfg = $r['answer_config'];
-        if (is_string($cfg)) { $cfg = json_decode($cfg, true); }
+        $cfg  = $r['answer_config'];
+        if (is_string($cfg)) $cfg = json_decode($cfg, true);
         if (!is_array($cfg)) $cfg = [];
 
-        // passing_answer may also hold max/labels for scale questions
-        // seeded directly in the DB (see seeds.sql: Question 5 stores
-        // max/labels in passing_answer, not answer_config).
-        $passCfg = $r['passing_answer'] ?? null;
-        if (is_string($passCfg)) { $passCfg = json_decode($passCfg, true); }
-        if (!is_array($passCfg)) $passCfg = [];
+        $pass = $r['passing_answer'];
+        if (is_string($pass)) $pass = json_decode($pass, true);
+        if (!is_array($pass)) $pass = [];
 
-        // Derive the page type from the answer_config / passing_answer content
-        $type = 'text';
-        if (!empty($cfg['statement']) && !empty($cfg['checkbox_label'])) {
-            $type = 'consent';
-        } elseif (!empty($cfg['choices'])) {
-            $type = 'yesno_select';
-        } elseif (!empty($cfg['max']) && !empty($cfg['labels'])) {
-            $type = 'scale';
-        } elseif (!empty($passCfg['max']) && !empty($passCfg['labels'])) {
-            $type = 'scale';
-        } elseif (!empty($cfg['hint'])) {
-            $type = 'date';
-        }
+        $type = (string) $r['question_type'];
 
         $q = [
-            'id' => 'q' . $r['question_id'],
-            'section_no' => (int) ($r['section_no'] ?? 1),
-            'section' => (string) $r['section'],
-            'text' => (string) $r['question_text'],
-            'type' => $type,
+            'id'         => 'q' . $r['question_id'],
+            'section_no' => (int) $r['section_no'],
+            'section'    => (string) $r['section'],
+            'type'       => $type,
         ];
 
-        // Apply type-specific defaults from answer_config JSONB when present.
-        $cfg = $r['answer_config'];
-        if (is_string($cfg)) { $cfg = json_decode($cfg, true); }
-        if (!is_array($cfg)) $cfg = [];
-
-        // Link inside question text: {link} placeholder replaced by applicant.js questionText()
-        if (!empty($cfg['link'])) {
-            $q['link'] = [
-                'text' => $cfg['link']['text'] ?? 'link',
-                'url'  => $cfg['link']['url'] ?? ''
-            ];
-        }
-
-        if ($type === 'scale') {
-            $q['max'] = $cfg['max'] ?? 10;
-            $q['labels'] = $cfg['labels'] ?? ['Not interested', 'Very interested'];
-        }
-        if ($type === 'date') $q['hint'] = $cfg['hint'] ?? 'Choose your earliest available date.';
-        if ($type === 'text') {
-            $q['hint'] = $cfg['hint'] ?? '';
-            $q['placeholder'] = $cfg['placeholder'] ?? 'Type your answer here...';
-            $q['min_chars'] = $cfg['min_chars'] ?? 10;
-            $q['max_chars'] = $cfg['max_chars'] ?? 2000;
-        }
-        if ($type === 'yesno_select' && !empty($cfg['choices'])) {
-            // buildYesNo() expects q.followup = { when, label, options }
-            $q['followup'] = [
-                'when'    => $cfg['followup_when'] ?? 'Yes',
-                'label'   => $cfg['followup_label'] ?? 'Please tell us more',
-                'options' => $cfg['choices']
-            ];
-        }
+        // consent questions replace 'text' with 'body' + 'checkbox'
         if ($type === 'consent') {
-            $q['body'] = is_array($cfg['body'] ?? null) ? $cfg['body'] : [ $cfg['statement'] ?? (string) $r['question_text'] ];
-            $q['checkbox'] = $cfg['checkbox_label'] ?? 'I agree';
-            unset($q['text']);
+            $q['body']     = is_array($cfg['body'] ?? null) ? $cfg['body'] : [(string) $r['question_text']];
+            $q['checkbox'] = $cfg['checkbox'] ?? 'I agree';
+        } else {
+            $q['text'] = (string) $r['question_text'];
+        }
+
+        if (!empty($cfg['link'])) {
+            $q['link'] = ['text' => (string) ($cfg['link']['text'] ?? 'link'), 'url' => (string) ($cfg['link']['url'] ?? '')];
+        }
+
+        switch ($type) {
+            case 'yesno':
+                if (!empty($cfg['no_note']))  $q['no_note']  = (string) $cfg['no_note'];
+                if (isset($cfg['favorable'])) $q['favorable'] = (string) $cfg['favorable'];
+                break;
+            case 'yesno_select':
+                $q['followup'] = [
+                    'when'    => (string) ($cfg['followup_when']    ?? 'Yes'),
+                    'label'   => (string) ($cfg['followup_label']   ?? 'Please tell us more'),
+                    'options' => (array)  ($cfg['followup_options'] ?? []),
+                ];
+                break;
+            case 'scale':
+                $q['max']    = (int)   ($cfg['max']    ?? 5);
+                $q['labels'] = (array) ($cfg['labels'] ?? ['', '']);
+                break;
+            case 'date':
+                if (!empty($cfg['hint'])) $q['hint'] = (string) $cfg['hint'];
+                break;
+            case 'text':
+                $q['hint']        = (string) ($cfg['hint']        ?? '');
+                $q['placeholder'] = (string) ($cfg['placeholder'] ?? 'Type your answer here...');
+                $q['min_chars']   = (int)    ($cfg['min_chars']   ?? 0);
+                $q['max_chars']   = (int)    ($cfg['max_chars']   ?? 500);
+                break;
         }
 
         $reminder = trim((string) ($r['reminder_text'] ?? ''));
         if ($reminder !== '') $q['no_note'] = $reminder;
+
         if (!empty($r['is_knockout'])) {
             $q['knockout'] = true;
-            if ($type === 'scale') $q['pass_answer'] = max(1, (int) ($r['passing_answer'] ?? 1));
-            elseif (in_array($type, ['yesno', 'yesno_select'], true)) $q['pass_answer'] = ($r['passing_answer'] ?? 'Yes') === 'No' ? 'No' : 'Yes';
+            if ($type === 'scale') {
+                $q['pass_answer'] = max(1, (int) ($pass['min'] ?? 1));
+            } elseif (in_array($type, ['yesno', 'yesno_select'], true)) {
+                $q['pass_answer'] = ($pass['answer'] ?? 'Yes') === 'No' ? 'No' : 'Yes';
+                if ($type === 'yesno_select' && !empty($pass['pass_follow'])) {
+                    $q['pass_follow'] = (array) $pass['pass_follow'];
+                }
+            }
         }
-        if (!empty($r['is_consent'])) {
-            $q['is_consent'] = true;
-        }
-        if (!empty($r['is_data_protection'])) {
-            $q['is_data_protection'] = true;
-        }
+        if (!empty($r['is_consent']))         $q['is_consent']         = true;
+        if (!empty($r['is_data_protection'])) $q['is_data_protection'] = true;
+
         $out[] = $q;
     }
     return $out;
@@ -132,9 +118,9 @@ function repo_admin_questions(PDO $pdo = null): array
 {
     $pdo = $pdo ?: db();
     return $pdo->query(
-        "SELECT question_id, section, question_text, answer_config, passing_answer, is_knockout," .
-        " is_consent, is_data_protection, reminder_text, is_active, created_at FROM question_config" .
-        " WHERE deleted_at IS NULL ORDER BY question_id ASC"
+        'SELECT question_id, section_no, section, question_text, question_type, answer_config,' .
+        ' passing_answer, is_knockout, is_consent, is_data_protection, reminder_text, is_active, created_at' .
+        ' FROM question_config WHERE deleted_at IS NULL ORDER BY section_no, question_id'
     )->fetchAll();
 }
 
@@ -163,20 +149,12 @@ function repo_admin_question_stats(PDO $pdo = null): array
 
     $out = [];
     foreach ($questions as $q) {
-        // Derive the page type from the answer_config JSONB content
+        $type = (string) $q['question_type'];
+
         $cfg = $q['answer_config'];
-        if (is_string($cfg)) { $cfg = json_decode($cfg, true); }
+        if (is_string($cfg)) $cfg = json_decode($cfg, true);
         if (!is_array($cfg)) $cfg = [];
-        $type = 'text';
-        if (!empty($cfg['statement']) && !empty($cfg['checkbox_label'])) {
-            $type = 'consent';
-        } elseif (!empty($cfg['choices'])) {
-            $type = 'yesno_select';
-        } elseif (!empty($cfg['max']) && !empty($cfg['labels'])) {
-            $type = 'scale';
-        } elseif (!empty($cfg['hint'])) {
-            $type = 'date';
-        }
+
         $counts = [];
         $answered = 0;
         $written = 0;

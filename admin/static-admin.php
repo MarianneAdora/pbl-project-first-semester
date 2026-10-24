@@ -216,17 +216,25 @@ function static_admin_clean_question(array $in, array $all, ?array $old = null):
                 'label'   => $label,
                 'options' => $options
             ];
+            // normalize to DB keys so static_store and DB path share the same shape
+            $q['answer_config'] = [
+                'followup_when'    => $q['followup']['when'],
+                'followup_label'   => $label,
+                'followup_options' => $options
+            ];
             break;
 
         case 'scale':
             $max = (int) ($in['max'] ?? 5);
             if ($max < 3 || $max > 10) throw new InvalidArgumentException('The rating scale must go from 3 up to 10.');
-            $q['max']    = $max;
-            $q['labels'] = [$line('label_left', 40), $line('label_right', 40)];
+            $q['max']         = $max;
+            $q['labels']      = [$line('label_left', 40), $line('label_right', 40)];
+            $q['answer_config'] = ['max' => $max, 'labels' => $q['labels']];
             break;
 
         case 'date':
-            if ($line('hint') !== '') $q['hint'] = $line('hint');
+            $hint = $line('date_hint');
+            if ($hint !== '') { $q['hint'] = $hint; $q['answer_config'] = ['hint' => $hint]; }
             break;
 
         case 'text':
@@ -234,18 +242,22 @@ function static_admin_clean_question(array $in, array $all, ?array $old = null):
             $maxc = (int) ($in['max_chars'] ?? 500);
             if ($maxc < 10 || $maxc > 2000) throw new InvalidArgumentException('The longest answer must be between 10 and 2000 characters.');
             if ($min > $maxc)               throw new InvalidArgumentException('The shortest answer cannot be longer than the longest answer.');
-            if ($line('hint') !== '')        $q['hint'] = $line('hint');
-            $q['placeholder'] = $line('placeholder') !== '' ? $line('placeholder') : 'Type your answer here...';
-            $q['min_chars']   = $min;
-            $q['max_chars']   = $maxc;
+            $hint = $line('text_hint');
+            $ph   = $line('placeholder') !== '' ? $line('placeholder') : 'Type your answer here...';
+            if ($hint !== '') $q['hint'] = $hint;
+            $q['placeholder']   = $ph;
+            $q['min_chars']     = $min;
+            $q['max_chars']     = $maxc;
+            $q['answer_config'] = ['hint' => $hint, 'placeholder' => $ph, 'min_chars' => $min, 'max_chars' => $maxc];
             break;
 
         case 'consent':
             $body = array_values(array_filter(array_map('trim', preg_split('/\R{2,}/', trim((string) ($in['body'] ?? '')))), fn($p) => $p !== ''));
             if (!$body)                 throw new InvalidArgumentException('Please write the statement the applicant has to read.');
             if ($line('checkbox') === '') throw new InvalidArgumentException('Please write the text next to the checkbox (example: I agree).');
-            $q['body']     = $body;
-            $q['checkbox'] = $line('checkbox');
+            $q['body']          = $body;
+            $q['checkbox']      = $line('checkbox');
+            $q['answer_config'] = ['body' => $body, 'checkbox' => $q['checkbox']];
             break;
     }
 
@@ -260,21 +272,24 @@ function static_admin_clean_question(array $in, array $all, ?array $old = null):
             if (!ctype_digit($pass) || (int) $pass < 1 || (int) $pass > $max) {
                 throw new InvalidArgumentException('The lowest passing rating must be a whole number from 1 up to the highest rating (' . $max . ').');
             }
-            $q['pass_answer'] = (int) $pass;
+            $q['pass_answer']   = (int) $pass;
+            // normalized shape for DB: { "min": 3 }
+            $q['passing_answer'] = ['min' => (int) $pass];
         } else {
             $pass = (string) ($in['pass_answer'] ?? '');
             if ($pass !== 'Yes' && $pass !== 'No') throw new InvalidArgumentException('Choose the passing answer (Yes or No) for the knock-out question.');
             $q['pass_answer'] = $pass;
             if ($type === 'yesno') {
-                // the Questionnaires Statistics count the passing answer as the good one
                 unset($q['favorable']);
                 if ($pass === 'No') $q['favorable'] = 'No';
             } elseif ($pass === $q['followup']['when']) {
-                // optional: only some of the list choices pass (none ticked = every choice passes)
                 $raw      = is_array($in['pass_follow'] ?? null) ? $in['pass_follow'] : preg_split('/\R/', (string) ($in['pass_follow'] ?? ''));
                 $accepted = array_values(array_intersect($q['followup']['options'], array_map('trim', array_map('strval', $raw))));
                 if ($accepted && count($accepted) < count($q['followup']['options'])) $q['pass_follow'] = $accepted;
             }
+            // normalized shape for DB: { "answer": "Yes", "pass_follow": [...] }
+            $q['passing_answer'] = ['answer' => $pass];
+            if (!empty($q['pass_follow'])) $q['passing_answer']['pass_follow'] = $q['pass_follow'];
         }
     }
 
@@ -286,6 +301,8 @@ function static_admin_clean_question(array $in, array $all, ?array $old = null):
             throw new InvalidArgumentException('The question has {link}. Add the link text and a web address that starts with http:// or https://.');
         }
         $q['link'] = ['text' => $linkText, 'url' => $linkUrl];
+        // merge into answer_config so the DB path reads it from the same place
+        $q['answer_config'] = array_merge($q['answer_config'] ?? [], ['link' => $q['link']]);
     }
 
     return $q;
