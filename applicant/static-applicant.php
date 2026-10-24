@@ -7,7 +7,7 @@
 
    Who takes from this file
      applicant/questionnaire.php   static_questionnaire()   the screening questions (13 to start with;
-                                                         the Admin adds / edits them in admin/questionlist.php)
+                                                         the Admin adds / edits them in admin/question-list.php)
      applicant/upload-video.php    static_questionnaire()   (checks every answer is there)
                                    static_video_rules()     seconds / MB / formats of the video
      assets/js/screening-store.js  POSTs to this file       "start" and "submit" (see the bottom)
@@ -63,7 +63,7 @@ function static_video_rules(): array
 // ---------------------------------------------------------------------------
 // The questionnaire (Sections 1 to 5; Section 6 is the video page)
 // ---------------------------------------------------------------------------
-// The questions the applicant sees. The Admin keeps them in the store (admin/questionlist.php: add, edit,
+// The questions the applicant sees. The Admin keeps them in the store (admin/question-list.php: add, edit,
 // delete); until the Admin changes something, the starting list below (static_questionnaire_seed) is used.
 // Questions the Admin deleted (they wait in the Admin Archive) or switched to Inactive are not shown.
 // DATABASE (later): SELECT * FROM questions WHERE archived_at IS NULL ORDER BY section_no, position
@@ -186,7 +186,7 @@ function static_questionnaire_seed(): array
 
 // ---------------------------------------------------------------------------
 // KNOCK-OUT QUESTIONS (the screening rubric)
-// The Admin marks a question as knock-out and sets the PASSING ANSWER (admin/addquestion.php).
+// The Admin marks a question as knock-out and sets the PASSING ANSWER (admin/add-question.php).
 // An applicant whose answer does not match fails the screening (static-evaluation.php), and HR sees which
 // question it was and why (hr/details.php > Questionnaires).
 // Only Yes/No, Yes/No + list and rating questions can be knock-out questions.

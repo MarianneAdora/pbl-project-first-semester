@@ -17,13 +17,13 @@ $credentials = [
         'password' => 'hr123',
         'role' => 'hr',
         'name' => 'HR',                       // shown in "Hello, ...!" (backend: use the real name)
-        'redirect' => 'hr/dashboardhr.php'
+        'redirect' => 'hr/dashboard-hr.php'
     ],
     'admin@expertise.com' => [
         'password' => 'admin123',
         'role' => 'admin',
         'name' => 'Admin',
-        'redirect' => 'admindashboardadmin.php'
+        'redirect' => 'admindashboard-admin.php'
     ]
 ];
 */

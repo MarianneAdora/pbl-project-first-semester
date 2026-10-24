@@ -23,7 +23,7 @@ if ($requireVerification) {
 }
 
 // ---- Questions --------------------------------------------------------------
-// Served from the same store the Admin uses (admin/questionlist.php) so whatever
+// Served from the same store the Admin uses (admin/question-list.php) so whatever
 // the Admin adds/edits/deletes is exactly what applicants answer. Falls back to
 // the DB only when the store has no questions, then to the hard-coded seed list.
 require_once __DIR__ . '/static-applicant.php';

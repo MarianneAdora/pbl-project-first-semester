@@ -5,12 +5,12 @@
    Temporary, like hr/static-data.php. It is deleted when the database is connected.
 
    Who takes from this file
-     admin/dashboardadmin.php static_admin_overview()   the three summary boxes
+     admin/dashboard-admin.php static_admin_overview()   the three summary boxes
                              static_admin_question_stats()  Questionnaires Statistics (every question + its most chosen answer)
                              static_activity()         Recent Activities (from hr/static-data.php)
-     admin/questionlist.php   static_admin_payload()    view / add / edit / delete the questionnaires
-     admin/hrlist.php         static_admin_payload()    add / edit / deactivate / delete HR accounts
-     admin/archiveadmin.php    static_admin_payload()    deleted questions + HR accounts (30 days, then gone)
+     admin/question-list.php   static_admin_payload()    view / add / edit / delete the questionnaires
+     admin/hr-list.php         static_admin_payload()    add / edit / deactivate / delete HR accounts
+     admin/archive-admin.php    static_admin_payload()    deleted questions + HR accounts (30 days, then gone)
 
    Where the data lives (hr/data/static-store.json, the same "table file" the HR side uses)
      questions     the questionnaire. THE APPLICANT PAGE READS THE SAME LIST (static_questionnaire() in

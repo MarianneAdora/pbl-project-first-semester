@@ -18,7 +18,7 @@
 
 /* ---------- PART 1: shared helpers (window.ADMIN) ---------- */
 window.ADMIN = (function () {
-    /* ---- Settings (admin/settingsadmin.php) -----------------------------------------------------
+    /* ---- Settings (admin/settings-admin.php) -----------------------------------------------------
        Kept in this browser for now, like the HR settings:
          theme           'light' | 'dark' | 'system'   -> <html data-theme>
          animations      false = no page motion         -> <html data-motion="off">
@@ -491,7 +491,7 @@ window.ADMIN = (function () {
     function ensureHrBadge() {
         let badge = document.getElementById('hrBadge');
         if (!badge) {
-            const link = document.querySelector('.sidebar-nav a[href$="hrlist.php"]');
+            const link = document.querySelector('.sidebar-nav a[href$="hr-list.php"]');
             if (!link) return null;
             badge = document.createElement('span');
             badge.className = 'nav-badge alert';
@@ -1117,7 +1117,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (isEdit) {
             ADMIN.flash('HR account saved.', { id: lastAccount.id || config.account.id });
-            window.location.href = 'hrlist.php';
+            window.location.href = 'hr-list.php';
             return;
         }
 
@@ -1175,7 +1175,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return ['name', 'email', 'password', 'password_confirm'].some(n => form.elements[n].value.trim() !== '');
     };
 
-    function leave() { window.location.href = 'hrlist.php'; }
+    function leave() { window.location.href = 'hr-list.php'; }
 
     function tryLeave() {
         if (isDirty() && !formCard.hidden) discardModal.classList.add('active');
@@ -1750,7 +1750,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (question.section_rename) message += ' Section renamed.';
             ADMIN.flash(message, { id: saved.id || Q.id || '' });      // the list shows the message and the saved row glows once
             leaving = true;
-            window.location.href = 'questionlist.php';
+            window.location.href = 'question-list.php';
         } catch (err) {
             showServerError(err.message || 'Something went wrong. Please try again.');
             setSaving(false);
@@ -1809,7 +1809,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ---------- Cancel / Back (asks first when something was typed) ---------- */
     const isDirty = () => !leaving && JSON.stringify([collect(), val('section_title')]) !== startSnapshot;
 
-    function leave() { window.location.href = 'questionlist.php'; }
+    function leave() { window.location.href = 'question-list.php'; }
 
     function tryLeave() {
         if (isDirty()) discardModal.classList.add('active');
@@ -2006,7 +2006,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function restoreItem(it, btn) {
         if (busy) return;
         const isAccount = it.kind === 'account';
-        const target = isAccount ? '.sidebar-nav a[href="hrlist.php"]' : '.sidebar-nav a[href="questionlist.php"]';
+        const target = isAccount ? '.sidebar-nav a[href="hr-list.php"]' : '.sidebar-nav a[href="question-list.php"]';
         const tr = btn.closest('tr');
         busy = true; btn.disabled = true;
         try {
@@ -2343,7 +2343,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const box = el('div', 'row-actions');
 
         const edit = el('a', 'icon-btn is-edit');
-        edit.href = 'addhr.php?id=' + encodeURIComponent(a.id);
+        edit.href = 'add-hr.php?id=' + encodeURIComponent(a.id);
         edit.title = 'Edit ' + a.name;
         edit.setAttribute('aria-label', 'Edit ' + a.name);
         edit.innerHTML = ADMIN.icons.edit;
@@ -2566,7 +2566,7 @@ if (document.documentElement.getAttribute('data-page') === 'questionlist') {
    Questionnaires (admin): search, section + status filters, rows that fit the window, page buttons, delete + undo.
    Same behaviour as the HR Accounts page (assets/js/hrlist.js). Shared helpers (window.ADMIN: requests, toast,
    confirm box, flyToArchive, badges), the sidebar and logout live in admin-common.js (loaded BEFORE this script).
-   This page's markup + data come from admin/questionlist.php (window.ADMIN_Q).
+   This page's markup + data come from admin/question-list.php (window.ADMIN_Q).
    BACKEND: window.ADMIN_Q.questions = SELECT id, section_no, section, text, status, created_at FROM questions
             WHERE archived_at IS NULL ORDER BY section_no, position
    ========================================================================== */
@@ -2878,7 +2878,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const box = el('div', 'row-actions');
 
         const edit = el('a', 'icon-btn is-edit');
-        edit.href = 'addquestion.php?id=' + encodeURIComponent(q.id);
+        edit.href = 'add-question.php?id=' + encodeURIComponent(q.id);
         edit.title = 'Edit question ' + number;
         edit.setAttribute('aria-label', 'Edit question ' + number);
         edit.innerHTML = ADMIN.icons.edit;
@@ -3141,7 +3141,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* ---------- the saved state ---------- */
     // Name + email: what the Admin saved before, otherwise what the login session gave
-    // (window.ADMIN_ACCOUNT is printed by settingsadmin.php).
+    // (window.ADMIN_ACCOUNT is printed by settings-admin.php).
     const account = window.ADMIN_ACCOUNT || { name: '', email: '' };
     function readSaved() {
         const profile = ADMIN.settings.profile();
@@ -3271,7 +3271,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /* BACKEND: replace the body with a real request, for example
-           const res = await fetch('settingsadmin.php', { method: 'POST', body: JSON.stringify(state), ... });
+           const res = await fetch('settings-admin.php', { method: 'POST', body: JSON.stringify(state), ... });
            const data = await res.json();                 // { status: 'success' }
            if (data.status !== 'success') throw new Error(data.message);
        Until then the values are kept in this browser (ADMIN.settings / ADMIN.settings.saveProfile). */
@@ -3433,7 +3433,7 @@ document.addEventListener('DOMContentLoaded', () => {
     pwCurrent.addEventListener('input', () => setError(pwField('pwCurrent'), ''));
 
     /* BACKEND: check the current password and store the new one, for example
-           const res = await fetch('settingsadmin.php', { method: 'POST', body: JSON.stringify({ action: 'password', current, next }) });
+           const res = await fetch('settings-admin.php', { method: 'POST', body: JSON.stringify({ action: 'password', current, next }) });
        and show data.message when the current password is wrong (use setError(pwField('pwCurrent'), data.message, true)).
        The browser cannot check the current password on its own, so for now it only has to be filled in. */
     pwForm.addEventListener('submit', async (e) => {
@@ -3853,7 +3853,7 @@ if (document.documentElement.getAttribute('data-page') === 'dashboardadmin') {
 /* ==========================================================================
    Dashboard (Admin) behaviour.
    Entrance, sidebar, toast and notifications live in admin-common.js (loaded BEFORE this file).
-   ADMIN_DASH (printed by dashboardadmin.php) = {
+   ADMIN_DASH (printed by dashboard-admin.php) = {
        stats:    { submissions, sections: [{ no, name, count }],
                    questions: [{ id, section_no, section, text, type, status, answered, top, top_count, share, options, note, expected }] },
        activity: [{ at, activity, details, by }]      the latest 10, newest first

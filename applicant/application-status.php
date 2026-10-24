@@ -164,7 +164,7 @@ $iconCalendar = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5"
 $iconClock    = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.5l3.5 2"/></svg>';
 $iconChat     = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h10a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H9l-4 3v-3a2 2 0 0 1-1-1.7V7a2 2 0 0 1 2-2z"/><path d="M18 9h1a2 2 0 0 1 2 2v6a2 2 0 0 1-1 1.7V21l-3.5-2.5H12"/></svg>';
 $iconStatus   = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4" class="fill"/></svg>';
-// The big animated icons (same circle + tick as the HR "Invitation Sent" window, see addapplicants.php)
+// The big animated icons (same circle + tick as the HR "Invitation Sent" window, see add-applicants.php)
 $bigCheck = '<svg class="big-check" viewBox="0 0 80 80" aria-hidden="true"><circle class="bc-circle" cx="40" cy="40" r="36"/><path class="bc-tick" d="M24 41l11 11 21-23"/></svg>';
 $bigCross = '<svg class="big-check big-check--red" viewBox="0 0 80 80" aria-hidden="true"><circle class="bc-circle" cx="40" cy="40" r="36"/><path class="bc-tick" pathLength="60" d="M28 28l24 24"/><path class="bc-tick" pathLength="60" d="M52 28L28 52"/></svg>';
 $bigWait  = '<svg class="big-check big-check--amber" viewBox="0 0 80 80" aria-hidden="true"><circle class="bc-circle" cx="40" cy="40" r="36"/><circle class="bc-glyph" cx="40" cy="40" r="17"/><path class="bc-glyph" d="M40 29v12l8 5"/></svg>';

@@ -5,9 +5,9 @@
 
    Who takes from this file
      index.php                static_accounts()        the HR / Admin login accounts
-     hr/screeninglist.php     static_applicants()      the applicants, with status + result
+     hr/screening-list.php     static_applicants()      the applicants, with status + result
      hr/archive.php           static_applicants()      same list (the page shows the archived ones)
-     hr/dashboardhr.php       static_applicants()      the cards, the Passed/Rejected chart and
+     hr/dashboard-hr.php       static_applicants()      the cards, the Passed/Rejected chart and
                               static_stats()           Recent Applicants are all worked out
                               static_completed_ids()   from this one list
                               static_recent()
@@ -59,17 +59,17 @@ function static_accounts(): array
             'password' => 'hr123',
             'role'     => 'hr',
             'name'     => 'HR',                       // shown in "Hello, ...!"
-            'redirect' => 'hr/dashboardhr.php'
+            'redirect' => 'hr/dashboard-hr.php'
         ],
         'admin@expertise.com' => [
             'password' => 'admin123',
             'role'     => 'admin',
             'name'     => 'Admin',
-            'redirect' => 'admin/dashboardadmin.php'
+            'redirect' => 'admin/dashboard-admin.php'
         ]
     ];
 
-    // Once the Admin has created / changed an HR account (admin/hrlist.php), the HR logins come from the
+    // Once the Admin has created / changed an HR account (admin/hr-list.php), the HR logins come from the
     // store instead: only Active accounts that are not in the Archive can log in, and a password the
     // Admin typed is kept as a hash ('hash'), checked with password_verify() in index.php.
     // BACKEND: SELECT name, email, password_hash FROM users WHERE role = 'hr' AND status = 'Active'
@@ -86,7 +86,7 @@ function static_accounts(): array
                     'hash'     => isset($a['hash']) ? (string) $a['hash'] : null,
                     'role'     => 'hr',
                     'name'     => (string) ($a['name'] ?? 'HR'),
-                    'redirect' => 'hr/dashboardhr.php'
+                    'redirect' => 'hr/dashboard-hr.php'
                 ];
             }
         }
@@ -362,8 +362,8 @@ function static_archived_applicants(): array
 // What the pages hand to hr-common.js so the browser copy of the Archive matches this file:
 //   ids = ids that are in the Archive      at = { id: time it was archived, in milliseconds }
 // Every HR page prints it, as JSON, into window.HR_SERVER_ARCHIVE before hr-common.js loads
-// (see the <script> line above hr-common.js in dashboardhr.php, screeninglist.php, archive.php
-// and addapplicants.php).
+// (see the <script> line above hr-common.js in dashboard-hr.php, screening-list.php, archive.php
+// and add-applicants.php).
 function static_archive_sync(): array
 {
     $zone = new DateTimeZone('Asia/Manila');

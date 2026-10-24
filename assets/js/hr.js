@@ -58,7 +58,7 @@ window.HR = (function () {
         try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch (err) { return false; }
     }
 
-    // ---- Settings (hr/settinghr.php) ----------------------------------------------------------
+    // ---- Settings (hr/setting-hr.php) ----------------------------------------------------------
     // The HR preferences live in ONE browser key for now, like the archive. Every HR page reads
     // them here, so a change on the Settings page shows up everywhere:
     //   theme          'light' | 'dark' | 'system'      -> <html data-theme>   (assets/css/theme.css)
@@ -329,7 +329,7 @@ window.HR = (function () {
     function ensureDashboardBadge() {
         let badge = document.getElementById('dashboardBadge');
         if (badge) return badge;
-        const link = document.querySelector('.sidebar-nav a[href$="dashboardhr.php"]');
+        const link = document.querySelector('.sidebar-nav a[href$="dashboard-hr.php"]');
         if (!link) return null;
         badge = document.createElement('span');
         badge.className = 'nav-badge alert';
@@ -392,7 +392,7 @@ window.HR = (function () {
         }
         let sub = document.getElementById('screeningBadge');
         if (!sub) {
-            const item = document.querySelector('.sub-menu a.sub-item[href$="screeninglist.php"]');
+            const item = document.querySelector('.sub-menu a.sub-item[href$="screening-list.php"]');
             if (item) {
                 sub = document.createElement('span');
                 sub.className = 'nav-badge alert mini';
@@ -685,7 +685,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sentModal = document.getElementById('sentModal');
     const discardModal = document.getElementById('discardModal');
 
-    // CV upload is enabled: the file is sent to addapplicants.php -> Cloudinary (ebsmi_cvs/{id}).
+    // CV upload is enabled: the file is sent to add-applicants.php -> Cloudinary (ebsmi_cvs/{id}).
     // Optional: validated client-side (PDF/DOC/DOCX, 5 MB max) and again on the server.
     const CV_DISABLED = false;
     const MAX_CV = 5 * 1024 * 1024;
@@ -864,7 +864,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const fd = new FormData();
             fd.append('action', 'parse_cv');
             fd.append('cv', file, file.name);
-            const res = await fetch('addapplicants.php', { method: 'POST', body: fd, credentials: 'same-origin' });
+            const res = await fetch('add-applicants.php', { method: 'POST', body: fd, credentials: 'same-origin' });
             let data;
             try { data = await res.json(); }
             catch (e) { throw new Error('The server did not answer correctly. Please type the details manually.'); }
@@ -933,7 +933,7 @@ document.addEventListener('DOMContentLoaded', () => {
        There is no server yet, so this just waits a moment and pretends the email was sent.
        BACKEND: replace the body with a real request, for example:
 
-           const res = await fetch('addapplicants.php', { method: 'POST', body: formData });
+           const res = await fetch('add-applicants.php', { method: 'POST', body: formData });
            const data = await res.json();                 // { status: 'success', applicant: { id, name, email, contact } }
            if (data.status !== 'success') throw new Error(data.message);
            return data;
@@ -944,14 +944,14 @@ document.addEventListener('DOMContentLoaded', () => {
            {{YEAR}}        current year
        and, before redirecting from that link to opening.php, sets the session values
        listed at the top of opening.php (applicant_name, applicant_email). */
-    /* Real request: saves the applicant through addapplicants.php (it is the endpoint too),
+    /* Real request: saves the applicant through add-applicants.php (it is the endpoint too),
        so the Screening List, Dashboard cards and Recent Applicants all show the new person.
        The CV file (if chosen) is uploaded flat to ebsmi_cvs as cv-{id}-{filename}
        (PDFs = previewable image type) and its URL is saved as cv_file_url.
        Invitation email still not sent. */
     async function sendInvitation(formData) {
         formData.delete('note'); // no notes column yet
-        const res = await fetch('addapplicants.php', { method: 'POST', body: formData, credentials: 'same-origin' });
+        const res = await fetch('add-applicants.php', { method: 'POST', body: formData, credentials: 'same-origin' });
         let data;
         try { data = await res.json(); }
         catch (e) { throw new Error('The server did not answer correctly. Please try again.'); }
@@ -1028,13 +1028,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     cancelBtn.addEventListener('click', () => {
         if (isDirty()) discardModal.classList.add('active');
-        else window.location.href = 'screeninglist.php';
+        else window.location.href = 'screening-list.php';
     });
 
     document.getElementById('keepEditing').addEventListener('click', () => discardModal.classList.remove('active'));
     document.getElementById('confirmDiscard').addEventListener('click', () => {
         discardModal.classList.remove('active');
-        window.location.href = 'screeninglist.php';
+        window.location.href = 'screening-list.php';
     });
     discardModal.addEventListener('click', (e) => { if (e.target === discardModal) discardModal.classList.remove('active'); });
 
@@ -2083,7 +2083,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(updateListFade, 900);          // again once the entrance animation has settled
     }
 
-    // 1. Stat Card Clicking -> Route to screeninglist.php
+    // 1. Stat Card Clicking -> Route to screening-list.php
     document.querySelectorAll('.stat-card').forEach(card => {
         card.addEventListener('click', () => {
             const targetUrl = card.getAttribute('data-url');
@@ -2184,7 +2184,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (elements.length > 0) {
                             const index = elements[0].index;
                             const statusFilter = index === 0 ? 'Passed' : 'Rejected';
-                            window.location.href = `screeninglist.php?status=${statusFilter}`;
+                            window.location.href = `screening-list.php?status=${statusFilter}`;
                         }
                     },
                     animation: {
@@ -2202,7 +2202,7 @@ document.addEventListener('DOMContentLoaded', () => {
         [['legendPassed', 'Passed', chartData.passed], ['legendFailed', 'Rejected', chartData.failed]].forEach(([id, status, n]) => {
             const el = document.getElementById(id);
             if (!el) return;
-            const go = () => { window.location.href = `screeninglist.php?status=${status}`; };
+            const go = () => { window.location.href = `screening-list.php?status=${status}`; };
             el.addEventListener('click', go);
             el.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
             el.addEventListener('mouseenter', () => showCenter(n, status + ' · ' + Math.round(n / total * 100) + '%'));
@@ -2217,7 +2217,7 @@ document.addEventListener('DOMContentLoaded', () => {
    screenings that nobody has opened yet. The number on the bell counts the lines that are new since
    the bell was last opened. Opening it marks them as read (they stay highlighted while it is open).
    Settings > Notifications (the master switch) hides the number; Settings changes are never listed.
-   Data: window.HR_ACTIVITY, printed by dashboardhr.php (and refreshed through static-data.php, action 'activity').
+   Data: window.HR_ACTIVITY, printed by dashboard-hr.php (and refreshed through static-data.php, action 'activity').
    The "last read" time is kept in this browser for now; with the database it becomes a column on the user.
    ========================================================================== */
 document.addEventListener('DOMContentLoaded', () => {
@@ -2290,7 +2290,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const done = completedLeft();
         let html = '';
         if (done > 0) {
-            html += '<li><a class="notif-item is-new" href="screeninglist.php?status=Completed">' +
+            html += '<li><a class="notif-item is-new" href="screening-list.php?status=Completed">' +
                 '<span class="notif-ico tone-green">' + svg(ICONS.done) + '</span>' +
                 '<span class="notif-text"><strong>' + done + ' completed screening' + (done === 1 ? '' : 's') + ' to review</strong>' +
                 '<span class="notif-detail">Open the Screening List to see who finished.</span></span></a></li>';
@@ -4033,7 +4033,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* ---------- the saved state ---------- */
     // Name + email: what HR saved before, otherwise what the login session gave
-    // (window.HR_ACCOUNT is printed by settinghr.php).
+    // (window.HR_ACCOUNT is printed by setting-hr.php).
     const account = window.HR_ACCOUNT || { name: '', email: '' };
     function readSaved() {
         const profile = HR.settings.profile();
@@ -4163,7 +4163,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /* BACKEND: replace the body with a real request, for example
-           const res = await fetch('settinghr.php', { method: 'POST', body: JSON.stringify(state), ... });
+           const res = await fetch('setting-hr.php', { method: 'POST', body: JSON.stringify(state), ... });
            const data = await res.json();                 // { status: 'success' }
            if (data.status !== 'success') throw new Error(data.message);
        Until then the values are kept in this browser (HR.settings / HR.settings.saveProfile). */
@@ -4325,7 +4325,7 @@ document.addEventListener('DOMContentLoaded', () => {
     pwCurrent.addEventListener('input', () => setError(pwField('pwCurrent'), ''));
 
     /* BACKEND: check the current password and store the new one, for example
-           const res = await fetch('settinghr.php', { method: 'POST', body: JSON.stringify({ action: 'password', current, next }) });
+           const res = await fetch('setting-hr.php', { method: 'POST', body: JSON.stringify({ action: 'password', current, next }) });
        and show data.message when the current password is wrong (use setError(pwField('pwCurrent'), data.message, true)).
        The browser cannot check the current password on its own, so for now it only has to be filled in. */
     pwForm.addEventListener('submit', async (e) => {

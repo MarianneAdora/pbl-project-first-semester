@@ -192,7 +192,7 @@ function status_badge(string $status): string
 
         <!-- Navigation Menu -->
         <nav class="sidebar-nav">
-            <a href="dashboardhr.php" class="nav-item active reveal" style="--i:1">
+            <a href="dashboard-hr.php" class="nav-item active reveal" style="--i:1">
                 <svg class="nav-icon" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
                 <span class="nav-text">Dashboard</span>
             </a>
@@ -201,7 +201,7 @@ function status_badge(string $status): string
             <div class="nav-group reveal" id="applicantsGroup" style="--i:2">
                 <div class="nav-dropdown-wrapper">
                     <!-- Main Applicants Button -->
-                    <a href="screeninglist.php" class="nav-item nav-main-link" id="applicantsMainLink">
+                    <a href="screening-list.php" class="nav-item nav-main-link" id="applicantsMainLink">
                         <svg class="nav-icon" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
                         <span class="nav-text">Applicants</span>
                     </a>
@@ -211,8 +211,8 @@ function status_badge(string $status): string
                     </button>
                 </div>
                 <div class="sub-menu" id="applicantsSubMenu">
-                    <a href="screeninglist.php" class="sub-item"><span class="sub-text">Screening List</span></a>
-                    <a href="addapplicants.php" class="sub-item"><span class="sub-text">Add Applicant</span></a>
+                    <a href="screening-list.php" class="sub-item"><span class="sub-text">Screening List</span></a>
+                    <a href="add-applicants.php" class="sub-item"><span class="sub-text">Add Applicant</span></a>
                 </div>
             </div>
 
@@ -226,7 +226,7 @@ function status_badge(string $status): string
 
         <!-- Sidebar Footer Options -->
         <div class="sidebar-footer">
-            <a href="settinghr.php" class="nav-item reveal" style="--i:3">
+            <a href="setting-hr.php" class="nav-item reveal" style="--i:3">
                 <svg class="nav-icon" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6-3.6z"/></svg>
                 <span class="nav-text">Settings</span>
             </a>
@@ -274,7 +274,7 @@ function status_badge(string $status): string
 
             <!-- Summary Stat Cards -->
             <div class="metrics-container">
-                <div class="stat-card tone-red reveal" style="--i:2" data-url="screeninglist.php?status=all">
+                <div class="stat-card tone-red reveal" style="--i:2" data-url="screening-list.php?status=all">
                     <div class="stat-top">
                         <span class="stat-icon">
                             <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
@@ -289,7 +289,7 @@ function status_badge(string $status): string
                     </div>
                 </div>
 
-                <div class="stat-card tone-amber reveal" style="--i:3" data-url="screeninglist.php?status=Pending">
+                <div class="stat-card tone-amber reveal" style="--i:3" data-url="screening-list.php?status=Pending">
                     <div class="stat-top">
                         <span class="stat-icon">
                             <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
@@ -304,7 +304,7 @@ function status_badge(string $status): string
                     </div>
                 </div>
 
-                <div class="stat-card tone-blue reveal" style="--i:4" data-url="screeninglist.php?status=In Progress">
+                <div class="stat-card tone-blue reveal" style="--i:4" data-url="screening-list.php?status=In Progress">
                     <div class="stat-top">
                         <span class="stat-icon">
                             <svg viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
@@ -319,7 +319,7 @@ function status_badge(string $status): string
                     </div>
                 </div>
 
-                <div class="stat-card tone-green reveal" style="--i:5" data-url="screeninglist.php?status=Completed">
+                <div class="stat-card tone-green reveal" style="--i:5" data-url="screening-list.php?status=Completed">
                     <div class="stat-top">
                         <span class="stat-icon">
                             <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
@@ -367,7 +367,7 @@ function status_badge(string $status): string
             <div class="recent-card reveal" style="--i:6">
                 <div class="card-top">
                     <h3>Recent Applicants</h3>
-                    <a href="screeninglist.php" class="view-all">View All
+                    <a href="screening-list.php" class="view-all">View All
                         <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
                     </a>
                 </div>
@@ -431,7 +431,7 @@ function status_badge(string $status): string
                     <p class="quick-action-text">Add Shortlisted Applicants</p>
                     <p class="quick-action-sub">Register a new applicant and add them to the screening list.</p>
                 </div>
-                <a href="addapplicants.php" class="btn-add-new">
+                <a href="add-applicants.php" class="btn-add-new">
                     <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
                     ADD NEW
                 </a>

@@ -5,16 +5,14 @@ session_start();
 header('Cache-Control: no-store, no-cache, must-revalidate');
 header('Pragma: no-cache');
 
-// Protection: Ensure only the Admin can access this page
-if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
+// Protection: Ensure only HR users can access this page
+if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {
     header('Location: ../index.php');
     exit();
 }
 
-date_default_timezone_set('Asia/Manila');
-
-// Needed for the sidebar badges (static_admin_notify): new HR activity + Archive items that expire soon
-require_once __DIR__ . '/static-admin.php';
+// Keeps the browser copy of the Archive in step with static-data.php
+require_once __DIR__ . '/static-data.php';
 
 // Starting values for the account fields: whoever logged in.
 // BACKEND: this is the logged-in user's row (name, email). Settings > Account saves back to it.
@@ -22,33 +20,36 @@ $account_name  = trim((string) ($_SESSION['user_name'] ?? ''));
 $account_email = trim((string) ($_SESSION['user_email'] ?? ''));
 ?>
 <!DOCTYPE html>
-<html lang="en" data-page="settingsadmin">
+<html lang="en" data-page="settinghr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Settings - Expertise Admin</title>
+    <title>Settings - Expertise Portal</title>
 
-    <!-- Runs before first paint: the saved theme / animations are already on the page, and the screen is already covered when arriving via login -->
+    <!-- Runs before first paint so the screen is already covered when arriving via login -->
     <script>
         document.documentElement.classList.add('js');
+        if (new URLSearchParams(location.search).get('transition') === 'out') {
+            document.documentElement.classList.add('is-transitioning');
+        }
+        // Saved Settings (theme + animations) are put on the page before the first paint, so it never flashes
         try {
-            var s = JSON.parse(localStorage.getItem('admin_settings') || '{}'), t = s.theme || 'light';
+            var s = JSON.parse(localStorage.getItem('hr_settings') || '{}'), t = s.theme || 'light';
             if (t === 'system') t = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
             document.documentElement.setAttribute('data-theme', t === 'dark' ? 'dark' : 'light');
             if (s.animations === false) document.documentElement.setAttribute('data-motion', 'off');
         } catch (e) {}
-        if (new URLSearchParams(location.search).get('transition') === 'out') {
-            document.documentElement.classList.add('is-transitioning');
-        }
     </script>
 
-    <!-- Plus Jakarta Sans Google Font -->
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <!-- admin.css = shared admin styles + every admin page (this page is picked by data-page="settingsadmin" on <html>) -->
-    <link rel="stylesheet" href="../assets/css/admin.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/admin.css'); ?>">
+    <!-- hr.css = shared hr styles + every hr page (this page is picked by data-page="settinghr" on <html>) -->
+    <link rel="stylesheet" href="../assets/css/hr.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/hr.css'); ?>">
+
+
 </head>
 <body>
 
@@ -65,59 +66,66 @@ $account_email = trim((string) ($_SESSION['user_email'] ?? ''));
     </div>
 
     <!-- Logout Confirmation Modal -->
-    <div class="modal-backdrop" id="logoutModal" role="dialog" aria-modal="true" aria-labelledby="logoutTitle">
+    <div class="modal-backdrop" id="logoutModal">
         <div class="modal-card">
-            <h3 id="logoutTitle">Confirm Logout</h3>
-            <p>Are you sure you want to log out of the Admin portal?</p>
+            <h3>Confirm Logout</h3>
+            <p>Are you sure you want to log out of the HR portal?</p>
             <div class="modal-actions">
-                <button type="button" class="modal-btn is-cancel" id="cancelLogout">Cancel</button>
-                <button type="button" class="modal-btn is-confirm" id="confirmLogout">Log Out</button>
+                <button class="btn-cancel" id="cancelLogout">Cancel</button>
+                <button class="btn-confirm" id="confirmLogout">Log Out</button>
             </div>
         </div>
     </div>
 
-    <!-- Sidebar: Dashboard, HR Accounts, Questions, Archive (+ Settings and Log out at the bottom) -->
+    <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header reveal" style="--i:0">
             <div class="brand-container">
                 <img src="../assets/images/expertise2.png" alt="Expertise Logo" class="brand-logo">
             </div>
-            <button type="button" class="toggle-btn" id="sidebarToggle" title="Toggle Sidebar" aria-label="Toggle sidebar">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+            <button class="toggle-btn" id="sidebarToggle" title="Toggle Sidebar">
+                <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
             </button>
         </div>
 
-        <nav class="sidebar-nav" aria-label="Admin">
-            <a href="dashboardadmin.php" class="nav-item reveal" id="dashboardLink" style="--i:1" title="Dashboard">
-                <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+        <nav class="sidebar-nav">
+            <a href="dashboard-hr.php" class="nav-item reveal" style="--i:1">
+                <svg class="nav-icon" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
                 <span class="nav-text">Dashboard</span>
-                <span class="nav-badge alert" id="dashboardBadge" hidden></span>
             </a>
 
-            <a href="hrlist.php" class="nav-item reveal" style="--i:2" title="HR Accounts">
-                <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
-                <span class="nav-text">HR Accounts</span>
-            </a>
+            <!-- Applicants section (closed here: Settings is not part of it) -->
+            <div class="nav-group reveal" id="applicantsGroup" style="--i:2">
+                <div class="nav-dropdown-wrapper">
+                    <a href="screening-list.php" class="nav-item nav-main-link" id="applicantsMainLink">
+                        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                        <span class="nav-text">Applicants</span>
+                    </a>
+                    <button class="dropdown-arrow-btn" id="arrowToggleBtn" title="Toggle Menu">
+                        <svg class="arrow-icon" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
+                    </button>
+                </div>
+                <div class="sub-menu" id="applicantsSubMenu">
+                    <a href="screening-list.php" class="sub-item"><span class="sub-text">Screening List</span></a>
+                    <a href="add-applicants.php" class="sub-item"><span class="sub-text">Add Applicant</span></a>
+                </div>
+            </div>
 
-            <a href="questionlist.php" class="nav-item reveal" style="--i:3" title="Questions">
-                <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1s-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
-                <span class="nav-text">Questions</span>
-            </a>
-
-            <a href="archiveadmin.php" class="nav-item reveal" id="archiveLink" style="--i:4" title="Archive">
-                <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z"/></svg>
+            <!-- Archive -->
+            <a href="archive.php" id="archiveLink" class="nav-item reveal" style="--i:3">
+                <svg class="nav-icon" viewBox="0 0 24 24"><path d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z"/></svg>
                 <span class="nav-text">Archive</span>
-                <span class="nav-badge alert" id="archiveBadge" hidden></span>
+                <span class="nav-badge" id="archiveBadge" hidden>0</span>
             </a>
         </nav>
 
         <div class="sidebar-footer">
-            <a href="settingsadmin.php" class="nav-item active reveal" style="--i:5" title="Settings" aria-current="page">
-                <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+            <a href="setting-hr.php" class="nav-item active reveal" style="--i:3" aria-current="page">
+                <svg class="nav-icon" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
                 <span class="nav-text">Settings</span>
             </a>
-            <button type="button" class="nav-item btn-logout-trigger reveal" id="logoutBtn" style="--i:6" title="Log out">
-                <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg>
+            <button class="nav-item btn-logout-trigger reveal" id="logoutBtn" style="--i:4">
+                <svg class="nav-icon" viewBox="0 0 24 24"><path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg>
                 <span class="nav-text">Log out</span>
             </button>
         </div>
@@ -125,14 +133,14 @@ $account_email = trim((string) ($_SESSION['user_email'] ?? ''));
 
     <!-- Restore the sidebar state (collapsed / expanded) before the first paint, so it never flashes open -->
     <script>
-        try { if (localStorage.getItem('admin_sidebar_collapsed') === '1') document.getElementById('sidebar').classList.add('collapsed'); } catch (e) {}
+        try { if (localStorage.getItem('hr_sidebar_collapsed') === '1') document.getElementById('sidebar').classList.add('collapsed'); } catch (e) {}
     </script>
 
-    <!-- Main Content Panel Area -->
+    <!-- Main Content -->
     <main class="main-content">
         <header class="content-header reveal" style="--i:1">
             <h1>Settings</h1>
-            <p>Manage your profile and system preferences</p>
+            <p>Manage your account and preferences</p>
         </header>
 
         <form id="settingsForm" class="settings-stack" novalidate autocomplete="off">
@@ -218,7 +226,7 @@ $account_email = trim((string) ($_SESSION['user_email'] ?? ''));
                         <div class="toggle-row">
                             <div class="t-text">
                                 <div class="t-title">Show notification badges</div>
-                                <div class="t-sub">The red numbers in the sidebar</div>
+                                <div class="t-sub">The red numbers and marks in the sidebar and lists</div>
                             </div>
                             <label class="switch"><input type="checkbox" role="switch" id="optNotifications" aria-labelledby="notifLabel"><span class="track"></span></label>
                         </div>
@@ -226,17 +234,17 @@ $account_email = trim((string) ($_SESSION['user_email'] ?? ''));
                             <div class="sub-inner">
                                 <div class="toggle-row">
                                     <div class="t-text">
-                                        <div class="t-title" id="lblActivity">HR activity</div>
-                                        <div class="t-sub">Badge on Dashboard until you open it</div>
+                                        <div class="t-title" id="lblCompleted">Completed screenings</div>
+                                        <div class="t-sub">Badge on Dashboard until you open them</div>
                                     </div>
-                                    <label class="switch"><input type="checkbox" role="switch" id="optActivity" aria-labelledby="lblActivity"><span class="track"></span></label>
+                                    <label class="switch"><input type="checkbox" role="switch" id="optCompleted" aria-labelledby="lblCompleted"><span class="track"></span></label>
                                 </div>
                                 <div class="toggle-row">
                                     <div class="t-text">
-                                        <div class="t-title" id="lblArchive">Archive expiring</div>
-                                        <div class="t-sub">Badge on Archive when items will be deleted soon</div>
+                                        <div class="t-title" id="lblNew">New applicants</div>
+                                        <div class="t-sub">Badge on Applicants after you add someone</div>
                                     </div>
-                                    <label class="switch"><input type="checkbox" role="switch" id="optArchive" aria-labelledby="lblArchive"><span class="track"></span></label>
+                                    <label class="switch"><input type="checkbox" role="switch" id="optNew" aria-labelledby="lblNew"><span class="track"></span></label>
                                 </div>
                             </div>
                         </div>
@@ -304,20 +312,16 @@ $account_email = trim((string) ($_SESSION['user_email'] ?? ''));
                     <p class="set-error" role="alert"></p>
                 </div>
                 <div class="modal-actions">
-                    <button type="button" class="modal-btn is-cancel" id="pwCancel">Cancel</button>
-                    <button type="submit" class="modal-btn btn-blue" id="pwSubmit">Update Password</button>
+                    <button type="button" class="btn-cancel" id="pwCancel">Cancel</button>
+                    <button type="submit" class="btn-blue" id="pwSubmit">Update Password</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Pass PHP Variables to JavaScript -->
-    <script>
-        // same badges as every admin page: they animate when HR did something new, and clear once the Dashboard is opened
-        window.ADMIN_NOTIFY = <?php echo json_encode(static_admin_notify(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
-        window.ADMIN_ACCOUNT = <?php echo json_encode(['name' => $account_name, 'email' => $account_email], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
-    </script>
-    <!-- Shared admin behaviour first, then this page's script -->
-    <script src="../assets/js/admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/admin.js'); ?>"></script>
+    <!-- Shared HR behaviour first, then this page's script -->
+    <script>window.HR_SERVER_ARCHIVE = <?php echo json_encode(static_archive_sync(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
+    <script>window.HR_ACCOUNT = <?php echo json_encode(['name' => $account_name, 'email' => $account_email], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
+    <script src="../assets/js/hr.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/hr.js'); ?>"></script>
 </body>
 </html>

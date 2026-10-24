@@ -16,8 +16,8 @@ date_default_timezone_set('Asia/Manila');
 // The questionnaire + the sidebar badges (static-admin.php is the endpoint of this page too)
 require_once __DIR__ . '/static-admin.php';
 
-// addquestion.php          -> Create Questionnaire
-// addquestion.php?id=q5    -> Edit Questionnaire (the pencil in the Questionnaires list)
+// add-question.php          -> Create Questionnaire
+// add-question.php?id=q5    -> Edit Questionnaire (the pencil in the Questionnaires list)
 $h       = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
 $editId  = trim((string) ($_GET['id'] ?? ''));
 $current = static_admin_questions();           // BACKEND: SELECT * FROM questions WHERE archived_at IS NULL ORDER BY section_no, position
@@ -27,7 +27,7 @@ if ($editId !== '') {
         if ((string) $q['id'] === $editId) { $editing = $q; break; }
     }
     if ($editing === null) {                   // deleted meanwhile, or a wrong id
-        header('Location: questionlist.php');
+        header('Location: question-list.php');
         exit();
     }
 }
@@ -155,24 +155,24 @@ function q_dropdown(string $id, string $labelId, array $options, string $selecte
         </div>
 
         <nav class="sidebar-nav" aria-label="Admin">
-            <a href="dashboardadmin.php" class="nav-item reveal" id="dashboardLink" style="--i:1" title="Dashboard">
+            <a href="dashboard-admin.php" class="nav-item reveal" id="dashboardLink" style="--i:1" title="Dashboard">
                 <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
                 <span class="nav-text">Dashboard</span>
                 <span class="nav-badge alert" id="dashboardBadge" hidden></span>
             </a>
 
-            <a href="hrlist.php" class="nav-item reveal" style="--i:2" title="HR Accounts">
+            <a href="hr-list.php" class="nav-item reveal" style="--i:2" title="HR Accounts">
                 <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
                 <span class="nav-text">HR Accounts</span>
                 <span class="nav-badge alert" id="hrBadge" hidden></span>
             </a>
 
-            <a href="questionlist.php" class="nav-item active reveal" style="--i:3" title="Questions" aria-current="page">
+            <a href="question-list.php" class="nav-item active reveal" style="--i:3" title="Questions" aria-current="page">
                 <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1s-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
                 <span class="nav-text">Questions</span>
             </a>
 
-            <a href="archiveadmin.php" class="nav-item reveal" id="archiveLink" style="--i:4" title="Archive">
+            <a href="archive-admin.php" class="nav-item reveal" id="archiveLink" style="--i:4" title="Archive">
                 <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z"/></svg>
                 <span class="nav-text">Archive</span>
                 <span class="nav-badge alert" id="archiveBadge" hidden></span>
@@ -180,7 +180,7 @@ function q_dropdown(string $id, string $labelId, array $options, string $selecte
         </nav>
 
         <div class="sidebar-footer">
-            <a href="settingsadmin.php" class="nav-item reveal" style="--i:5" title="Settings">
+            <a href="settings-admin.php" class="nav-item reveal" style="--i:5" title="Settings">
                 <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
                 <span class="nav-text">Settings</span>
             </a>
@@ -203,7 +203,7 @@ function q_dropdown(string $id, string $labelId, array $options, string $selecte
                 <h1><?php echo $isEdit ? 'Edit Questionnaire' : 'Create Questionnaire'; ?></h1>
                 <p><?php echo $isEdit ? 'Edit an existing question the applicants answer' : 'Create a question for the applicants to answer'; ?></p>
             </header>
-            <a href="questionlist.php" class="back-link" id="backLink">
+            <a href="question-list.php" class="back-link" id="backLink">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
                 Back
             </a>

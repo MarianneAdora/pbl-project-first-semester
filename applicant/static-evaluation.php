@@ -13,7 +13,7 @@
 
    The system NEVER fails an applicant on risk alone. The result the applicant sees is:
        failed    an answer does not match the passing answer of a KNOCK-OUT question. The Admin marks the
-                 questions and sets the passing answer (admin/addquestion.php); the rule is read with
+                 questions and sets the passing answer (admin/add-question.php); the rule is read with
                  static_knockout_check() in static-applicant.php
        review    the risk band is High (or an automatic High): HR checks first, no result yet
        passed    everything else -> the applicant schedules the interview
