@@ -169,10 +169,17 @@ function repo_response_submit(int $applicantId, array $answers, array $video = [
     $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
     $device = substr((string) preg_replace('/[^A-Za-z0-9\-]/', '', (string) ($video['device'] ?? '')), 0, 64);
 
+    // timing_json: per-question ms timings forwarded from the questionnaire JS
+    $timingRaw = is_array($video['timing'] ?? null) ? $video['timing'] : [];
+    $timing = [];
+    foreach ($timingRaw as $k => $ms) {
+        if (is_numeric($ms)) $timing[(string) $k] = (int) $ms;
+    }
+
     $pdo->prepare(
         "INSERT INTO response (applicant_id, answers_json, video_file_url, video_file_hash," .
-        " ip_address, device_fingerprint, data_protection_agreed_at, started_at, submitted_at)" .
-        " VALUES (:id, :answers::jsonb, :url, :hash, :ip, :device, :consent, NOW(), NOW())" .
+        " ip_address, device_fingerprint, data_protection_agreed_at, timing_json, started_at, submitted_at)" .
+        " VALUES (:id, :answers::jsonb, :url, :hash, :ip, :device, :consent, :timing::jsonb, NOW(), NOW())" .
         " ON CONFLICT (applicant_id) DO UPDATE SET" .
         " answers_json = EXCLUDED.answers_json," .
         " video_file_url = EXCLUDED.video_file_url," .
@@ -180,6 +187,7 @@ function repo_response_submit(int $applicantId, array $answers, array $video = [
         " ip_address = EXCLUDED.ip_address," .
         " device_fingerprint = EXCLUDED.device_fingerprint," .
         " data_protection_agreed_at = COALESCE(response.data_protection_agreed_at, EXCLUDED.data_protection_agreed_at)," .
+        " timing_json = EXCLUDED.timing_json," .
         " started_at = COALESCE(response.started_at, NOW())," .
         " submitted_at = NOW()" .
         " WHERE response.submitted_at IS NULL"
@@ -191,6 +199,7 @@ function repo_response_submit(int $applicantId, array $answers, array $video = [
         ':ip' => $ip !== '' ? $ip : null,
         ':device' => $device !== '' ? $device : null,
         ':consent' => $consentAt,
+        ':timing' => json_encode($timing, JSON_UNESCAPED_UNICODE),
     ]);
 
     $pdo->prepare(

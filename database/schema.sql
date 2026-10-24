@@ -102,6 +102,27 @@ CREATE TABLE score (
     reviewed_at TIMESTAMP
 );
 
+-- Risk scoring additions
+-- invite_link_clicked_at: when the applicant first opened their invite link
+-- (recorded only; not scored — email scanners open links within seconds)
+ALTER TABLE applicant ADD COLUMN IF NOT EXISTS invite_link_clicked_at TIMESTAMP;
+
+-- timing_json: per-question millisecond timings sent by the questionnaire JS
+-- { "1": 4200, "2": 1100, ... }  (question_id -> ms)
+ALTER TABLE response ADD COLUMN IF NOT EXISTS timing_json JSONB NOT NULL DEFAULT '{}'::jsonb;
+
+-- otp_request_log: one row per OTP send so the 10-minute window can be computed
+CREATE TABLE IF NOT EXISTS otp_request_log (
+    log_id       SERIAL PRIMARY KEY,
+    applicant_id INT NOT NULL REFERENCES applicant(applicant_id) ON DELETE CASCADE,
+    requested_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_otp_request_log_applicant ON otp_request_log(applicant_id);
+CREATE INDEX IF NOT EXISTS idx_otp_request_log_requested_at ON otp_request_log(requested_at);
+
+-- score.narrative_json: Gemini-generated HR narrative stored alongside the rubric numbers
+ALTER TABLE score ADD COLUMN IF NOT EXISTS narrative_json JSONB NOT NULL DEFAULT '{}'::jsonb;
+
 -- Indexes for common lookups and soft-delete filtering
 CREATE INDEX idx_applicant_email ON applicant(email);
 CREATE INDEX idx_applicant_status ON applicant(status);

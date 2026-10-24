@@ -35,6 +35,8 @@ try {
         $answers = is_array($input['answers'] ?? null) ? $input['answers'] : [];
         $video = is_array($input['video'] ?? null) ? $input['video'] : [];
         $video['device'] = (string) ($input['device'] ?? '');
+        // Pass timing through so ResponseRepository can persist it in timing_json
+        $video['timing'] = is_array($input['timing'] ?? null) ? $input['timing'] : [];
         repo_response_submit($applicantId, $answers, $video);
 
         // Mark as submitted IMMEDIATELY after the DB save succeeds, before the
@@ -99,6 +101,17 @@ try {
             });
         } catch (Throwable $e) {
             error_log('submit-response store sync error: ' . $e->getMessage());
+        }
+
+        // Trigger risk scoring asynchronously (best-effort; submission already saved).
+        try {
+            define('TRIGGER_SCORING_INTERNAL', true);
+            $_POST['applicant_id'] = $applicantId;
+            ob_start();
+            require __DIR__ . '/trigger-scoring.php';
+            ob_end_clean();
+        } catch (Throwable $e) {
+            error_log('submit-response scoring trigger error: ' . $e->getMessage());
         }
 
         $respond(['status' => 'success']);

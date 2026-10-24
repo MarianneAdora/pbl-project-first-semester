@@ -461,12 +461,48 @@ function details_find_evaluation(array $a, ?array $submission): ?array
     if (!$submission || strcasecmp((string) $a['status'], 'Completed') !== 0) return null;
 
     if (empty($submission['demo'])) {
+        // DB first: read from the score table (written by RiskScoringService)
+        try {
+            $pdo = db();
+            $st  = $pdo->prepare(
+                "SELECT s.risk_score, s.risk_flags_json, s.narrative_json, r.submitted_at
+                 FROM score s
+                 JOIN response r ON r.response_id = s.response_id
+                 WHERE r.applicant_id = :id
+                 LIMIT 1"
+            );
+            $st->execute([':id' => (int) $a['id']]);
+            $row = $st->fetch();
+            if ($row) {
+                $flags = json_decode((string) ($row['risk_flags_json'] ?? '{}'), true);
+                $narr  = json_decode((string) ($row['narrative_json']  ?? '{}'), true);
+                if (is_array($flags) && isset($flags['outcome'])) {
+                    return [
+                        'reference'    => $submission['reference'] ?? '',
+                        'email'        => $a['email'],
+                        'points'       => (int) $row['risk_score'],
+                        'band'         => $flags['band']      ?? 'Low',
+                        'auto_high'    => $flags['auto_high'] ?? [],
+                        'outcome'      => $flags['outcome']   ?? 'review',
+                        'factors'      => $flags['factors']   ?? [],
+                        'knockouts'    => $flags['knockouts'] ?? [],
+                        'narrative'    => is_array($narr) ? $narr : [],
+                        'evaluated_at' => $row['submitted_at'] ?? '',
+                        'demo'         => false,
+                    ];
+                }
+            }
+        } catch (Throwable $e) {
+            error_log('details_find_evaluation DB error: ' . $e->getMessage());
+        }
+
+        // Fall back to static store (submissions from the old static path)
         $found = null;
         $ref   = (string) ($submission['reference'] ?? '');
         foreach ((array) (static_store_read()['evaluations'] ?? []) as $e) {
             $sameRef   = $ref !== '' && ($e['reference'] ?? '') === $ref;
             $sameEmail = ($e['email'] ?? '') !== '' && strcasecmp((string) $e['email'], (string) $a['email']) === 0;
-            if ($sameRef || $sameEmail) $found = $e;                    // the latest one wins
+            if ($sameRef || $sameEmail) $found = $e;
         }
         if ($found) $found['demo'] = false;
         return $found;
@@ -564,6 +600,13 @@ function details_evaluation(array $a, ?array $submission): ?array
         $recommendation = 'Hold for HR review';
         $label   = 'Under Review';
     }
+
+    // Use Gemini narrative when available (DB-scored applicants)
+    $narr = is_array($e['narrative'] ?? null) ? $e['narrative'] : [];
+    if (!empty($narr['title']))   $title   = (string) $narr['title'];
+    if (!empty($narr['summary'])) $summary = (string) $narr['summary'];
+    if (!empty($narr['favor']))   $favor   = array_values(array_filter((array) $narr['favor'], 'is_string'));
+    if (!empty($narr['watch']))   $watch   = array_values(array_filter((array) $narr['watch'], 'is_string'));
 
     return [
         'outcome'        => $outcome,

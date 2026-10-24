@@ -36,10 +36,23 @@ if ($applicantId > 0 && $email !== '') {
     }
 }
 
+/** Log an OTP request timestamp to otp_request_log (best-effort). */
+$logOtpRequest = function () use ($applicantId): void {
+    try {
+        $pdo = db();
+        $pdo->prepare(
+            "INSERT INTO otp_request_log (applicant_id, requested_at) VALUES (?, NOW())"
+        )->execute([$applicantId]);
+    } catch (Throwable $e) {
+        error_log('otp_request_log insert error: ' . $e->getMessage());
+    }
+};
+
 /** Send a fresh code through the DB (hash stored, email via Brevo). Returns error message or ''. */
-$issueDbOtp = function () use ($otpDb, $applicantId, $email, $applicantName): string {
+$issueDbOtp = function () use ($otpDb, $applicantId, $email, $applicantName, $logOtpRequest): string {
     try {
         $ok = $otpDb->generateAndSendOtp($applicantId, $email, $applicantName !== '' ? $applicantName : $email);
+        if ($ok) $logOtpRequest();
         return $ok ? '' : 'We could not send the code. Please try again.';
     } catch (Throwable $e) {
         error_log('verify-otp send error: ' . $e->getMessage());
