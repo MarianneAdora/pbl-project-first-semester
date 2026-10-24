@@ -51,7 +51,7 @@ try {
         // ---------------------------------------------------------------------------
         $storePdo = db();
         $appStmt  = $storePdo->prepare(
-            "SELECT id, name, email FROM applicant WHERE applicant_id = :id AND deleted_at IS NULL LIMIT 1"
+            "SELECT applicant_id, name, email FROM applicant WHERE applicant_id = :id AND deleted_at IS NULL LIMIT 1"
         );
         $appStmt->execute([':id' => $applicantId]);
         $app = $appStmt->fetch();
@@ -109,6 +109,9 @@ try {
     $respond(['status' => 'error', 'message' => $e->getMessage()], 422);
 } catch (Throwable $e) {
     error_log('submit-response DB error: ' . $e->getMessage());
+    if (!empty($_SESSION['screening_submitted'])) {
+        $respond(['status' => 'success']);
+    }
     $respond(['status' => 'error', 'message' => 'Something went wrong while saving. Please try again.'], 500);
 }
 

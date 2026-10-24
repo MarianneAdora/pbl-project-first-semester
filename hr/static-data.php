@@ -102,7 +102,7 @@ function static_accounts(): array
 // ---------------------------------------------------------------------------
 function static_seed_applicants(): array
 {
-    return [];
+    return [
         ['id' => 116, 'name' => 'Oliver Queen', 'email' => 'oliverqueen@gmail.com', 'contact' => '091234567336', 'status' => 'Completed', 'result' => 'Rejected', 'updated' => '2026-09-26 11:20'],
         ['id' => 117, 'name' => 'Kara Danvers', 'email' => 'karadanvers@gmail.com', 'contact' => '091234567299', 'status' => 'Pending', 'result' => null, 'updated' => '2026-09-25 13:45'],
         ['id' => 118, 'name' => 'Bruce Banner', 'email' => 'brucebanner@gmail.com', 'contact' => '091234567262', 'status' => 'In Progress', 'result' => null, 'updated' => '2026-09-25 09:30'],
