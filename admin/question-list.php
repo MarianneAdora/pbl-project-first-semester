@@ -13,12 +13,14 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
 
 date_default_timezone_set('Asia/Manila');
 
-// The questionnaire + the sidebar badges (static-admin.php is the endpoint of this page too)
-require_once __DIR__ . '/static-admin.php';
+require_once __DIR__ . '/../src/Repositories/AdminRepository.php';
 
-// What the applicants answer, in order (deleted questions are in the Archive; Inactive ones stay here)
-// BACKEND: SELECT id, section_no, section, text, status, created_at FROM questions WHERE archived_at IS NULL ORDER BY section_no, position
-$questions = static_admin_questions();
+try {
+    $questions = repo_admin_questions_list();
+} catch (Throwable $e) {
+    error_log('question-list.php DB error: ' . $e->getMessage());
+    $questions = [];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en" data-page="questionlist">
@@ -229,7 +231,10 @@ $questions = static_admin_questions();
 
     <!-- Pass PHP variables to JavaScript -->
     <script>
-        window.ADMIN_NOTIFY = <?php echo json_encode(static_admin_notify(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+        window.ADMIN_NOTIFY = <?php
+            try { echo json_encode(repo_admin_notify(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); }
+            catch (Throwable $e) { echo json_encode(['activity' => [], 'expiring' => 0, 'days' => 7]); }
+        ?>;
         window.ADMIN_Q = <?php echo json_encode(['questions' => $questions], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
     </script>
     <!-- Shared admin behaviour first, then this page's script -->

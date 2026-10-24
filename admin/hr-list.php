@@ -13,11 +13,14 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
 
 date_default_timezone_set('Asia/Manila');
 
-// The HR accounts + the sidebar badges (static-admin.php is the endpoint of this page too)
-require_once __DIR__ . '/static-admin.php';
+require_once __DIR__ . '/../src/Repositories/AdminRepository.php';
 
-// BACKEND: SELECT id, name, email, role, status, created_at FROM users WHERE role = 'hr' AND archived_at IS NULL
-$accounts = static_admin_accounts();
+try {
+    $accounts = repo_admin_accounts();
+} catch (Throwable $e) {
+    error_log('hr-list.php DB error: ' . $e->getMessage());
+    $accounts = [];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en" data-page="hrlist">
@@ -218,7 +221,10 @@ $accounts = static_admin_accounts();
 
     <!-- Pass PHP variables to JavaScript -->
     <script>
-        window.ADMIN_NOTIFY = <?php echo json_encode(static_admin_notify(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+        window.ADMIN_NOTIFY = <?php
+            try { echo json_encode(repo_admin_notify(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); }
+            catch (Throwable $e) { echo json_encode(['activity' => [], 'expiring' => 0, 'days' => 7]); }
+        ?>;
         window.ADMIN_HR = <?php echo json_encode(['accounts' => $accounts], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
     </script>
     <!-- Shared admin behaviour first, then this page's script -->

@@ -10,7 +10,15 @@ function repo_admin_overview(PDO $pdo = null): array
     $hrTotal = (int) $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'hr' AND deleted_at IS NULL")->fetchColumn();
     $questions = (int) $pdo->query("SELECT COUNT(*) FROM question_config WHERE deleted_at IS NULL AND is_active = TRUE")->fetchColumn();
     $sections = (int) $pdo->query("SELECT COUNT(DISTINCT section) FROM question_config WHERE deleted_at IS NULL AND is_active = TRUE")->fetchColumn();
-    $week = (int) $pdo->query("SELECT COUNT(*) FROM applicant WHERE deleted_at IS NULL AND created_at >= NOW() - INTERVAL '7 days'")->fetchColumn();
+    $week = (int) $pdo->query(
+        "SELECT COUNT(*) FROM (" .
+        "  SELECT created_at FROM applicant WHERE deleted_at IS NULL" .
+        "  UNION ALL" .
+        "  SELECT created_at FROM schedule" .
+        "  UNION ALL" .
+        "  SELECT created_at FROM question_config WHERE deleted_at IS NULL" .
+        ") t WHERE created_at >= NOW() - INTERVAL '7 days'"
+    )->fetchColumn();
     return [
         'hr_active' => $hrTotal,
         'hr_total' => $hrTotal,
@@ -18,6 +26,209 @@ function repo_admin_overview(PDO $pdo = null): array
         'sections' => $sections,
         'activities_week' => $week,
     ];
+}
+
+// ---------------------------------------------------------------------------
+// HR ACCOUNTS LIST (hr-list.php)
+// ---------------------------------------------------------------------------
+function repo_admin_accounts(PDO $pdo = null): array
+{
+    $pdo = $pdo ?: db();
+    $rows = $pdo->query(
+        "SELECT user_id AS id, name, email, role, deleted_at IS NULL AS is_active, created_at" .
+        " FROM users WHERE role = 'hr' AND deleted_at IS NULL ORDER BY created_at ASC, user_id ASC"
+    )->fetchAll();
+    $out = [];
+    foreach ($rows as $r) {
+        $out[] = [
+            'id'      => (int) $r['id'],
+            'name'    => (string) $r['name'],
+            'email'   => (string) $r['email'],
+            'role'    => 'HR Staff',
+            'status'  => 'Active',
+            'created' => $r['created_at'] ? date('Y-m-d H:i', strtotime((string) $r['created_at'])) : '',
+        ];
+    }
+    return $out;
+}
+
+// ---------------------------------------------------------------------------
+// QUESTIONS LIST (question-list.php)
+// ---------------------------------------------------------------------------
+function repo_admin_questions_list(PDO $pdo = null): array
+{
+    $pdo = $pdo ?: db();
+    $rows = $pdo->query(
+        'SELECT question_id, section_no, section, question_text, question_type,' .
+        ' answer_config, passing_answer, is_knockout, is_active, created_at' .
+        ' FROM question_config WHERE deleted_at IS NULL ORDER BY section_no, question_id'
+    )->fetchAll();
+    $out = [];
+    foreach ($rows as $r) {
+        $cfg = $r['answer_config'];
+        if (is_string($cfg)) $cfg = json_decode($cfg, true);
+        if (!is_array($cfg)) $cfg = [];
+
+        $pass = $r['passing_answer'];
+        if (is_string($pass)) $pass = json_decode($pass, true);
+        if (!is_array($pass)) $pass = [];
+
+        $type = (string) $r['question_type'];
+        $text = (string) $r['question_text'];
+        if (!empty($cfg['link']['text'])) $text = str_replace('{link}', $cfg['link']['text'], $text);
+
+        $q = [
+            'id'         => 'q' . $r['question_id'],
+            'section_no' => (int) $r['section_no'],
+            'section'    => (string) $r['section'],
+            'text'       => $text,
+            'type'       => $type,
+            'status'     => $r['is_active'] ? 'Active' : 'Inactive',
+            'created'    => $r['created_at'] ? date('Y-m-d H:i', strtotime((string) $r['created_at'])) : '',
+            'knockout'   => (bool) $r['is_knockout'],
+        ];
+
+        if (!empty($r['is_knockout'])) {
+            if ($type === 'scale') {
+                $q['pass_answer'] = (int) ($pass['min'] ?? 1);
+                $q['max'] = (int) ($cfg['max'] ?? 5);
+            } else {
+                $q['pass_answer'] = (string) ($pass['answer'] ?? 'Yes');
+                if (!empty($pass['pass_follow'])) $q['pass_follow'] = (array) $pass['pass_follow'];
+            }
+        }
+        if (!empty($cfg['link'])) $q['link'] = $cfg['link'];
+        $out[] = $q;
+    }
+    return $out;
+}
+
+// ---------------------------------------------------------------------------
+// ARCHIVE (archive-admin.php)
+// ---------------------------------------------------------------------------
+define('ARCHIVE_DAYS', 30);
+
+function repo_admin_archive(PDO $pdo = null): array
+{
+    $pdo = $pdo ?: db();
+    // auto-purge expired rows first
+    $pdo->exec("DELETE FROM users WHERE role = 'hr' AND deleted_at IS NOT NULL AND deleted_at < NOW() - INTERVAL '30 days'");
+    $pdo->exec("DELETE FROM question_config WHERE deleted_at IS NOT NULL AND deleted_at < NOW() - INTERVAL '30 days'");
+
+    $accounts = [];
+    $rows = $pdo->query(
+        "SELECT user_id AS id, name, email, deleted_at FROM users WHERE role = 'hr' AND deleted_at IS NOT NULL ORDER BY deleted_at DESC"
+    )->fetchAll();
+    foreach ($rows as $r) {
+        $deletedAt = strtotime((string) $r['deleted_at']);
+        $daysLeft  = max(0, 30 - (int) floor((time() - $deletedAt) / 86400));
+        $accounts[] = [
+            'id'        => (int) $r['id'],
+            'name'      => (string) $r['name'],
+            'email'     => (string) $r['email'],
+            'deleted'   => date('Y-m-d H:i:s', $deletedAt),
+            'days_left' => $daysLeft,
+        ];
+    }
+
+    $questions = [];
+    $rows = $pdo->query(
+        'SELECT question_id, section_no, section, question_text, question_type, answer_config, deleted_at' .
+        ' FROM question_config WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC'
+    )->fetchAll();
+    foreach ($rows as $r) {
+        $cfg = $r['answer_config'];
+        if (is_string($cfg)) $cfg = json_decode($cfg, true);
+        if (!is_array($cfg)) $cfg = [];
+        $text = (string) $r['question_text'];
+        if (!empty($cfg['link']['text'])) $text = str_replace('{link}', $cfg['link']['text'], $text);
+        $deletedAt = strtotime((string) $r['deleted_at']);
+        $daysLeft  = max(0, 30 - (int) floor((time() - $deletedAt) / 86400));
+        $questions[] = [
+            'id'         => 'q' . $r['question_id'],
+            'section_no' => (int) $r['section_no'],
+            'section'    => (string) $r['section'],
+            'text'       => $text,
+            'type'       => (string) $r['question_type'],
+            'deleted'    => date('Y-m-d H:i:s', $deletedAt),
+            'days_left'  => $daysLeft,
+        ];
+    }
+    return ['questions' => $questions, 'accounts' => $accounts];
+}
+
+function repo_admin_notify(PDO $pdo = null): array
+{
+    $pdo = $pdo ?: db();
+    $rows = $pdo->query(
+        "SELECT created_at FROM applicant WHERE deleted_at IS NULL AND encoded_by_user_id IS NOT NULL" .
+        " UNION ALL SELECT created_at FROM schedule" .
+        " ORDER BY created_at DESC LIMIT 100"
+    )->fetchAll();
+    $activity = array_map(fn($r) => date('Y-m-d H:i', strtotime((string) $r['created_at'])), $rows);
+
+    $days = 7;
+    $expiring = (int) $pdo->query(
+        "SELECT COUNT(*) FROM (" .
+        "  SELECT deleted_at FROM users WHERE role = 'hr' AND deleted_at IS NOT NULL" .
+        "  UNION ALL" .
+        "  SELECT deleted_at FROM question_config WHERE deleted_at IS NOT NULL" .
+        ") t WHERE deleted_at > NOW() - INTERVAL '30 days' AND deleted_at < NOW() - INTERVAL '" . (30 - $days) . " days'"
+    )->fetchColumn();
+    return ['activity' => $activity, 'expiring' => $expiring, 'days' => $days];
+}
+
+// ---------------------------------------------------------------------------
+// ARCHIVE ACTIONS
+// ---------------------------------------------------------------------------
+function repo_account_archive(int $id, PDO $pdo = null): bool
+{
+    $pdo = $pdo ?: db();
+    $st = $pdo->prepare("UPDATE users SET deleted_at = NOW() WHERE user_id = :id AND role = 'hr' AND deleted_at IS NULL");
+    $st->execute([':id' => $id]);
+    return $st->rowCount() > 0;
+}
+
+function repo_account_restore(int $id, PDO $pdo = null): bool
+{
+    $pdo = $pdo ?: db();
+    $st = $pdo->prepare("UPDATE users SET deleted_at = NULL WHERE user_id = :id AND role = 'hr' AND deleted_at IS NOT NULL");
+    $st->execute([':id' => $id]);
+    return $st->rowCount() > 0;
+}
+
+function repo_account_purge(int $id, PDO $pdo = null): bool
+{
+    $pdo = $pdo ?: db();
+    $st = $pdo->prepare("DELETE FROM users WHERE user_id = :id AND role = 'hr' AND deleted_at IS NOT NULL");
+    $st->execute([':id' => $id]);
+    return $st->rowCount() > 0;
+}
+
+function repo_question_archive(int $id, PDO $pdo = null): bool
+{
+    $pdo = $pdo ?: db();
+    $active = (int) $pdo->query("SELECT COUNT(*) FROM question_config WHERE deleted_at IS NULL AND is_active = TRUE AND question_id != $id")->fetchColumn();
+    if ($active < 1) throw new InvalidArgumentException('At least one Active question must remain in the questionnaire.');
+    $st = $pdo->prepare('UPDATE question_config SET deleted_at = NOW() WHERE question_id = :id AND deleted_at IS NULL');
+    $st->execute([':id' => $id]);
+    return $st->rowCount() > 0;
+}
+
+function repo_question_restore(int $id, PDO $pdo = null): bool
+{
+    $pdo = $pdo ?: db();
+    $st = $pdo->prepare('UPDATE question_config SET deleted_at = NULL WHERE question_id = :id AND deleted_at IS NOT NULL');
+    $st->execute([':id' => $id]);
+    return $st->rowCount() > 0;
+}
+
+function repo_question_purge(int $id, PDO $pdo = null): bool
+{
+    $pdo = $pdo ?: db();
+    $st = $pdo->prepare('DELETE FROM question_config WHERE question_id = :id AND deleted_at IS NOT NULL');
+    $st->execute([':id' => $id]);
+    return $st->rowCount() > 0;
 }
 
 /**

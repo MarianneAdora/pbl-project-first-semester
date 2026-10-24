@@ -13,11 +13,14 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
 
 date_default_timezone_set('Asia/Manila');
 
-// Deleted HR accounts + questionnaires (+ the sidebar badges). Expired ones (30 days) are removed first.
-// BACKEND: SELECT ... FROM users WHERE role='hr' AND archived_at IS NOT NULL   and
-//          SELECT ... FROM questions WHERE archived_at IS NOT NULL   (days_left = 30 - DATEDIFF(NOW(), archived_at))
-require_once __DIR__ . '/static-admin.php';
-$archive = static_admin_archive();      // ['questions' => [...], 'accounts' => [...]], each row has 'deleted' + 'days_left'
+require_once __DIR__ . '/../src/Repositories/AdminRepository.php';
+
+try {
+    $archive = repo_admin_archive();
+} catch (Throwable $e) {
+    error_log('archive-admin.php DB error: ' . $e->getMessage());
+    $archive = ['questions' => [], 'accounts' => []];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en" data-page="archiveadmin">
@@ -131,7 +134,7 @@ $archive = static_admin_archive();      // ['questions' => [...], 'accounts' => 
     <main class="main-content">
         <header class="content-header reveal" style="--i:1">
             <h1>Archive</h1>
-            <p>Deleted HR accounts and questionnaires stay here for <?php echo (int) STATIC_ARCHIVE_DAYS; ?> days, then they are permanently deleted.</p>
+            <p>Deleted HR accounts and questionnaires stay here for <?php echo ARCHIVE_DAYS; ?> days, then they are permanently deleted.</p>
         </header>
 
         <!-- Search + type filter (HR account / questionnaire) + time left filter -->
@@ -207,7 +210,7 @@ $archive = static_admin_archive();      // ['questions' => [...], 'accounts' => 
                 <div class="empty-state" id="emptyState" hidden>
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z"/></svg>
                     <h3 id="emptyTitle">The Archive is empty</h3>
-                    <p id="emptyText">Deleted items stay here for <?php echo (int) STATIC_ARCHIVE_DAYS; ?> days before they are permanently deleted.</p>
+                    <p id="emptyText">Deleted items stay here for <?php echo ARCHIVE_DAYS; ?> days before they are permanently deleted.</p>
                     <button type="button" class="btn-clear-filters" id="clearFilters">Clear filters</button>
                 </div>
             </div>
@@ -220,8 +223,11 @@ $archive = static_admin_archive();      // ['questions' => [...], 'accounts' => 
     </main>
 
     <script>
-        window.ADMIN_NOTIFY = <?php echo json_encode(static_admin_notify(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
-        window.ADMIN_ARCHIVE = <?php echo json_encode(['days' => STATIC_ARCHIVE_DAYS, 'archive' => $archive], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
+        window.ADMIN_NOTIFY = <?php
+            try { echo json_encode(repo_admin_notify(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); }
+            catch (Throwable $e) { echo json_encode(['activity' => [], 'expiring' => 0, 'days' => 7]); }
+        ?>;
+        window.ADMIN_ARCHIVE = <?php echo json_encode(['days' => ARCHIVE_DAYS, 'archive' => $archive], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
     </script>
     <script src="../assets/js/admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/admin.js'); ?>"></script>
 </body>

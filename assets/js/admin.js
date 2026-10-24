@@ -106,7 +106,7 @@ window.ADMIN = (function () {
     /* ---- Requests to static-admin.php ------------------------------------------------------
        Resolves with the answer ({ status, message, result, data }); rejects with a message that is safe to show.
        BACKEND: point SERVER_API at the real PHP; the same request / answer shape is used. */
-    const SERVER_API = 'static-admin.php';
+    const SERVER_API = '../api/admin-action.php';
 
     function request(action, payload) {
         return fetch(SERVER_API, {
