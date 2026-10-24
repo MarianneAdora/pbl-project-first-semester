@@ -1,0 +1,128 @@
+{
+    "applicants": [],
+    "evaluations": [
+        {
+            "reference": "",
+            "email": "ebsmi.screening@gmail.com",
+            "points": 0,
+            "band": "Low",
+            "auto_high": [],
+            "outcome": "passed",
+            "factors": [
+                {
+                    "label": "Failed OTP attempts",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "0 wrong code(s). Typos are normal."
+                },
+                {
+                    "label": "OTP requests in 10 minutes",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "0 code request(s). Email delays make this normal."
+                },
+                {
+                    "label": "Questionnaire speed",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No timing was recorded."
+                },
+                {
+                    "label": "Same email or phone as another record",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No other record shares the email or phone number."
+                },
+                {
+                    "label": "Re-applying after a failed screening",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "No recent failed screening."
+                },
+                {
+                    "label": "Same device or IP as other applicants",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No suspicious sharing (a shared IP alone is not scored)."
+                },
+                {
+                    "label": "Contradictory logistics answers",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "The logistics answers agree with each other."
+                },
+                {
+                    "label": "Time on the video page",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "Not scored, because applicants can upload a file instead of recording live."
+                },
+                {
+                    "label": "Video matches another applicant",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No file fingerprint was recorded."
+                }
+            ],
+            "knockouts": [
+                {
+                    "id": "q2",
+                    "question": "Are you willing to work on the schedule as advertised?",
+                    "expected": "Yes",
+                    "given": "No answer",
+                    "met": null,
+                    "reason": ""
+                },
+                {
+                    "id": "q3",
+                    "question": "Are you willing to work on-site in BGC, Taguig?",
+                    "expected": "Yes",
+                    "given": "No answer",
+                    "met": null,
+                    "reason": ""
+                },
+                {
+                    "id": "q4",
+                    "question": "Are you willing to go through the assessment and interviews?",
+                    "expected": "Yes",
+                    "given": "No answer",
+                    "met": null,
+                    "reason": ""
+                },
+                {
+                    "id": "q8",
+                    "question": "Do you have access to a reliable internet connection and a device suitable for completing the assessment and virtual steps?",
+                    "expected": "Yes",
+                    "given": "No answer",
+                    "met": null,
+                    "reason": ""
+                },
+                {
+                    "id": "q9",
+                    "question": "Are you willing to undergo a background check as part of the hiring process?",
+                    "expected": "Yes",
+                    "given": "No answer",
+                    "met": null,
+                    "reason": ""
+                },
+                {
+                    "id": "q10",
+                    "question": "Can you provide required pre-employment documents (e.g. NBI clearance, TIN, SSS) upon request?",
+                    "expected": "Yes",
+                    "given": "No answer",
+                    "met": null,
+                    "reason": ""
+                },
+                {
+                    "id": "q11",
+                    "question": "This role involves handling sensitive client information. Do you agree to comply with confidentiality and data protection requirements?",
+                    "expected": "Yes",
+                    "given": "No answer",
+                    "met": null,
+                    "reason": ""
+                }
+            ],
+            "evaluated_at": "2026-10-24 22:57"
+        }
+    ]
+}
