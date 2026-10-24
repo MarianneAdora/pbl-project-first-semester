@@ -80,16 +80,26 @@ function repo_response_submit(int $applicantId, array $answers, array $video = [
     $consentAt = null;
     foreach ($active as $q) {
         $qid = (string) $q['question_id'];
-        // Derive the page type from the answer_config JSONB content
+        // Derive the page type from the answer_config JSONB content.
+        // passing_answer may also hold max/labels for scale questions
+        // seeded directly in the DB (see seeds.sql: Question 5 stores
+        // max/labels in passing_answer, not answer_config).
         $cfg = $q['answer_config'];
         if (is_string($cfg)) { $cfg = json_decode($cfg, true); }
         if (!is_array($cfg)) $cfg = [];
+
+        $passCfg = $q['passing_answer'] ?? null;
+        if (is_string($passCfg)) { $passCfg = json_decode($passCfg, true); }
+        if (!is_array($passCfg)) $passCfg = [];
+
         $type = 'text';
         if (!empty($cfg['statement']) && !empty($cfg['checkbox_label'])) {
             $type = 'consent';
         } elseif (!empty($cfg['choices'])) {
             $type = 'yesno_select';
         } elseif (!empty($cfg['max']) && !empty($cfg['labels'])) {
+            $type = 'scale';
+        } elseif (!empty($passCfg['max']) && !empty($passCfg['labels'])) {
             $type = 'scale';
         } elseif (!empty($cfg['hint'])) {
             $type = 'date';

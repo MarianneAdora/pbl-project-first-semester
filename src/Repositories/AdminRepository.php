@@ -43,13 +43,22 @@ function db_questions_for_applicant(PDO $pdo = null): array
         if (is_string($cfg)) { $cfg = json_decode($cfg, true); }
         if (!is_array($cfg)) $cfg = [];
 
-        // Derive the page type from the answer_config content
+        // passing_answer may also hold max/labels for scale questions
+        // seeded directly in the DB (see seeds.sql: Question 5 stores
+        // max/labels in passing_answer, not answer_config).
+        $passCfg = $r['passing_answer'] ?? null;
+        if (is_string($passCfg)) { $passCfg = json_decode($passCfg, true); }
+        if (!is_array($passCfg)) $passCfg = [];
+
+        // Derive the page type from the answer_config / passing_answer content
         $type = 'text';
         if (!empty($cfg['statement']) && !empty($cfg['checkbox_label'])) {
             $type = 'consent';
         } elseif (!empty($cfg['choices'])) {
             $type = 'yesno_select';
         } elseif (!empty($cfg['max']) && !empty($cfg['labels'])) {
+            $type = 'scale';
+        } elseif (!empty($passCfg['max']) && !empty($passCfg['labels'])) {
             $type = 'scale';
         } elseif (!empty($cfg['hint'])) {
             $type = 'date';

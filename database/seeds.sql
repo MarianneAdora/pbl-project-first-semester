@@ -24,7 +24,7 @@ INSERT INTO question_config (section_no, section, question_text, answer_config, 
 (1, 'Sec 1 - Consent & Readiness', 'Are you willing to work on the schedule as advertised?', NULL, 'Yes', false, false, false, NULL),
 (1, 'Sec 1 - Consent & Readiness', 'Are you willing to work on-site in BGC, Taguig?', NULL, 'Yes', true, false, false, 'Please note this may affect your application.'),
 (1, 'Sec 1 - Consent & Readiness', 'Are you willing to go through the assessment and interviews?', NULL, 'Yes', false, false, false, NULL),
-(1, 'Sec 1 - Consent & Readiness', 'Rate your interest level in pursuing your application.', NULL, jsonb_build_object('max', 10, 'labels', '["Not interested", "Very interested"]'), '4', false, false, false, NULL),
+(1, 'Sec 1 - Consent & Readiness', 'Rate your interest level in pursuing your application.', jsonb_build_object('max', 10, 'labels', '["Not interested", "Very interested"]'), '4', false, false, false, NULL),
 
 -- Section 2
 (2, 'Sec 2 - Logistics & Compliance', 'When is your earliest possible start date?', NULL, NULL, false, false, false, NULL),

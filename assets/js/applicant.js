@@ -1443,6 +1443,16 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        // last question: validate every answer before going to the video page
+        var missing = Screening.firstIncomplete(questions, answers);
+        if (missing !== -1) {
+            var badQ = questions[missing];
+            showError('Question ' + (missing + 1) + ': ' + Screening.validate(badQ, answers));
+            index = missing;
+            show(0);
+            return;
+        }
+
         // last question: on to the video
         Screening.lap(null);
         nextBtn.classList.add('is-loading');
@@ -2139,13 +2149,22 @@ document.addEventListener('DOMContentLoaded', function () {
             Screening.clear();
             Applicant.go(cfg.nextPage || 'application-status.php');
         } catch (err) {
+            var msg = (err && err.message) || '';
+            // The submission may already have been saved on the server but the
+            // response never reached the browser (e.g. network dropped). If the
+            // backend says it was already submitted, treat it as success and move on.
+            if (/already submitted/i.test(msg)) {
+                Screening.clear();
+                Applicant.go(cfg.nextPage || 'application-status.php');
+                return;
+            }
             submitting = false;
             fileCard.classList.remove('is-locked');
             submitBtn.classList.remove('is-loading');
             submitBtn.disabled = false;
             submitBtn.classList.add('is-ready');
             submitLabel.textContent = submitText;
-            showMsg((err && err.message) || 'We could not submit your application. Please try again.');
+            showMsg(msg || 'We could not submit your application. Please try again.');
         }
     });
 

@@ -37,6 +37,11 @@ try {
         $video['device'] = (string) ($input['device'] ?? '');
         repo_response_submit($applicantId, $answers, $video);
 
+        // Mark as submitted IMMEDIATELY after the DB save succeeds, before the
+        // static-store sync (which can throw). This ensures the applicant is
+        // redirected to application-status.php even if the sync fails.
+        $_SESSION['screening_submitted'] = true;
+
         // ---------------------------------------------------------------------------
         // Sync the static store so the applicant-side evaluation (static-evaluation.php)
         // reads this just-sent submission instead of stale earlier ones. The store is
@@ -90,7 +95,6 @@ try {
             ];
         });
 
-        $_SESSION['screening_submitted'] = true;
         $respond(['status' => 'success']);
     }
 
