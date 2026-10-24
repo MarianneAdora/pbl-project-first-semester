@@ -7,9 +7,31 @@ if (($_GET['transition'] ?? '') === 'out') {
     session_regenerate_id(true);
 }
 
-// The login accounts now come from static-data.php (delete that file when the database is ready)
-require_once __DIR__ . '/hr/static-data.php';
-$credentials = static_accounts();
+// Login accounts now come from the database (users table): HR staff + Admin.
+require_once __DIR__ . '/src/Helpers/db.php';
+
+$credentials = [];
+try {
+    $pdo = db();
+    $rows = $pdo->query(
+        "SELECT user_id, role, name, email, password_hash FROM users WHERE deleted_at IS NULL ORDER BY user_id"
+    )->fetchAll();
+    foreach ($rows as $r) {
+        $role  = (string) ($r['role'] ?? '');
+        $email = strtolower(trim((string) ($r['email'] ?? '')));
+        if ($email === '' || !in_array($role, ['hr', 'admin'], true)) continue;
+        $credentials[$email] = [
+            'hash'     => (string) ($r['password_hash'] ?? ''),
+            'role'     => $role,
+            'name'     => (string) ($r['name'] ?? ''),
+            'redirect' => $role === 'admin' ? 'admin/dashboard-admin.php' : 'hr/dashboard-hr.php',
+            'user_id'  => (int) ($r['user_id'] ?? 0),
+        ];
+    }
+} catch (Throwable $e) {
+    error_log('index.php DB login load failed: ' . $e->getMessage());
+    $credentials = [];
+}
 
 /* Original hard-coded accounts, kept for reference:
 $credentials = [
@@ -46,6 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['user_role'] = $credentials[$email]['role'];
         $_SESSION['user_email'] = $email;
         $_SESSION['user_name'] = $credentials[$email]['name'];
+        $_SESSION['user_id']   = $credentials[$email]['user_id'] ?? null;
 
         echo json_encode([
             'status' => 'success',

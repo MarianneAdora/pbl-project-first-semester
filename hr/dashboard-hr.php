@@ -13,19 +13,15 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {
 
 date_default_timezone_set('Asia/Manila');
 
-// Numbers on this page: summary cards + chart are LIVE from the applicant table
-// (repo_dashboard_stats); Recent Applicants is live too. The rest still uses static-data.php sample data.
-require_once __DIR__ . '/static-data.php';
-$all_applicants = static_applicants();      // active applicants only (archived ones are not counted)
-
-// LIVE DATA: summary cards + Passed/Rejected chart come from the applicant table
-// (repo_dashboard_stats: GROUP BY status/result, mapped to Pending/In Progress/Completed + Passed/Rejected).
-// Falls back to the sample list when the DB is unreachable, so the page never breaks.
+// Login/dashboard data now comes from the database (applicant table).
+require_once __DIR__ . '/../src/Helpers/db.php';
 require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
+
+// Summary cards + Passed/Rejected chart are LIVE from the applicant table.
 try {
     $stats = repo_dashboard_stats();
 } catch (Throwable $e) {
-    $stats = static_stats($all_applicants);
+    $stats = ['total' => 0, 'pending' => 0, 'in_progress' => 0, 'completed' => 0, 'passed' => 0, 'failed' => 0];
 }
 /* Original hard-coded numbers (kept for reference):
 $stats = [
@@ -61,15 +57,32 @@ $display_name = trim($_SESSION['user_name'] ?? '') !== '' ? $_SESSION['user_name
 // IDs of EVERY applicant whose status is Completed (backend: SELECT id ... WHERE status = 'Completed').
 // The red mark + the Dashboard notification badge are built from this list; an applicant stops
 // counting as "new" once HR opens their details page.
-$completed_ids = static_completed_ids($all_applicants);
+$completed_ids = [];
+try {
+    foreach (repo_applicants_active() as $a) {
+        if (($a['status'] ?? '') === 'Completed') $completed_ids[] = (int) $a['id'];
+    }
+} catch (Throwable $e) {
+    $completed_ids = [];
+}
 
 // What HR did (add / delete / restore / interview ...), newest first. It is the list behind the bell in the
 // header, and the same lines the Admin sees under Recent Activities. Preferences (Settings) are never in it.
 // BACKEND: SELECT activity, details, created_at AS at FROM activity_log WHERE actor_role = 'hr' ORDER BY created_at DESC LIMIT 30
+$hr_feed = [];
 try {
-    $hr_feed = static_hr_feed(30);
+    foreach (repo_recent_activity(null, 30) as $row) {
+        if (strcasecmp((string) ($row['by'] ?? ''), 'Admin') === 0) continue;
+        $hr_feed[] = [
+            'at'       => (string) ($row['at'] ?? ''),
+            'activity' => (string) ($row['activity'] ?? ''),
+            'details'  => (string) ($row['details'] ?? ''),
+            'by'       => (string) ($row['by'] ?? ''),
+        ];
+        if (count($hr_feed) >= 30) break;
+    }
 } catch (Throwable $e) {
-    $hr_feed = [];          // the bell stays empty rather than the whole dashboard failing
+    $hr_feed = [];
 }
 /* Original hard-coded list (kept for reference):
 $completed_ids = [103, 104, 106, 108, 109, 111, 114, 116, 119, 121, 124, 126, 129, 131, 135];
@@ -83,9 +96,8 @@ $completed_ids = [103, 104, 106, 108, 109, 111, 114, 116, 119, 121, 124, 126, 12
 try {
     require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
     $recent_applicants = repo_applicants_recent(null, 10);
-    if (empty($recent_applicants)) $recent_applicants = static_recent($all_applicants, 10);
 } catch (Throwable $e) {
-    $recent_applicants = static_recent($all_applicants, 10);
+    $recent_applicants = [];
 }
 /* Original hard-coded list (kept for reference):
 $recent_applicants = [];
@@ -452,7 +464,24 @@ function status_badge(string $status): string
         window.HR_ACTIVITY = <?php echo json_encode($hr_feed, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
     </script>
     <!-- Shared HR behaviour first, then this page's script -->
-    <script>window.HR_SERVER_ARCHIVE = <?php echo json_encode(static_archive_sync(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
+    <script>window.HR_SERVER_ARCHIVE = <?php
+        $archiveSync = ['ids' => [], 'at' => new stdClass()];
+        try {
+            $pdo = db();
+            $rows = $pdo->query("SELECT applicant_id, deleted_at FROM applicant WHERE deleted_at IS NOT NULL")->fetchAll();
+            $ids = []; $at = [];
+            foreach ($rows as $r) {
+                $id = (int) $r['applicant_id'];
+                $ids[] = $id;
+                $ts = strtotime((string) $r['deleted_at']);
+                if ($ts !== false) $at[$id] = $ts * 1000;
+            }
+            $archiveSync = ['ids' => $ids, 'at' => (object) $at];
+        } catch (Throwable $e) {
+            // leave empty
+        }
+        echo json_encode($archiveSync, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+    ?>;</script>
     <script src="../assets/js/hr.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/hr.js'); ?>"></script>
 </body>
 </html>
