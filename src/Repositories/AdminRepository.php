@@ -3,6 +3,7 @@
 // Questions come from question_config; stats are derived from response.answers_json (JSONB).
 
 require_once __DIR__ . '/../Helpers/db.php';
+require_once __DIR__ . '/ActivityRepository.php';
 
 function repo_admin_overview(PDO $pdo = null): array
 {
@@ -10,15 +11,7 @@ function repo_admin_overview(PDO $pdo = null): array
     $hrTotal = (int) $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'hr' AND deleted_at IS NULL")->fetchColumn();
     $questions = (int) $pdo->query("SELECT COUNT(*) FROM question_config WHERE deleted_at IS NULL AND is_active = TRUE")->fetchColumn();
     $sections = (int) $pdo->query("SELECT COUNT(DISTINCT section) FROM question_config WHERE deleted_at IS NULL AND is_active = TRUE")->fetchColumn();
-    $week = (int) $pdo->query(
-        "SELECT COUNT(*) FROM (" .
-        "  SELECT created_at FROM applicant WHERE deleted_at IS NULL" .
-        "  UNION ALL" .
-        "  SELECT created_at FROM schedule" .
-        "  UNION ALL" .
-        "  SELECT created_at FROM question_config WHERE deleted_at IS NULL" .
-        ") t WHERE created_at >= NOW() - INTERVAL '7 days'"
-    )->fetchColumn();
+    $week = repo_activities_week($pdo);
     return [
         'hr_active' => $hrTotal,
         'hr_total' => $hrTotal,

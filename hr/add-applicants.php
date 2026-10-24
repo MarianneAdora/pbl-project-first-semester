@@ -94,6 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             (string) ($input['email'] ?? ''),
             (string) ($input['contact'] ?? '')
         );
+        repo_log_activity('Added An Applicant', (string) ($applicant['name'] ?? '-'));
 
         // 2. Upload the CV (if any) and save its URL on the row.
         // Flat layout: ebsmi_cvs/cv-{id}-{filename} (no subfolders), PDF = previewable image type.

@@ -4,6 +4,7 @@
 
 require_once __DIR__ . '/../Helpers/db.php';
 require_once __DIR__ . '/../Helpers/display.php';
+require_once __DIR__ . '/ActivityRepository.php';
 
 function repo_applicants_active(PDO $pdo = null): array
 {
@@ -243,36 +244,6 @@ function repo_applicants_recent(PDO $pdo = null, int $limit = 10): array
         $d = applicant_to_display($r);
         $d['updated'] = $r['created_at'] ? date('Y-m-d H:i', strtotime((string) $r['created_at'])) : '';
         $out[] = $d;
-    }
-    return $out;
-}
-
-/**
- * Derived Recent Activities feed — NO activity_log table.
- * Unions created_at timestamps from applicant / schedule / question_config.
- */
-function repo_recent_activity(PDO $pdo = null, int $limit = 10): array
-{
-    $pdo = $pdo ?: db();
-    $st = $pdo->prepare(
-        "(SELECT 'Applicant Added' AS activity, ('Applicant Added: ' || name) AS details, 'hr' AS by, created_at AS at" .
-        " FROM applicant WHERE deleted_at IS NULL)" .
-        " UNION ALL " .
-        "(SELECT 'Interview Scheduled' AS activity, ('Interview scheduled for applicant #' || applicant_id) AS details, 'hr' AS by, created_at AS at FROM schedule)" .
-        " UNION ALL " .
-        "(SELECT 'Question Updated' AS activity, ('Question updated: ' || LEFT(question_text, 60)) AS details, 'admin' AS by, created_at AS at FROM question_config WHERE deleted_at IS NULL)" .
-        " ORDER BY at DESC LIMIT :lim"
-    );
-    $st->bindValue(':lim', $limit, PDO::PARAM_INT);
-    $st->execute();
-    $out = [];
-    foreach ($st->fetchAll() as $r) {
-        $out[] = [
-            'at' => $r['at'] ? date('Y-m-d H:i', strtotime((string) $r['at'])) : '',
-            'activity' => (string) $r['activity'],
-            'details' => (string) $r['details'],
-            'by' => (string) $r['by'],
-        ];
     }
     return $out;
 }

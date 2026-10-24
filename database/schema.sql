@@ -194,4 +194,6 @@ CREATE INDEX idx_schedule_final_date       ON schedule(final_date);
 
 CREATE INDEX idx_score_risk_score          ON score(risk_score);
 
+CREATE TABLE activity_log (log_id SERIAL PRIMARY KEY, actor VARCHAR(20) NOT NULL, activity VARCHAR(100) NOT NULL, details TEXT NOT NULL DEFAULT '-', created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+
 COMMIT;

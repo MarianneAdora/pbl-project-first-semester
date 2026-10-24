@@ -1,5 +1,5 @@
 <?php
-// hr/archive-action.php â€” shared POST endpoint for Screening List Delete / Archive Restore / Archive Delete forever.
+// hr/archive-action.php — shared POST endpoint for Screening List Delete / Archive Restore / Archive Delete forever.
 // Body: JSON { action: 'archive' | 'restore' | 'purge', ids: [int, ...] }
 // Archive = soft-delete (deleted_at = NOW()); Restore clears it; Purge = hard DELETE (only archived rows).
 
@@ -27,12 +27,23 @@ try {
     // Keep the 30-day promise: anything archived too long is gone for good first.
     try { repo_purge_expired_applicants(30); } catch (Throwable $ignored) { /* page still works */ }
 
+    // Names for the activity log (fetched before the move).
+    if ($action === 'archive') {
+        $names = repo_applicant_names($ids, false);
+    } else {
+        $names = repo_applicant_names($ids, true);
+    }
+    $label = repo_names_label($names);
+
     if ($action === 'archive') {
         $n = repo_archive_applicants($ids);
+        repo_log_activity('Applicant Deleted', $label);
     } elseif ($action === 'restore') {
         $n = repo_restore_applicants($ids);
+        repo_log_activity('Applicant Restored', $label);
     } elseif ($action === 'purge') {
         $n = repo_purge_applicants($ids);
+        repo_log_activity('Applicant Deleted Forever', $label);
         if ($n <= 0 && count($ids) > 0) {
             $respond(['status' => 'error', 'message' => 'Those applicants were already removed from the Archive.'], 404);
         }

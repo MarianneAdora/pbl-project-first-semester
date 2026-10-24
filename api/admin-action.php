@@ -55,6 +55,7 @@ try {
             $ins = $pdo->prepare("INSERT INTO users (name, email, password_hash, role, created_at) VALUES (:n, :e, :p, 'hr', NOW()) RETURNING user_id");
             $ins->execute([':n' => $name, ':e' => $email, ':p' => $hash]);
             $newId = (int) $ins->fetchColumn();
+            repo_log_activity('HR Account Added', $name . ' (HR)');
 
             $emailed = false;
             if ($sendMail) {
@@ -97,6 +98,7 @@ try {
                 $upd->execute([':n' => $name, ':e' => $email, ':id' => $id]);
             }
             if (!$upd->rowCount()) admin_respond(['status' => 'error', 'message' => 'Account not found or already deleted.'], 404);
+            repo_log_activity('HR Account Edited', $name . ' (HR)');
 
             $emailed = false;
             if ($sendMail && $password !== '') {
@@ -112,31 +114,46 @@ try {
             break;
 
         case 'account_archive':
-            if (!repo_account_archive((int) ($input['id'] ?? 0))) admin_respond(['status' => 'error', 'message' => $missing], 404);
+            $aid = (int) ($input['id'] ?? 0);
+            $ast = db()->prepare("SELECT name FROM users WHERE user_id = :id"); $ast->execute([':id' => $aid]); $aname = (string) $ast->fetchColumn();
+            if (!repo_account_archive($aid)) admin_respond(['status' => 'error', 'message' => $missing], 404);
+            repo_log_activity('HR Account Deleted', $aname . ' (HR)');
             $message = 'HR account moved to the Archive.';
             break;
         case 'account_restore':
-            if (!repo_account_restore((int) ($input['id'] ?? 0))) admin_respond(['status' => 'error', 'message' => $missing], 404);
+            $aid = (int) ($input['id'] ?? 0);
+            $ast = db()->prepare("SELECT name FROM users WHERE user_id = :id"); $ast->execute([':id' => $aid]); $aname = (string) $ast->fetchColumn();
+            if (!repo_account_restore($aid)) admin_respond(['status' => 'error', 'message' => $missing], 404);
+            repo_log_activity('HR Account Restored', $aname . ' (HR)');
             $message = 'HR account restored.';
             break;
         case 'account_purge':
-            if (!repo_account_purge((int) ($input['id'] ?? 0))) admin_respond(['status' => 'error', 'message' => $missing], 404);
+            $aid = (int) ($input['id'] ?? 0);
+            $ast = db()->prepare("SELECT name FROM users WHERE user_id = :id"); $ast->execute([':id' => $aid]); $aname = (string) $ast->fetchColumn();
+            if (!repo_account_purge($aid)) admin_respond(['status' => 'error', 'message' => $missing], 404);
+            repo_log_activity('HR Account Deleted Forever', $aname . ' (HR)');
             $message = 'HR account deleted forever.';
             break;
 
         case 'question_archive':
             $id = (int) ltrim((string) ($input['id'] ?? ''), 'q');
+            $qst = db()->prepare("SELECT section FROM question_config WHERE question_id = :id"); $qst->execute([':id' => $id]); $qsec = (string) $qst->fetchColumn();
             if (!repo_question_archive($id)) admin_respond(['status' => 'error', 'message' => $missing], 404);
+            repo_log_activity('Questionnaires Deleted', 'Q' . $id . ' · ' . $qsec);
             $message = 'Question moved to the Archive.';
             break;
         case 'question_restore':
             $id = (int) ltrim((string) ($input['id'] ?? ''), 'q');
+            $qst = db()->prepare("SELECT section FROM question_config WHERE question_id = :id"); $qst->execute([':id' => $id]); $qsec = (string) $qst->fetchColumn();
             if (!repo_question_restore($id)) admin_respond(['status' => 'error', 'message' => $missing], 404);
+            repo_log_activity('Questionnaires Restored', 'Q' . $id . ' · ' . $qsec);
             $message = 'Question restored.';
             break;
         case 'question_purge':
             $id = (int) ltrim((string) ($input['id'] ?? ''), 'q');
+            $qst = db()->prepare("SELECT section FROM question_config WHERE question_id = :id"); $qst->execute([':id' => $id]); $qsec = (string) $qst->fetchColumn();
             if (!repo_question_purge($id)) admin_respond(['status' => 'error', 'message' => $missing], 404);
+            repo_log_activity('Questionnaires Deleted Forever', 'Q' . $id . ' · ' . $qsec);
             $message = 'Question deleted forever.';
             break;
 
