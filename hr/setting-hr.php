@@ -11,8 +11,8 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {
     exit();
 }
 
-// Keeps the browser copy of the Archive in step with static-data.php
-require_once __DIR__ . '/static-data.php';
+// HR settings page; archive sync is loaded from the database below.
+require_once __DIR__ . '/../src/Helpers/db.php';
 
 // Starting values for the account fields: whoever logged in.
 // BACKEND: this is the logged-in user's row (name, email). Settings > Account saves back to it.
@@ -320,7 +320,22 @@ $account_email = trim((string) ($_SESSION['user_email'] ?? ''));
     </div>
 
     <!-- Shared HR behaviour first, then this page's script -->
-    <script>window.HR_SERVER_ARCHIVE = <?php echo json_encode(static_archive_sync(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
+    <script>window.HR_SERVER_ARCHIVE = <?php
+        $archiveSync = ['ids' => [], 'at' => new stdClass()];
+        try {
+            $pdo = db();
+            $rows = $pdo->query("SELECT applicant_id, deleted_at FROM applicant WHERE deleted_at IS NOT NULL")->fetchAll();
+            $ids = []; $at = [];
+            foreach ($rows as $r) {
+                $id = (int) $r['applicant_id'];
+                $ids[] = $id;
+                $ts = strtotime((string) $r['deleted_at']);
+                if ($ts !== false) $at[$id] = $ts * 1000;
+            }
+            $archiveSync = ['ids' => $ids, 'at' => (object) $at];
+        } catch (Throwable $e) {}
+        echo json_encode($archiveSync, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+    ?>;</script>
     <script>window.HR_ACCOUNT = <?php echo json_encode(['name' => $account_name, 'email' => $account_email], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
     <script src="../assets/js/hr.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/hr.js'); ?>"></script>
 </body>

@@ -13,8 +13,9 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
 
 date_default_timezone_set('Asia/Manila');
 
-// Needed for the sidebar badges (static_admin_notify): new HR activity + Archive items that expire soon
-require_once __DIR__ . '/static-admin.php';
+// Sidebar badges: new HR activity + archived questions/accounts expiring soon.
+require_once __DIR__ . '/../src/Helpers/db.php';
+require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
 
 // Starting values for the account fields: whoever logged in.
 // BACKEND: this is the logged-in user's row (name, email). Settings > Account saves back to it.
@@ -314,7 +315,33 @@ $account_email = trim((string) ($_SESSION['user_email'] ?? ''));
     <!-- Pass PHP Variables to JavaScript -->
     <script>
         // same badges as every admin page: they animate when HR did something new, and clear once the Dashboard is opened
-        window.ADMIN_NOTIFY = <?php echo json_encode(static_admin_notify(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+        window.ADMIN_NOTIFY = <?php
+            $adminNotify = ['activity' => [], 'expiring' => 0, 'days' => 7];
+            try {
+                $pdo = db();
+                // HR activity timestamps (newest first), excluding admin's own actions.
+                $acts = [];
+                foreach (repo_recent_activity($pdo, 100) as $row) {
+                    if (strcasecmp((string) ($row['by'] ?? ''), 'Admin') === 0) continue;
+                    $acts[] = (string) ($row['at'] ?? '');
+                }
+                $adminNotify['activity'] = array_slice($acts, 0, 100);
+
+                // Archived questions/accounts expiring within 7 days (30-day retention).
+                $cutoff = date('Y-m-d H:i:s', strtotime('-23 days'));
+                $expiring = 0;
+                $st = $pdo->prepare("SELECT COUNT(*) FROM question_config WHERE deleted_at IS NOT NULL AND deleted_at <= :c");
+                $st->execute([':c' => $cutoff]);
+                $expiring += (int) $st->fetchColumn();
+                $st = $pdo->prepare("SELECT COUNT(*) FROM users WHERE role = 'hr' AND deleted_at IS NOT NULL AND deleted_at <= :c");
+                $st->execute([':c' => $cutoff]);
+                $expiring += (int) $st->fetchColumn();
+                $adminNotify['expiring'] = $expiring;
+            } catch (Throwable $e) {
+                // keep defaults
+            }
+            echo json_encode($adminNotify, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+        ?>;
         window.ADMIN_ACCOUNT = <?php echo json_encode(['name' => $account_name, 'email' => $account_email], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
     </script>
     <!-- Shared admin behaviour first, then this page's script -->
