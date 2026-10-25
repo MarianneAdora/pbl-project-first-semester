@@ -8,14 +8,18 @@
 session_start();
 header('Content-Type: application/json; charset=UTF-8');
 
-$respond = function (array $data, int $code = 200): void {
+function respond_json(array $data, int $code = 200): void {
     http_response_code($code);
     echo json_encode($data, JSON_UNESCAPED_UNICODE);
+    if (ob_get_level() > 0) {
+        ob_end_flush();
+    }
+    flush();
     exit;
-};
+}
 
 if (empty($_SESSION['otp_verified']) || empty($_SESSION['applicant_id'])) {
-    $respond(['status' => 'error', 'message' => 'Your session has ended. Please open your invite link again.'], 403);
+    respond_json(['status' => 'error', 'message' => 'Your session has ended. Please open your invite link again.'], 403);
 }
 $applicantId = (int) $_SESSION['applicant_id'];
 
@@ -28,29 +32,27 @@ require_once __DIR__ . '/../src/Repositories/ResponseRepository.php';
 try {
     if ($action === 'start') {
         repo_response_start($applicantId);
-        $respond(['status' => 'success']);
+        respond_json(['status' => 'success']);
     }
 
     if ($action === 'submit') {
         $answers = is_array($input['answers'] ?? null) ? $input['answers'] : [];
         $video = is_array($input['video'] ?? null) ? $input['video'] : [];
         $video['device'] = (string) ($input['device'] ?? '');
-        // Pass timing through so ResponseRepository can persist it in timing_json
         $video['timing'] = is_array($input['timing'] ?? null) ? $input['timing'] : [];
-        repo_response_submit($applicantId, $answers, $video);
+        try {
+            repo_response_submit($applicantId, $answers, $video);
+        } catch (Throwable $e) {
+            error_log('submit-response repo error: ' . $e->getMessage());
+            throw $e;
+        }
 
         // Mark as submitted IMMEDIATELY after the DB save succeeds, before the
         // static-store sync (which can throw). This ensures the applicant is
         // redirected to application-status.php even if the sync fails.
         $_SESSION['screening_submitted'] = true;
 
-        // ---------------------------------------------------------------------------
-        // Sync the static store so the applicant-side evaluation (static-evaluation.php)
-        // reads this just-sent submission instead of stale earlier ones. The store is
-        // only written here because the applicant pages read submissions from it
-        // (static_run_evaluation() in static-evaluation.php), while the database is
-        // authoritative for HR (details.php reads the response table directly).
-        // ---------------------------------------------------------------------------
+        // store sync ...
         $storePdo = db();
         $appStmt  = $storePdo->prepare(
             "SELECT applicant_id, name, email FROM applicant WHERE applicant_id = :id AND deleted_at IS NULL LIMIT 1"
@@ -81,7 +83,7 @@ try {
             static_store_update(function (array &$store) use ($applicantId, $app, $answers, $video, $timing, $device, $hash, $otp, $ip) {
                 $store['submissions'][] = [
                     'reference'    => 'SCR-' . date('Y') . '-' . str_pad((string) $applicantId, 5, '0', STR_PAD_LEFT),
-                    'applicant_id' => $app['id'] ?? null,
+                    'applicant_id' => $app['applicant_id'] ?? $applicantId,
                     'name'         => $app['name'] ?? '',
                     'email'        => $app['email'] ?? '',
                     'answers'      => $answers,
@@ -114,17 +116,19 @@ try {
             error_log('submit-response scoring trigger error: ' . $e->getMessage());
         }
 
-        $respond(['status' => 'success']);
+        error_log('SUBMIT ob_level before respond=' . ob_get_level());
+        error_log('SUBMIT about to respond success');
+        respond_json(['status' => 'success']);
     }
 
-    $respond(['status' => 'error', 'message' => 'Unknown action.'], 400);
+    respond_json(['status' => 'error', 'message' => 'Unknown action.'], 400);
 } catch (InvalidArgumentException $e) {
-    $respond(['status' => 'error', 'message' => $e->getMessage()], 422);
+    respond_json(['status' => 'error', 'message' => $e->getMessage()], 422);
 } catch (Throwable $e) {
     error_log('submit-response DB error: ' . $e->getMessage());
     if (!empty($_SESSION['screening_submitted'])) {
-        $respond(['status' => 'success']);
+        respond_json(['status' => 'success']);
     }
-    $respond(['status' => 'error', 'message' => 'Something went wrong while saving. Please try again.'], 500);
+    respond_json(['status' => 'error', 'message' => 'Something went wrong while saving. Please try again.'], 500);
 }
 

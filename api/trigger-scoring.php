@@ -25,20 +25,24 @@ if (!defined('TRIGGER_SCORING_INTERNAL')) {
     header('Content-Type: application/json; charset=UTF-8');
 }
 
-$respond = function (array $data, int $code = 200): void {
+function respond_json_ts(array $data, int $code = 200): void {
     if (!defined('TRIGGER_SCORING_INTERNAL')) {
         http_response_code($code);
         echo json_encode($data, JSON_UNESCAPED_UNICODE);
+        if (ob_get_level() > 0) {
+            ob_end_flush();
+        }
+        flush();
         exit;
     }
-};
+}
 
 // Auth guard when called as a real HTTP endpoint
 if (!defined('TRIGGER_SCORING_INTERNAL')) {
     $sessionOk = !empty($_SESSION['otp_verified']) && !empty($_SESSION['applicant_id']);
     $hrOk      = in_array($_SESSION['user_role'] ?? '', ['hr', 'admin'], true);
     if (!$sessionOk && !$hrOk) {
-        $respond(['status' => 'error', 'message' => 'Unauthorised.'], 403);
+        respond_json_ts(['status' => 'error', 'message' => 'Unauthorised.'], 403);
     }
 }
 
@@ -51,7 +55,7 @@ if (!isset($input['applicant_id']) && !defined('TRIGGER_SCORING_INTERNAL')) {
 }
 $applicantId = (int) ($input['applicant_id'] ?? 0);
 if ($applicantId <= 0) {
-    $respond(['status' => 'error', 'message' => 'applicant_id is required.'], 422);
+    respond_json_ts(['status' => 'error', 'message' => 'applicant_id is required.'], 422);
     return;
 }
 
@@ -79,7 +83,7 @@ try {
     $result['narrative'] = $narrative;
     $scorer->saveScore($applicantId, $result);
 
-    $respond([
+    respond_json_ts([
         'status'  => 'success',
         'outcome' => $result['outcome'],
         'band'    => $result['band'],
@@ -88,5 +92,5 @@ try {
 
 } catch (Throwable $e) {
     error_log('trigger-scoring error (applicant ' . $applicantId . '): ' . $e->getMessage());
-    $respond(['status' => 'error', 'message' => 'Scoring failed: ' . $e->getMessage()], 500);
+    respond_json_ts(['status' => 'error', 'message' => 'Scoring failed: ' . $e->getMessage()], 500);
 }
