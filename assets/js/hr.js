@@ -871,7 +871,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.status !== 'success' || !data.parsed) throw new Error(data.message || 'Could not read that CV. Please type the details manually.');
             const filled = ['name', 'email', 'contact'].filter(n => fillField(n, data.parsed[n]));
             setAutofill(
-                filled.length ? 'Details filled from CV — please review before sending.' : 'Could not find contact details in this CV. Please type them manually.',
+                filled.length ? 'Details filled from CV. Please review before sending.' : 'Could not find contact details in this CV. Please type them manually.',
                 !filled.length
             );
         } catch (err) {
