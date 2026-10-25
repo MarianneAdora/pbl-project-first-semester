@@ -4082,5 +4082,88 @@ document.addEventListener('DOMContentLoaded', () => {
 
     drawFilter();
     draw(true);
+
+    /* ---------- Applicant Volume Over Time: column chart, per week or per month ---------- */
+    const volBox = document.getElementById('volChart');
+    if (volBox) {
+        const vol = data.volume || {};
+        const volSub = document.getElementById('volSub');
+        const volToggle = document.getElementById('volToggle');
+        const subs = { week: 'Applications received per week', month: 'Applications received per month' };
+        let mode = 'week';
+        let firstDraw = true;
+
+        // axis step: 1, 2, 5, 10, 20, 50 ... so the top of the axis is a round number
+        const niceStep = (raw) => {
+            const pow = Math.pow(10, Math.floor(Math.log10(Math.max(raw, 1))));
+            return [1, 2, 5, 10].map(m => m * pow).find(v => v >= raw) || 10 * pow;
+        };
+
+        function drawVolume() {
+            const set = vol[mode] || { labels: [], ranges: [], values: [] };
+            const values = set.values || [];
+            const max = Math.max(0, ...values);
+            const anySample = !!(set.sample && set.sample.some(Boolean));
+            volSub.textContent = subs[mode] + (anySample ? ' · striped bars are sample figures' : '');
+            const foot = document.getElementById('volFoot');
+
+            if (!values.length || max === 0) {
+                volBox.innerHTML = '<p class="chart-empty">No applications in this period yet.</p>';
+                volBox.style.display = 'flex';
+                if (foot) foot.innerHTML = '';
+                return;
+            }
+            volBox.style.display = '';
+
+            const step = niceStep(max / 4);
+            const top = step * Math.ceil(max / step);
+            const pct = (v) => (v / top * 100) + '%';
+            const peak = values.indexOf(max);
+            const avg = values.reduce((a, b) => a + b, 0) / values.length;
+
+            let ticks = '';
+            let grid = '';
+            for (let v = 0; v <= top; v += step) {
+                ticks += '<span class="vol-tick" style="--p:' + pct(v) + '">' + v + '</span>';
+                if (v > 0) grid += '<i class="vol-grid" style="--p:' + pct(v) + '"></i>';
+            }
+
+            const cols = values.map((v, i) =>
+                '<div class="vol-col' + (i === peak ? ' is-peak' : '') + (set.sample && set.sample[i] ? ' is-sample' : '') + '" style="--h:' + pct(v) + ';--k:' + i + '">' +
+                    '<span class="vol-tip">' + ADMIN.esc(set.ranges[i]) + ' · ' + v + (v === 1 ? ' application' : ' applications') + (set.sample && set.sample[i] ? ' (sample)' : '') + '</span>' +
+                    '<span class="vol-val">' + v + '</span>' +
+                    '<span class="vol-bar"></span>' +
+                '</div>').join('');
+
+            const labels = set.labels.map(l => '<span>' + ADMIN.esc(l) + '</span>').join('');
+
+            volBox.style.setProperty('--n', values.length);
+            volBox.style.setProperty('--d', firstDraw ? '0.6s' : '0.05s');     // the first draw waits for the card to rise in
+            volBox.innerHTML =
+                '<div class="vol-axis" aria-hidden="true">' + ticks + '</div>' +
+                '<div class="vol-plot" role="img" aria-label="Bar chart: ' + ADMIN.esc(subs[mode].toLowerCase()) + '">' + grid +
+                    '<div class="vol-avg" style="--p:' + pct(avg) + '"><span>avg ' + (Math.round(avg * 10) / 10) + '</span></div>' +
+                    '<div class="vol-cols">' + cols + '</div></div>' +
+                '<div class="vol-labels" aria-hidden="true">' + labels + '</div>';
+            if (foot) {
+                const total = values.reduce((a, b) => a + b, 0);
+                foot.innerHTML =
+                    '<span class="ins-chip"><span class="chip-label">Total</span><span class="chip-value">' + total + '</span></span>' +
+                    '<span class="ins-chip"><span class="chip-label">Busiest</span><span class="chip-value">' + ADMIN.esc(set.labels[peak]) + ' · ' + max + '</span></span>' +
+                    '<span class="ins-chip"><span class="chip-label">Average</span><span class="chip-value">' + (Math.round(avg * 10) / 10) + '</span></span>';
+            }
+            firstDraw = false;
+        }
+
+        volToggle.addEventListener('click', (e) => {
+            const b = e.target.closest('[data-mode]');
+            if (!b || b.dataset.mode === mode) return;
+            mode = b.dataset.mode;
+            volToggle.querySelectorAll('[data-mode]').forEach(el => el.setAttribute('aria-pressed', el === b ? 'true' : 'false'));
+            drawVolume();
+        });
+
+        drawVolume();
+    }
 });
 }

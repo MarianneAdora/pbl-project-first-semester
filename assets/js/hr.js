@@ -2046,19 +2046,31 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // 3. Numbers count up when the cards rise in
+    // When does the card around an element start rising in? (its --i is set in the PHP; the cards come one
+    // after another, 70ms apart, and after a login they wait for the stripes to clear). Used so every
+    // number, chart and bar starts at the moment ITS card appears, not before.
+    const motionOff = document.documentElement.getAttribute('data-motion') === 'off';   // Settings > Page animations
+    const cardStart = (el, extra) => {
+        const card = el.closest('.reveal');
+        const i = card ? (parseInt(card.style.getPropertyValue('--i'), 10) || 0) : 0;
+        return (arrivedViaTransition ? 700 : 0) + 50 + i * 70 + (extra || 0);
+    };
+
+    // 3. Numbers count up when the cards rise in (data-decimals keeps "2.4" from becoming "2")
     document.querySelectorAll('.card-value[data-count]').forEach(el => {
-        const target = parseInt(el.dataset.count, 10);
-        if (reduceMotion || !target) return;
-        const start = (arrivedViaTransition ? 700 : 300) + 250;
+        const target = parseFloat(el.dataset.count);
+        const decimals = parseInt(el.dataset.decimals || '0', 10);
+        if (reduceMotion || motionOff || !target) return;
+        const start = cardStart(el, 250);
         const duration = 800;
-        el.textContent = '0';
+        el.textContent = (0).toFixed(decimals);
         setTimeout(() => {
             const t0 = performance.now();
             const tick = (now) => {
                 const p = Math.min(1, (now - t0) / duration);
-                el.textContent = String(Math.round(target * (1 - Math.pow(1 - p, 3))));
+                el.textContent = (target * (1 - Math.pow(1 - p, 3))).toFixed(decimals);
                 if (p < 1) requestAnimationFrame(tick);
+                else el.textContent = target.toFixed(decimals);
             };
             requestAnimationFrame(tick);
         }, start);
@@ -2082,11 +2094,13 @@ document.addEventListener('DOMContentLoaded', () => {
             centerLabel.textContent = label;
         };
 
-        // After a login, start drawing just as the stripes finish clearing, so the chart
-        // card is never left empty while the rest of the page is already up
-        const chartDelay = arrivedViaTransition ? 700 : 50 + 4 * 70 + 200;
+        // Start drawing just as this chart's card has risen in (after a login: once the stripes have
+        // cleared), so the card is never left empty while the rest of the page is already up
+        const chartDelay = cardStart(ctx, 200);
 
         setTimeout(() => {
+            // entrance is a css sweep (.chart-wrapper.is-drawing); chart.js' own draw gets cancelled by any resize
+            ctx.parentElement.classList.add('is-drawing');
             new Chart(ctx, {
                 type: 'doughnut',
                 data: {
@@ -2132,7 +2146,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     animation: {
                         animateScale: true,
                         animateRotate: true,
-                        duration: document.documentElement.getAttribute('data-motion') === 'off' ? 0 : 1000   // Settings > Page animations
+                        duration: 0                  // first draw is instant, hover still animates
                     }
                 }
             });
@@ -2150,6 +2164,137 @@ document.addEventListener('DOMContentLoaded', () => {
             el.addEventListener('mouseenter', () => showCenter(n, status + ' · ' + Math.round(n / total * 100) + '%'));
             el.addEventListener('mouseleave', () => showCenter(defaults.value, defaults.label));
         });
+    }
+
+    // 5. Funnel Drop-Off ------------------------------------------------------
+    //    The funnel itself is drawn by PHP (an SVG). Hovering a stage or its row lights up that stage and dims
+    //    the rest; a stage that has a list behind it (Applied, Completed, Passed) opens the Screening List.
+    const funnelBody = document.getElementById('funnelBody');
+    if (funnelBody) {
+        const stageEls = Array.from(funnelBody.querySelectorAll('.fn-stage, .fl-item, .fn-count'));
+        const light = (stage) => {
+            funnelBody.classList.toggle('has-focus', stage !== null);
+            stageEls.forEach(el => el.classList.toggle('is-active', stage !== null && el.dataset.stage === stage));
+        };
+        stageEls.forEach(el => {
+            el.addEventListener('mouseenter', () => light(el.dataset.stage));
+            el.addEventListener('mouseleave', () => light(null));
+            el.addEventListener('focus', () => light(el.dataset.stage));
+            el.addEventListener('blur', () => light(null));
+            const url = el.dataset.url;
+            if (!url) return;
+            el.addEventListener('click', () => { window.location.href = url; });
+            el.addEventListener('keydown', (e) => { if (e.key === 'Enter') window.location.href = url; });
+        });
+    }
+
+    // 6. Time-to-Complete Distribution (histogram) ------------------------------
+    //    Bars rise one after another once the card is in. The tallest bar is the strongest colour; the number
+    //    of applicants sits on top of each bar and follows it while it grows. Colours come from CSS tokens
+    //    (--hist-*), so the dark theme needs nothing here.
+    const timeCanvas = document.getElementById('timeToCompleteChart');
+    const dur = window.DASH_INSIGHTS && window.DASH_INSIGHTS.duration;
+    if (timeCanvas && dur && dur.n > 0 && typeof Chart !== 'undefined') {
+        const css = getComputedStyle(document.documentElement);
+        const token = (name, fallback) => css.getPropertyValue(name).trim() || fallback;
+        const barColor  = token('--hist-bar', '#9ccbf0');
+        const barHi     = token('--hist-bar-hi', '#1c8adb');
+        const gridColor = token('--hist-grid', '#eceef1');
+        const tickColor = token('--hist-tick', '#5b5f66');
+        const inkColor  = token('--ink', '#1f1f23');
+        const font = { family: "'Plus Jakarta Sans', sans-serif", size: 11, weight: '600' };
+        const peak = dur.counts.indexOf(Math.max.apply(null, dur.counts));
+
+        const valueLabels = {
+            id: 'valueLabels',
+            afterDatasetsDraw(chart) {
+                const c = chart.ctx;
+                c.save();
+                c.font = "800 12px 'Plus Jakarta Sans', sans-serif";
+                c.fillStyle = inkColor;
+                c.textAlign = 'center';
+                c.textBaseline = 'bottom';
+                chart.getDatasetMeta(0).data.forEach((bar, i) => {
+                    if (dur.counts[i] > 0) c.fillText(String(dur.counts[i]), bar.x, bar.y - 5);
+                });
+                c.restore();
+            }
+        };
+
+        setTimeout(() => {
+            new Chart(timeCanvas, {
+                type: 'bar',
+                data: {
+                    labels: dur.labels,
+                    datasets: [{
+                        label: 'Applicants',
+                        data: dur.counts,
+                        backgroundColor: dur.counts.map((n, i) => i === peak ? barHi : barColor),
+                        hoverBackgroundColor: barHi,
+                        borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 },
+                        borderSkipped: false,
+                        categoryPercentage: 1,      // bars touch their neighbours: it reads as a histogram
+                        barPercentage: 0.92
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: { padding: { top: 20, right: 4 } },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            border: { color: gridColor },
+                            ticks: { color: tickColor, font },
+                            title: { display: true, text: 'Time from invite to submission', color: tickColor, font: Object.assign({}, font, { size: 10.5 }), padding: { top: 6 } }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grace: '12%',
+                            grid: { color: gridColor },
+                            border: { display: false },
+                            ticks: { color: tickColor, font, precision: 0, maxTicksLimit: 6 },
+                            title: { display: true, text: 'Applicants', color: tickColor, font: Object.assign({}, font, { size: 10.5 }) }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1f1f23',
+                            titleColor: '#ffffff',
+                            bodyColor: '#e6e8ec',
+                            padding: 10,
+                            cornerRadius: 8,
+                            displayColors: false,
+                            titleFont: { family: font.family, size: 12, weight: '800' },
+                            bodyFont: { family: font.family, size: 12, weight: '600' },
+                            callbacks: {
+                                title: (items) => dur.titles[items[0].dataIndex],
+                                label: (item) => {
+                                    const n = item.parsed.y;
+                                    return n + (n === 1 ? ' applicant' : ' applicants') + ' \u00b7 ' + Math.round(n / dur.n * 100) + '%';
+                                }
+                            }
+                        }
+                    },
+                    onHover: (evt, elements) => { evt.native.target.style.cursor = elements.length ? 'pointer' : 'default'; },
+                    animation: {
+                        duration: motionOff ? 0 : 900,
+                        easing: 'easeOutQuart',
+                        delay: (c) => (c.type === 'data' && c.mode === 'default' && !motionOff) ? c.dataIndex * 90 : 0
+                    }
+                },
+                plugins: [valueLabels]
+            });
+        }, cardStart(timeCanvas, 250));
+    }
+
+    // 7. Scheduling Turnaround Time: the whole card opens the passed applicants (they are the ones waiting for a schedule)
+    const taCard = document.querySelector('.ta-card');
+    if (taCard && taCard.dataset.url) {
+        const goTa = () => { window.location.href = taCard.dataset.url; };
+        taCard.addEventListener('click', goTa);
+        taCard.addEventListener('keydown', (e) => { if (e.key === 'Enter') goTa(); });
     }
 });
 

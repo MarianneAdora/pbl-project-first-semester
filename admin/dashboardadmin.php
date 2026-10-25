@@ -22,6 +22,9 @@ $stats    = static_admin_question_stats();       // Questionnaires Statistics: e
 $all_log  = static_activity();                   // everything HR and the Admin did, newest first
 $recent_view = static_admin_recent_activity(10);   // Recent Activities: the latest 10; a line is hidden 3 days after the Admin first saw it
 $recent   = $recent_view['rows'];
+$failure  = static_admin_failure_rates(5);       // Question-Level Failure Rate
+$risk     = static_admin_risk_flags();           // Risk Flag Breakdown by Factor
+$volume   = static_admin_volume();               // Applicant Volume Over Time
 
 // Share of something, used by the little bar on each summary box
 function share(int $part, int $total): int
@@ -245,8 +248,89 @@ $greeting     = 'Hello, ' . $display_name . '!';
                 <div class="stats-filter" id="statsFilter" role="group" aria-label="Show the questions of a section"></div>
             </section>
 
+            <!-- Three small cards side by side: Failure Rate | Risk Flags | Applicant Volume -->
+            <div class="insight-row">
+
+                <!-- Question-Level Failure Rate (horizontal bars) -->
+                <section class="dash-card insight-card reveal" style="--i:6" aria-labelledby="failTitle">
+                    <div class="card-top">
+                        <div>
+                            <h3 id="failTitle">Question-Level Failure Rate</h3>
+                            <span class="chart-sub">% of applicants failing each knockout question</span>
+                        </div>
+                    </div>
+                    <?php if (!$failure['rows']): ?>
+                    <p class="chart-empty">No knock-out questions yet.</p>
+                    <?php else: ?>
+                    <ul class="hbar-list">
+                        <?php foreach ($failure['rows'] as $k => $r): ?>
+                        <li>
+                            <a class="hbar<?php echo $k === 0 && $r['failed'] > 0 ? ' is-top' : ''; ?><?php echo $r['failed'] === 0 ? ' is-zero' : ''; ?>" href="questionlist.php" style="--w:<?php echo (float) $r['rate']; ?>%; --c:var(--red-bright); --k:<?php echo $k; ?>"
+                               title="<?php echo htmlspecialchars($r['label'] . ' - ' . $r['failed'] . ' of ' . $r['judged'] . ' applicants did not pass. Click to open Questions.', ENT_QUOTES, 'UTF-8'); ?>">
+                                <span class="hbar-name"><b><?php echo htmlspecialchars(strtoupper($r['id']), ENT_QUOTES, 'UTF-8'); ?></b><?php echo htmlspecialchars(substr($r['label'], strlen($r['id']) + 2), ENT_QUOTES, 'UTF-8'); ?></span>
+                                <span class="hbar-val"><?php echo (int) round($r['rate']); ?>%</span>
+                                <span class="hbar-track"><span class="hbar-fill"></span></span>
+                            </a>
+                        </li>
+                        <?php endforeach; ?>
+                    </ul>
+                    <div class="ins-foot">
+                        <span class="ins-chip"><span class="chip-label">Knock-out questions</span><span class="chip-value"><?php echo (int) $failure['knockouts']; ?></span></span>
+                        <span class="ins-chip"><span class="chip-label">Highest failure</span><span class="chip-value"><?php echo htmlspecialchars(strtoupper($failure['rows'][0]['id']), ENT_QUOTES, 'UTF-8'); ?> &middot; <?php echo (int) round($failure['rows'][0]['rate']); ?>%</span></span>
+                    </div>
+                    <?php endif; ?>
+                </section>
+
+                <!-- Risk Flag Breakdown by Factor (horizontal bars) -->
+                <section class="dash-card insight-card reveal" style="--i:7" aria-labelledby="riskTitle">
+                    <div class="card-top">
+                        <div>
+                            <h3 id="riskTitle">Risk Flag Breakdown by Factor</h3>
+                            <span class="chart-sub">Share of flags from each factor</span>
+                        </div>
+                    </div>
+                    <?php if ((int) $risk['total'] === 0): ?>
+                    <p class="chart-empty">No risk flags raised yet.</p>
+                    <?php else: ?>
+                    <ul class="hbar-list">
+                        <?php foreach ($risk['rows'] as $k => $r): ?>
+                        <li>
+                            <div class="hbar<?php echo $k === 0 ? ' is-top' : ''; ?><?php echo $r['count'] === 0 ? ' is-zero' : ''; ?>" style="--w:<?php echo (float) $r['share']; ?>%; --c:<?php echo htmlspecialchars($r['color'], ENT_QUOTES, 'UTF-8'); ?>; --k:<?php echo $k; ?>"
+                                 title="<?php echo htmlspecialchars($r['label'] . ' - ' . $r['count'] . ' of ' . $risk['total'] . ' flags' . ($r['sample'] ? ' (sample figure)' : ''), ENT_QUOTES, 'UTF-8'); ?>">
+                                <span class="hbar-name"><?php echo htmlspecialchars($r['label'], ENT_QUOTES, 'UTF-8'); ?><?php echo $r['sample'] ? '<em class="sample-tag">sample</em>' : ''; ?></span>
+                                <span class="hbar-val"><?php echo (int) round($r['share']); ?>%</span>
+                                <span class="hbar-track"><span class="hbar-fill"></span></span>
+                            </div>
+                        </li>
+                        <?php endforeach; ?>
+                    </ul>
+                    <div class="ins-foot">
+                        <span class="ins-chip"><span class="chip-label">Flags raised</span><span class="chip-value"><?php echo (int) $risk['total']; ?></span></span>
+                        <span class="ins-chip"><span class="chip-label">Top factor</span><span class="chip-value"><?php echo htmlspecialchars($risk['rows'][0]['label'], ENT_QUOTES, 'UTF-8'); ?></span></span>
+                    </div>
+                    <?php endif; ?>
+                </section>
+
+                <!-- Applicant Volume Over Time (bar chart, drawn by dashboardadmin.js) -->
+                <section class="dash-card insight-card volume-card reveal" style="--i:8" aria-labelledby="volTitle">
+                    <div class="card-top">
+                        <div>
+                            <h3 id="volTitle">Applicant Volume Over Time</h3>
+                            <span class="chart-sub" id="volSub">Applications received per week</span>
+                        </div>
+                        <div class="vol-toggle" id="volToggle" role="group" aria-label="Group applications by">
+                            <button type="button" data-mode="week" aria-pressed="true">Week</button>
+                            <button type="button" data-mode="month" aria-pressed="false">Month</button>
+                        </div>
+                    </div>
+                    <div class="vol-chart" id="volChart"></div>
+                    <div class="ins-foot three" id="volFoot"></div>
+                </section>
+
+            </div>
+
             <!-- Recent Activities: the latest 10 things HR and the Admin did in the system -->
-            <section class="dash-card activity-card reveal" style="--i:6" id="recentActivities" aria-labelledby="activityTitle">
+            <section class="dash-card activity-card reveal" style="--i:9" id="recentActivities" aria-labelledby="activityTitle">
                 <div class="card-top">
                     <h3 id="activityTitle">Recent Activities</h3>
                     <span class="activity-count"><?php echo htmlspecialchars($log_count, ENT_QUOTES, 'UTF-8'); ?></span>
@@ -278,7 +362,7 @@ $greeting     = 'Hello, ' . $display_name . '!';
     <!-- Pass PHP Variables to JavaScript -->
     <script>
         window.ADMIN_NOTIFY = <?php echo json_encode(static_admin_notify(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
-        window.ADMIN_DASH = <?php echo json_encode(['stats' => $stats, 'activity' => $recent], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
+        window.ADMIN_DASH = <?php echo json_encode(['stats' => $stats, 'activity' => $recent, 'volume' => $volume], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
     </script>
     <!-- Shared admin behaviour first, then this page's script -->
     <script src="../assets/js/admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/admin.js'); ?>"></script>

@@ -1001,6 +1001,158 @@ function static_admin_question_stats(): array
 }
 
 /* ==========================================================================
+   DASHBOARD INSIGHT CARDS (the three small cards under Questionnaires Statistics)
+     static_admin_failure_rates()   Question-Level Failure Rate: % of applicants failing each knock-out question
+     static_admin_risk_flags()      Risk Flag Breakdown by Factor: share of the flags each factor raised
+     static_admin_volume()          Applicant Volume Over Time: applications received per week / per month
+   Everything is counted from the store (submissions, evaluations, applicants), nothing is typed in by hand.
+   BACKEND: failure  = per knock-out question, COUNT(*) of responses that do not match the passing answer / COUNT(*) answered
+            risk     = COUNT(*) of evaluation_factors WHERE points > 0 GROUP BY factor group
+            volume   = SELECT COUNT(*) FROM applicants GROUP BY YEAR(created_at), WEEK(created_at)
+   ========================================================================== */
+
+// Active knock-out questions, the share of applicants who did not pass each one (highest first)
+function static_admin_failure_rates(int $limit = 5): array
+{
+    $store = static_store_read();
+    $subs  = array_values(array_filter((array) ($store['submissions'] ?? []), 'is_array'));
+    $rows  = [];
+    $knock = 0;
+
+    foreach (static_admin_questions() as $q) {
+        if (($q['status'] ?? 'Active') !== 'Active' || static_question_rule($q) === null) continue;
+        $knock++;
+
+        $judged = 0;
+        $failed = 0;
+        foreach ($subs as $sub) {
+            $check = static_knockout_check($q, (array) ($sub['answers'] ?? []));
+            if ($check === null || $check['met'] === null) continue;      // no answer to judge
+            $judged++;
+            if ($check['met'] === false) $failed++;
+        }
+
+        $rows[] = [
+            'id'     => (string) $q['id'],
+            'label'  => strtoupper((string) $q['id']) . ': ' . static_admin_question_plain($q),
+            'failed' => $failed,
+            'judged' => $judged,
+            'rate'   => $judged > 0 ? round($failed / $judged * 100, 1) : 0
+        ];
+    }
+
+    usort($rows, fn($a, $b) => [$b['rate'], $b['failed']] <=> [$a['rate'], $a['failed']]);
+    return ['submissions' => count($subs), 'knockouts' => $knock, 'rows' => array_slice($rows, 0, $limit)];
+}
+
+// Which evaluation factors raised a flag (points above 0), grouped the way the Admin reads them
+function static_admin_risk_flags(): array
+{
+    $groups = [
+        'otp'    => ['label' => 'OTP retries',      'color' => '#f5a623'],
+        'fast'   => ['label' => 'Fast completion',  'color' => '#3b82f6'],
+        'device' => ['label' => 'Duplicate device', 'color' => '#a855f7'],
+        'video'  => ['label' => 'Duplicate video',  'color' => '#14b8a6']
+    ];
+    $groupOf = function (string $factor): ?string {
+        if (stripos($factor, 'OTP') !== false)                return 'otp';
+        if (stripos($factor, 'Questionnaire speed') === 0)    return 'fast';
+        if (stripos($factor, 'Same device') === 0)            return 'device';
+        if (stripos($factor, 'Video matches') === 0)          return 'video';
+        return null;
+    };
+
+    $store = static_store_read();
+    $evals = array_values(array_filter((array) ($store['evaluations'] ?? []), 'is_array'));
+    $count = array_fill_keys(array_keys($groups), 0);
+
+    foreach ($evals as $e) {
+        $hit = [];                                                         // one flag per group per screening
+        foreach ((array) ($e['factors'] ?? []) as $f) {
+            $g = $groupOf((string) ($f['label'] ?? ''));
+            if ($g !== null && (int) ($f['points'] ?? 0) > 0) $hit[$g] = true;
+        }
+        foreach ($hit as $g => $_) $count[$g]++;
+    }
+
+    // SAMPLE numbers: a factor nobody has been flagged for yet borrows these, so the chart is not three empty bars.
+    // Real flags are never replaced. BACKEND: delete $sample and this loop, the query returns the real counts.
+    $sample = ['otp' => 7, 'fast' => 9, 'device' => 5, 'video' => 3];
+    $isSample = [];
+    foreach ($count as $key => $n) {
+        if ($n === 0) { $count[$key] = $sample[$key]; $isSample[$key] = true; }
+    }
+
+    $total = array_sum($count);
+    $rows  = [];
+    foreach ($groups as $key => $g) {
+        $rows[] = [
+            'key'    => $key,
+            'label'  => $g['label'],
+            'color'  => $g['color'],
+            'count'  => $count[$key],
+            'share'  => $total > 0 ? round($count[$key] / $total * 100, 1) : 0,
+            'sample' => !empty($isSample[$key])
+        ];
+    }
+    usort($rows, fn($a, $b) => $b['count'] <=> $a['count']);
+    return ['evaluations' => count($evals), 'total' => $total, 'rows' => $rows, 'has_sample' => (bool) $isSample];
+}
+
+// Applications received: the last 6 weeks (Monday to Sunday) and the last 6 months, oldest first
+function static_admin_volume(): array
+{
+    $store = static_store_read();
+    $days  = [];
+    foreach ((array) ($store['applicants'] ?? []) as $a) {
+        $when = (string) ($a['invited_at'] ?? $a['updated'] ?? '');
+        if ($when !== '') $days[] = substr($when, 0, 10);
+    }
+
+    // SAMPLE history: a week / month that ends before the first real applicant uses these (real ones are never replaced).
+    // BACKEND: delete the two sample lists and the 'sample' flags, the query returns the real counts.
+    $firstDay    = $days ? min($days) : '';
+    $sampleWeek  = [9, 11, 10, 13, 12, 14];
+    $sampleMonth = [18, 24, 21, 29, 27, 31];
+
+    $countBetween = function (DateTimeImmutable $from, DateTimeImmutable $to) use ($days): int {
+        $f = $from->format('Y-m-d');
+        $t = $to->format('Y-m-d');
+        return count(array_filter($days, fn($d) => $d >= $f && $d < $t));
+    };
+
+    $now    = static_now()->setTime(0, 0);
+    $monday = $now->modify('monday this week');
+    $week   = ['labels' => [], 'ranges' => [], 'values' => [], 'sample' => []];
+    for ($i = 5; $i >= 0; $i--) {
+        $start = $monday->modify('-' . $i . ' weeks');
+        $end   = $start->modify('+7 days');
+        $last  = $end->modify('-1 day');
+        $week['labels'][] = 'W' . (6 - $i);
+        $week['ranges'][] = $start->format('M j') . ' to ' . ($start->format('M') === $last->format('M') ? $last->format('j') : $last->format('M j'));
+        $n = $countBetween($start, $end);
+        $useSample = $n === 0 && $firstDay !== '' && $end->format('Y-m-d') <= $firstDay;
+        $week['values'][] = $useSample ? $sampleWeek[5 - $i] : $n;
+        $week['sample'][] = $useSample;
+    }
+
+    $first = $now->modify('first day of this month');
+    $month = ['labels' => [], 'ranges' => [], 'values' => [], 'sample' => []];
+    for ($i = 5; $i >= 0; $i--) {
+        $start = $first->modify('-' . $i . ' months');
+        $month['labels'][] = $start->format('M');
+        $month['ranges'][] = $start->format('F Y');
+        $end = $start->modify('+1 month');
+        $n   = $countBetween($start, $end);
+        $useSample = $n === 0 && $firstDay !== '' && $end->format('Y-m-d') <= $firstDay;
+        $month['values'][] = $useSample ? $sampleMonth[5 - $i] : $n;
+        $month['sample'][] = $useSample;
+    }
+
+    return ['week' => $week, 'month' => $month];
+}
+
+/* ==========================================================================
    SIDEBAR BADGES (same idea as the HR badges; every admin page prints this into window.ADMIN_NOTIFY)
      activity  the time of every HR activity (the Dashboard badge counts the ones the Admin has not seen yet)
      expiring  archived items that will be deleted for good within `days` days (the Archive badge)

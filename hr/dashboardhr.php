@@ -48,6 +48,31 @@ $pass_rate    = share($stats['passed'], $screened);
 $passed_pct   = $pass_rate;
 $failed_pct   = $screened > 0 ? 100 - $pass_rate : 0;
 
+// The three analytics cards (Funnel Drop-Off, Time-to-Complete Distribution, Scheduling Turnaround Time).
+// Everything is worked out in static-data.php from the same applicant list as the cards above, so the
+// funnel's "Applied" is always the Total Applicants number, "Completed" is the Completed card, and so on.
+// BACKEND: static_dashboard_insights() becomes three queries (the SQL is written above that function).
+try {
+    $insights = static_dashboard_insights($all_applicants);
+} catch (Throwable $e) {
+    $insights = static_dashboard_empty_insights();     // the cards show "no data" rather than the page failing
+}
+$funnel     = $insights['funnel'];
+$duration   = $insights['duration'];
+$turnaround = $insights['turnaround'];
+
+// Funnel geometry (an SVG drawn here, so it also shows without JavaScript).
+// Each stage is a trapezoid: its top edge is as wide as its own count, its bottom edge as wide as the NEXT stage's count.
+$fn_colors = ['#1c8adb', '#159a43', '#f0b100', '#f26a1b', '#d1122a'];     // same order as the wireframe: blue, green, yellow, orange, red
+$fn_w = 300; $fn_h = 58; $fn_gap = 4; $fn_min = 54;
+$fn_top = max(1, (int) $funnel['stages'][0]['count']);
+$fn_widths = [];
+foreach ($funnel['stages'] as $s) {
+    $fn_widths[] = $s['count'] > 0 ? max($fn_min, $fn_w * $s['count'] / $fn_top) : $fn_min * 0.6;
+}
+$fn_height = count($funnel['stages']) * ($fn_h + $fn_gap) - $fn_gap;
+$fn_has_data = $funnel['stages'][0]['count'] > 0;
+
 // Name shown in the greeting. The backend should set $_SESSION['user_name'] at login.
 $display_name = trim($_SESSION['user_name'] ?? '') !== '' ? $_SESSION['user_name'] : 'HR';
 
@@ -333,8 +358,75 @@ function status_badge(string $status): string
                 </div>
             </div>
 
+            <!-- Funnel Drop-Off: how many applicants make it through each stage -->
+            <div class="funnel-card insight-card reveal" style="--i:6">
+                <div class="chart-head">
+                    <h3>Funnel Drop-Off</h3>
+                    <span class="chart-sub">How many applicants make it through each stage</span>
+                </div>
+
+                <?php if (!$fn_has_data): ?>
+                <p class="chart-empty block-empty">No applicants yet.</p>
+                <?php else: ?>
+                <div class="funnel-body" id="funnelBody">
+                    <div class="funnel-fig">
+                        <svg class="funnel-svg" viewBox="0 0 <?php echo $fn_w; ?> <?php echo $fn_height; ?>" preserveAspectRatio="none" role="img" aria-label="Funnel of applicants through each screening stage">
+                            <?php foreach ($funnel['stages'] as $i => $s):
+                                $wt = $fn_widths[$i];
+                                $wb = $i < count($fn_widths) - 1 ? min($wt, $fn_widths[$i + 1]) : $wt * 0.55;
+                                $y0 = $i * ($fn_h + $fn_gap);
+                                $cx = $fn_w / 2;
+                                $pts = sprintf('%.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f',
+                                    $cx - $wt / 2, $y0,  $cx + $wt / 2, $y0,
+                                    $cx + $wb / 2, $y0 + $fn_h,  $cx - $wb / 2, $y0 + $fn_h);
+                            ?>
+                            <g class="fn-stage<?php echo $s['url'] !== '' ? ' is-link' : ''; ?>" data-stage="<?php echo $i; ?>" data-url="<?php echo htmlspecialchars($s['url']); ?>" style="--c:<?php echo $fn_colors[$i]; ?>; --k:<?php echo $i; ?>">
+                                <title><?php echo htmlspecialchars($s['label']); ?>: <?php echo (int) $s['count']; ?></title>
+                                <polygon points="<?php echo $pts; ?>"></polygon>
+                            </g>
+                            <?php endforeach; ?>
+                        </svg>
+                        <?php foreach ($funnel['stages'] as $i => $s): ?>
+                        <span class="fn-count" data-stage="<?php echo $i; ?>" style="--k:<?php echo $i; ?>; top:<?php echo round(($i * ($fn_h + $fn_gap) + $fn_h / 2) / $fn_height * 100, 2); ?>%"><?php echo (int) $s['count']; ?></span>
+                        <?php endforeach; ?>
+                    </div>
+
+                    <ul class="funnel-legend" id="funnelLegend">
+                        <?php foreach ($funnel['stages'] as $i => $s): ?>
+                        <li class="legend-item fl-item<?php echo $s['url'] !== '' ? ' is-link' : ''; ?>" data-stage="<?php echo $i; ?>" data-url="<?php echo htmlspecialchars($s['url']); ?>" style="--k:<?php echo $i; ?>"<?php echo $s['url'] !== '' ? ' role="link" tabindex="0"' : ''; ?>>
+                            <span class="legend-dot" style="background-color:<?php echo $fn_colors[$i]; ?>"></span>
+                            <span class="legend-text">
+                                <?php echo htmlspecialchars($s['label']); ?>
+                                <span class="fl-sub<?php echo $i > 0 && $s['lost'] > 0 ? ' is-loss' : ''; ?>"><?php
+                                    if ($i === 0)              echo 'All registered applicants';
+                                    elseif ($s['lost'] > 0)    echo '&minus;' . (int) $s['lost'] . ' dropped (' . (int) $s['lost_pct'] . '%)';
+                                    else                       echo 'No one dropped';
+                                ?></span>
+                            </span>
+                            <span class="legend-num"><?php echo (int) $s['count']; ?></span>
+                            <span class="fl-pct"><?php echo (int) $s['of_applied']; ?>%</span>
+                        </li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+
+                <div class="insight-foot">
+                    <span class="insight-chip">
+                        <span class="chip-label">Reach an interview</span>
+                        <span class="chip-value"><?php echo (int) $funnel['overall_pct']; ?>% of applicants</span>
+                    </span>
+                    <span class="insight-chip">
+                        <span class="chip-label">Biggest drop-off</span>
+                        <span class="chip-value"><?php echo $funnel['biggest']
+                            ? htmlspecialchars($funnel['biggest']['from']) . ' &rarr; ' . htmlspecialchars($funnel['biggest']['to']) . ' (&minus;' . (int) $funnel['biggest']['lost'] . ')'
+                            : 'None yet'; ?></span>
+                    </span>
+                </div>
+                <?php endif; ?>
+            </div>
+
             <!-- Pie Chart Component -->
-            <div class="chart-card reveal" style="--i:4">
+            <div class="chart-card insight-card reveal" style="--i:7">
                 <div class="chart-head">
                     <h3>Passed/Rejected</h3>
                     <span class="chart-sub">Out of <?php echo (int) $screened; ?> screened applicants</span>
@@ -360,8 +452,88 @@ function status_badge(string $status): string
                 </div>
             </div>
 
+            <!-- Time-to-Complete Distribution: how long applicants take from invite to submission (histogram) -->
+            <div class="hist-card insight-card reveal" style="--i:8">
+                <div class="chart-head">
+                    <h3>Time-to-Complete Distribution</h3>
+                    <span class="chart-sub">Invite to submission &middot; <?php echo (int) $duration['n']; ?> completed screening<?php echo (int) $duration['n'] === 1 ? '' : 's'; ?></span>
+                </div>
+
+                <?php if ((int) $duration['n'] === 0): ?>
+                <p class="chart-empty block-empty">No completed screenings yet.</p>
+                <?php else: ?>
+                <div class="hist-wrap">
+                    <canvas id="timeToCompleteChart" role="img" aria-label="Histogram of how long applicants take from invite to submission"></canvas>
+                </div>
+                <div class="insight-foot three">
+                    <span class="insight-chip">
+                        <span class="chip-label">Median</span>
+                        <span class="chip-value"><?php echo htmlspecialchars((string) $duration['median']); ?></span>
+                    </span>
+                    <span class="insight-chip">
+                        <span class="chip-label">Fastest</span>
+                        <span class="chip-value"><?php echo htmlspecialchars((string) $duration['fastest']); ?></span>
+                    </span>
+                    <span class="insight-chip">
+                        <span class="chip-label">Slowest</span>
+                        <span class="chip-value"><?php echo htmlspecialchars((string) $duration['slowest']); ?></span>
+                    </span>
+                </div>
+                <?php endif; ?>
+            </div>
+
+            <!-- Right column of the third row: Scheduling Turnaround Time + Quick Action -->
+            <div class="side-stack">
+
+                <!-- Scheduling Turnaround Time: time between PASS and HR entering the final interview schedule -->
+                <div class="ta-card is-<?php echo htmlspecialchars($turnaround['state']); ?> reveal" style="--i:9" data-url="screeninglist.php?status=Passed" role="link" tabindex="0" aria-label="Scheduling Turnaround Time">
+                    <div class="ta-icon">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <circle class="ta-face" cx="12" cy="12" r="9.2"></circle>
+                            <line class="ta-hand-h" x1="12" y1="12" x2="12" y2="8.2"></line>
+                            <line class="ta-hand-m" x1="12" y1="12" x2="12" y2="5.6"></line>
+                            <circle class="ta-pin" cx="12" cy="12" r="1.3"></circle>
+                        </svg>
+                    </div>
+                    <div class="ta-body">
+                        <span class="card-title">Scheduling Turnaround Time</span>
+                        <?php if ($turnaround['avg']): ?>
+                        <div class="ta-value">
+                            <span class="card-value" data-count="<?php echo $turnaround['avg']['value']; ?>" data-decimals="<?php echo (int) $turnaround['avg']['decimals']; ?>"><?php echo number_format($turnaround['avg']['value'], (int) $turnaround['avg']['decimals']); ?></span>
+                            <span class="ta-unit"><?php echo htmlspecialchars($turnaround['avg']['unit']); ?></span>
+                        </div>
+                        <div class="stat-bar"><span style="--w:<?php echo (int) $turnaround['bar_pct']; ?>%"></span></div>
+                        <span class="stat-note"><?php
+                            echo $turnaround['state'] === 'ok' ? 'Within the ' . htmlspecialchars($turnaround['target_label']) . ' target' : 'Slower than the ' . htmlspecialchars($turnaround['target_label']) . ' target';
+                            echo ' &middot; ' . (int) $turnaround['n'] . ' scheduled';
+                            if ($turnaround['waiting'] > 0) echo ' &middot; ' . (int) $turnaround['waiting'] . ' waiting';
+                        ?></span>
+                        <?php else: ?>
+                        <div class="ta-value"><span class="card-value">&ndash;</span></div>
+                        <div class="stat-bar"><span style="--w:0%"></span></div>
+                        <span class="stat-note"><?php echo (int) $turnaround['waiting'] > 0 ? (int) $turnaround['waiting'] . ' passed, waiting for a schedule' : 'No interviews scheduled yet'; ?></span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <!-- Quick Action Box -->
+                <div class="quick-action-card reveal" style="--i:10">
+                    <div class="avatar-circle">
+                        <svg viewBox="0 0 24 24"><path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                    </div>
+                    <div class="qa-body">
+                        <p class="quick-action-text">Add Shortlisted Applicants</p>
+                        <p class="quick-action-sub">Register a new applicant and add them to the screening list.</p>
+                        <a href="addapplicants.php" class="btn-add-new">
+                            <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                            ADD NEW
+                        </a>
+                    </div>
+                </div>
+            </div>
+
             <!-- Recent Applicants Table -->
-            <div class="recent-card reveal" style="--i:6">
+            <div class="recent-card reveal" style="--i:11">
                 <div class="card-top">
                     <h3>Recent Applicants</h3>
                     <a href="screeninglist.php" class="view-all">View All
@@ -418,22 +590,6 @@ function status_badge(string $status): string
                 </div>
             </div>
 
-            <!-- Quick Action Box -->
-            <div class="quick-action-card reveal" style="--i:7">
-                <h3>Quick Action</h3>
-                <div class="qa-body">
-                    <div class="avatar-circle">
-                        <svg viewBox="0 0 24 24"><path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-                    </div>
-                    <p class="quick-action-text">Add Shortlisted Applicants</p>
-                    <p class="quick-action-sub">Register a new applicant and add them to the screening list.</p>
-                </div>
-                <a href="addapplicants.php" class="btn-add-new">
-                    <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-                    ADD NEW
-                </a>
-            </div>
-
         </div>
     </main>
 
@@ -445,6 +601,10 @@ function status_badge(string $status): string
         };
         // every applicant with status Completed (drives the red marks + the Dashboard badge)
         const completedIds = <?php echo json_encode(array_map('intval', $completed_ids)); ?>;
+        // numbers behind the Time-to-Complete histogram (the funnel + the turnaround card are drawn by PHP)
+        window.DASH_INSIGHTS = <?php echo json_encode([
+            'duration' => ['labels' => $duration['labels'], 'titles' => $duration['titles'], 'counts' => $duration['counts'], 'n' => $duration['n']]
+        ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
         // HR's recent activity (the bell in the header)
         window.HR_ACTIVITY = <?php echo json_encode($hr_feed, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
     </script>

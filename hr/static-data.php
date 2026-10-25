@@ -11,6 +11,8 @@
                               static_stats()           Recent Applicants are all worked out
                               static_completed_ids()   from this one list
                               static_recent()
+                              static_dashboard_insights()   Funnel Drop-Off, Time-to-Complete
+                                                       Distribution and Scheduling Turnaround Time
 
    Because every page reads the SAME list, they always agree: when an applicant is deleted
    (moved to the Archive) or deleted for good, the Screening List, the dashboard numbers, the
@@ -25,6 +27,7 @@
      static_stats()            ->  SELECT status, result, COUNT(*) ... GROUP BY ...
      static_completed_ids()    ->  SELECT id FROM applicants WHERE status = 'Completed'
      static_recent()           ->  ORDER BY updated_at DESC LIMIT 10
+     static_dashboard_insights()  ->  three queries, see the BACKEND notes above that function
    ========================================================================== */
 
 /* ==========================================================================
@@ -178,6 +181,199 @@ function static_recent(array $applicants, int $limit = 10): array
     return array_slice($applicants, 0, $limit);
 }
 
+// ---------------------------------------------------------------------------
+// DASHBOARD INSIGHTS: the three analytics blocks on the HR Dashboard
+//   1. Funnel Drop-Off                 how many applicants make it through each stage
+//   2. Time-to-Complete Distribution   how long applicants take from invite to submission (histogram)
+//   3. Scheduling Turnaround Time      time between PASS and HR entering the final interview schedule
+//
+// Where every number comes from (so the backend knows exactly what to query):
+//   applicants.invited_at     when HR added the applicant / the invite went out   (static_add_applicant)
+//   applicants.submitted_at   when the screening became Completed                 (static_set_status)
+//   applicants.passed_at      when the result became Passed                       (static_set_status)
+//   interviews.answered_at    when HR confirmed / re-scheduled the interview      (details.php; falls back to
+//                             interviews.updated for rows saved before this field existed)
+//
+// BACKEND (later), one query each:
+//   funnel       SELECT COUNT(*) total, SUM(status IN ('In Progress','Completed')) started,
+//                       SUM(status = 'Completed') completed, SUM(result = 'Passed') passed,
+//                       SUM(result = 'Passed' AND iv.status IN ('confirmed','rescheduled')) scheduled
+//                FROM applicants a LEFT JOIN interviews iv ON iv.applicant_id = a.id WHERE a.archived_at IS NULL
+//   histogram    SELECT TIMESTAMPDIFF(HOUR, invited_at, submitted_at) FROM applicants WHERE submitted_at IS NOT NULL
+//                (bucket the hours with the edges in static_time_bins())
+//   turnaround   SELECT AVG(TIMESTAMPDIFF(HOUR, a.passed_at, iv.answered_at)) FROM applicants a
+//                JOIN interviews iv ON iv.applicant_id = a.id WHERE iv.status IN ('confirmed','rescheduled')
+// ---------------------------------------------------------------------------
+const STATIC_TURNAROUND_TARGET_HOURS = 72;     // HR's goal: enter the final schedule within 3 days of the pass
+
+// Bucket edges in hours (lower edge inclusive). Labels: short (x-axis) and long (tooltip).
+function static_time_bins(): array
+{
+    return [
+        ['from' => 0,   'to' => 12,   'short' => '<12h',   'long' => 'Under 12 hours'],
+        ['from' => 12,  'to' => 24,   'short' => '12-24h', 'long' => '12 to 24 hours'],
+        ['from' => 24,  'to' => 48,   'short' => '1-2d',   'long' => '1 to 2 days'],
+        ['from' => 48,  'to' => 72,   'short' => '2-3d',   'long' => '2 to 3 days'],
+        ['from' => 72,  'to' => 120,  'short' => '3-5d',   'long' => '3 to 5 days'],
+        ['from' => 120, 'to' => null, 'short' => '5d+',    'long' => '5 days or more']
+    ];
+}
+
+// "Y-m-d H:i" (Manila time) -> unix time, or null
+function static_ts($value): ?int
+{
+    $value = trim((string) $value);
+    if ($value === '') return null;
+    try {
+        return (new DateTimeImmutable($value, new DateTimeZone('Asia/Manila')))->getTimestamp();
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+
+// 43.7 -> ['value' => 1.8, 'unit' => 'days', 'decimals' => 1, 'label' => '1.8 days']
+function static_hours_label(float $hours): array
+{
+    if ($hours < 1) {
+        $m = max(1, (int) round($hours * 60));
+        return ['value' => $m, 'unit' => $m === 1 ? 'min' : 'mins', 'decimals' => 0, 'label' => $m . ($m === 1 ? ' min' : ' mins')];
+    }
+    if ($hours < 24) {
+        $h = (int) round($hours);
+        return ['value' => $h, 'unit' => $h === 1 ? 'hr' : 'hrs', 'decimals' => 0, 'label' => $h . ($h === 1 ? ' hr' : ' hrs')];
+    }
+    $d = round($hours / 24, 1);
+    $unit = abs($d - 1.0) < 0.05 ? 'day' : 'days';
+    return ['value' => $d, 'unit' => $unit, 'decimals' => 1, 'label' => number_format($d, 1) . ' ' . $unit];
+}
+
+function static_dashboard_empty_insights(): array
+{
+    $bins = static_time_bins();
+    $stages = [
+        ['key' => 'applied',   'label' => 'Applied',                'count' => 0, 'url' => 'screeninglist.php?status=all'],
+        ['key' => 'started',   'label' => 'Started Screening',      'count' => 0, 'url' => ''],
+        ['key' => 'completed', 'label' => 'Completed Questionnaire', 'count' => 0, 'url' => 'screeninglist.php?status=Completed'],
+        ['key' => 'passed',    'label' => 'Passed Screening',       'count' => 0, 'url' => 'screeninglist.php?status=Passed'],
+        ['key' => 'scheduled', 'label' => 'Interview Scheduled',    'count' => 0, 'url' => '']
+    ];
+    foreach ($stages as $i => &$s) { $s['lost'] = 0; $s['lost_pct'] = 0; $s['of_applied'] = 0; }
+    unset($s);
+    return [
+        'funnel'      => ['stages' => $stages, 'overall_pct' => 0, 'biggest' => null],
+        'duration'    => [
+            'labels' => array_column($bins, 'short'), 'titles' => array_column($bins, 'long'),
+            'counts' => array_fill(0, count($bins), 0), 'n' => 0,
+            'median' => null, 'fastest' => null, 'slowest' => null
+        ],
+        'turnaround'  => [
+            'n' => 0, 'waiting' => 0, 'passed' => 0, 'avg' => null, 'fastest' => null, 'slowest' => null,
+            'target_hours' => STATIC_TURNAROUND_TARGET_HOURS, 'target_label' => '3-day',
+            'bar_pct' => 0, 'state' => 'none'
+        ]
+    ];
+}
+
+// All three blocks, worked out from the ACTIVE applicants (archived ones are not counted) + the interview rows.
+function static_dashboard_insights(array $applicants): array
+{
+    $out        = static_dashboard_empty_insights();
+    $store      = static_store_read();
+    $interviews = is_array($store['interviews'] ?? null) ? $store['interviews'] : [];
+
+    // when HR answered the interview (null = still waiting / no row yet)
+    $answeredAt = function (int $id) use ($interviews): ?int {
+        $iv = $interviews[$id] ?? null;
+        if (!is_array($iv) || !in_array($iv['status'] ?? '', ['confirmed', 'rescheduled'], true)) return null;
+        return static_ts($iv['answered_at'] ?? ($iv['updated'] ?? ''));
+    };
+
+    $total = count($applicants);
+    $started = $completed = $passed = $scheduled = 0;
+    $durations = [];            // invite -> submission, in hours
+    $turnarounds = [];          // pass -> schedule entered, in hours
+
+    foreach ($applicants as $a) {
+        $status = strtolower((string) ($a['status'] ?? ''));
+        $result = strtolower((string) ($a['result'] ?? ''));
+        $id     = (int) $a['id'];
+
+        if ($status === 'in progress' || $status === 'completed') $started++;
+        if ($status !== 'completed') continue;
+        $completed++;
+
+        $inv = static_ts($a['invited_at'] ?? '');
+        $sub = static_ts($a['submitted_at'] ?? '');
+        if ($inv !== null && $sub !== null && $sub >= $inv) $durations[] = ($sub - $inv) / 3600;
+
+        if ($result !== 'passed') continue;
+        $passed++;
+        $answered = $answeredAt($id);
+        if ($answered === null) continue;
+        $scheduled++;
+        $pass = static_ts($a['passed_at'] ?? '') ?? $sub;
+        if ($pass !== null && $answered >= $pass) $turnarounds[] = ($answered - $pass) / 3600;
+    }
+
+    // ---- 1. funnel ----
+    $counts = [$total, $started, $completed, $passed, $scheduled];
+    $stages = $out['funnel']['stages'];
+    $biggest = null;
+    foreach ($stages as $i => &$s) {
+        $s['count']      = $counts[$i];
+        $s['of_applied'] = $total > 0 ? (int) round($counts[$i] / $total * 100) : 0;
+        $prev            = $i > 0 ? $counts[$i - 1] : $counts[$i];
+        $s['lost']       = max(0, $prev - $counts[$i]);
+        $s['lost_pct']   = $prev > 0 ? (int) round($s['lost'] / $prev * 100) : 0;
+        if ($i > 0 && $s['lost'] > 0 && ($biggest === null || $s['lost'] > $biggest['lost'])) {
+            $biggest = ['from' => $stages[$i - 1]['label'], 'to' => $s['label'], 'lost' => $s['lost'], 'pct' => $s['lost_pct']];
+        }
+    }
+    unset($s);
+    $out['funnel'] = [
+        'stages'      => $stages,
+        'overall_pct' => $total > 0 ? (int) round($scheduled / $total * 100) : 0,
+        'biggest'     => $biggest
+    ];
+
+    // ---- 2. time-to-complete histogram ----
+    $bins   = static_time_bins();
+    $bucket = array_fill(0, count($bins), 0);
+    foreach ($durations as $h) {
+        foreach ($bins as $i => $b) {
+            if ($h >= $b['from'] && ($b['to'] === null || $h < $b['to'])) { $bucket[$i]++; break; }
+        }
+    }
+    $out['duration']['counts'] = $bucket;
+    $out['duration']['n']      = count($durations);
+    if ($durations) {
+        sort($durations);
+        $n   = count($durations);
+        $mid = $n % 2 ? $durations[intdiv($n, 2)] : ($durations[$n / 2 - 1] + $durations[$n / 2]) / 2;
+        $out['duration']['median']  = static_hours_label($mid)['label'];
+        $out['duration']['fastest'] = static_hours_label($durations[0])['label'];
+        $out['duration']['slowest'] = static_hours_label($durations[$n - 1])['label'];
+    }
+
+    // ---- 3. scheduling turnaround ----
+    $t = &$out['turnaround'];
+    $t['passed']  = $passed;
+    $t['n']       = count($turnarounds);
+    $t['waiting'] = max(0, $passed - $scheduled);
+    if ($turnarounds) {
+        $avg = array_sum($turnarounds) / count($turnarounds);
+        $t['avg']     = static_hours_label($avg);
+        $t['fastest'] = static_hours_label(min($turnarounds))['label'];
+        $t['slowest'] = static_hours_label(max($turnarounds))['label'];
+        // the bar's middle mark is the target, so a full bar means "twice as slow as the target"
+        $t['bar_pct'] = (int) min(100, round($avg / (STATIC_TURNAROUND_TARGET_HOURS * 2) * 100));
+        $t['state']   = $avg <= STATIC_TURNAROUND_TARGET_HOURS ? 'ok' : ($avg <= STATIC_TURNAROUND_TARGET_HOURS * 1.5 ? 'warn' : 'slow');
+    }
+    unset($t);
+
+    return $out;
+}
+
 
 /* ==========================================================================
    STORE LAYER: makes the static list behave like a real table.
@@ -208,9 +404,90 @@ function static_store_read(): array
     }
     if (!is_array($store) || !isset($store['applicants']) || !is_array($store['applicants'])) {
         $store = ['applicants' => array_map(fn($a) => $a + ['archived_at' => null], static_seed_applicants())];
+        static_store_migrate($store);
         static_store_write($store);
+    } elseif (static_store_migrate($store)) {
+        static_store_write($store);                 // an older store file got its new timeline fields: save them once
     }
     return $store;
+}
+
+// ---------------------------------------------------------------------------
+// Timeline fields for the dashboard analytics (invited_at / submitted_at / passed_at, and sample interview
+// answers). Fills ONLY what is missing, so it is safe to run on every read: it returns true when it changed
+// something (the caller then saves the store once). Real data is never overwritten.
+// DATABASE (later): these are plain columns, so this whole function is deleted.
+// ---------------------------------------------------------------------------
+function static_store_migrate(array &$store): bool
+{
+    $changed = false;
+    $zone    = new DateTimeZone('Asia/Manila');
+    $fmt     = 'Y-m-d H:i';
+
+    // sample "invite -> submission" hours for the seed applicants who completed (any other id gets a spread value)
+    $seedHours = [103 => 9, 104 => 30, 106 => 18, 108 => 26, 109 => 40, 111 => 52, 114 => 21, 116 => 34,
+                  119 => 46, 121 => 60, 124 => 38, 126 => 15, 129 => 78, 131 => 100, 135 => 140];
+
+    foreach ($store['applicants'] as &$a) {
+        $id      = (int) $a['id'];
+        $status  = (string) ($a['status'] ?? 'Pending');
+        $updated = (string) ($a['updated'] ?? '');
+        if ($updated === '') continue;
+        $upd = new DateTimeImmutable($updated, $zone);
+
+        if (empty($a['invited_at'])) {
+            if ($status === 'Completed') {
+                $hours = $seedHours[$id] ?? (8 + ($id * 7) % 90);
+                $a['invited_at'] = $upd->modify('-' . $hours . ' hours')->format($fmt);
+            } elseif ($status === 'In Progress') {
+                $a['invited_at'] = $upd->modify('-' . (10 + $id % 30) . ' hours')->format($fmt);
+            } else {
+                $a['invited_at'] = $updated;
+            }
+            $changed = true;
+        }
+        if ($status === 'Completed' && empty($a['submitted_at'])) {
+            $a['submitted_at'] = $updated;
+            $changed = true;
+        }
+        if ($status === 'Completed' && ($a['result'] ?? null) === 'Passed' && empty($a['passed_at'])) {
+            $a['passed_at'] = $a['submitted_at'];
+            $changed = true;
+        }
+    }
+    unset($a);
+
+    // Sample interview answers for some of the seed applicants who passed (so Scheduling Turnaround Time has
+    // something to show on a fresh install). The others stay unanswered: HR can still try the confirm flow on them.
+    if (empty($store['timeline_seeded'])) {
+        $sampleHours = [103 => 20, 106 => 46, 111 => 71, 114 => 28, 121 => 52, 129 => 26, 135 => 63];
+        $slots       = ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00'];
+        if (!isset($store['interviews']) || !is_array($store['interviews'])) $store['interviews'] = [];
+        foreach ($store['applicants'] as $a) {
+            $id = (int) $a['id'];
+            if (!isset($sampleHours[$id]) || isset($store['interviews'][$id])) continue;
+            if (($a['status'] ?? '') !== 'Completed' || ($a['result'] ?? null) !== 'Passed' || empty($a['passed_at'])) continue;
+
+            $answered = (new DateTimeImmutable($a['passed_at'], $zone))->modify('+' . $sampleHours[$id] . ' hours');
+            $day = $answered->modify('+3 days');
+            while ((int) $day->format('N') >= 6) $day = $day->modify('+1 day');
+            $time = $slots[$id % count($slots)];
+            $store['interviews'][$id] = [
+                'status'         => 'confirmed',
+                'preferred_date' => $day->format('Y-m-d'),
+                'preferred_time' => $time,
+                'type'           => STATIC_INTERVIEW_TYPE,
+                'date'           => $day->format('Y-m-d'),
+                'time'           => $time,
+                'source'         => 'sample',
+                'updated'        => $answered->format($fmt),
+                'answered_at'    => $answered->format($fmt)
+            ];
+        }
+        $store['timeline_seeded'] = true;
+        $changed = true;
+    }
+    return $changed;
 }
 
 // Read, change, write (one place so every change is saved the same way)
@@ -425,7 +702,11 @@ function static_add_applicant(string $name, string $email, string $contact, ?arr
             'contact' => $contact,
             'status'  => 'Pending',
             'result'  => null,
-            'updated' => static_now()->format('Y-m-d H:i')
+            'updated' => static_now()->format('Y-m-d H:i'),
+            // timeline for the dashboard analytics (filled in as the applicant moves along)
+            'invited_at'   => static_now()->format('Y-m-d H:i'),
+            'submitted_at' => null,
+            'passed_at'    => null
         ];
         // the CV file (shown on the Applicant Details page). A problem with the file never stops the applicant from being added.
         $cv = static_save_cv((int) $applicant['id'], $cvUpload);
@@ -548,9 +829,20 @@ function static_set_status(int $id, string $status, ?string $result = null): boo
     return static_store_update(function (array &$store) use ($id, $status, $result) {
         foreach ($store['applicants'] as &$a) {
             if ((int) $a['id'] !== $id) continue;
+            $now     = static_now()->format('Y-m-d H:i');
+            $wasDone = strtolower((string) ($a['status'] ?? '')) === 'completed';
             $a['status']  = $status;
             $a['result']  = $result;
-            $a['updated'] = static_now()->format('Y-m-d H:i');
+            $a['updated'] = $now;
+            // timeline for the dashboard analytics
+            if (empty($a['invited_at'])) $a['invited_at'] = $now;
+            if ($status === 'Completed') {
+                if (!$wasDone || empty($a['submitted_at'])) $a['submitted_at'] = $now;
+                $a['passed_at'] = $result === 'Passed' ? (!empty($a['passed_at']) && $wasDone ? $a['passed_at'] : $now) : null;
+            } else {
+                $a['submitted_at'] = null;       // moved back: the screening is not submitted any more
+                $a['passed_at']    = null;
+            }
             return true;
         }
         return false;
