@@ -140,7 +140,7 @@ class EmailService {
             "htmlContent" => $htmlContent
         ];
 
-        return $this->brevoSend($data, true);
+        return $this->brevoSend($data, false);
     }
 
     public function sendScheduleApprovedEmail($toEmail, $firstName, $date, $time, $type, $location, $link) {

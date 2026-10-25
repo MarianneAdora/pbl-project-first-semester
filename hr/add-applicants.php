@@ -88,62 +88,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     try {
+        $pdo = db();
+        $pdo->beginTransaction();
+
         // 1. Insert first so the Cloudinary subfolder uses the real applicant id: ebsmi-shortlist-applicant-cvs/{id}
         $applicant = repo_add_applicant(
             (string) ($input['name'] ?? ''),
             (string) ($input['email'] ?? ''),
-            (string) ($input['contact'] ?? '')
+            (string) ($input['contact'] ?? ''),
+            $pdo
         );
-        repo_log_activity('Added An Applicant', (string) ($applicant['name'] ?? '-'));
 
         // 2. Upload the CV (if any) and save its URL on the row.
-        // Flat layout: ebsmi-shortlist-applicant-cvs/cv-{id}-{filename} (no subfolders), PDF = previewable image type.
         $cvUrl = null;
         $cvName = null;
         if ($cvUpload) {
-            try {
-                $cloud = new CloudinaryService();
-                $uploaded = $cloud->uploadCV(
-                    $cvUpload['tmp_name'],
-                    $applicant['id'],
-                    'ebsmi-shortlist-applicant-cvs',
-                    (string) ($cvUpload['name'] ?? ''),
-                    (string) ($cvUpload['type'] ?? '')
-                );
-                $cvUrl = is_array($uploaded) ? ($uploaded['url'] ?? '') : (string) $uploaded;
-                $cvName = is_array($uploaded) ? ($uploaded['name'] ?? '') : (string) ($cvUpload['name'] ?? '');
-                if ($cvUrl === '') throw new Exception('Cloudinary returned an empty URL.');
-                $cvName = (string) ($cvUpload['name'] ?? '');
-            } catch (Throwable $e) {
-                error_log('addapplicants Cloudinary error: ' . $e->getMessage());
-                $respond(['status' => 'error', 'message' => 'Applicant saved, but the CV upload failed: ' . $e->getMessage() . ' (cv_file_url left empty)'], 502);
-            }
-            try {
-                $pdo = db();
-                $st = $pdo->prepare("UPDATE applicant SET cv_file_url = :url WHERE applicant_id = :id");
-                $st->execute([':url' => $cvUrl, ':id' => $applicant['id']]);
-            } catch (Throwable $e) {
-                error_log('addapplicants cv_file_url DB error: ' . $e->getMessage());
-            }
+            $cloud = new CloudinaryService();
+            $uploaded = $cloud->uploadCV(
+                $cvUpload['tmp_name'],
+                $applicant['id'],
+                'ebsmi-shortlist-applicant-cvs',
+                (string) ($cvUpload['name'] ?? ''),
+                (string) ($cvUpload['type'] ?? '')
+            );
+            $cvUrl = is_array($uploaded) ? ($uploaded['url'] ?? '') : (string) $uploaded;
+            $cvName = is_array($uploaded) ? ($uploaded['name'] ?? '') : (string) ($cvUpload['name'] ?? '');
+            if ($cvUrl === '') throw new Exception('Cloudinary returned an empty URL.');
+            $cvName = (string) ($cvUpload['name'] ?? '');
+
+            $st = $pdo->prepare("UPDATE applicant SET cv_file_url = :url WHERE applicant_id = :id");
+            $st->execute([':url' => $cvUrl, ':id' => $applicant['id']]);
             $applicant['cv_file_url'] = $cvUrl;
             $applicant['cv_name'] = $cvName;
         }
 
-        // 3. Send shortlist invite email to the applicant's email (extracted from CV or typed in).
-        $emailSent = false;
-        try {
-            $emailService = new EmailService();
-            $emailSent = $emailService->sendInviteEmail(
-                (string) ($applicant['email'] ?? ''),
-                (string) ($applicant['name'] ?? ''),
-                (string) ($applicant['secure_token'] ?? '')
-            );
-        } catch (Throwable $e) {
-            error_log('addapplicants invite email error: ' . $e->getMessage());
-            $emailSent = false;
+        // 3. Send shortlist invite email. Applicant only committed after this succeeds.
+        $emailService = new EmailService();
+        $emailSent = $emailService->sendInviteEmail(
+            (string) ($applicant['email'] ?? ''),
+            (string) ($applicant['name'] ?? ''),
+            (string) ($applicant['secure_token'] ?? '')
+        );
+        if (!$emailSent) {
+            throw new Exception('Failed to send the invitation email. Applicant was not saved.');
         }
 
-        // Fresh numbers so the page can update badges (same shape the old endpoint sent).
+        repo_log_activity('Added An Applicant', (string) ($applicant['name'] ?? '-'), null, $pdo);
+
+        $pdo->commit();
+
         $respond([
             'status' => 'success',
             'applicant' => $applicant,
@@ -155,10 +148,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'cv_url' => $cvUrl,
         ]);
     } catch (InvalidArgumentException $e) {
+        if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) $pdo->rollBack();
         $respond(['status' => 'error', 'message' => $e->getMessage()], 422);
     } catch (Throwable $e) {
-        error_log('addapplicants DB error: ' . $e->getMessage());
-        $respond(['status' => 'error', 'message' => 'Something went wrong while saving. Please try again.'], 500);
+        if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) $pdo->rollBack();
+        error_log('addapplicants error: ' . $e->getMessage());
+        $respond(['status' => 'error', 'message' => $e->getMessage() !== '' ? $e->getMessage() : 'Something went wrong while saving. Please try again.'], 500);
     }
 }
 
