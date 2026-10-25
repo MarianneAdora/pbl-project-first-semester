@@ -110,6 +110,31 @@ function repo_find_applicant_by_token(string $token, PDO $pdo = null): ?array
 }
 
 /**
+ * Find an applicant by email address.
+ * Only non-deleted rows.
+ */
+function repo_find_applicant_by_email(string $email, PDO $pdo = null): ?array
+{
+    $pdo = $pdo ?: db();
+    $email = strtolower(trim($email));
+    if ($email === '') return null;
+    $st = $pdo->prepare(
+        "SELECT applicant_id, name, email, phone_number, status, result, reference_code, secure_token, cv_file_url, created_at" .
+        " FROM applicant WHERE LOWER(email) = :e AND deleted_at IS NULL LIMIT 1"
+    );
+    $st->execute([':e' => $email]);
+    $row = $st->fetch();
+    if (!$row) return null;
+    $d = applicant_to_display($row);
+    $d['reference_code'] = (string) ($row['reference_code'] ?? '');
+    $d['secure_token'] = (string) ($row['secure_token'] ?? '');
+    $d['cv_file_url'] = $row['cv_file_url'] ?? null;
+    $d['updated'] = $row['created_at'] ? date('Y-m-d H:i', strtotime((string) $row['created_at'])) : '';
+    $d['created_at'] = (string) ($row['created_at'] ?? '');
+    return $d;
+}
+
+/**
  * Mark an applicant In Progress when they open the questionnaire
  * (Screening.startOnce). No-op for other statuses.
  */
@@ -186,6 +211,36 @@ function repo_purge_expired_applicants(int $days = 30, PDO $pdo = null): int
     $st->bindValue(':days', (string) $days, PDO::PARAM_STR);
     $st->execute();
     return $st->rowCount();
+}
+
+/**
+ * Set an applicant's screening status and result (Passed / Rejected).
+ * Only a Completed screening may carry a non-null result.
+ * Returns true if a row was updated.
+ */
+function repo_set_status(int $id, string $status, ?string $result = null): bool
+{
+    $pdo = db();
+    $valid = ['pending', 'in_progress', 'completed'];
+    $s = strtolower(trim($status));
+    if (!in_array($s, $valid, true)) return false;
+
+    // Only Completed may carry a result; store result lowercase like the status column
+    if ($s !== 'completed' || !in_array(strtolower((string) ($result ?? '')), ['passed', 'rejected'], true)) {
+        $result = null;
+    } else {
+        $result = strtolower((string) $result);
+    }
+
+    $st = $pdo->prepare(
+        "UPDATE applicant SET status = :status, result = :result WHERE applicant_id = :id AND deleted_at IS NULL"
+    );
+    $st->execute([
+        ':id' => $id,
+        ':status' => $s,
+        ':result' => $result,
+    ]);
+    return $st->rowCount() > 0;
 }
 
 function repo_applicants_archived(PDO $pdo = null): array

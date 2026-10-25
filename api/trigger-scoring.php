@@ -69,19 +69,29 @@ try {
     $scorer  = new RiskScoringService($pdo);
     $result  = $scorer->score($applicantId);
 
-    // Gemini narrative (best-effort; scoring is already done above)
+    // Persist score + mirror outcome on applicant row FIRST, so a slow/failed
+    // Gemini call can never leave the applicant stuck in "under review".
+    $result['narrative'] = [];
+    $scorer->saveScore($applicantId, $result);
+
+    // Gemini narrative (best-effort; update the stored score row afterwards).
     $applicant = repo_find_applicant($applicantId, $pdo);
     $narrative = [];
     try {
         $gemini    = new GeminiRiskService();
         $narrative = $gemini->narrative($applicant ?? [], $result);
+        if (is_array($narrative) && $narrative) {
+            $result['narrative'] = $narrative;
+            // update narrative_json on the score row
+            $st = $pdo->prepare(
+                "UPDATE score SET narrative_json = :n::jsonb
+                 WHERE response_id = (SELECT response_id FROM response WHERE applicant_id = :id LIMIT 1)"
+            );
+            $st->execute([':n' => json_encode($narrative, JSON_UNESCAPED_UNICODE), ':id' => $applicantId]);
+        }
     } catch (Throwable $e) {
         error_log('trigger-scoring Gemini error: ' . $e->getMessage());
     }
-
-    // Merge narrative into the flags JSON before saving
-    $result['narrative'] = $narrative;
-    $scorer->saveScore($applicantId, $result);
 
     respond_json_ts([
         'status'  => 'success',

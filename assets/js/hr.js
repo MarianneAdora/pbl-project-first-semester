@@ -3529,6 +3529,48 @@ document.addEventListener('DOMContentLoaded', () => {
         return tr;
     }
 
+    // ---------- Pass / Reject: set an applicant's result via the server ----------
+    async function setApplicantResult(id, result) {
+        const status = 'Completed';
+        try {
+            const res = await fetch('archive-action.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ action: 'status', id: Number(id), status: status, result: result })
+            });
+            const data = await res.json().catch(() => { throw new Error('The server did not answer correctly.'); });
+            if (data.status !== 'success') throw new Error(data.message || 'Could not save the result.');
+            // Update the local row immediately
+            const row = tableBody.querySelector('tr[data-id="' + id + '"]');
+            if (row) {
+                const tdResult = row.querySelector('td:nth-child(6)');
+                if (tdResult) {
+                    tdResult.textContent = '';
+                    tdResult.appendChild(pill(result));
+                }
+                const tdStatus = row.querySelector('td:nth-child(5)');
+                if (tdStatus) {
+                    tdStatus.textContent = '';
+                    tdStatus.appendChild(pill(status));
+                }
+                // remove the Pass/Reject buttons
+                row.querySelectorAll('.btn-pass, .btn-reject').forEach(b => b.remove());
+            }
+            // refresh filters/counts
+            const idx = applicants.findIndex(a => a.id === id);
+            if (idx >= 0) {
+                applicants[idx].status = status;
+                applicants[idx].result = result;
+            }
+            updateCounts();
+            syncFilterUi();
+            HR.toast(result + ' saved for this applicant.');
+        } catch (err) {
+            HR.toast(err.message, { error: true });
+        }
+    }
+
     function renderShowing(total, start) {
         showingText.textContent = '';
         if (total === 0) {

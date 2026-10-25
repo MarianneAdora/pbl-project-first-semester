@@ -31,6 +31,12 @@ class GeminiRiskService
      */
     public function narrative(array $applicant, array $result): array
     {
+        // Gemini is invoked only when explicitly enabled and reachable; otherwise
+        // a deterministic, rule-based narrative is returned so the HR evaluation
+        // section stays functional without depending on external network access.
+        if (!defined('GEMINI_ENABLED') || !GEMINI_ENABLED) {
+            return $this->fallbackNarrative($applicant, $result);
+        }
         try {
             $prompt = $this->buildPrompt($applicant, $result);
             $raw    = $this->gemini->generateText($prompt);

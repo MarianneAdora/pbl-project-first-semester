@@ -29,20 +29,56 @@ if ($requireVerification) {
     if (empty($_SESSION['screening_submitted']))  { header('Location: questionnaire.php'); exit; }   // nothing sent yet
 }
 
+require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
+
+require_once __DIR__ . '/../src/Helpers/display.php';
+
+// Interview functions live in hr/static-data.php (no interviews table in DB yet --
+// DATABASE: replace static_interview_*() with queries on an interviews table).
+require_once __DIR__ . '/../hr/static-data.php';
+
+// Applicant-side static helpers (static_reference, etc.) live in applicant/static-applicant.php.
+require_once __DIR__ . '/static-applicant.php';
+
+// Risk thresholds (loading_ms for the evaluation animation) live in applicant/static-evaluation.php.
 require_once __DIR__ . '/static-evaluation.php';
 
-// ---- The evaluation (static for now, see static-evaluation.php) --------------------
-// It runs once; the result is kept in the session so a refresh shows the same result.
-// BACKEND: replace static_run_evaluation() with the AI result saved for this applicant.
-if (empty($_SESSION['screening_result']) || !is_array($_SESSION['screening_result'])) {
-    $_SESSION['screening_result'] = static_run_evaluation();
+// ---- The evaluation result (read from live DB, set by RiskScoringService after submission) ---
+// The applicant.result column holds 'accepted' (Passed), 'rejected' (Rejected), or NULL (review pending).
+$applicantRowForResult = repo_find_applicant((int) ($_SESSION['applicant_id'] ?? 0));
+$dbResult  = (string) ($applicantRowForResult['result'] ?? '');
+$dbStatus  = (string) ($applicantRowForResult['status'] ?? '');
+
+if (in_array(strtolower($dbResult), ['accepted', 'passed'], true)) {
+    $outcome = 'passed';
+} elseif (in_array(strtolower($dbResult), ['rejected', 'failed'], true)) {
+    $outcome = 'failed';
+} else {
+    // No result yet — screening is under review
+    $outcome = 'review';
 }
-$result  = $_SESSION['screening_result'];
-$outcome = (string) ($result['outcome'] ?? 'passed');                    // passed | failed | review
+
+$result = [
+    'outcome' => $outcome,
+    'band'    => '',
+    'points'  => 0,
+    'factors' => [],
+    'knockouts' => [],
+    'unmet'   => [],
+];
+
 if ($devMode && in_array($_GET['demo'] ?? '', ['passed', 'failed', 'review'], true)) {
     $outcome = $_GET['demo'];
+    $result['outcome'] = $outcome;
 }
-$loadingMs = (int) static_risk_config()['loading_ms'];
+// Applicant-facing flow is pass/fail only: a "review" (high-risk) outcome is
+// surfaced to the applicant as not passed; HR still reviews the record.
+if ($outcome === 'review') {
+    $outcome = 'failed';
+    $result['outcome'] = 'failed';
+}
+
+
 
 // ---- Interview scheduling ---------------------------------------------------
 // The applicant sends a date + time; HR confirms it or suggests another one.
@@ -56,7 +92,7 @@ $maxDate  = $today->modify('+60 days');
 
 // CONNECTED TO HR: the applicant record (found by the verified email) and the shared interview row that
 // HR's Interview Schedule tab reads and answers (hr/static-data.php -> static_interview_*).
-$applicantRow = static_applicant_by_email((string) ($_SESSION['applicant_email'] ?? ''));
+$applicantRow = repo_find_applicant((int) ($_SESSION['applicant_id'] ?? 0));
 $storedIv     = $applicantRow ? static_interview_get((int) $applicantRow['id']) : null;
 
 function interview_json(array $data, int $code = 200): void
@@ -156,6 +192,7 @@ $comments = [
 ];
 
 // Which view opens first
+$loadingMs = (int) (static_risk_config()['loading_ms'] ?? 8000);
 $seenKey = $reference . '|' . $outcome;                 // the loading page plays once per result (a refresh skips it)
 $title   = $interview ? 'Interview Schedule' : 'Screening Result';
 

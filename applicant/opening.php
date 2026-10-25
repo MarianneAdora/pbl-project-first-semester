@@ -33,6 +33,18 @@ if ($tokenParam !== '') {
         $_SESSION['applicant_token'] = (string) ($found['secure_token'] ?? '');
         $_SESSION['applicant_name']  = (string) $found['name'];
         $_SESSION['applicant_email'] = (string) $found['email'];
+
+        // If the applicant already has a screening result (Passed / Rejected),
+        // skip the opening/instruction flow and go straight to the status page.
+        $existingResult = strtolower((string) ($found['result'] ?? ''));
+        if ($existingResult !== '') {
+            $outcome = in_array($existingResult, ['accepted', 'passed'], true) ? 'passed' : 'failed';
+            $_SESSION['otp_verified']      = true;
+            $_SESSION['screening_submitted'] = true;
+            $_SESSION['screening_result']  = ['outcome' => $outcome];
+            header('Location: application-status.php');
+            exit;
+        }
     }
 }
 

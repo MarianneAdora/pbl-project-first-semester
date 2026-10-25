@@ -269,7 +269,10 @@ class RiskScoringService
 
         $knockouts = $this->checkKnockouts($answers);
         $failed_ko = array_filter($knockouts, fn($k) => $k['met'] === false);
-        $outcome   = count($failed_ko) > 0 ? 'failed' : ($band === 'High' ? 'review' : 'passed');
+        // Applicant-facing flow is pass/fail only. A high risk band is NOT a third
+        // outcome: HR reviews high-risk records internally via the AI evaluation,
+        // but the applicant is passed as long as every knock-out question is met.
+        $outcome   = count($failed_ko) > 0 ? 'failed' : 'passed';
 
         return compact('points', 'band', 'autoWhy', 'factors', 'outcome', 'knockouts');
     }
@@ -392,9 +395,23 @@ class RiskScoringService
             if (empty($q['is_knockout'])) continue;
             $qid     = (string) $q['question_id'];
             $given   = $answers[$qid] ?? $answers['q' . $qid] ?? null;
-            $passing = (string) ($q['passing_answer'] ?? '');
+            $passingRaw = (string) ($q['passing_answer'] ?? '');
+            // passing_answer may be stored as JSON like {"answer":"Yes"}; normalise to the scalar answer.
+            $passing = $passingRaw;
+            $decodedPassing = json_decode($passingRaw, true);
+            if (is_array($decodedPassing) && isset($decodedPassing['answer'])) {
+                $passing = (string) $decodedPassing['answer'];
+            }
             if ($passing === '' || $given === null) continue;
-            $met = strcasecmp((string) $given, $passing) === 0;
+            // Normalise the given answer the same way (it may also be a JSON string).
+            $givenNorm = $given;
+            if (is_string($given)) {
+                $decodedGiven = json_decode($given, true);
+                if (is_array($decodedGiven) && isset($decodedGiven['answer'])) {
+                    $givenNorm = $decodedGiven['answer'];
+                }
+            }
+            $met = strcasecmp(trim((string) $givenNorm), trim($passing)) === 0;
             $out[] = [
                 'id'       => $qid,
                 'question' => (string) $q['question_text'],
