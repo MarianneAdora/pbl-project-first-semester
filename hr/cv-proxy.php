@@ -1,7 +1,5 @@
-<?php
-// hr/cv-proxy.php — serves a CV from Cloudinary.
-// On first view, sets anonymous access on the asset via the Admin API (fixes the 401).
-// After that the Cloudinary URL is permanently public and the redirect goes straight through.
+﻿<?php
+// hr/cv-proxy.php — serves a CV from Cloudinary to signed-in HR/Admin only.
 session_start();
 
 if (!in_array($_SESSION['user_role'] ?? '', ['hr', 'admin'], true)) {
@@ -23,41 +21,43 @@ try {
 $cvUrl = trim((string) ($row['cv_file_url'] ?? ''));
 if ($cvUrl === '') { http_response_code(404); exit('No CV on record for this applicant.'); }
 
-$env       = parse_ini_file(__DIR__ . '/../.env');
-$cloudName = $env['CLOUDINARY_CLOUD_NAME'] ?? '';
-$apiKey    = $env['CLOUDINARY_API_KEY'] ?? '';
-$apiSecret = $env['CLOUDINARY_API_SECRET'] ?? '';
-
-// Extract public_id from the stored URL
-$urlPath = parse_url($cvUrl, PHP_URL_PATH) ?? '';
-$pattern = '#^/' . preg_quote($cloudName, '#') . '/[^/]+/upload/(?:v\d+/)?(.+)$#';
-if (!preg_match($pattern, $urlPath, $m)) {
-    header('Location: ' . $cvUrl); exit;
-}
-$publicId = $m[1];
-
-// Call the Cloudinary explicit API to set anonymous access on this asset.
-// This is a no-op if access is already anonymous, so it's safe to call every time.
-$timestamp = time();
-$toSign    = ['access_control' => '[{"access_type":"anonymous"}]', 'public_id' => $publicId, 'timestamp' => $timestamp, 'type' => 'upload'];
-ksort($toSign);
-$parts = [];
-foreach ($toSign as $k => $v) $parts[] = $k . '=' . $v;
-$signature = sha1(implode('&', $parts) . $apiSecret);
-
-$ch = curl_init('https://api.cloudinary.com/v1_1/' . $cloudName . '/raw/explicit');
+$ch = curl_init($cvUrl);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_POST, true);
-curl_setopt($ch, CURLOPT_POSTFIELDS, [
-    'public_id'      => $publicId,
-    'type'           => 'upload',
-    'access_control' => '[{"access_type":"anonymous"}]',
-    'api_key'        => $apiKey,
-    'timestamp'      => $timestamp,
-    'signature'      => $signature,
-]);
-curl_exec($ch);
+curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+$bytes = curl_exec($ch);
+$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$contentType = (string) curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
 curl_close($ch);
 
-header('Location: ' . $cvUrl);
+if ($bytes === false || $httpCode < 200 || $httpCode >= 300 || $bytes === '') {
+    http_response_code(502);
+    exit('Could not retrieve the CV from storage.');
+}
+
+if ($contentType === '' || stripos($contentType, 'text/html') !== false) {
+    $ext = strtolower(pathinfo(parse_url($cvUrl, PHP_URL_PATH) ?: '', PATHINFO_EXTENSION));
+    $map = [
+        'pdf'  => 'application/pdf',
+        'png'  => 'image/png',
+        'jpg'  => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
+        'gif'  => 'image/gif',
+        'webp' => 'image/webp',
+        'doc'  => 'application/msword',
+        'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ];
+    $contentType = $map[$ext] ?? 'application/octet-stream';
+}
+
+$filename = basename(parse_url($cvUrl, PHP_URL_PATH) ?: 'cv');
+$filename = preg_replace('/[^A-Za-z0-9._-]+/', '_', $filename) ?: 'cv';
+
+header('Content-Type: ' . $contentType);
+header('Content-Disposition: inline; filename="' . str_replace(['"', "\r", "\n"], '', $filename) . '"');
+header('X-Content-Type-Options: nosniff');
+header('Content-Length: ' . strlen($bytes));
+header('Cache-Control: private, no-store, no-cache, must-revalidate');
+
+echo $bytes;
 exit;

@@ -38,8 +38,9 @@ class CloudinaryService {
      * Layout: flat inside $folderBase (default 'ebsmi-shortlist-applicant-cvs') — NO per-applicant subfolders.
      * Filename: cv-{applicantId}-{original}, e.g. ebsmi-shortlist-applicant-cvs/cv-9-resume.pdf
      * (unique_filename=false, so re-uploading the same applicant's CV overwrites it).
-     * Type: resource_type=image, so PDFs are PREVIEWABLE in the dashboard AND can be
-     * fetched server-side later for Gemini text extraction (raw/ uploads download instead).
+     * Type: resource_type=auto, so PDFs/images become image resources (PREVIEWABLE) while
+     * DOC/DOCX remain raw. Uploaded as type=private so the asset is NOT publicly
+     * accessible by URL alone; cv-proxy.php streams bytes only to signed-in HR/Admin.
      * Returns ['url', 'public_id', 'name'].
      * @param string $filePath     Local temp path of the uploaded file.
      * @param mixed $applicantId  Applicant id (used in the filename, NOT a subfolder).
@@ -71,18 +72,20 @@ class CloudinaryService {
             'folder'          => $folderBase,
             'public_id'       => $publicId,
             'timestamp'       => $timestamp,
+            'type'            => 'private',
             'unique_filename' => 'false',
             'use_filename'    => 'true',
         ];
         $signature = $this->signParams($signed);
 
-        $url = "https://api.cloudinary.com/v1_1/{$this->cloudName}/raw/upload";
+        $url = "https://api.cloudinary.com/v1_1/{$this->cloudName}/auto/upload";
         $postData = [
             'file'            => new CURLFile($filePath, $mimeType, $safe),
             'api_key'         => $this->apiKey,
             'timestamp'       => $timestamp,
             'folder'          => $folderBase,
             'public_id'       => $publicId,
+            'type'            => 'private',
             'use_filename'    => 'true',
             'unique_filename' => 'false',
             'signature'       => $signature,
