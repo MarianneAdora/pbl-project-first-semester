@@ -35,7 +35,7 @@ class EmailService {
     }
 
     // Cloudinary logo URL used in sent emails (relative paths don't work in email clients).
-    private const LOGO_URL = 'https://res.cloudinary.com/y0s0brvb/image/upload/v1792442818/expertise.png';
+    private const LOGO_URL = 'https://res.cloudinary.com/y0s0brvb/image/upload/v1792922174/expertise.png';
 
     private function brevoSend(array $data, bool $echoError = true): bool
     {
@@ -217,3 +217,5 @@ class EmailService {
         return $this->brevoSend($data, true);
     }
 }
+
+

@@ -40,7 +40,7 @@ require_once __DIR__ . '/../applicant/static-evaluation.php';   // the risk rubr
 const DETAILS_CV_DIR    = __DIR__ . '/data/cv';     // where Add Applicant keeps the uploaded CVs
 const DETAILS_COMPANY   = 'Expertise';
 const DETAILS_VENUE     = 'Expertise Office, BGC, Taguig';
-const DETAILS_LOGO_URL  = 'https://res.cloudinary.com/y0s0brvb/image/upload/v1792442818/expertise.png';
+const DETAILS_LOGO_URL  = 'https://res.cloudinary.com/y0s0brvb/image/upload/v1792922174/expertise.png';
 
 // ---------------------------------------------------------------------------
 // Small helpers
@@ -968,3 +968,5 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
         details_respond(['status' => 'error', 'message' => 'Something went wrong while saving. Please try again.'], 500);
     }
 }
+
+

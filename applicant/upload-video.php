@@ -9,7 +9,7 @@ $requireVerification = true;      // TODO: keep true in production
 $nextPage = 'application-status.php';
 $backPage = 'questionnaire.php';
 
-// Real upload: api/upload-file.php (Cloudinary, folder shortlist_applicant_videos).
+// Real upload: api/upload-file.php (Cloudinary, folder ebsmi-shortlist-applicant-videos).
 $simulateUpload = false;
 $uploadUrl      = '../api/upload-file.php';
 

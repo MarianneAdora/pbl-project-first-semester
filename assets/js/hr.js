@@ -685,7 +685,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sentModal = document.getElementById('sentModal');
     const discardModal = document.getElementById('discardModal');
 
-    // CV upload is enabled: the file is sent to add-applicants.php -> Cloudinary (ebsmi_cvs/{id}).
+    // CV upload is enabled: the file is sent to add-applicants.php -> Cloudinary (ebsmi-shortlist-applicant-cvs/{id}).
     // Optional: validated client-side (PDF/DOC/DOCX, 5 MB max) and again on the server.
     const CV_DISABLED = false;
     const MAX_CV = 5 * 1024 * 1024;
@@ -946,7 +946,7 @@ document.addEventListener('DOMContentLoaded', () => {
        listed at the top of opening.php (applicant_name, applicant_email). */
     /* Real request: saves the applicant through add-applicants.php (it is the endpoint too),
        so the Screening List, Dashboard cards and Recent Applicants all show the new person.
-       The CV file (if chosen) is uploaded flat to ebsmi_cvs as cv-{id}-{filename}
+       The CV file (if chosen) is uploaded flat to ebsmi-shortlist-applicant-cvs as cv-{id}-{filename}
        (PDFs = previewable image type) and its URL is saved as cv_file_url.
        Invitation email still not sent. */
     async function sendInvitation(formData) {

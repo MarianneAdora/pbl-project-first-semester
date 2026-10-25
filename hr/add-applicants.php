@@ -13,7 +13,7 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {
 
 // Add Applicant writes straight to the database (PostgreSQL via PDO).
 // This page is also its own POST endpoint (replaces the old static-data.php call).
-// CV upload goes to Cloudinary under the ebsmi_cvs folder and cv_file_url stores the secure URL.
+// CV upload goes to Cloudinary under the ebsmi-shortlist-applicant-cvs folder and cv_file_url stores the secure URL.
 // After saving, a shortlist invite email is sent to the applicant's email address.
 require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
 require_once __DIR__ . '/../src/Services/CloudinaryService.php';
@@ -88,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     try {
-        // 1. Insert first so the Cloudinary subfolder uses the real applicant id: ebsmi_cvs/{id}
+        // 1. Insert first so the Cloudinary subfolder uses the real applicant id: ebsmi-shortlist-applicant-cvs/{id}
         $applicant = repo_add_applicant(
             (string) ($input['name'] ?? ''),
             (string) ($input['email'] ?? ''),
@@ -97,7 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         repo_log_activity('Added An Applicant', (string) ($applicant['name'] ?? '-'));
 
         // 2. Upload the CV (if any) and save its URL on the row.
-        // Flat layout: ebsmi_cvs/cv-{id}-{filename} (no subfolders), PDF = previewable image type.
+        // Flat layout: ebsmi-shortlist-applicant-cvs/cv-{id}-{filename} (no subfolders), PDF = previewable image type.
         $cvUrl = null;
         $cvName = null;
         if ($cvUpload) {
@@ -106,7 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $uploaded = $cloud->uploadCV(
                     $cvUpload['tmp_name'],
                     $applicant['id'],
-                    'ebsmi_cvs',
+                    'ebsmi-shortlist-applicant-cvs',
                     (string) ($cvUpload['name'] ?? ''),
                     (string) ($cvUpload['type'] ?? '')
                 );

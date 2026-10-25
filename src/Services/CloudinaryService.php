@@ -21,7 +21,7 @@ class CloudinaryService {
      * Build a Cloudinary upload signature.
      * IMPORTANT: Cloudinary expects the raw "key=value&..." string with NO URL-encoding
      * (http_build_query encodes "/" as %2F, which produces an Invalid Signature error
-     * whenever the folder contains a slash, e.g. ebsmi_cvs/7).
+     * whenever the folder contains a slash, e.g. ebsmi-shortlist-applicant-cvs/7).
      */
     private function signParams(array $params): string
     {
@@ -35,21 +35,21 @@ class CloudinaryService {
 
     /**
      * Uploads a CV file (PDF/DOC/DOCX) to Cloudinary.
-     * Layout: flat inside $folderBase (default 'ebsmi_cvs') — NO per-applicant subfolders.
-     * Filename: cv-{applicantId}-{original}, e.g. ebsmi_cvs/cv-9-resume.pdf
+     * Layout: flat inside $folderBase (default 'ebsmi-shortlist-applicant-cvs') — NO per-applicant subfolders.
+     * Filename: cv-{applicantId}-{original}, e.g. ebsmi-shortlist-applicant-cvs/cv-9-resume.pdf
      * (unique_filename=false, so re-uploading the same applicant's CV overwrites it).
      * Type: resource_type=image, so PDFs are PREVIEWABLE in the dashboard AND can be
      * fetched server-side later for Gemini text extraction (raw/ uploads download instead).
      * Returns ['url', 'public_id', 'name'].
      * @param string $filePath     Local temp path of the uploaded file.
      * @param mixed $applicantId  Applicant id (used in the filename, NOT a subfolder).
-     * @param string $folderBase  Cloudinary folder (default 'ebsmi_cvs').
+     * @param string $folderBase  Cloudinary folder (default 'ebsmi-shortlist-applicant-cvs').
      * @param string|null $originalName Original client filename (e.g. $_FILES['cv']['name']).
      * @param string|null $mimeType     MIME type (auto-detected when omitted).
      */
-    public function uploadCV($filePath, $applicantId = null, $folderBase = 'ebsmi_cvs', $originalName = null, $mimeType = null) {
+    public function uploadCV($filePath, $applicantId = null, $folderBase = 'ebsmi-shortlist-applicant-cvs', $originalName = null, $mimeType = null) {
         $timestamp = time();
-        $folderBase = trim((string) $folderBase) !== '' ? trim((string) $folderBase) : 'ebsmi_cvs';
+        $folderBase = trim((string) $folderBase) !== '' ? trim((string) $folderBase) : 'ebsmi-shortlist-applicant-cvs';
         $folderBase = trim($folderBase, '/');
 
         $originalName = basename(trim((string) ($originalName ?? '')));
@@ -110,14 +110,14 @@ class CloudinaryService {
 
     /**
      * Uploads an applicant video to Cloudinary and returns its URL + SHA-256 hash.
-     * Layout: flat inside $folderBase (default 'shortlist_applicant_videos') — NO per-applicant subfolders.
-     * Filename: video-{applicantId}-{timestamp}, e.g. shortlist_applicant_videos/video-9-1729...
+     * Layout: flat inside $folderBase (default 'ebsmi-shortlist-applicant-videos') — NO per-applicant subfolders.
+     * Filename: video-{applicantId}-{timestamp}, e.g. ebsmi-shortlist-applicant-videos/video-9-1729...
      * (unique_filename=false + explicit public_id, so retries overwrite instead of duplicating).
      * @return array ['success' => bool, 'url' => string, 'hash' => string]
      */
-    public function uploadVideo($filePath, $applicantId = null, $folderBase = 'shortlist_applicant_videos') {
+    public function uploadVideo($filePath, $applicantId = null, $folderBase = 'ebsmi-shortlist-applicant-videos') {
         $timestamp = time();
-        $folderBase = trim((string) $folderBase) !== '' ? trim((string) $folderBase) : 'shortlist_applicant_videos';
+        $folderBase = trim((string) $folderBase) !== '' ? trim((string) $folderBase) : 'ebsmi-shortlist-applicant-videos';
         $folderBase = trim($folderBase, '/');
 
         // 1. Generate a SHA-256 hash BEFORE uploading (for risk scoring)
@@ -170,3 +170,4 @@ class CloudinaryService {
         }
     }
 }
+

@@ -1,6 +1,6 @@
 <?php
 // api/upload-file.php — applicant video upload to Cloudinary.
-// Form field: "video" (mp4/mov/webm, 50 MB max). Folder: shortlist_applicant_videos.
+// Form field: "video" (mp4/mov/webm, 50 MB max). Folder: ebsmi-shortlist-applicant-videos.
 // Answers: { status: 'success', url, hash } | { status: 'error', message }.
 // Requires a verified applicant session (opening.php?token=... + OTP).
 
@@ -37,7 +37,7 @@ if (($file['size'] ?? 0) === 0) {
 try {
     require_once __DIR__ . '/../src/Services/CloudinaryService.php';
     $cloud = new CloudinaryService();
-    $uploaded = $cloud->uploadVideo($file['tmp_name'], $applicantId, 'shortlist_applicant_videos');
+    $uploaded = $cloud->uploadVideo($file['tmp_name'], $applicantId, 'ebsmi-shortlist-applicant-videos');
     $url = is_array($uploaded) ? (string) ($uploaded['url'] ?? '') : '';
     $hash = is_array($uploaded) ? (string) ($uploaded['hash'] ?? '') : '';
     if ($url === '') throw new Exception('Cloudinary returned an empty URL.');
@@ -46,4 +46,5 @@ try {
     error_log('upload-file Cloudinary error: ' . $e->getMessage());
     $respond(['status' => 'error', 'message' => 'The upload did not finish. Please try again.'], 502);
 }
+
 
