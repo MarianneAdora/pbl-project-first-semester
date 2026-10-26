@@ -52,58 +52,7 @@ try {
         // redirected to application-status.php even if the sync fails.
         $_SESSION['screening_submitted'] = true;
 
-        // store sync ...
-        $storePdo = db();
-        $appStmt  = $storePdo->prepare(
-            "SELECT applicant_id, name, email FROM applicant WHERE applicant_id = :id AND deleted_at IS NULL LIMIT 1"
-        );
-        $appStmt->execute([':id' => $applicantId]);
-        $app = $appStmt->fetch();
-
-        $timing = [];
-        foreach ((array) ($input['timing'] ?? []) as $key => $ms) {
-            if (is_string($key) && preg_match('/^q\d+$/', $key) && is_numeric($ms)) {
-                $timing[$key] = (int) min(max(0, $ms), 3600000);
-            }
-        }
-        $videoDevice = (string) ($input['device'] ?? '');
-        $device      = substr(preg_replace('/[^A-Za-z0-9\\-]/', '', $videoDevice), 0, 64);
-        $hash        = substr(preg_replace('/[^a-f0-9]/', '', strtolower((string) ($video['hash'] ?? ''))), 0, 64);
-        $otp = [
-            'failed'   => (int) ($_SESSION['otp_failed_total'] ?? 0),
-            'requests' => array_values(array_map('intval', (array) ($_SESSION['otp_request_times'] ?? []))),
-            'locked'   => !empty($_SESSION['otp_was_locked'])
-        ];
-        $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
-
-        require_once __DIR__ . '/../hr/static-data.php';
-        // Static store sync is best-effort: the DB save above is authoritative.
-        // If the store sync throws, the submission still counts as successful.
-        try {
-            static_store_update(function (array &$store) use ($applicantId, $app, $answers, $video, $timing, $device, $hash, $otp, $ip) {
-                $store['submissions'][] = [
-                    'reference'    => 'SCR-' . date('Y') . '-' . str_pad((string) $applicantId, 5, '0', STR_PAD_LEFT),
-                    'applicant_id' => $app['applicant_id'] ?? $applicantId,
-                    'name'         => $app['name'] ?? '',
-                    'email'        => $app['email'] ?? '',
-                    'answers'      => $answers,
-                    'timing'       => $timing,
-                    'device'       => $device,
-                    'ip'           => $ip,
-                    'otp'          => $otp,
-                    'video'        => [
-                        'name'    => (string) ($video['name'] ?? ''),
-                        'size'    => (int) ($video['size'] ?? 0),
-                        'seconds' => isset($video['seconds']) ? round((float) $video['seconds'], 1) : null,
-                        'source'  => (string) ($video['source'] ?? ''),
-                        'hash'    => $hash
-                    ],
-                    'submitted_at' => static_now()->format('Y-m-d H:i')
-                ];
-            });
-        } catch (Throwable $e) {
-            error_log('submit-response store sync error: ' . $e->getMessage());
-        }
+// Submission is DB-authoritative; static-store sync removed.
 
         // Trigger risk scoring asynchronously (best-effort; submission already saved).
         try {

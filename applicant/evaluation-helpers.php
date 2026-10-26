@@ -25,7 +25,7 @@
    see the points and the reason for every factor (stored in "evaluations" now).
    ========================================================================== */
 
-require_once __DIR__ . '/static-applicant.php';
+require_once __DIR__ . '/applicant-helpers.php';
 
 // ---------------------------------------------------------------------------
 // ALL thresholds in one place
@@ -105,7 +105,7 @@ function static_eval_digits(string $value): string
 function static_evaluate(array $c): array
 {
     $cfg     = static_risk_config();
-    $now     = $c['now'] instanceof DateTimeImmutable ? $c['now'] : static_now();
+    $now     = $c['now'] instanceof DateTimeImmutable ? $c['now'] : new DateTimeImmutable('now', new DateTimeZone('Asia/Manila'));
     $answers = is_array($c['answers'] ?? null) ? $c['answers'] : [];
     $me      = is_array($c['me'] ?? null) ? $c['me'] : null;
     $email   = strtolower(trim((string) ($c['email'] ?? '')));
@@ -324,53 +324,32 @@ function static_evaluate(array $c): array
 // ---------------------------------------------------------------------------
 function static_run_evaluation(): array
 {
-    $email     = strtolower(trim((string) ($_SESSION['applicant_email'] ?? '')));
-    $reference = (string) ($_SESSION['screening_reference'] ?? '');
-    $store     = static_store_read();
-    $all       = array_values((array) ($store['submissions'] ?? []));
-    $mine      = count($all) > 0 ? array_pop($all) : [];      // the newest one is the screening just sent, $all = the earlier ones
-
-    $applicants = static_applicants();
-    $me = null;
-    foreach ($applicants as $a) {
-        if ($email !== '' && strtolower($a['email']) === $email) { $me = $a; break; }
+    // DB-backed: risk scoring is handled by RiskScoringService (triggered on submit).
+    // This helper now delegates to the DB instead of the static JSON store.
+    $applicantId = (int) ($_SESSION['applicant_id'] ?? 0);
+    if ($applicantId <= 0) {
+        $email = strtolower(trim((string) ($_SESSION['applicant_email'] ?? '')));
+        if ($email !== '') {
+            require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
+            $found = repo_find_applicant_by_email($email);
+            if (is_array($found)) $applicantId = (int) ($found['id'] ?? 0);
+        }
     }
+    if ($applicantId <= 0) return [];
 
-    $result = static_evaluate([
-        'answers'     => $mine['answers'] ?? [],
-        'questions'   => static_questionnaire(),
-        'timing'      => $mine['timing'] ?? [],
-        'otp'         => $mine['otp'] ?? [],
-        'me'          => $me,
-        'email'       => $email,
-        'device'      => $mine['device'] ?? '',
-        'ip'          => $mine['ip'] ?? '',
-        'video_hash'  => $mine['video']['hash'] ?? '',
-        'others'      => $all,
-        'applicants'  => $applicants,
-        'evaluations' => (array) ($store['evaluations'] ?? []),
-        'now'         => static_now()
-    ]);
+    require_once __DIR__ . '/../src/Helpers/db.php';
+    require_once __DIR__ . '/../src/Services/RiskScoringService.php';
 
-    static_store_update(function (array &$store) use ($result, $reference, $email) {
-        $store['evaluations'][] = [
-            'reference'    => $reference,
-            'email'        => $email,
-            'points'       => $result['points'],
-            'band'         => $result['band'],
-            'auto_high'    => $result['auto_high'],
-            'outcome'      => $result['outcome'],
-            'factors'      => $result['factors'],
-            'knockouts'    => $result['knockouts'],        // the rubric as it was when the applicant sent the screening (HR reads this)
-            'evaluated_at' => static_now()->format('Y-m-d H:i')
-        ];
-    });
+    $pdo = db();
+    $scorer = new RiskScoringService($pdo);
+    $result = $scorer->score($applicantId);
+    $scorer->saveScore($applicantId, $result);
 
-    // the HR lists: Passed / Rejected; a held (review) applicant stays "Completed" without a result
-    if ($me) {
-        if ($result['outcome'] === 'passed')      static_set_status((int) $me['id'], 'Completed', 'Passed');
-        elseif ($result['outcome'] === 'failed')  static_set_status((int) $me['id'], 'Completed', 'Rejected');
-        else                                      static_set_status((int) $me['id'], 'Completed', null);
+    $_SESSION['screening_submitted'] = true;
+    if (!isset($_SESSION['screening_reference'])) {
+        require_once __DIR__ . '/applicant-helpers.php';
+        $found = repo_find_applicant($applicantId, $pdo);
+        $_SESSION['screening_reference'] = static_reference(is_array($found) ? $found : null);
     }
 
     return $result;

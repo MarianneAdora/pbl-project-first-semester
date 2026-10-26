@@ -40,7 +40,10 @@
      "start" / "submit"      ->  api/submit-response.php answers the same two POST requests
    ========================================================================== */
 
-require_once __DIR__ . '/../hr/static-data.php';
+// DB-backed helpers; no static store dependency.
+require_once __DIR__ . '/../src/Repositories/AdminRepository.php';
+require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
+require_once __DIR__ . '/../src/Repositories/ResponseRepository.php';
 
 // ---------------------------------------------------------------------------
 // The job description link in question 1.
@@ -69,17 +72,13 @@ function static_video_rules(): array
 // DATABASE (later): SELECT * FROM questions WHERE archived_at IS NULL ORDER BY section_no, position
 function static_questionnaire(): array
 {
-    $store = static_store_read();
-    if (!isset($store['questions']) || !is_array($store['questions'])) return static_questionnaire_seed();
-
-    $out = [];
-    foreach ($store['questions'] as $q) {
-        if (!empty($q['archived_at'])) continue;
-        if (($q['status'] ?? 'Active') === 'Inactive') continue;      // the Admin switched it off: kept in the Admin list, hidden here
-        unset($q['archived_at'], $q['status'], $q['created']);
-        $out[] = $q;
+    try {
+        $dbQuestions = db_questions_for_applicant();
+        if (is_array($dbQuestions) && $dbQuestions) return $dbQuestions;
+    } catch (Throwable $e) {
+        error_log('applicant helpers DB questions error: ' . $e->getMessage());
     }
-    return $out;
+    return static_questionnaire_seed();
 }
 
 // The STARTING questions (sections 1 to 5). Do not edit here to change live questions: use the Admin > Questions page.
@@ -297,7 +296,7 @@ function static_knockout_check(array $q, array $answers): ?array
 function static_reference(?array $applicant = null): string
 {
     $number = $applicant ? (int) $applicant['id'] : (crc32(session_id()) % 99999) + 1;
-    return 'SCR-' . static_now()->format('Y') . '-' . str_pad((string) $number, 5, '0', STR_PAD_LEFT);
+    return 'SCR-' . (new DateTimeImmutable('now', new DateTimeZone('Asia/Manila')))->format('Y') . '-' . str_pad((string) $number, 5, '0', STR_PAD_LEFT);
 }
 
 // ---------------------------------------------------------------------------
@@ -325,7 +324,7 @@ function static_validate_answer(array $q, array $answers): string
         case 'date':
             $d = DateTimeImmutable::createFromFormat('Y-m-d', (string) $v);
             if (!$d || $d->format('Y-m-d') !== $v) return 'Please choose a date.';
-            return $v >= static_now()->format('Y-m-d') ? '' : 'Please choose today or a later date.';
+            return $v >= (new DateTimeImmutable('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d') ? '' : 'Please choose today or a later date.';
 
         case 'text':
             $len = mb_strlen(trim((string) $v));
@@ -340,20 +339,16 @@ function static_validate_answer(array $q, array $answers): string
 
 /* ==========================================================================
    ENDPOINT (only when this file is opened directly, never when it is included)
-   The applicant pages POST here (the applicant has passed the email check, there is no HR login):
-       start    the applicant opened the questionnaire       -> status "In Progress"
-       submit   answers + video info                         -> status "Completed" (no result yet:
-                                                                 Passed / Rejected comes from the scoring)
-   Response (JSON):  { status: 'success' }   or   { status: 'error', message: '...' }
-   (after "submit" the reference number is kept in $_SESSION['screening_reference'])
+   DB-backed version of the former static endpoint. The applicant pages now POST
+   to api/submit-response.php; this block remains as a direct-access fallback.
    ========================================================================== */
 if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) !== false
-    && strcasecmp(realpath($_SERVER['SCRIPT_FILENAME']), __FILE__) === 0) {   // strcasecmp: Windows paths
+    && strcasecmp(realpath($_SERVER['SCRIPT_FILENAME']), __FILE__) === 0) {
 
     if (session_status() === PHP_SESSION_NONE) session_start();
     header('Content-Type: application/json; charset=UTF-8');
 
-    function static_applicant_respond(array $data, int $code = 200): void
+    function applicant_helpers_respond(array $data, int $code = 200): void
     {
         http_response_code($code);
         echo json_encode($data, JSON_UNESCAPED_UNICODE);
@@ -361,96 +356,73 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
     }
 
     if (empty($_SESSION['otp_verified'])) {
-        static_applicant_respond(['status' => 'error', 'message' => 'Your session has ended. Please open the link in your email again.'], 403);
+        applicant_helpers_respond(['status' => 'error', 'message' => 'Your session has ended. Please open the link in your email again.'], 403);
     }
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        static_applicant_respond(['status' => 'error', 'message' => 'Invalid request.'], 405);
+        applicant_helpers_respond(['status' => 'error', 'message' => 'Invalid request.'], 405);
     }
 
-    $json  = json_decode((string) file_get_contents('php://input'), true);
-    $input = is_array($json) ? $json : $_POST;
+    $json   = json_decode((string) file_get_contents('php://input'), true);
+    $input  = is_array($json) ? $json : $_POST;
     $action = (string) ($input['action'] ?? '');
 
-    // Which applicant? The one whose email was used for the link / OTP (opening.php).
     $email = strtolower(trim((string) ($_SESSION['applicant_email'] ?? '')));
-    $me = null;
-    if ($email !== '') {
-        foreach (static_applicants() as $a) {
-            if (strtolower($a['email']) === $email) { $me = $a; break; }
-        }
-    }
+    $me = $email !== '' ? repo_find_applicant_by_email($email) : null;
 
     try {
         switch ($action) {
             case 'start':
-                // only a Pending applicant moves to In Progress (never backwards)
-                if ($me && $me['status'] === 'Pending') static_set_status((int) $me['id'], 'In Progress');
+                if ($me && (string) ($me['status'] ?? '') === 'Pending') {
+                    repo_response_start((int) $me['id']);
+                }
                 break;
 
             case 'submit':
                 if (!empty($_SESSION['screening_submitted'])) {
-                    static_applicant_respond(['status' => 'error', 'message' => 'Your application was already submitted.'], 409);
+                    applicant_helpers_respond(['status' => 'error', 'message' => 'Your application was already submitted.'], 409);
                 }
                 $answers = is_array($input['answers'] ?? null) ? $input['answers'] : [];
                 foreach (static_questionnaire() as $q) {
                     $problem = static_validate_answer($q, $answers);
                     if ($problem !== '') {
-                        static_applicant_respond(['status' => 'error', 'message' => 'Question ' . $q['id'] . ': ' . $problem], 422);
+                        applicant_helpers_respond(['status' => 'error', 'message' => 'Question ' . $q['id'] . ': ' . $problem], 422);
                     }
                 }
                 $video = is_array($input['video'] ?? null) ? $input['video'] : [];
-                if (empty($video['name'])) {
-                    static_applicant_respond(['status' => 'error', 'message' => 'Please add your video first.'], 422);
+                if (empty($video['name']) && empty($video['url'])) {
+                    applicant_helpers_respond(['status' => 'error', 'message' => 'Please add your video first.'], 422);
                 }
 
-                // keep what was sent, like a "responses" table (HR review reads it later)
-                // what the screening evaluation (static-evaluation.php) looks at: time per question, device, IP, the OTP behaviour, the video fingerprint
                 $timing = [];
                 foreach ((array) ($input['timing'] ?? []) as $key => $ms) {
-                    if (is_string($key) && preg_match('/^q\d+$/', $key) && is_numeric($ms)) $timing[$key] = (int) min(max(0, $ms), 3600000);
+                    if (is_string($key) && preg_match('/^q\\d+$/', $key) && is_numeric($ms)) {
+                        $timing[$key] = (int) min(max(0, $ms), 3600000);
+                    }
                 }
-                $device = substr((string) preg_replace('/[^A-Za-z0-9\-]/', '', (string) ($input['device'] ?? '')), 0, 64);
+                $device = substr((string) preg_replace('/[^A-Za-z0-9\\-]/', '', (string) ($input['device'] ?? '')), 0, 64);
                 $hash   = substr((string) preg_replace('/[^a-f0-9]/', '', strtolower((string) ($video['hash'] ?? ''))), 0, 64);
-                $otp    = [
-                    'failed'   => (int) ($_SESSION['otp_failed_total'] ?? 0),
-                    'requests' => array_values(array_map('intval', (array) ($_SESSION['otp_request_times'] ?? []))),
-                    'locked'   => !empty($_SESSION['otp_was_locked'])
-                ];
-                $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+                $video['device'] = $device;
+                $video['timing'] = $timing;
+                if ($hash !== '') $video['hash'] = $hash;
 
                 $reference = static_reference($me);
-                static_store_update(function (array &$store) use ($me, $email, $answers, $video, $reference, $timing, $device, $hash, $otp, $ip) {
-                    $store['submissions'][] = [
-                        'reference'    => $reference,
-                        'applicant_id' => $me['id'] ?? null,
-                        'name'         => $me['name'] ?? '',
-                        'email'        => $email,
-                        'answers'      => $answers,
-                        'timing'       => $timing,
-                        'device'       => $device,
-                        'ip'           => $ip,
-                        'otp'          => $otp,
-                        'video'        => [
-                            'name'    => (string) ($video['name'] ?? ''),
-                            'size'    => (int) ($video['size'] ?? 0),
-                            'seconds' => isset($video['seconds']) ? round((float) $video['seconds'], 1) : null,
-                            'source'  => (string) ($video['source'] ?? ''),
-                            'hash'    => $hash
-                        ],
-                        'submitted_at' => static_now()->format('Y-m-d H:i')
-                    ];
-                });
-                if ($me) static_set_status((int) $me['id'], 'Completed');
-                $_SESSION['screening_submitted'] = true;
-                $_SESSION['screening_reference'] = $reference;
+
+                if ($me) {
+                    repo_response_submit((int) $me['id'], $answers, $video);
+                }
+
+                if ($me) {
+                    $_SESSION['screening_submitted'] = true;
+                    $_SESSION['screening_reference'] = $reference;
+                }
                 break;
 
             default:
-                static_applicant_respond(['status' => 'error', 'message' => 'Unknown action.'], 400);
+                applicant_helpers_respond(['status' => 'error', 'message' => 'Unknown action.'], 400);
         }
-        static_applicant_respond(['status' => 'success']);
+        applicant_helpers_respond(['status' => 'success']);
 
     } catch (Throwable $e) {
-        static_applicant_respond(['status' => 'error', 'message' => 'Something went wrong while saving. Please try again.'], 500);
+        applicant_helpers_respond(['status' => 'error', 'message' => 'Something went wrong while saving. Please try again.'], 500);
     }
 }

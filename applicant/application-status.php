@@ -33,15 +33,14 @@ require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
 
 require_once __DIR__ . '/../src/Helpers/display.php';
 
-// Interview functions live in hr/static-data.php (no interviews table in DB yet --
-// DATABASE: replace static_interview_*() with queries on an interviews table).
-require_once __DIR__ . '/../hr/static-data.php';
+// Interview functions now live in ScheduleRepository (DB-backed).
+require_once __DIR__ . '/../src/Repositories/ScheduleRepository.php';
 
 // Applicant-side static helpers (static_reference, etc.) live in applicant/static-applicant.php.
-require_once __DIR__ . '/static-applicant.php';
+require_once __DIR__ . '/applicant-helpers.php';
 
 // Risk thresholds (loading_ms for the evaluation animation) live in applicant/static-evaluation.php.
-require_once __DIR__ . '/static-evaluation.php';
+require_once __DIR__ . '/evaluation-helpers.php';
 
 // ---- The evaluation result (read from live DB, set by RiskScoringService after submission) ---
 // The applicant.result column holds 'accepted' (Passed), 'rejected' (Rejected), or NULL (review pending).
@@ -93,7 +92,14 @@ $maxDate  = $today->modify('+60 days');
 // CONNECTED TO HR: the applicant record (found by the verified email) and the shared interview row that
 // HR's Interview Schedule tab reads and answers (hr/static-data.php -> static_interview_*).
 $applicantRow = repo_find_applicant((int) ($_SESSION['applicant_id'] ?? 0));
-$storedIv     = $applicantRow ? static_interview_get((int) $applicantRow['id']) : null;
+$storedIv = null;
+if ($applicantRow) {
+    try {
+        $storedIv = repo_schedule_find((int) $applicantRow['id']);
+    } catch (Throwable $e) {
+        error_log('application-status schedule DB error: ' . $e->getMessage());
+    }
+}
 
 function interview_json(array $data, int $code = 200): void
 {
@@ -133,7 +139,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // HR sees this request in the Interview Schedule tab (status: awaiting)
     if ($applicantRow) {
-        static_interview_request((int) $applicantRow['id'], $date->format('Y-m-d'), (string) static_interview_time24($time));
+        try {
+            repo_schedule_request((int) $applicantRow['id'], $date->format('Y-m-d'), (string) repo_schedule_time24($time), 'applicant');
+        } catch (Throwable $e) {
+            error_log('application-status schedule DB error: ' . $e->getMessage());
+        }
     }
     $_SESSION['interview'] = ['date' => $date->format('Y-m-d'), 'time' => $time, 'status' => 'pending'];
     interview_json(['status' => 'success']);
@@ -141,14 +151,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // The stored row is the truth: whatever HR answered (confirmed / new schedule) shows up here on the next load.
 if ($applicantRow) {
-    $row = static_interview_get((int) $applicantRow['id']);
+    $row = null;
+    try {
+        $row = repo_schedule_find((int) $applicantRow['id']);
+    } catch (Throwable $e) {
+        error_log('application-status schedule DB error: ' . $e->getMessage());
+    }
     if ($row) {
-        $_SESSION['interview'] = static_interview_session_shape($row);
+        $_SESSION['interview'] = repo_schedule_session_shape($row);
     } elseif (!empty($_SESSION['interview']) && is_array($_SESSION['interview'])) {
         // sent before this page was connected to HR: hand it over now
         $old = $_SESSION['interview'];
-        $t24 = static_interview_time24((string) ($old['time'] ?? ''));
-        if ($t24 && !empty($old['date'])) static_interview_request((int) $applicantRow['id'], (string) $old['date'], $t24);
+        $t24 = repo_schedule_time24((string) ($old['time'] ?? ''));
+        if ($t24 && !empty($old['date'])) {
+            try {
+                repo_schedule_request((int) $applicantRow['id'], (string) $old['date'], $t24);
+            } catch (Throwable $e) {
+                error_log('application-status schedule DB error: ' . $e->getMessage());
+            }
+        }
     }
 }
 

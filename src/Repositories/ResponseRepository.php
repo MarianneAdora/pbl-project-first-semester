@@ -211,3 +211,29 @@ function repo_response_submit(int $applicantId, array $answers, array $video = [
         " WHERE applicant_id = :id AND deleted_at IS NULL"
     )->execute([':id' => $applicantId]);
 }
+
+
+/**
+ * Fetch the persisted risk score for an applicant, if any.
+ * Returns ['risk_score', 'risk_flags', 'narrative', 'submitted_at'] or null.
+ */
+function repo_score_find(int $applicantId, PDO $pdo = null): ?array
+{
+    $pdo = $pdo ?: db();
+    $st = $pdo->prepare(
+        "SELECT s.risk_score, s.risk_flags_json, s.narrative_json, r.submitted_at " .
+        "FROM score s JOIN response r ON r.response_id = s.response_id " .
+        "WHERE r.applicant_id = :id LIMIT 1"
+    );
+    $st->execute([':id' => $applicantId]);
+    $row = $st->fetch();
+    if (!$row) return null;
+    $flags = json_decode((string) ($row['risk_flags_json'] ?? '{}'), true);
+    $narr  = json_decode((string) ($row['narrative_json']  ?? '{}'), true);
+    return [
+        'risk_score'   => (int) $row['risk_score'],
+        'risk_flags'   => is_array($flags) ? $flags : [],
+        'narrative'    => is_array($narr) ? $narr : [],
+        'submitted_at' => $row['submitted_at'] ?? '',
+    ];
+}

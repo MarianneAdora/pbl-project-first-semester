@@ -497,7 +497,7 @@ window.HR = (function () {
         if (/details\.php$/i.test(window.location.pathname) && q.get('id')) markSeen(q.get('id'));
 
         // Opening the Screening List counts as "seen" for the new-applicant badge
-        if (/screeninglist\.php$/i.test(window.location.pathname)) clearNewApplicants();
+        if (/screening-list\.php$/i.test(window.location.pathname)) clearNewApplicants();
 
         refreshDashboardBadge();
         refreshApplicantBadges();

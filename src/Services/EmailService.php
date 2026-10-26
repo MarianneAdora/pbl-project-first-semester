@@ -202,6 +202,20 @@ class EmailService {
         return $this->brevoSend($data, false);
     }
 
+    public function sendEmail(string $toEmail, string $subject, string $html, string $toName = ''): bool
+    {
+        $env = parse_ini_file(__DIR__ . '/../../.env');
+        $apiKey = $env['BREVO_API_KEY'] ?? '';
+        if (empty($apiKey)) return false;
+
+        $data = [
+            'sender'      => ['name' => 'Expertise BPO', 'email' => 'ebsmi.screening@gmail.com'],
+            'to'          => [['email' => $toEmail, 'name' => $toName !== '' ? $toName : $toEmail]],
+            'subject'     => $subject,
+            'htmlContent' => $html,
+        ];
+        return $this->brevoSend($data, false);
+    }
     public function sendScreeningRejectedEmail($toEmail, $firstName) {
         $htmlContent = $this->loadTemplate('screening-rejected-email.html');
         $htmlContent = str_replace('{{FIRST_NAME}}', htmlspecialchars($firstName, ENT_QUOTES, 'UTF-8'), $htmlContent);

@@ -135,6 +135,197 @@ try {
             $message = 'HR account deleted forever.';
             break;
 
+        case 'question_add':
+            require_once __DIR__ . '/../admin/static-admin.php';
+
+            $qIn = (array) ($input['question'] ?? []);
+
+            // all questions (including archived) in the shape static_admin_clean_question expects
+            $all = [];
+            foreach (db()->query("SELECT question_id, section_no, section, is_active, deleted_at FROM question_config ORDER BY question_id")->fetchAll() as $r) {
+                $all[] = [
+                    'id'          => 'q' . $r['question_id'],
+                    'section_no'  => (int) $r['section_no'],
+                    'section'     => (string) $r['section'],
+                    'status'      => $r['is_active'] ? 'Active' : 'Inactive',
+                    'archived_at' => $r['deleted_at'],
+                ];
+            }
+
+            // optional section rename
+            $renamed = null;
+            $renameTitle = trim((string) ($qIn['section_rename'] ?? ''));
+            if ($renameTitle !== '') {
+                $cur = trim((string) ($qIn['section'] ?? ''));
+                $no = 0; $oldTitle = '';
+                foreach ($all as $q) {
+                    if (strcasecmp((string) $q['section'], $cur) === 0) { $no = (int) $q['section_no']; $oldTitle = (string) $q['section']; break; }
+                }
+                if ($no === 0) admin_respond(['status' => 'error', 'message' => 'Choose an existing section to rename.'], 422);
+                if (mb_strlen($renameTitle) > 60) admin_respond(['status' => 'error', 'message' => 'The section name is too long (60 characters at most).'], 422);
+                foreach ($all as $q) {
+                    if ((int) $q['section_no'] !== $no && strcasecmp((string) $q['section'], $renameTitle) === 0) {
+                        admin_respond(['status' => 'error', 'message' => 'Another section already uses that title.'], 422);
+                    }
+                }
+                if ($renameTitle !== $oldTitle) {
+                    db()->prepare("UPDATE question_config SET section = :t WHERE section_no = :no")->execute([':t' => $renameTitle, ':no' => $no]);
+                    foreach ($all as &$q) {
+                        if ((int) $q['section_no'] === $no) $q['section'] = $renameTitle;
+                    }
+                    unset($q);
+                    $qIn['section'] = $renameTitle;
+                    $renamed = ['no' => $no, 'from' => $oldTitle, 'to' => $renameTitle];
+                }
+            }
+
+            try {
+                $cleaned = static_admin_clean_question($qIn, $all);
+            } catch (InvalidArgumentException $e) {
+                admin_respond(['status' => 'error', 'message' => $e->getMessage()], 422);
+            }
+
+            $pdo = db();
+            $answerConfig = isset($cleaned['answer_config']) && is_array($cleaned['answer_config']) ? $cleaned['answer_config'] : null;
+            $passing = isset($cleaned['passing_answer']) && is_array($cleaned['passing_answer']) ? $cleaned['passing_answer'] : null;
+
+            $ins = $pdo->prepare(
+                "INSERT INTO question_config (section_no, section, question_text, question_type, answer_config, passing_answer, is_knockout, is_consent, is_data_protection, reminder_text, is_active, created_at) " .
+                "VALUES (:sn, :sec, :txt, :typ, :ac, :pa, :ko, :consent, FALSE, :rem, :active, :created) RETURNING question_id"
+            );
+            $ins->execute([
+                ':sn'      => (int) $cleaned['section_no'],
+                ':sec'     => (string) $cleaned['section'],
+                ':txt'     => (string) $cleaned['text'],
+                ':typ'     => (string) $cleaned['type'],
+                ':ac'      => $answerConfig ? json_encode($answerConfig) : '{}',
+                ':pa'      => $passing ? json_encode($passing) : null,
+                ':ko'      => !empty($cleaned['knockout']) ? 't' : 'f',
+                ':consent' => ($cleaned['type'] === 'consent') ? 't' : 'f',
+                ':rem'     => $cleaned['no_note'] ?? null,
+                ':active'  => (($cleaned['status'] ?? 'Active') === 'Active') ? 't' : 'f',
+                ':created' => $cleaned['created'] ?? date('Y-m-d H:i'),
+            ]);
+            $newId = (int) $ins->fetchColumn();
+            $cleaned['id'] = 'q' . $newId;
+
+            if ($renamed) repo_log_activity('Section Renamed', 'Sec ' . $renamed['no'] . ' · ' . $renamed['from'] . ' → ' . $renamed['to']);
+            repo_log_activity('Questionnaires Added', 'Q' . $newId . ' · ' . $cleaned['section']);
+
+            admin_respond([
+                'status'  => 'success',
+                'message' => 'Question added.',
+                'result'  => $cleaned,
+                'data'    => ['questions' => repo_admin_questions_list(), 'accounts' => repo_admin_accounts(), 'archive' => repo_admin_archive()],
+            ]);
+            break;
+
+
+        case 'question_update':
+            require_once __DIR__ . '/../admin/static-admin.php';
+
+            $id = (int) ltrim((string) ($input['id'] ?? ''), 'q');
+            $qIn = (array) ($input['question'] ?? []);
+
+            $all = [];
+            foreach (db()->query("SELECT question_id, section_no, section, is_active, deleted_at, created_at FROM question_config ORDER BY question_id")->fetchAll() as $r) {
+                $all[] = [
+                    'id'          => 'q' . $r['question_id'],
+                    'section_no'  => (int) $r['section_no'],
+                    'section'     => (string) $r['section'],
+                    'status'      => $r['is_active'] ? 'Active' : 'Inactive',
+                    'archived_at' => $r['deleted_at'],
+                    'created'     => $r['created_at'] ? date('Y-m-d H:i', strtotime((string) $r['created_at'])) : date('Y-m-d H:i'),
+                ];
+            }
+
+            $pos = null;
+            foreach ($all as $i => $q) {
+                if ($q['id'] === ('q' . $id) && empty($q['archived_at'])) { $pos = $i; break; }
+            }
+            if ($pos === null) admin_respond(['status' => 'error', 'message' => 'That question was not found. It may have been deleted.'], 404);
+
+            $oldRow = null;
+            foreach (db()->query("SELECT * FROM question_config WHERE question_id = " . $id)->fetchAll() as $r) { $oldRow = $r; }
+            $old = [
+                'id'      => 'q' . $id,
+                'status'  => $oldRow && $oldRow['is_active'] ? 'Active' : 'Inactive',
+                'created' => $oldRow && $oldRow['created_at'] ? date('Y-m-d H:i', strtotime((string) $oldRow['created_at'])) : date('Y-m-d H:i'),
+            ];
+
+            $renamed = null;
+            $renameTitle = trim((string) ($qIn['section_rename'] ?? ''));
+            if ($renameTitle !== '') {
+                $cur = trim((string) ($qIn['section'] ?? ''));
+                $no = 0; $oldTitle = '';
+                foreach ($all as $q) {
+                    if (strcasecmp((string) $q['section'], $cur) === 0) { $no = (int) $q['section_no']; $oldTitle = (string) $q['section']; break; }
+                }
+                if ($no === 0) admin_respond(['status' => 'error', 'message' => 'Choose an existing section to rename.'], 422);
+                if (mb_strlen($renameTitle) > 60) admin_respond(['status' => 'error', 'message' => 'The section name is too long (60 characters at most).'], 422);
+                foreach ($all as $q) {
+                    if ((int) $q['section_no'] !== $no && strcasecmp((string) $q['section'], $renameTitle) === 0) {
+                        admin_respond(['status' => 'error', 'message' => 'Another section already uses that title.'], 422);
+                    }
+                }
+                if ($renameTitle !== $oldTitle) {
+                    db()->prepare("UPDATE question_config SET section = :t WHERE section_no = :no")->execute([':t' => $renameTitle, ':no' => $no]);
+                    foreach ($all as &$q) {
+                        if ((int) $q['section_no'] === $no) $q['section'] = $renameTitle;
+                    }
+                    unset($q);
+                    $qIn['section'] = $renameTitle;
+                    $renamed = ['no' => $no, 'from' => $oldTitle, 'to' => $renameTitle];
+                }
+            }
+
+            $activeCount = count(array_filter($all, fn($q) => empty($q['archived_at']) && ($q['status'] ?? 'Active') === 'Active' && $q['id'] !== ('q' . $id)));
+
+            try {
+                $new = static_admin_clean_question($qIn, $all, $old);
+            } catch (InvalidArgumentException $e) {
+                admin_respond(['status' => 'error', 'message' => $e->getMessage()], 422);
+            }
+
+            if (($new['status'] ?? 'Active') === 'Inactive' && $activeCount < 1) {
+                admin_respond(['status' => 'error', 'message' => 'At least one question has to stay Active.'], 422);
+            }
+
+            $pdo = db();
+            $answerConfig = isset($new['answer_config']) && is_array($new['answer_config']) ? $new['answer_config'] : null;
+            $passing = isset($new['passing_answer']) && is_array($new['passing_answer']) ? $new['passing_answer'] : null;
+
+            $upd = $pdo->prepare(
+                "UPDATE question_config SET section_no = :sn, section = :sec, question_text = :txt, question_type = :typ, " .
+                "answer_config = :ac, passing_answer = :pa, is_knockout = :ko, is_consent = :consent, reminder_text = :rem, is_active = :active " .
+                "WHERE question_id = :id"
+            );
+            $upd->execute([
+                ':sn'      => (int) $new['section_no'],
+                ':sec'     => (string) $new['section'],
+                ':txt'     => (string) $new['text'],
+                ':typ'     => (string) $new['type'],
+                ':ac'      => $answerConfig ? json_encode($answerConfig) : '{}',
+                ':pa'      => $passing ? json_encode($passing) : null,
+                ':ko'      => !empty($new['knockout']) ? 't' : 'f',
+                ':consent' => ($new['type'] === 'consent') ? 't' : 'f',
+                ':rem'     => $new['no_note'] ?? null,
+                ':active'  => (($new['status'] ?? 'Active') === 'Active') ? 't' : 'f',
+                ':id'      => $id,
+            ]);
+
+            if ($renamed) repo_log_activity('Section Renamed', 'Sec ' . $renamed['no'] . ' · ' . $renamed['from'] . ' → ' . $renamed['to']);
+            repo_log_activity('Questionnaires Edited', 'Q' . $id . ' · ' . $new['section']);
+
+            admin_respond([
+                'status'  => 'success',
+                'message' => 'Question saved.',
+                'result'  => $new,
+                'data'    => ['questions' => repo_admin_questions_list(), 'accounts' => repo_admin_accounts(), 'archive' => repo_admin_archive()],
+            ]);
+            break;
+
+
         case 'question_archive':
             $id = (int) ltrim((string) ($input['id'] ?? ''), 'q');
             $qst = db()->prepare("SELECT section FROM question_config WHERE question_id = :id"); $qst->execute([':id' => $id]); $qsec = (string) $qst->fetchColumn();

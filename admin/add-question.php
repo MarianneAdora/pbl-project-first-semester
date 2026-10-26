@@ -13,14 +13,23 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
 
 date_default_timezone_set('Asia/Manila');
 
-// The questionnaire + the sidebar badges (static-admin.php is the endpoint of this page too)
-require_once __DIR__ . '/static-admin.php';
+require_once __DIR__ . '/../src/Repositories/AdminRepository.php';
+require_once __DIR__ . '/../src/Helpers/db.php';
+
+$question_types = [
+    'yesno'        => 'Yes / No',
+    'yesno_select' => 'Yes / No + a list',
+    'scale'        => 'Rating scale',
+    'date'         => 'Date',
+    'text'         => 'Written answer',
+    'consent'      => 'Statement + checkbox'
+];
 
 // add-question.php          -> Create Questionnaire
 // add-question.php?id=q5    -> Edit Questionnaire (the pencil in the Questionnaires list)
 $h       = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
 $editId  = trim((string) ($_GET['id'] ?? ''));
-$current = static_admin_questions();           // BACKEND: SELECT * FROM questions WHERE archived_at IS NULL ORDER BY section_no, position
+$current = repo_admin_questions_list();           // DB-backed list
 $editing = null;
 if ($editId !== '') {
     foreach ($current as $q) {
@@ -43,8 +52,7 @@ ksort($sections);
 $sections = array_values($sections);
 
 // A new section automatically becomes the next number (counting deleted questions too, like the server does)
-$maxNo = 0;
-foreach (static_admin_all_questions(static_store_read()) as $q) $maxNo = max($maxNo, (int) $q['section_no']);
+$maxNo = (int) db()->query("SELECT COALESCE(MAX(section_no),0) FROM question_config")->fetchColumn();
 $next_no = $maxNo + 1;
 
 // One colour per section (the same ones as the Questionnaires Statistics on the Dashboard)
@@ -57,7 +65,7 @@ foreach ($sections as $s) {
 // Derived from answer_config JSONB; see static_question_types()
 $type_colors  = ['yesno' => '#159a43', 'yesno_select' => '#1c8adb', 'scale' => '#f6c453', 'date' => '#8f8aea', 'text' => '#f8a09a', 'consent' => '#74cfb9'];
 $type_options = [];
-foreach (static_question_types() as $key => $label) $type_options[] = [$key, $label, $type_colors[$key] ?? '#8a8f96'];
+foreach ($question_types as $key => $label) $type_options[] = [$key, $label, $type_colors[$key] ?? '#8a8f96'];
 
 // One custom dropdown (the same markup as the Role / Status dropdowns on Create HR Account).
 // $options = [[value, label, dot colour], ...]; $placeholder adds an empty first choice ("Select Section").

@@ -34,8 +34,7 @@
    To reset the sample interviews / emails: delete hr/data/static-store.json (resets everything).
    ========================================================================== */
 
-require_once __DIR__ . '/static-data.php';
-require_once __DIR__ . '/../applicant/static-evaluation.php';   // the risk rubric (also loads static-applicant.php)
+require_once __DIR__ . '/../applicant/applicant-helpers.php';   // knock-out rules (DB-backed)
 
 const DETAILS_CV_DIR    = __DIR__ . '/data/cv';     // where Add Applicant keeps the uploaded CVs
 const DETAILS_COMPANY   = 'Expertise';
@@ -72,8 +71,9 @@ function details_time_label(?string $time): string
 function details_time_slots(): array
 {
     $out = [];
-    foreach (static_interview_slots() as $label) {
-        $out[] = ['value' => (string) static_interview_time24($label), 'label' => $label];
+    foreach (['09:00 AM', '10:00 AM', '11:00 AM', '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM'] as $label) {
+        $d = DateTimeImmutable::createFromFormat('h:i A', trim($label));
+        $out[] = ['value' => $d ? $d->format('H:i') : '', 'label' => $label];
     }
     return $out;
 }
@@ -93,9 +93,6 @@ function details_find_applicant(int $id): ?array
         if ($found) return $found;
     } catch (Throwable $e) {
         error_log('details_find_applicant DB error: ' . $e->getMessage());
-    }
-    foreach (static_applicants() as $a) {
-        if ((int) $a['id'] === $id) return $a;
     }
     return null;
 }
@@ -147,17 +144,6 @@ function details_submission(array $a): ?array
     } catch (Throwable $e) {
         error_log('details_submission DB error: ' . $e->getMessage());
     }
-    $found = null;
-    foreach (static_store_read()['submissions'] ?? [] as $s) {
-        $sameId    = (int) ($s['applicant_id'] ?? 0) === (int) $a['id'];
-        $sameEmail = strcasecmp((string) ($s['email'] ?? ''), (string) $a['email']) === 0;
-        if ($sameId || $sameEmail) $found = $s;            // the latest one wins
-    }
-    if ($found) {
-        $found['demo'] = false;
-        return $found;
-    }
-    if (strcasecmp((string) $a['status'], 'Completed') === 0) return details_demo_submission($a);
     return null;
 }
 
@@ -222,7 +208,7 @@ function details_demo_submission(array $a): array
     $answers = [
         'q1' => 'Yes', 'q2' => 'Yes', 'q3' => 'Yes', 'q4' => 'Yes',
         'q5' => $failed ? 2 + $id % 2 : 4 + $id % 2,
-        'q6' => static_now()->modify('+' . (7 + $id % 21) . ' days')->format('Y-m-d'),
+        'q6' => (new DateTimeImmutable('now', new DateTimeZone('Asia/Manila')))->modify('+' . (7 + $id % 21) . ' days')->format('Y-m-d'),
         'q7' => $id % 2 === 0 ? 'Yes' : 'No',
         'q8' => 'Yes', 'q9' => 'Yes', 'q10' => 'Yes', 'q11' => 'Yes',
         'q12' => $failed ? $weakText[$id % 2] : $goodText[$id % 3],
@@ -416,16 +402,6 @@ function details_cv(array $a): array
             'url'       => 'cv-proxy.php?id=' . (int) $a['id']
         ];
     }
-    // Legacy static-store applicants: cv saved as a local file.
-    $cv = $a['cv'] ?? null;
-    if (is_array($cv) && !empty($cv['file']) && is_file(DETAILS_CV_DIR . '/' . basename((string) $cv['file']))) {
-        return [
-            'available' => true,
-            'name'      => (string) $cv['name'],
-            'size'      => (int) ($cv['size'] ?? 0),
-            'url'       => 'static-details.php?file=cv&id=' . (int) $a['id']
-        ];
-    }
     return ['available' => false, 'name' => '', 'size' => 0, 'url' => ''];
 }
 
@@ -446,7 +422,7 @@ function details_questions_live(): array
     } catch (Throwable $e) {
         error_log('details questions DB error: ' . $e->getMessage());
     }
-    return static_questionnaire();
+    return [];
 }
 
 // ---------------------------------------------------------------------------
@@ -460,71 +436,33 @@ function details_find_evaluation(array $a, ?array $submission): ?array
 {
     if (!$submission || strcasecmp((string) $a['status'], 'Completed') !== 0) return null;
 
-    if (empty($submission['demo'])) {
-        // DB first: read from the score table (written by RiskScoringService)
-        try {
-            $pdo = db();
-            $st  = $pdo->prepare(
-                "SELECT s.risk_score, s.risk_flags_json, s.narrative_json, r.submitted_at
-                 FROM score s
-                 JOIN response r ON r.response_id = s.response_id
-                 WHERE r.applicant_id = :id
-                 LIMIT 1"
-            );
-            $st->execute([':id' => (int) $a['id']]);
-            $row = $st->fetch();
-            if ($row) {
-                $flags = json_decode((string) ($row['risk_flags_json'] ?? '{}'), true);
-                $narr  = json_decode((string) ($row['narrative_json']  ?? '{}'), true);
-                if (is_array($flags) && isset($flags['outcome'])) {
-                    return [
-                        'reference'    => $submission['reference'] ?? '',
-                        'email'        => $a['email'],
-                        'points'       => (int) $row['risk_score'],
-                        'band'         => $flags['band']      ?? 'Low',
-                        'auto_high'    => $flags['auto_high'] ?? [],
-                        'outcome'      => $flags['outcome']   ?? 'review',
-                        'factors'      => $flags['factors']   ?? [],
-                        'knockouts'    => $flags['knockouts'] ?? [],
-                        'narrative'    => is_array($narr) ? $narr : [],
-                        'evaluated_at' => $row['submitted_at'] ?? '',
-                        'demo'         => false,
-                    ];
-                }
+    // DB only: read from the score table (written by RiskScoringService)
+    try {
+        require_once __DIR__ . '/../src/Repositories/ResponseRepository.php';
+        $score = repo_score_find((int) $a['id']);
+        if (is_array($score)) {
+            $flags = $score['risk_flags'];
+            $narr  = $score['narrative'];
+            if (is_array($flags) && isset($flags['outcome'])) {
+                return [
+                    'reference'    => $submission['reference'] ?? '',
+                    'email'        => $a['email'],
+                    'points'       => (int) $score['risk_score'],
+                    'band'         => $flags['band']      ?? 'Low',
+                    'auto_high'    => $flags['auto_high'] ?? [],
+                    'outcome'      => $flags['outcome']   ?? 'review',
+                    'factors'      => $flags['factors']   ?? [],
+                    'knockouts'    => $flags['knockouts'] ?? [],
+                    'narrative'    => is_array($narr) ? $narr : [],
+                    'evaluated_at' => $score['submitted_at'] ?? '',
+                    'demo'         => false,
+                ];
             }
-        } catch (Throwable $e) {
-            error_log('details_find_evaluation DB error: ' . $e->getMessage());
         }
-
-        // Fall back to static store (submissions from the old static path)
-        $found = null;
-        $ref   = (string) ($submission['reference'] ?? '');
-        foreach ((array) (static_store_read()['evaluations'] ?? []) as $e) {
-            $sameRef   = $ref !== '' && ($e['reference'] ?? '') === $ref;
-            $sameEmail = ($e['email'] ?? '') !== '' && strcasecmp((string) $e['email'], (string) $a['email']) === 0;
-            if ($sameRef || $sameEmail) $found = $e;
-        }
-        if ($found) $found['demo'] = false;
-        return $found;
+    } catch (Throwable $e) {
+        error_log('details_find_evaluation DB error: ' . $e->getMessage());
     }
-
-    // seed applicant: run the real rubric on the sample answers
-    $id = (int) $a['id'];
-    $questions = static_questionnaire();
-    $timing = [];
-    foreach ($questions as $k => $q) $timing[$q['id']] = 3500 + (($id * 37 + $k * 911) % 6500);   // 3.5 to 10 seconds each
-    $run = static_evaluate([
-        'answers' => $submission['answers'], 'questions' => $questions, 'timing' => $timing,
-        'otp' => ['failed' => 0, 'requests' => [], 'locked' => false],
-        'me' => $a, 'email' => $a['email'], 'device' => '', 'ip' => '', 'video_hash' => '',
-        'others' => [], 'applicants' => [], 'evaluations' => [], 'now' => static_now()
-    ]);
-    return [
-        'reference' => $submission['reference'], 'email' => $a['email'],
-        'points' => $run['points'], 'band' => $run['band'], 'auto_high' => $run['auto_high'],
-        'outcome' => $run['outcome'], 'factors' => $run['factors'], 'knockouts' => $run['knockouts'],
-        'evaluated_at' => $a['updated'], 'demo' => true
-    ];
+    return null;
 }
 
 // What the AI Evaluation tab and the Overview need, worked out from the saved evaluation
@@ -533,7 +471,7 @@ function details_evaluation(array $a, ?array $submission): ?array
     $e = details_find_evaluation($a, $submission);
     if (!$e) return null;
 
-    $cfg     = static_risk_config();
+    $cfg     = ['bands' => ['low_max' => 3, 'medium_max' => 6]];
     $outcome = in_array($e['outcome'] ?? '', ['passed', 'failed', 'review'], true) ? $e['outcome'] : 'review';
     $points  = (int) $e['points'];
     $band    = in_array($e['band'] ?? '', ['Low', 'Medium', 'High'], true) ? $e['band'] : 'Low';
@@ -562,10 +500,6 @@ function details_evaluation(array $a, ?array $submission): ?array
         $checks = array_values($e['knockouts']);
     } else {
         $checks = [];
-        foreach (static_questionnaire() as $q) {
-            $check = static_knockout_check($q, $answers);
-            if ($check !== null) $checks[] = $check;
-        }
     }
     $failedChecks = array_values(array_filter($checks, fn($k) => ($k['met'] ?? null) === false));
     $unmet = array_map(fn($k) => (string) $k['question'], $failedChecks);
@@ -641,14 +575,14 @@ function details_evaluation(array $a, ?array $submission): ?array
 function details_interview(array $a, ?array $submission): ?array
 {
     $id  = (int) $a['id'];
-    $row = static_interview_get($id);
-    if ($row || !$submission || empty($submission['demo'])) return $row;
-
-    // sample request: a weekday 3 to 7 days from today
-    $d = static_now()->modify('+' . (3 + $id % 5) . ' days');
-    while ((int) $d->format('N') >= 6) $d = $d->modify('+1 day');
-    $slots = details_time_slots();
-    return static_interview_request($id, $d->format('Y-m-d'), $slots[$id % count($slots)]['value'], 'sample');
+    $row = null;
+    try {
+        require_once __DIR__ . '/../src/Repositories/ScheduleRepository.php';
+        $row = repo_schedule_find($id);
+    } catch (Throwable $e) {
+        error_log('details_interview DB error: ' . $e->getMessage());
+    }
+    return $row;
 }
 
 // What the page needs, with the dates already written out
@@ -672,18 +606,23 @@ function details_interview_view(?array $iv): ?array
 // HR: "Available". Throws InvalidArgumentException (safe to show to HR).
 function details_interview_approve(array $a): array
 {
-    $iv = static_interview_get((int) $a['id']);
+    $iv = null;
+    try {
+        require_once __DIR__ . '/../src/Repositories/ScheduleRepository.php';
+        $iv = repo_schedule_find((int) $a['id']);
+    } catch (Throwable $e) {
+        error_log('details_interview_approve DB error: ' . $e->getMessage());
+    }
     if (!$iv) throw new InvalidArgumentException('This applicant has not chosen an interview schedule yet.');
     if ($iv['status'] !== 'awaiting') throw new InvalidArgumentException('This schedule was already answered. Refresh the page.');
 
-    $iv = static_store_update(function (array &$store) use ($a) {
-        $row = &$store['interviews'][(int) $a['id']];
-        $row['status']  = 'confirmed';
-        $row['date']    = $row['preferred_date'];
-        $row['time']    = $row['preferred_time'];
-        $row['updated'] = static_now()->format('Y-m-d H:i');
-        return $row;
-    });
+    try {
+        require_once __DIR__ . '/../src/Repositories/ScheduleRepository.php';
+        $iv = repo_schedule_approve((int) $a['id']);
+    } catch (Throwable $e) {
+        error_log('details_interview_approve DB error: ' . $e->getMessage());
+        throw $e;
+    }
     $email = details_email('confirmed', $a, $iv);
     details_send_email($email, (int) $a['id'], 'confirmed');
     return [$iv, $email];
@@ -693,12 +632,18 @@ function details_interview_approve(array $a): array
 // Monday to Friday, one of the listed times.
 function details_interview_reschedule(array $a, string $date, string $time): array
 {
-    $iv = static_interview_get((int) $a['id']);
+    $iv = null;
+    try {
+        require_once __DIR__ . '/../src/Repositories/ScheduleRepository.php';
+        $iv = repo_schedule_find((int) $a['id']);
+    } catch (Throwable $e) {
+        error_log('details_interview_reschedule DB error: ' . $e->getMessage());
+    }
     if (!$iv) throw new InvalidArgumentException('This applicant has not chosen an interview schedule yet.');
 
     $d = DateTimeImmutable::createFromFormat('Y-m-d', $date);
     if (!$d || $d->format('Y-m-d') !== $date)                       throw new InvalidArgumentException('Please choose a date.');
-    $today = static_now();
+    $today = new DateTimeImmutable('now', new DateTimeZone('Asia/Manila'));
     if ($date < $today->format('Y-m-d'))                            throw new InvalidArgumentException('Please choose today or a later date.');
     if ($date > $today->modify('+60 days')->format('Y-m-d'))        throw new InvalidArgumentException('Please choose a date within the next 60 days.');
     if ((int) $d->format('N') > 5)                                  throw new InvalidArgumentException('Interviews are held Monday to Friday. Please choose a weekday.');
@@ -710,14 +655,13 @@ function details_interview_reschedule(array $a, string $date, string $time): arr
         throw new InvalidArgumentException('That is the same schedule as before. Choose a different date or time.');
     }
 
-    $iv = static_store_update(function (array &$store) use ($a, $date, $time) {
-        $row = &$store['interviews'][(int) $a['id']];
-        $row['status']  = 'rescheduled';
-        $row['date']    = $date;
-        $row['time']    = $time;
-        $row['updated'] = static_now()->format('Y-m-d H:i');
-        return $row;
-    });
+    try {
+        require_once __DIR__ . '/../src/Repositories/ScheduleRepository.php';
+        $iv = repo_schedule_reschedule((int) $a['id'], $date, $time);
+    } catch (Throwable $e) {
+        error_log('details_interview_reschedule DB error: ' . $e->getMessage());
+        throw $e;
+    }
     $email = details_email('rescheduled', $a, $iv);
     details_send_email($email, (int) $a['id'], 'rescheduled');
     return [$iv, $email];
@@ -743,13 +687,6 @@ function details_status_url(): string
 // The latest email that was sent to this applicant (so HR can open "View Email" again after a refresh)
 function details_last_email(int $applicantId): ?array
 {
-    $outbox = static_store_read()['outbox'] ?? [];
-    if (!is_array($outbox)) return null;
-    foreach (array_reverse(array_values($outbox)) as $m) {
-        if (is_array($m) && (int) ($m['applicant_id'] ?? 0) === $applicantId) {
-            return ['to' => (string) $m['to'], 'subject' => (string) $m['subject'], 'html' => (string) $m['html']];
-        }
-    }
     return null;
 }
 
@@ -851,24 +788,35 @@ function details_email(string $kind, array $a, array $iv): array
     return ['to' => (string) $a['email'], 'subject' => $subject, 'html' => $html];
 }
 
-// The email is "sent" by writing it to the outbox of the store (that is how it can be shown again).
-// BACKEND: replace the body of this function with a call to src/Services/EmailService.php (SendGrid)
-// and keep the return value.
 function details_send_email(array $email, int $applicantId, string $kind): bool
 {
-    return (bool) static_store_update(function (array &$store) use ($email, $applicantId, $kind) {
-        if (!isset($store['outbox']) || !is_array($store['outbox'])) $store['outbox'] = [];
-        $store['outbox'][] = [
-            'applicant_id' => $applicantId,
-            'kind'         => $kind,
-            'to'           => $email['to'],
-            'subject'      => $email['subject'],
-            'html'         => $email['html'],
-            'sent_at'      => static_now()->format('Y-m-d H:i:s')
-        ];
-        $store['outbox'] = array_slice($store['outbox'], -200);      // keep the last 200
-        return true;
-    });
+    $sent = false;
+    try {
+        require_once __DIR__ . '/../src/Services/EmailService.php';
+        $svc = new EmailService();
+        $sent = $svc->sendEmail(
+            (string) ($email['to'] ?? ''),
+            (string) ($email['subject'] ?? ''),
+            (string) ($email['html'] ?? ''),
+            ''
+        );
+    } catch (Throwable $e) {
+        error_log('details_send_email EmailService error: ' . $e->getMessage());
+        $sent = false;
+    }
+
+    // Activity logging replaces the old static outbox write.
+    try {
+        require_once __DIR__ . '/../src/Repositories/ActivityRepository.php';
+        require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
+        $app  = repo_find_applicant($applicantId);
+        $name = is_array($app) ? (string) ($app['name'] ?? ('#' . $applicantId)) : ('#' . $applicantId);
+        repo_log_activity('Email Sent', $name . ' · ' . $kind, null);
+    } catch (Throwable $e) {
+        error_log('details_send_email activity log error: ' . $e->getMessage());
+    }
+
+    return $sent;
 }
 
 
@@ -901,30 +849,6 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
         details_respond(['status' => 'error', 'message' => 'Your session has ended. Please log in again.'], 403);
     }
 
-    // ---- the CV file ----
-    if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['file'] ?? '') === 'cv') {
-        $cv = null;
-        foreach (static_store_read()['applicants'] as $row) {
-            if ((int) $row['id'] === (int) ($_GET['id'] ?? 0)) { $cv = $row['cv'] ?? null; break; }
-        }
-        $path = is_array($cv) && !empty($cv['file']) ? DETAILS_CV_DIR . '/' . basename((string) $cv['file']) : '';
-        if ($path === '' || !is_file($path)) {
-            http_response_code(404);
-            header('Content-Type: text/plain; charset=UTF-8');
-            echo 'No CV file was found for this applicant.';
-            exit;
-        }
-        $ext   = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-        $types = ['pdf' => 'application/pdf', 'doc' => 'application/msword',
-                  'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-        header('Content-Type: ' . ($types[$ext] ?? 'application/octet-stream'));
-        header('Content-Disposition: inline; filename="' . str_replace(['"', "\r", "\n"], '', (string) $cv['name']) . '"');
-        header('X-Content-Type-Options: nosniff');
-        header('Content-Length: ' . filesize($path));
-        readfile($path);
-        exit;
-    }
-
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         details_respond(['status' => 'error', 'message' => 'Invalid request.'], 405);
     }
@@ -945,12 +869,14 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
         switch ($action) {
             case 'interview_approve':
                 [$iv, $email] = details_interview_approve($applicant);
-                static_log('Interview Confirmed', $applicant['name'] . ' · ' . details_date_label($iv['date']) . ', ' . details_time_label($iv['time']));
+                require_once __DIR__ . '/../src/Repositories/ActivityRepository.php';
+                repo_log_activity('Interview Confirmed', $applicant['name'] . ' · ' . details_date_label($iv['date']) . ', ' . details_time_label($iv['time']));
                 break;
 
             case 'interview_reschedule':
                 [$iv, $email] = details_interview_reschedule($applicant, (string) ($input['date'] ?? ''), (string) ($input['time'] ?? ''));
-                static_log('Interview Rescheduled', $applicant['name'] . ' · ' . details_date_label($iv['date']) . ', ' . details_time_label($iv['time']));
+                require_once __DIR__ . '/../src/Repositories/ActivityRepository.php';
+                repo_log_activity('Interview Rescheduled', $applicant['name'] . ' · ' . details_date_label($iv['date']) . ', ' . details_time_label($iv['time']));
                 break;
 
             default:

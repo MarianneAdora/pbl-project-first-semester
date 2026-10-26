@@ -27,7 +27,7 @@ if ($requireVerification) {
 }
 
 // ---- Video rules + questions (same store as Admin, DB fallback) -----
-require_once __DIR__ . '/static-applicant.php';
+require_once __DIR__ . '/applicant-helpers.php';
 $video = static_video_rules();
 $questions = static_questionnaire();
 if (empty($questions)) {

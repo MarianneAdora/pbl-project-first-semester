@@ -40,7 +40,8 @@
      static_admin_overview()     ->  three COUNT(*) queries
    ========================================================================== */
 
-require_once __DIR__ . '/../applicant/static-applicant.php';   // also loads hr/static-data.php (the store)
+require_once __DIR__ . '/../hr/static-data.php';               // store functions (static_store_read, etc.)
+require_once __DIR__ . '/../applicant/applicant-helpers.php';   // applicant helpers (DB-backed)
 
 /* ==========================================================================
    SAFETY NET: the admin pages need these functions from hr/static-data.php.
