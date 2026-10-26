@@ -46,8 +46,19 @@ if (!defined('TRIGGER_SCORING_INTERNAL')) {
     }
 }
 
-$json  = json_decode((string) file_get_contents('php://input'), true);
-$input = is_array($json) ? $json : $_POST;
+// Internal server-side callers (submit-response.php) inject the applicant id via $_POST
+// or the active session; reading php://input again there would re-consume the original
+// JSON request body and lose the applicant_id. Prefer those sources when internal.
+if (defined('TRIGGER_SCORING_INTERNAL')) {
+    $json  = null;
+    $input = is_array($_POST) ? $_POST : [];
+    if (!isset($input['applicant_id']) && isset($_SESSION['applicant_id'])) {
+        $input['applicant_id'] = $_SESSION['applicant_id'];
+    }
+} else {
+    $json  = json_decode((string) file_get_contents('php://input'), true);
+    $input = is_array($json) ? $json : $_POST;
+}
 
 // When called from submit-response.php the applicant_id is injected directly.
 if (!isset($input['applicant_id']) && !defined('TRIGGER_SCORING_INTERNAL')) {

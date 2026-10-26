@@ -619,7 +619,22 @@ $pageData = [
         window.DETAILS = <?php echo json_encode($pageData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;
     </script>
     <!-- Shared HR behaviour first, then this page's script -->
-    <script>window.HR_SERVER_ARCHIVE = <?php echo json_encode(static_archive_sync(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
+    <script>window.HR_SERVER_ARCHIVE = <?php
+try {
+    require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
+    $archivedRows = repo_applicants_archived();
+    $ids = [];
+    $at = [];
+    foreach ($archivedRows as $a) {
+        $aid = (int) $a['id'];
+        $ids[] = $aid;
+        if (!empty($a['archived_at'])) $at[$aid] = (int) (strtotime((string) $a['archived_at']) * 1000);
+    }
+    echo json_encode(['ids' => $ids, 'at' => (object) $at], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+} catch (Throwable $e) {
+    echo json_encode(['ids' => [], 'at' => new stdClass()], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+}
+?>;</script>
     <script src="../assets/js/hr.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/hr.js'); ?>"></script>
 </body>
 </html>
