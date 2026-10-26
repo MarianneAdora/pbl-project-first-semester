@@ -22,7 +22,7 @@ class RiskScoringService
     private PDO $pdo;
     private array $cfg;
 
-    public function __construct(PDO $pdo = null)
+    public function __construct(?PDO $pdo = null)
     {
         $this->pdo = $pdo ?? db();
         $this->cfg = require __DIR__ . '/../../config/risk_config.php';

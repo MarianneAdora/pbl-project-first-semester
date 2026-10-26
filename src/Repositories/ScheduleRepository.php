@@ -11,7 +11,7 @@ function repo_schedule_interview_type(): string
     return SCHEDULE_INTERVIEW_TYPE;
 }
 
-function repo_schedule_find_raw(int $applicantId, PDO $pdo = null): ?array
+function repo_schedule_find_raw(int $applicantId, ?PDO $pdo = null): ?array
 {
     $pdo = $pdo ?: db();
     $st = $pdo->prepare(
@@ -48,7 +48,7 @@ function repo_schedule_map_row(array $row): array
     ];
 }
 
-function repo_schedule_find(int $applicantId, PDO $pdo = null): ?array
+function repo_schedule_find(int $applicantId, ?PDO $pdo = null): ?array
 {
     $pdo = $pdo ?: db();
     $row = repo_schedule_find_raw($applicantId, $pdo);
@@ -56,7 +56,7 @@ function repo_schedule_find(int $applicantId, PDO $pdo = null): ?array
     return repo_schedule_map_row($row);
 }
 
-function repo_schedule_request(int $applicantId, string $date, string $time24, string $source = 'applicant', PDO $pdo = null): array
+function repo_schedule_request(int $applicantId, string $date, string $time24, string $source = 'applicant', ?PDO $pdo = null): array
 {
     $pdo = $pdo ?: db();
     $raw = repo_schedule_find_raw($applicantId, $pdo);
@@ -88,7 +88,7 @@ function repo_schedule_request(int $applicantId, string $date, string $time24, s
     return $found;
 }
 
-function repo_schedule_approve(int $applicantId, PDO $pdo = null): array
+function repo_schedule_approve(int $applicantId, ?PDO $pdo = null): array
 {
     $pdo = $pdo ?: db();
     $raw = repo_schedule_find_raw($applicantId, $pdo);
@@ -105,7 +105,7 @@ function repo_schedule_approve(int $applicantId, PDO $pdo = null): array
     return $found;
 }
 
-function repo_schedule_reschedule(int $applicantId, string $date, string $time24, PDO $pdo = null): array
+function repo_schedule_reschedule(int $applicantId, string $date, string $time24, ?PDO $pdo = null): array
 {
     $pdo = $pdo ?: db();
     $raw = repo_schedule_find_raw($applicantId, $pdo);

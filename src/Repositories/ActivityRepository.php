@@ -7,7 +7,7 @@
 
 require_once __DIR__ . '/../Helpers/db.php';
 
-function repo_log_activity(string $activity, string $details = '-', ?string $actor = null, PDO $pdo = null): void
+function repo_log_activity(string $activity, string $details = '-', ?string $actor = null, ?PDO $pdo = null): void
 {
     $pdo = $pdo ?: db();
     if ($actor === null) {
@@ -27,7 +27,7 @@ function repo_log_activity(string $activity, string $details = '-', ?string $act
     }
 }
 
-function repo_recent_activity(PDO $pdo = null, int $limit = 10): array
+function repo_recent_activity(?PDO $pdo = null, int $limit = 10): array
 {
     $pdo = $pdo ?: db();
     $st = $pdo->prepare(
@@ -47,14 +47,14 @@ function repo_recent_activity(PDO $pdo = null, int $limit = 10): array
     return $out;
 }
 
-function repo_activities_week(PDO $pdo = null): int
+function repo_activities_week(?PDO $pdo = null): int
 {
     $pdo = $pdo ?: db();
     $st = $pdo->query("SELECT COUNT(*) FROM activity_log WHERE created_at >= (NOW() - INTERVAL '7 days')");
     return (int) $st->fetchColumn();
 }
 
-function repo_applicant_names(array $ids, bool $archived = false, PDO $pdo = null): array
+function repo_applicant_names(array $ids, bool $archived = false, ?PDO $pdo = null): array
 {
     $pdo = $pdo ?: db();
     if (empty($ids)) return [];

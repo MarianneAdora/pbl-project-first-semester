@@ -6,7 +6,7 @@ require_once __DIR__ . '/../Helpers/db.php';
 require_once __DIR__ . '/../Helpers/display.php';
 require_once __DIR__ . '/ActivityRepository.php';
 
-function repo_applicants_active(PDO $pdo = null): array
+function repo_applicants_active(?PDO $pdo = null): array
 {
     $pdo = $pdo ?: db();
     $rows = $pdo->query(
@@ -34,7 +34,7 @@ function repo_generate_reference_code(PDO $pdo): string
  * Pass $cvUrl (Cloudinary secure URL) to store the uploaded CV; otherwise cv_file_url stays NULL.
  * Invitation email is still not sent here. Returns the new row mapped for the frontend.
  */
-function repo_add_applicant(string $name, string $email, string $phone, PDO $pdo = null, ?string $cvUrl = null): array
+function repo_add_applicant(string $name, string $email, string $phone, ?PDO $pdo = null, ?string $cvUrl = null): array
 {
     $pdo = $pdo ?: db();
 
@@ -65,7 +65,7 @@ function repo_add_applicant(string $name, string $email, string $phone, PDO $pdo
     return ['id' => $id, 'name' => $name, 'email' => $email, 'contact' => $phone, 'status' => 'Pending', 'result' => null, 'cv_file_url' => $cvUrl, 'secure_token' => $token];
 }
 
-function repo_find_applicant(int $id, PDO $pdo = null): ?array
+function repo_find_applicant(int $id, ?PDO $pdo = null): ?array
 {
     $pdo = $pdo ?: db();
     $st = $pdo->prepare(
@@ -88,7 +88,7 @@ function repo_find_applicant(int $id, PDO $pdo = null): ?array
  * Find an applicant by their email-link token (opening.php?token=...).
  * Only non-deleted rows; archived applicants cannot start screening.
  */
-function repo_find_applicant_by_token(string $token, PDO $pdo = null): ?array
+function repo_find_applicant_by_token(string $token, ?PDO $pdo = null): ?array
 {
     $pdo = $pdo ?: db();
     $token = trim($token);
@@ -113,7 +113,7 @@ function repo_find_applicant_by_token(string $token, PDO $pdo = null): ?array
  * Find an applicant by email address.
  * Only non-deleted rows.
  */
-function repo_find_applicant_by_email(string $email, PDO $pdo = null): ?array
+function repo_find_applicant_by_email(string $email, ?PDO $pdo = null): ?array
 {
     $pdo = $pdo ?: db();
     $email = strtolower(trim($email));
@@ -138,7 +138,7 @@ function repo_find_applicant_by_email(string $email, PDO $pdo = null): ?array
  * Mark an applicant In Progress when they open the questionnaire
  * (Screening.startOnce). No-op for other statuses.
  */
-function repo_mark_in_progress(int $id, PDO $pdo = null): int
+function repo_mark_in_progress(int $id, ?PDO $pdo = null): int
 {
     $pdo = $pdo ?: db();
     $st = $pdo->prepare("UPDATE applicant SET status = 'in_progress' WHERE applicant_id = :id AND status = 'pending' AND deleted_at IS NULL");
@@ -151,7 +151,7 @@ function repo_mark_in_progress(int $id, PDO $pdo = null): int
  * Sets deleted_at = NOW(); archived rows disappear from the list, appear in Archive.
  * Returns number of rows actually archived.
  */
-function repo_archive_applicants(array $ids, PDO $pdo = null): int
+function repo_archive_applicants(array $ids, ?PDO $pdo = null): int
 {
     $pdo = $pdo ?: db();
     $ids = array_values(array_unique(array_map('intval', $ids)));
@@ -166,7 +166,7 @@ function repo_archive_applicants(array $ids, PDO $pdo = null): int
 /**
  * Restore archived applicants: Archive Restore -> back to Screening List.
  */
-function repo_restore_applicants(array $ids, PDO $pdo = null): int
+function repo_restore_applicants(array $ids, ?PDO $pdo = null): int
 {
     $pdo = $pdo ?: db();
     $ids = array_values(array_unique(array_map('intval', $ids)));
@@ -185,7 +185,7 @@ function repo_restore_applicants(array $ids, PDO $pdo = null): int
  * score via response) are removed automatically by ON DELETE CASCADE.
  * Returns number of rows actually deleted.
  */
-function repo_purge_applicants(array $ids, PDO $pdo = null): int
+function repo_purge_applicants(array $ids, ?PDO $pdo = null): int
 {
     $pdo = $pdo ?: db();
     $ids = array_values(array_unique(array_map('intval', $ids)));
@@ -203,7 +203,7 @@ function repo_purge_applicants(array $ids, PDO $pdo = null): int
  * "stays here for 30 days before they are permanently deleted" promise holds.
  * Returns number of rows removed.
  */
-function repo_purge_expired_applicants(int $days = 30, PDO $pdo = null): int
+function repo_purge_expired_applicants(int $days = 30, ?PDO $pdo = null): int
 {
     $pdo = $pdo ?: db();
     $days = max(1, $days);
@@ -243,7 +243,7 @@ function repo_set_status(int $id, string $status, ?string $result = null): bool
     return $st->rowCount() > 0;
 }
 
-function repo_applicants_archived(PDO $pdo = null): array
+function repo_applicants_archived(?PDO $pdo = null): array
 {
     $pdo = $pdo ?: db();
     $rows = $pdo->query(
@@ -259,7 +259,7 @@ function repo_applicants_archived(PDO $pdo = null): array
     return $out;
 }
 
-function repo_dashboard_stats(PDO $pdo = null): array
+function repo_dashboard_stats(?PDO $pdo = null): array
 {
     $pdo = $pdo ?: db();
     $rows = $pdo->query(
@@ -285,7 +285,7 @@ function repo_dashboard_stats(PDO $pdo = null): array
  * Recent Applicants for the HR dashboard: newest created first, with a display 'updated' label.
  * (No updated_at column exists; created_at is the authoritative timestamp.)
  */
-function repo_applicants_recent(PDO $pdo = null, int $limit = 10): array
+function repo_applicants_recent(?PDO $pdo = null, int $limit = 10): array
 {
     $pdo = $pdo ?: db();
     $st = $pdo->prepare(

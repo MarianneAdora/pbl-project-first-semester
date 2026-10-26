@@ -9,7 +9,7 @@ require_once __DIR__ . '/../Helpers/db.php';
  * Fetch the applicant's screening submission, if any.
  * Returns the raw response row (answers_json decoded when possible) or null.
  */
-function repo_response_find(int $applicantId, PDO $pdo = null): ?array
+function repo_response_find(int $applicantId, ?PDO $pdo = null): ?array
 {
     $pdo = $pdo ?: db();
     $st = $pdo->prepare(
@@ -33,7 +33,7 @@ function repo_response_find(int $applicantId, PDO $pdo = null): ?array
  * Mark screening started (questionnaire opened): applicant pending -> in_progress,
  * response row created with started_at. Safe to call repeatedly.
  */
-function repo_response_start(int $applicantId, PDO $pdo = null): void
+function repo_response_start(int $applicantId, ?PDO $pdo = null): void
 {
     $pdo = $pdo ?: db();
     $pdo->prepare(
@@ -54,7 +54,7 @@ function repo_response_start(int $applicantId, PDO $pdo = null): void
  * $answers: [question_id(int) => answer] — Yes/No strings, scale ints, date/text strings.
  * $video: ['url' => Cloudinary secure_url, 'hash' => sha256 hex (optional)].
  */
-function repo_response_submit(int $applicantId, array $answers, array $video = [], PDO $pdo = null): void
+function repo_response_submit(int $applicantId, array $answers, array $video = [], ?PDO $pdo = null): void
 {
     $pdo = $pdo ?: db();
 
@@ -217,7 +217,7 @@ function repo_response_submit(int $applicantId, array $answers, array $video = [
  * Fetch the persisted risk score for an applicant, if any.
  * Returns ['risk_score', 'risk_flags', 'narrative', 'submitted_at'] or null.
  */
-function repo_score_find(int $applicantId, PDO $pdo = null): ?array
+function repo_score_find(int $applicantId, ?PDO $pdo = null): ?array
 {
     $pdo = $pdo ?: db();
     $st = $pdo->prepare(

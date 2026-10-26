@@ -5,7 +5,7 @@
 require_once __DIR__ . '/../Helpers/db.php';
 require_once __DIR__ . '/ActivityRepository.php';
 
-function repo_admin_overview(PDO $pdo = null): array
+function repo_admin_overview(?PDO $pdo = null): array
 {
     $pdo = $pdo ?: db();
     $hrTotal = (int) $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'hr' AND deleted_at IS NULL")->fetchColumn();
@@ -24,7 +24,7 @@ function repo_admin_overview(PDO $pdo = null): array
 // ---------------------------------------------------------------------------
 // HR ACCOUNTS LIST (hr-list.php)
 // ---------------------------------------------------------------------------
-function repo_admin_accounts(PDO $pdo = null): array
+function repo_admin_accounts(?PDO $pdo = null): array
 {
     $pdo = $pdo ?: db();
     $rows = $pdo->query(
@@ -48,7 +48,7 @@ function repo_admin_accounts(PDO $pdo = null): array
 // ---------------------------------------------------------------------------
 // QUESTIONS LIST (question-list.php)
 // ---------------------------------------------------------------------------
-function repo_admin_questions_list(PDO $pdo = null): array
+function repo_admin_questions_list(?PDO $pdo = null): array
 {
     $pdo = $pdo ?: db();
     $rows = $pdo->query(
@@ -101,7 +101,7 @@ function repo_admin_questions_list(PDO $pdo = null): array
 // ---------------------------------------------------------------------------
 define('ARCHIVE_DAYS', 30);
 
-function repo_admin_archive(PDO $pdo = null): array
+function repo_admin_archive(?PDO $pdo = null): array
 {
     $pdo = $pdo ?: db();
     // auto-purge expired rows first
@@ -150,7 +150,7 @@ function repo_admin_archive(PDO $pdo = null): array
     return ['questions' => $questions, 'accounts' => $accounts];
 }
 
-function repo_admin_notify(PDO $pdo = null): array
+function repo_admin_notify(?PDO $pdo = null): array
 {
     $pdo = $pdo ?: db();
     $rows = $pdo->query(
@@ -174,7 +174,7 @@ function repo_admin_notify(PDO $pdo = null): array
 // ---------------------------------------------------------------------------
 // ARCHIVE ACTIONS
 // ---------------------------------------------------------------------------
-function repo_account_archive(int $id, PDO $pdo = null): bool
+function repo_account_archive(int $id, ?PDO $pdo = null): bool
 {
     $pdo = $pdo ?: db();
     $st = $pdo->prepare("UPDATE users SET deleted_at = NOW() WHERE user_id = :id AND role = 'hr' AND deleted_at IS NULL");
@@ -182,7 +182,7 @@ function repo_account_archive(int $id, PDO $pdo = null): bool
     return $st->rowCount() > 0;
 }
 
-function repo_account_restore(int $id, PDO $pdo = null): bool
+function repo_account_restore(int $id, ?PDO $pdo = null): bool
 {
     $pdo = $pdo ?: db();
     $st = $pdo->prepare("UPDATE users SET deleted_at = NULL WHERE user_id = :id AND role = 'hr' AND deleted_at IS NOT NULL");
@@ -190,7 +190,7 @@ function repo_account_restore(int $id, PDO $pdo = null): bool
     return $st->rowCount() > 0;
 }
 
-function repo_account_purge(int $id, PDO $pdo = null): bool
+function repo_account_purge(int $id, ?PDO $pdo = null): bool
 {
     $pdo = $pdo ?: db();
     $st = $pdo->prepare("DELETE FROM users WHERE user_id = :id AND role = 'hr' AND deleted_at IS NOT NULL");
@@ -198,7 +198,7 @@ function repo_account_purge(int $id, PDO $pdo = null): bool
     return $st->rowCount() > 0;
 }
 
-function repo_question_archive(int $id, PDO $pdo = null): bool
+function repo_question_archive(int $id, ?PDO $pdo = null): bool
 {
     $pdo = $pdo ?: db();
     $active = (int) $pdo->query("SELECT COUNT(*) FROM question_config WHERE deleted_at IS NULL AND is_active = TRUE AND question_id != $id")->fetchColumn();
@@ -208,7 +208,7 @@ function repo_question_archive(int $id, PDO $pdo = null): bool
     return $st->rowCount() > 0;
 }
 
-function repo_question_restore(int $id, PDO $pdo = null): bool
+function repo_question_restore(int $id, ?PDO $pdo = null): bool
 {
     $pdo = $pdo ?: db();
     $st = $pdo->prepare('UPDATE question_config SET deleted_at = NULL WHERE question_id = :id AND deleted_at IS NOT NULL');
@@ -216,7 +216,7 @@ function repo_question_restore(int $id, PDO $pdo = null): bool
     return $st->rowCount() > 0;
 }
 
-function repo_question_purge(int $id, PDO $pdo = null): bool
+function repo_question_purge(int $id, ?PDO $pdo = null): bool
 {
     $pdo = $pdo ?: db();
     $st = $pdo->prepare('DELETE FROM question_config WHERE question_id = :id AND deleted_at IS NOT NULL');
@@ -229,7 +229,7 @@ function repo_question_purge(int $id, PDO $pdo = null): bool
  * Reads question_type directly (no derivation). answer_config and passing_answer
  * use the same normalized keys that static_admin_clean_question() writes.
  */
-function db_questions_for_applicant(PDO $pdo = null): array
+function db_questions_for_applicant(?PDO $pdo = null): array
 {
     $pdo = $pdo ?: db();
     $rows = $pdo->query(
@@ -317,7 +317,7 @@ function db_questions_for_applicant(PDO $pdo = null): array
     return $out;
 }
 
-function repo_admin_questions(PDO $pdo = null): array
+function repo_admin_questions(?PDO $pdo = null): array
 {
     $pdo = $pdo ?: db();
     return $pdo->query(
@@ -331,7 +331,7 @@ function repo_admin_questions(PDO $pdo = null): array
  * Build the exact stats shape admin.js expects:
  * { submissions, sections: [{no,name,count}], questions: [{id,section_no,section,text,type,status,answered,top,top_count,share,options,note,expected}] }
  */
-function repo_admin_question_stats(PDO $pdo = null): array
+function repo_admin_question_stats(?PDO $pdo = null): array
 {
     $pdo = $pdo ?: db();
     $questions = repo_admin_questions($pdo);
