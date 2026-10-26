@@ -1,6 +1,6 @@
 <?php
-require_once 'src/Helpers/functions.php';
-require_once 'src/Services/EmailService.php';
+require_once __DIR__ . '/../src/Helpers/functions.php';
+require_once __DIR__ . '/../src/Services/EmailService.php';
 
 $emailService = new EmailService();
 
