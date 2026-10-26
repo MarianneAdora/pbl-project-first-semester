@@ -386,7 +386,7 @@ class RiskScoringService
     private function checkKnockouts(array $answers): array
     {
         $st = $this->pdo->query(
-            "SELECT question_id, question_text, passing_answer, is_knockout
+            "SELECT question_id, question_text, question_type, answer_config, passing_answer, is_knockout
              FROM question_config WHERE is_active = TRUE AND deleted_at IS NULL ORDER BY question_id"
         );
         $questions = $st->fetchAll();
@@ -395,15 +395,51 @@ class RiskScoringService
             if (empty($q['is_knockout'])) continue;
             $qid     = (string) $q['question_id'];
             $given   = $answers[$qid] ?? $answers['q' . $qid] ?? null;
-            $passingRaw = (string) ($q['passing_answer'] ?? '');
-            // passing_answer may be stored as JSON like {"answer":"Yes"}; normalise to the scalar answer.
-            $passing = $passingRaw;
-            $decodedPassing = json_decode($passingRaw, true);
-            if (is_array($decodedPassing) && isset($decodedPassing['answer'])) {
-                $passing = (string) $decodedPassing['answer'];
+            if ($given === null) continue;
+            $passCfg = $q['passing_answer'] ?? null;
+            if (is_string($passCfg)) $passCfg = json_decode($passCfg, true);
+            if (!is_array($passCfg)) $passCfg = [];
+
+            $cfg = $q['answer_config'] ?? null;
+            if (is_string($cfg)) $cfg = json_decode($cfg, true);
+            if (!is_array($cfg)) $cfg = [];
+
+            $type = (string) ($q['question_type'] ?? '');
+            if ($type === 'scale' || isset($passCfg['min'])) {
+                $min = (int) ($passCfg['min'] ?? 1);
+                if ($min < 1) $min = 1;
+                $givenNum = is_numeric($given) ? (int) $given : 0;
+                if (is_string($given)) {
+                    $decodedGiven = json_decode($given, true);
+                    if (is_array($decodedGiven) && isset($decodedGiven['answer']) && is_numeric($decodedGiven['answer'])) {
+                        $givenNum = (int) $decodedGiven['answer'];
+                    }
+                }
+                $maxRating = (int) ($cfg['max'] ?? $passCfg['max'] ?? 5);
+                if ($maxRating < 1) $maxRating = 5;
+                $met = $givenNum >= $min;
+                $out[] = [
+                    'id'       => $qid,
+                    'question' => (string) $q['question_text'],
+                    'given'    => (string) $given,
+                    'expected' => 'At least ' . $min . ' of ' . $maxRating,
+                    'met'      => $met,
+                    'reason'   => $met ? '' : 'Rated ' . $givenNum . '; the lowest passing rating is ' . $min . '.',
+                ];
+                continue;
             }
-            if ($passing === '' || $given === null) continue;
-            // Normalise the given answer the same way (it may also be a JSON string).
+
+            $passing = isset($passCfg['answer']) ? (string) $passCfg['answer'] : trim((string) ($q['passing_answer'] ?? ''));
+            if ($passing === '' && is_string($q['passing_answer'] ?? null)) {
+                $decodedPassing = json_decode((string) $q['passing_answer'], true);
+                if (is_array($decodedPassing) && isset($decodedPassing['answer'])) {
+                    $passing = (string) $decodedPassing['answer'];
+                }
+            }
+            // passing_answer may be stored as JSON like {"answer":"Yes"}; normalise to the scalar answer.
+            if ($given === null) continue;
+            if ($passing === '') continue;
+
             $givenNorm = $given;
             if (is_string($given)) {
                 $decodedGiven = json_decode($given, true);
@@ -411,7 +447,18 @@ class RiskScoringService
                     $givenNorm = $decodedGiven['answer'];
                 }
             }
+
             $met = strcasecmp(trim((string) $givenNorm), trim($passing)) === 0;
+
+            $passFollow = isset($passCfg['pass_follow']) && is_array($passCfg['pass_follow']) ? $passCfg['pass_follow'] : [];
+            $when = (string) ($cfg['followup_when'] ?? 'Yes');
+            if ($met && $passFollow && strcasecmp($passing, $when) === 0 && strcasecmp(trim((string) $givenNorm), $when) === 0) {
+                $followGiven = $answers[$qid . ':follow'] ?? $answers['q' . $qid . ':follow']
+                    ?? $answers[$qid . '_follow'] ?? $answers['q' . $qid . '_follow'] ?? null;
+                if (!in_array(trim((string) $followGiven), array_map('strval', $passFollow), true)) {
+                    $met = false;
+                }
+            }
             $out[] = [
                 'id'       => $qid,
                 'question' => (string) $q['question_text'],
