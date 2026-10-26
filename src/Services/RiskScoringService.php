@@ -284,7 +284,7 @@ class RiskScoringService
     private function fetchApplicant(int $id): array
     {
         $st = $this->pdo->prepare(
-            "SELECT applicant_id, name, email, phone_number, status, result, invite_link_clicked_at
+            "SELECT applicant_id, name, email, phone_number, status, result
              FROM applicant WHERE applicant_id = :id AND deleted_at IS NULL LIMIT 1"
         );
         $st->execute([':id' => $id]);

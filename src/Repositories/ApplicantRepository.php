@@ -302,3 +302,4 @@ function repo_applicants_recent(?PDO $pdo = null, int $limit = 10): array
     }
     return $out;
 }
+

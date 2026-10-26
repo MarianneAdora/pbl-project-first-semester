@@ -8,8 +8,6 @@ class Applicant {
     private $email;
     private $phone_number;
     private $cv_file_url;
-    private $device_fingerprint;
-    private $ip_address;
     private $status;
     private $result;
     private $deleted_at;
@@ -24,8 +22,6 @@ class Applicant {
         $this->email = $data['email'] ?? null;
         $this->phone_number = $data['phone_number'] ?? null;
         $this->cv_file_url = $data['cv_file_url'] ?? null;
-        $this->device_fingerprint = $data['device_fingerprint'] ?? null;
-        $this->ip_address = $data['ip_address'] ?? null;
         $this->status = $data['status'] ?? 'PENDING';
         $this->result = $data['result'] ?? null;
         $this->deleted_at = $data['deleted_at'] ?? null;

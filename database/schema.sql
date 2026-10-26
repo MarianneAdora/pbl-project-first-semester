@@ -19,8 +19,6 @@ CREATE TABLE users (
 -- ------------------------------------------------------------
 -- APPLICANT
 -- One row per invited applicant.
--- invite_link_clicked_at: recorded when the applicant first opens their invite
---   link; not scored because email scanners also open links within seconds.
 -- ------------------------------------------------------------
 CREATE TABLE applicant (
     applicant_id            SERIAL PRIMARY KEY,
@@ -31,12 +29,9 @@ CREATE TABLE applicant (
     email                   VARCHAR(255) NOT NULL,
     phone_number            VARCHAR(20),
     cv_file_url             VARCHAR(512),
-    device_fingerprint      VARCHAR(255),
-    ip_address              VARCHAR(45),
     status                  VARCHAR(20)  NOT NULL DEFAULT 'pending'
                                 CHECK (status IN ('pending', 'in_progress', 'submitted', 'reviewed', 'rejected', 'accepted')),
     result                  VARCHAR(20),
-    invite_link_clicked_at  TIMESTAMP,
     deleted_at              TIMESTAMP,
     created_at              TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
