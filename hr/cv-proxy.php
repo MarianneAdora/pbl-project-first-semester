@@ -21,14 +21,44 @@ try {
 $cvUrl = trim((string) ($row['cv_file_url'] ?? ''));
 if ($cvUrl === '') { http_response_code(404); exit('No CV on record for this applicant.'); }
 
-$ch = curl_init($cvUrl);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-curl_setopt($ch, CURLOPT_TIMEOUT, 60);
-$bytes = curl_exec($ch);
-$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-$contentType = (string) curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
-curl_close($ch);
+$context = stream_context_create([
+    'http' => [
+        'method' => 'GET',
+        'timeout' => 60,
+    ],
+    'ssl' => [
+        'verify_peer' => false,
+        'verify_peer_name' => false,
+    ],
+]);
+
+$bytes = @file_get_contents($cvUrl, false, $context);
+if ($bytes === false) {
+    http_response_code(502);
+    exit('Could not retrieve the CV from storage.');
+}
+
+$httpCode = 200;
+foreach ($http_response_header ?? [] as $header) {
+    if (stripos($header, 'HTTP/') === 0) {
+        preg_match('/HTTP\/[\d.]+ (\d+)/', $header, $m);
+        if (!empty($m[1])) $httpCode = (int) $m[1];
+        break;
+    }
+}
+
+if ($httpCode < 200 || $httpCode >= 300 || $bytes === '') {
+    http_response_code(502);
+    exit('Could not retrieve the CV from storage.');
+}
+
+$contentType = '';
+foreach ($http_response_header ?? [] as $header) {
+    if (stripos($header, 'Content-Type:') === 0) {
+        $contentType = trim(substr($header, strpos($header, ':') + 1));
+        break;
+    }
+}
 
 if ($bytes === false || $httpCode < 200 || $httpCode >= 300 || $bytes === '') {
     http_response_code(502);
