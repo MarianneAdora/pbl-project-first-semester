@@ -2163,7 +2163,8 @@ html.js.is-ready:where([data-page="dashboardhr"]) .fn-count {
 
 :where(html[data-page="dashboardhr"]) .fn-stage.is-link { cursor: pointer; }
 
-:where(html[data-page="dashboardhr"]) .fn-stage polygon {
+:where(html[data-page="dashboardhr"]) .fn-stage polygon,
+:where(html[data-page="dashboardhr"]) .fn-stage path {
     fill: var(--c);
     stroke: var(--fn-gap);
     stroke-width: 2.5;
@@ -4221,27 +4222,47 @@ html:where([data-page="details"])[data-theme="dark"] .tab-ink { background: #ff6
     border: 1px solid #cfd3d8;
     border-radius: 12px;
     cursor: pointer;
-    transition: border-color 0.2s ease, box-shadow 0.25s var(--ease-out), transform 0.3s var(--ease-pop);
+    transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.25s var(--ease-out), transform 0.3s var(--ease-pop);
 }
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-toggle svg {
-    width: 24px;
-    height: 24px;
-    fill: #1a1a1a;
-    transition: fill 0.2s ease;
+    width: 23px;
+    height: 23px;
+    fill: #3a3d42;
+    transition: fill 0.2s ease, transform 0.4s var(--ease-pop);
 }
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-toggle:hover {
-    transform: translateY(-2px) scale(1.06);
-    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+    border-color: rgba(163, 8, 30, 0.45);
+    background: #fdf6f7;
+    box-shadow: 0 8px 18px rgba(163, 8, 30, 0.12);
+}
+
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-toggle:hover svg {
+    fill: #a3081e;
+    transform: scale(1.12) rotate(-8deg);
 }
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-toggle:active {
-    transform: scale(0.96);
+    transform: scale(0.95);
 }
 
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-toggle:focus-visible {
+    outline: none;
+    border-color: #a3081e;
+    box-shadow: 0 0 0 3px rgba(163, 8, 30, 0.18);
+}
+
+/* panel open: the funnel is tinted and ringed so it reads as "on" */
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-toggle[aria-expanded="true"] {
-    background: #fdf1f3;
+    background: #fdecee;
+    border-color: rgba(163, 8, 30, 0.5);
+    box-shadow: 0 0 0 3px rgba(163, 8, 30, 0.1);
+}
+
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-toggle[aria-expanded="true"]:hover {
+    box-shadow: 0 0 0 3px rgba(163, 8, 30, 0.1), 0 8px 18px rgba(163, 8, 30, 0.14);
 }
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-toggle[aria-expanded="true"] svg {
@@ -4316,7 +4337,30 @@ html:where([data-page="details"])[data-theme="dark"] .tab-ink { background: #ff6
     border: 1px solid #d9dce1;
     border-radius: 16px;
     padding: 16px 18px 18px;
-    transition: transform 0.35s var(--ease-pop), box-shadow 0.3s var(--ease-out), border-color 0.2s ease;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+    transition: transform 0.35s var(--ease-pop), box-shadow 0.3s var(--ease-out), border-color 0.2s ease, background-color 0.2s ease;
+}
+
+/* thin accent line along the top edge: grows in while this filter is on */
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-card::before {
+    content: "";
+    position: absolute;
+    top: -1px;
+    left: 20px;
+    right: 20px;
+    height: 3px;
+    border-radius: 0 0 4px 4px;
+    background: linear-gradient(90deg, #a3081e, #e0334a);
+    opacity: 0;
+    transform: scaleX(0.35);
+    transform-origin: left center;
+    transition: opacity 0.25s ease, transform 0.45s var(--ease-out);
+    pointer-events: none;
+}
+
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-card.is-active::before {
+    opacity: 1;
+    transform: none;
 }
 
 /* lift on hover only: focus must not leave one card floating above the other */
@@ -4361,13 +4405,22 @@ html:where([data-page="details"])[data-theme="dark"] .tab-ink { background: #ff6
 }
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-label svg {
-    width: 18px;
-    height: 18px;
+    width: 28px;
+    height: 28px;
+    padding: 6px;
+    box-sizing: border-box;
+    border-radius: 9px;
+    background: #fdecee;
     fill: #a3081e;
-    transition: transform 0.35s var(--ease-pop);
+    transition: transform 0.35s var(--ease-pop), background-color 0.25s ease, fill 0.25s ease;
 }
 
-:where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-card:hover .filter-label svg { transform: scale(1.2) rotate(-6deg); }
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-card:hover .filter-label svg { transform: scale(1.1) rotate(-6deg); }
+
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-card.is-active .filter-label svg {
+    background: #a3081e;
+    fill: #ffffff;
+}
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-reset {
     border: none;
@@ -4395,14 +4448,15 @@ html:where([data-page="details"])[data-theme="dark"] .tab-ink { background: #ff6
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-btn {
     width: 100%;
-    height: 46px;
+    height: 48px;
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 0 14px;
+    padding: 0 10px 0 14px;
     background: #ffffff;
-    border: 1.5px solid #cfd3d8;
+    border: 1.5px solid #d3d7dc;
     border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
     font-size: 14px;
     font-weight: 700;
     color: #222222;
@@ -4412,7 +4466,7 @@ html:where([data-page="details"])[data-theme="dark"] .tab-ink { background: #ff6
 }
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-btn:hover {
-    border-color: #a3a8af;
+    border-color: #b3b8bf;
     background: #fafbfc;
     transform: translateY(-1px);
 }
@@ -4421,7 +4475,7 @@ html:where([data-page="details"])[data-theme="dark"] .tab-ink { background: #ff6
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown.open .dropdown-btn {
     outline: none;
     border-color: #a3081e;
-    box-shadow: 0 0 0 3px rgba(163, 8, 30, 0.12);
+    box-shadow: 0 0 0 4px rgba(163, 8, 30, 0.12);
 }
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-value {
@@ -4432,15 +4486,25 @@ html:where([data-page="details"])[data-theme="dark"] .tab-ink { background: #ff6
     text-overflow: ellipsis;
 }
 
+/* chevron sits in a round chip that tints when the list is open */
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-chevron {
-    width: 22px;
-    height: 22px;
+    width: 28px;
+    height: 28px;
+    padding: 3px;
+    box-sizing: border-box;
     flex-shrink: 0;
+    border-radius: 50%;
     fill: #1a1a1a;
-    transition: transform 0.35s var(--ease-pop);
+    transition: transform 0.35s var(--ease-pop), background-color 0.2s ease, fill 0.2s ease;
 }
 
-:where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown.open .dropdown-chevron { transform: rotate(180deg); }
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-btn:hover .dropdown-chevron { background: #eff0f2; }
+
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown.open .dropdown-chevron {
+    transform: rotate(180deg);
+    background: #fdecee;
+    fill: #a3081e;
+}
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .dot {
     width: 10px;
@@ -4452,21 +4516,27 @@ html:where([data-page="details"])[data-theme="dark"] .tab-ink { background: #ff6
     transition: background-color 0.25s ease, transform 0.3s var(--ease-pop);
 }
 
-:where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-btn:hover .dot { transform: scale(1.2); }
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-btn:hover .dot,
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-option:hover .dot,
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-option.is-focused .dot { transform: scale(1.2); }
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-menu {
     position: absolute;
-    top: calc(100% + 8px);
+    top: calc(100% + 10px);
     left: 0;
     right: 0;
     margin: 0;
-    padding: 6px;
+    padding: 8px;
     list-style: none;
     background: #ffffff;
     border: 1px solid #e1e4e8;
-    border-radius: 14px;
-    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.16), 0 4px 12px rgba(0, 0, 0, 0.06);
+    border-radius: 16px;
+    box-shadow: 0 22px 48px rgba(16, 24, 40, 0.18), 0 4px 14px rgba(16, 24, 40, 0.07);
     z-index: 50;
+    max-height: min(320px, 60vh);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
     opacity: 0;
     visibility: hidden;
     transform-origin: top center;
@@ -4482,18 +4552,34 @@ html:where([data-page="details"])[data-theme="dark"] .tab-ink { background: #ff6
 }
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-option {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 10px;
-    height: 42px;
+    height: 44px;
     padding: 0 12px;
-    border-radius: 9px;
+    border-radius: 10px;
     font-size: 14px;
     font-weight: 600;
     color: #2a2a2a;
     cursor: pointer;
     user-select: none;
-    transition: background-color 0.15s ease, color 0.15s ease, transform 0.25s var(--ease-pop);
+    transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.2s ease;
+}
+
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-option + .dropdown-option { margin-top: 2px; }
+
+/* "All ..." is the reset row: a hairline separates it from the real choices */
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-option[data-value="all"] { margin-bottom: 8px; }
+
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-option[data-value="all"]::after {
+    content: "";
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    bottom: -5px;
+    height: 1px;
+    background: #eceef1;
 }
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown.open .dropdown-option {
@@ -4504,36 +4590,49 @@ html:where([data-page="details"])[data-theme="dark"] .tab-ink { background: #ff6
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-option:hover,
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-option.is-focused {
     background: #fdf1f3;
-    transform: translateX(4px);
 }
 
+/* the picked option: soft tint + a bar on its left edge */
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-option[aria-selected="true"] {
+    background: #fdecee;
+    box-shadow: inset 3px 0 0 #a3081e;
     color: #a3081e;
     font-weight: 800;
+}
+
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-option[aria-selected="true"]:hover,
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-option[aria-selected="true"].is-focused {
+    background: #fbe3e7;
 }
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .opt-label { flex: 1; }
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .opt-count {
-    min-width: 26px;
-    padding: 2px 8px;
+    min-width: 28px;
+    padding: 2px 9px;
     border-radius: 20px;
     background: #f0f1f3;
     color: #666666;
     font-size: 11.5px;
     font-weight: 800;
+    font-variant-numeric: tabular-nums;
     text-align: center;
+    transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-option[aria-selected="true"] .opt-count {
-    background: #fadadf;
+    background: #f9d3d9;
     color: #a3081e;
 }
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .opt-check {
-    width: 18px;
-    height: 18px;
-    fill: #a3081e;
+    width: 20px;
+    height: 20px;
+    padding: 4px;
+    box-sizing: border-box;
+    border-radius: 50%;
+    background: #a3081e;
+    fill: #ffffff;
     opacity: 0;
     transform: scale(0.4);
     transition: opacity 0.2s ease, transform 0.3s var(--ease-pop);
@@ -4544,9 +4643,22 @@ html:where([data-page="details"])[data-theme="dark"] .tab-ink { background: #ff6
     transform: none;
 }
 
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-menu::-webkit-scrollbar { width: 8px; }
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-menu::-webkit-scrollbar-thumb { background: #d3d7dc; border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
+
 @keyframes optionIn-screeninglist {
     from { opacity: 0; transform: translateY(-6px); }
     to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-toggle,
+    :where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-toggle svg,
+    :where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-card::before,
+    :where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-label svg,
+    :where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-chevron,
+    :where(html[data-page="archive"],html[data-page="screeninglist"]) .opt-check,
+    :where(html[data-page="archive"],html[data-page="screeninglist"]) .dot { transition: none; }
 }
 
 /* ---- Table card ---- */
@@ -6506,6 +6618,75 @@ html[data-theme="dark"] {
 :where(html[data-theme="dark"]) .dropdown-option[aria-selected="true"] .opt-count {
     background: rgba(255,107,128,0.2);
     color: #ff8a9b;
+}
+/* filter funnel + dropdown refresh: dark counterparts */
+:where(html[data-theme="dark"]) .filter-toggle:not([aria-expanded="true"]):hover {
+    background: rgba(255,107,128,0.10);
+    border-color: rgba(255,107,128,0.5);
+    box-shadow: 0 8px 18px rgba(0,0,0,0.4);
+}
+:where(html[data-theme="dark"]) .filter-toggle:hover svg {
+    fill: #ff8a9b;
+}
+:where(html[data-theme="dark"]) .filter-toggle:focus-visible {
+    border-color: #ff8a9b;
+    box-shadow: 0 0 0 3px rgba(255,107,128,0.22);
+}
+:where(html[data-theme="dark"]) .filter-toggle[aria-expanded="true"] {
+    border-color: rgba(255,107,128,0.55);
+    box-shadow: 0 0 0 3px rgba(255,107,128,0.12);
+}
+:where(html[data-theme="dark"]) .filter-toggle[aria-expanded="true"]:hover {
+    box-shadow: 0 0 0 3px rgba(255,107,128,0.12), 0 8px 18px rgba(0,0,0,0.4);
+}
+:where(html[data-theme="dark"]) .filter-card {
+    box-shadow: none;
+}
+:where(html[data-theme="dark"]) .filter-card:hover {
+    box-shadow: 0 12px 26px rgba(0,0,0,0.45);
+}
+:where(html[data-theme="dark"]) .filter-card::before {
+    background: linear-gradient(90deg, #ff6b80, #ff9aa8);
+}
+:where(html[data-theme="dark"]) .filter-label svg {
+    background: rgba(255,107,128,0.16);
+}
+:where(html[data-theme="dark"]) .filter-card.is-active .filter-label svg {
+    background: #ff6b80;
+    fill: #14171b;
+}
+:where(html[data-theme="dark"]) .dropdown-btn {
+    box-shadow: none;
+}
+:where(html[data-theme="dark"]) .dropdown-btn:focus-visible,
+:where(html[data-theme="dark"]) .dropdown.open .dropdown-btn {
+    border-color: #ff8a9b;
+    box-shadow: 0 0 0 4px rgba(255,107,128,0.18);
+}
+:where(html[data-theme="dark"]) .dropdown-btn:hover .dropdown-chevron {
+    background: rgba(255,255,255,0.07);
+}
+:where(html[data-theme="dark"]) .dropdown.open .dropdown-chevron {
+    background: rgba(255,107,128,0.16);
+    fill: #ff8a9b;
+}
+:where(html[data-theme="dark"]) .dropdown-option[data-value="all"]::after {
+    background: var(--edge);
+}
+:where(html[data-theme="dark"]) .dropdown-option[aria-selected="true"] {
+    background: rgba(255,107,128,0.14);
+    box-shadow: inset 3px 0 0 #ff8a9b;
+}
+:where(html[data-theme="dark"]) .dropdown-option[aria-selected="true"]:hover,
+:where(html[data-theme="dark"]) .dropdown-option[aria-selected="true"].is-focused {
+    background: rgba(255,107,128,0.22);
+}
+:where(html[data-theme="dark"]) .opt-check {
+    background: #ff6b80;
+    fill: #14171b;
+}
+:where(html[data-theme="dark"]) .dropdown-menu::-webkit-scrollbar-thumb {
+    background: #4a515c;
 }
 :where(html[data-theme="dark"]) .table-card {
     background: var(--surface);

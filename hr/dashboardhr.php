@@ -70,6 +70,21 @@ $fn_widths = [];
 foreach ($funnel['stages'] as $s) {
     $fn_widths[] = $s['count'] > 0 ? max($fn_min, $fn_w * $s['count'] / $fn_top) : $fn_min * 0.6;
 }
+// Rounds the corners of a stage: each corner is cut back by $r and joined with a small curve.
+$fn_round = function (array $p, $r) {
+    $n = count($p); $d = '';
+    for ($k = 0; $k < $n; $k++) {
+        $a = $p[($k + $n - 1) % $n]; $b = $p[$k]; $c = $p[($k + 1) % $n];
+        $l1 = max(0.001, hypot($b[0] - $a[0], $b[1] - $a[1]));
+        $l2 = max(0.001, hypot($c[0] - $b[0], $c[1] - $b[1]));
+        $t1 = min($r, $l1 / 2); $t2 = min($r, $l2 / 2);
+        $d .= sprintf('%s%.1f,%.1f Q%.1f,%.1f %.1f,%.1f ', $k ? 'L' : 'M',
+            $b[0] + ($a[0] - $b[0]) / $l1 * $t1, $b[1] + ($a[1] - $b[1]) / $l1 * $t1,
+            $b[0], $b[1],
+            $b[0] + ($c[0] - $b[0]) / $l2 * $t2, $b[1] + ($c[1] - $b[1]) / $l2 * $t2);
+    }
+    return $d . 'Z';
+};
 $fn_height = count($funnel['stages']) * ($fn_h + $fn_gap) - $fn_gap;
 $fn_has_data = $funnel['stages'][0]['count'] > 0;
 
@@ -376,13 +391,14 @@ function status_badge(string $status): string
                                 $wb = $i < count($fn_widths) - 1 ? min($wt, $fn_widths[$i + 1]) : $wt * 0.55;
                                 $y0 = $i * ($fn_h + $fn_gap);
                                 $cx = $fn_w / 2;
-                                $pts = sprintf('%.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f',
-                                    $cx - $wt / 2, $y0,  $cx + $wt / 2, $y0,
-                                    $cx + $wb / 2, $y0 + $fn_h,  $cx - $wb / 2, $y0 + $fn_h);
+                                $pts = $fn_round([
+                                    [$cx - $wt / 2, $y0],  [$cx + $wt / 2, $y0],
+                                    [$cx + $wb / 2, $y0 + $fn_h],  [$cx - $wb / 2, $y0 + $fn_h]
+                                ], 9);
                             ?>
                             <g class="fn-stage<?php echo $s['url'] !== '' ? ' is-link' : ''; ?>" data-stage="<?php echo $i; ?>" data-url="<?php echo htmlspecialchars($s['url']); ?>" style="--c:<?php echo $fn_colors[$i]; ?>; --k:<?php echo $i; ?>">
                                 <title><?php echo htmlspecialchars($s['label']); ?>: <?php echo (int) $s['count']; ?></title>
-                                <polygon points="<?php echo $pts; ?>"></polygon>
+                                <path d="<?php echo $pts; ?>"></path>
                             </g>
                             <?php endforeach; ?>
                         </svg>
