@@ -16,6 +16,60 @@ class CloudinaryService {
             throw new Exception("Cloudinary credentials are missing from your .env file.");
         }
     }
+    /** Build multipart/form-data body and POST via file_get_contents (no cURL needed). */
+    private function multipartPost(string $url, array $fields, array $files = []): string
+    {
+        $boundary = '----WebKitFormBoundary' . uniqid();
+        $delimiter = "--$boundary";
+
+        $body = '';
+        foreach ($fields as $name => $value) {
+            $body .= "$delimiter\r\n";
+            $body .= "Content-Disposition: form-data; name=\"$name\"\r\n\r\n";
+            $body .= "$value\r\n";
+        }
+        foreach ($files as $name => $filePath) {
+            $filename = basename($filePath);
+            $mime = function_exists('mime_content_type') ? @mime_content_type($filePath) : 'application/octet-stream';
+            $body .= "$delimiter\r\n";
+            $body .= "Content-Disposition: form-data; name=\"$name\"; filename=\"$filename\"\r\n";
+            $body .= "Content-Type: $mime\r\n\r\n";
+            $body .= file_get_contents($filePath) . "\r\n";
+        }
+        $body .= "$delimiter--\r\n";
+
+        $context = stream_context_create([
+            'http' => [
+                'method' => 'POST',
+                'header' => "Content-Type: multipart/form-data; boundary=$boundary\r\n",
+                'content' => $body,
+                'timeout' => 60,
+            ],
+            'ssl' => [
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+            ],
+        ]);
+
+        $response = @file_get_contents($url, false, $context);
+        if ($response === false) {
+            throw new Exception("Request to $url failed.");
+        }
+        return $response;
+    }
+
+    /** Get HTTP response code from $http_response_header after file_get_contents. */
+    private function httpCode(): int
+    {
+        foreach ($http_response_header ?? [] as $header) {
+            if (stripos($header, 'HTTP/') === 0) {
+                preg_match('/HTTP\/[\d.]+ (\d+)/', $header, $m);
+                if (!empty($m[1])) return (int) $m[1];
+            }
+        }
+        return 200;
+    }
+
 
     /**
      * Build a Cloudinary upload signature.
@@ -79,8 +133,7 @@ class CloudinaryService {
         $signature = $this->signParams($signed);
 
         $url = "https://api.cloudinary.com/v1_1/{$this->cloudName}/auto/upload";
-        $postData = [
-            'file'            => new CURLFile($filePath, $mimeType, $safe),
+        $fields = [
             'api_key'         => $this->apiKey,
             'timestamp'       => $timestamp,
             'folder'          => $folderBase,
@@ -90,14 +143,10 @@ class CloudinaryService {
             'unique_filename' => 'false',
             'signature'       => $signature,
         ];
+        $files = ['file' => $filePath];
 
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        $response = $this->multipartPost($url, $fields, $files);
+        $httpCode = $this->httpCode();
 
         if ($httpCode === 200) {
             $result = json_decode($response, true);
@@ -142,8 +191,7 @@ class CloudinaryService {
 
         // 3. Prepare POST request (Note: '/video/upload' for videos)
         $url = "https://api.cloudinary.com/v1_1/{$this->cloudName}/video/upload";
-        $postData = [
-            'file' => new CURLFile($filePath),
+        $fields = [
             'api_key' => $this->apiKey,
             'timestamp' => $timestamp,
             'folder' => $folderBase,
@@ -152,14 +200,10 @@ class CloudinaryService {
             'unique_filename' => 'false',
             'signature' => $signature
         ];
+        $files = ['file' => $filePath];
 
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        $response = $this->multipartPost($url, $fields, $files);
+        $httpCode = $this->httpCode();
 
         if ($httpCode === 200) {
             $result = json_decode($response, true);

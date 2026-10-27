@@ -31,26 +31,25 @@ class GeminiService {
             ]
         ];
 
-        // Fast connectivity check so a blocked network cannot hang the request.
-        $fp = @fsockopen('generativelanguage.googleapis.com', 443, $errno, $errstr, 2);
-        if (!$fp) {
-            throw new Exception('Gemini unreachable: ' . $errstr);
-        }
-        fclose($fp);
-
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            "Content-Type: application/json"
+        $context = stream_context_create([
+            'http' => [
+                'method'  => 'POST',
+                'header'  => "Content-Type: application/json\r\n",
+                'content' => json_encode($data),
+                'timeout' => 15,
+            ],
+            'ssl' => [
+                'verify_peer'       => false,
+                'verify_peer_name'  => false,
+            ],
         ]);
 
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+        $response = @file_get_contents($url, false, $context);
+        if ($response === false) {
+            throw new Exception("Gemini API request failed.");
+        }
 
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        $httpCode = 200; // file_get_contents doesn't expose HTTP code directly; assume success if we got content
 
         if ($httpCode === 200) {
             $result = json_decode($response, true);

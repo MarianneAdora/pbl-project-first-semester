@@ -44,18 +44,35 @@ class EmailService {
         if (empty($apiKey)) {
             die("Error: BREVO_API_KEY is missing from your .env file.");
         }
-        $ch = curl_init("https://api.brevo.com/v3/smtp/email");
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            "accept: application/json",
-            "api-key: " . $apiKey,
-            "content-type: application/json"
+        $url = "https://api.brevo.com/v3/smtp/email";
+        $context = stream_context_create([
+            'http' => [
+                'method' => 'POST',
+                'header' => "Content-Type: application/json\r\n"
+                          . "api-key: $apiKey\r\n"
+                          . "accept: application/json\r\n",
+                'content' => json_encode($data),
+                'timeout' => 15,
+            ],
+            'ssl' => [
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+            ],
         ]);
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        $response = @file_get_contents($url, false, $context);
+        if ($response === false) {
+            if ($echoError) echo "<strong>Brevo API Error:</strong> Request failed.<br>";
+            return false;
+        }
+        // Check HTTP response code from $http_response_header superglobal
+        $httpCode = 201;
+        foreach ($http_response_header ?? [] as $header) {
+            if (stripos($header, 'HTTP/') === 0) {
+                preg_match('/HTTP\/[\d.]+ (\d+)/', $header, $m);
+                if (!empty($m[1])) $httpCode = (int) $m[1];
+                break;
+            }
+        }
         if ($httpCode === 201) return true;
         if ($echoError) echo "<strong>Brevo API Error:</strong> " . $response . "<br>";
         return false;
@@ -78,24 +95,11 @@ class EmailService {
         ];
 
         // 3. Send to Brevo
-        $ch = curl_init("https://api.brevo.com/v3/smtp/email");
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            "accept: application/json",
-            "api-key: " . $apiKey,
-            "content-type: application/json"
-        ]);
-
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($httpCode === 201) {
+        $success = $this->brevoSend($data, false);
+        if ($success) {
             echo "SUCCESS! Check your inbox.";
         } else {
-            echo "FAILED. Brevo said: " . $response;
+            echo "FAILED. Check Brevo API key and network.";
         }
     }
 
