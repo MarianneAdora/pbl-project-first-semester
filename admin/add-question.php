@@ -15,6 +15,7 @@ date_default_timezone_set('Asia/Manila');
 
 require_once __DIR__ . '/../src/Repositories/AdminRepository.php';
 require_once __DIR__ . '/../src/Helpers/db.php';
+require_once __DIR__ . '/static-admin.php';
 
 $question_types = [
     'yesno'        => 'Yes / No',

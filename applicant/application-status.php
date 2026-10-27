@@ -42,6 +42,9 @@ require_once __DIR__ . '/applicant-helpers.php';
 // Risk thresholds (loading_ms for the evaluation animation) live in applicant/static-evaluation.php.
 require_once __DIR__ . '/evaluation-helpers.php';
 
+// Email service for sending applicant notifications (rejection, etc.)
+require_once __DIR__ . '/../src/Services/EmailService.php';
+
 // ---- The evaluation result (read from live DB, set by RiskScoringService after submission) ---
 // The applicant.result column holds 'accepted' (Passed), 'rejected' (Rejected), or NULL (review pending).
 $applicantRowForResult = repo_find_applicant((int) ($_SESSION['applicant_id'] ?? 0));
@@ -75,6 +78,18 @@ if ($devMode && in_array($_GET['demo'] ?? '', ['passed', 'failed', 'review'], tr
 if ($outcome === 'review') {
     $outcome = 'failed';
     $result['outcome'] = 'failed';
+}
+
+// ---- Send rejection email (once per session) --------------------------------
+if ($outcome === 'failed' && empty($_SESSION['rejection_email_sent'])) {
+    $toEmail   = (string) ($_SESSION['applicant_email'] ?? '');
+    $fullName  = (string) ($_SESSION['applicant_name'] ?? '');
+    $firstName = trim(explode(' ', trim($fullName))[0] ?? $fullName);
+    if ($toEmail !== '' && $firstName !== '') {
+        $emailService = new EmailService();
+        $emailService->sendScreeningRejectedEmail($toEmail, $firstName);
+        $_SESSION['rejection_email_sent'] = true;
+    }
 }
 
 
