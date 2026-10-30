@@ -30,16 +30,70 @@ class CvParserService {
         } catch (Exception $e) {
             $ai = [];
         }
-        $name  = $this->pick($ai['name'] ?? '', $fallback['name'] ?? '');
-        $email = $this->pick($ai['email'] ?? '', $fallback['email'] ?? '');
-        $phone = $this->pick($ai['contact'] ?? '', $fallback['contact'] ?? '');
+        // Gemini can invent values, so every value it returns must actually appear in the CV text.
+        $name  = $this->pick($this->verifyName($ai['name'] ?? '', $text), $fallback['name'] ?? '');
+        $email = $this->pick($this->verifyEmail($ai['email'] ?? '', $text), $fallback['email'] ?? '');
+        $phone = $this->pick($this->verifyPhone($ai['contact'] ?? '', $text), $fallback['contact'] ?? '');
 
-        return [
+        $result = [
             'name'     => $this->normalizeName($name),
             'email'    => strtolower(trim($email)),
             'contact'  => $this->normalizePhone($phone),
             'raw_text' => mb_substr($text, 0, 20000),
         ];
+        $result['missing'] = $this->missingRequired($result);
+        return $result;
+    }
+
+    /**
+     * Which of the required details (full name, contact information, email address) are absent?
+     * @return string[] keys from: name, contact, email  (empty array = CV meets the requirements)
+     */
+    public function missingRequired(array $parsed): array {
+        $missing = [];
+        $name = trim((string) ($parsed['name'] ?? ''));
+        if ($name === '' || preg_match_all('/\p{L}/u', $name) < 2) $missing[] = 'name';
+        if (!filter_var((string) ($parsed['email'] ?? ''), FILTER_VALIDATE_EMAIL)) $missing[] = 'email';
+        if (strlen(preg_replace('/\D/', '', (string) ($parsed['contact'] ?? ''))) < 7) $missing[] = 'contact';
+        return $missing;
+    }
+
+    /**
+     * AI-free check used when the form is submitted (the file is checked again on the server,
+     * because the browser check can be bypassed). Only email + contact number are checked here;
+     * the full name needs the AI step done at upload time.
+     * @return string[] missing keys
+     */
+    public function quickMissing($filePath, $originalName = null, $mimeType = null): array {
+        $text = (string) $this->extractText($filePath, $originalName, $mimeType);
+        $scan = $this->regexScan($text);
+        $missing = [];
+        if (!filter_var($scan['email'], FILTER_VALIDATE_EMAIL)) $missing[] = 'email';
+        if ($scan['contact'] === '') $missing[] = 'contact';
+        return $missing;
+    }
+
+    private function verifyEmail($email, $text) {
+        $email = trim((string) $email);
+        if ($email === '' || stripos($text, $email) === false) return '';
+        return $email;
+    }
+
+    private function verifyPhone($phone, $text) {
+        $digits = preg_replace('/\D/', '', (string) $phone);
+        if (strlen($digits) < 7) return '';
+        // The digits must appear in the CV in the same order (formatting like spaces/dashes is ignored).
+        return strpos(preg_replace('/\D/', '', $text), $digits) !== false ? (string) $phone : '';
+    }
+
+    private function verifyName($name, $text) {
+        $name = trim((string) $name);
+        if ($name === '') return '';
+        foreach (preg_split('/\s+/', $name) as $word) {
+            $word = trim($word, " .,'-");
+            if (mb_strlen($word) >= 2 && mb_stripos($text, $word) === false) return '';
+        }
+        return $name;
     }
 
     /** Pull raw text out of PDF (pdfparser) or plain-text files. */
@@ -55,13 +109,42 @@ class CvParserService {
             $pdf = $parser->parseFile($filePath);
             return (string) $pdf->getText();
         }
-        // DOC/DOCX/TXT best-effort: strip tags; scanned images yield nothing (needs OCR).
+        if ($ext === 'txt' || stripos((string) $mimeType, 'text/') === 0) {
+            $raw = @file_get_contents($filePath);
+            if ($raw === false) throw new Exception('Could not read the CV file.');
+            return $raw;
+        }
+        if ($ext === 'docx') return $this->extractDocx($filePath);
+        return $this->extractLegacyDoc($filePath);
+    }
+
+    /** DOCX is a zip: read word/document.xml (+ header/footer, where many CVs keep contact details). */
+    private function extractDocx($filePath) {
+        if (!class_exists('ZipArchive')) {
+            throw new Exception('This server cannot read DOCX files (enable the PHP zip extension). Upload a PDF instead.');
+        }
+        $zip = new ZipArchive();
+        if ($zip->open($filePath) !== true) throw new Exception('This DOCX file is damaged or not a real Word document.');
+        $xml = '';
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $n = (string) $zip->getNameIndex($i);
+            if (preg_match('#^word/(document|header\d*|footer\d*)\.xml$#', $n)) {
+                $xml .= ' ' . (string) $zip->getFromIndex($i);
+            }
+        }
+        $zip->close();
+        if ($xml === '') throw new Exception('Could not read any text from this DOCX file.');
+        $xml = preg_replace('#</w:p>|<w:br\s*/?>|<w:tab\s*/?>#', "\n", $xml);
+        return html_entity_decode(strip_tags($xml), ENT_QUOTES | ENT_XML1, 'UTF-8');
+    }
+
+    /** Old binary .doc: best effort. Dropping NUL bytes turns UTF-16 text into readable ASCII. */
+    private function extractLegacyDoc($filePath) {
         $raw = @file_get_contents($filePath);
         if ($raw === false) throw new Exception('Could not read the CV file.');
-        if ($ext === 'txt' || stripos((string) $mimeType, 'text/') === 0) return $raw;
-        $stripped = strip_tags($raw);
-        $stripped = preg_replace('/[^\x20-\x7E\r\n@+().,_\-]/', ' ', $stripped);
-        return trim(preg_replace('/\s+/', ' ', (string) $stripped));
+        $raw = str_replace("\0", '', $raw);
+        $raw = preg_replace('/[^\x20-\x7E\r\n]/', ' ', $raw);
+        return trim(preg_replace('/[ \t]+/', ' ', (string) $raw));
     }
 
     /** Ask Gemini for exactly {name, email, contact} as JSON. */
@@ -84,9 +167,16 @@ class CvParserService {
         $email = '';
         if (preg_match('/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i', $text, $m)) $email = trim($m[0]);
         $contact = '';
-        if (preg_match('/(\+?\d[\d\s().-]{6,}\d)/', $text, $m)) {
-            $cand = trim($m[1]);
-            if (preg_match_all('/\d/', $cand) >= 7) $contact = $cand;
+        if (preg_match_all('/(\+?\d[\d\s().-]{6,}\d)/', $text, $all)) {
+            foreach ($all[1] as $cand) {
+                $cand = trim($cand);
+                $digits = preg_replace('/\D/', '', $cand);
+                if (strlen($digits) < 9 || strlen($digits) > 15) continue;
+                // skip year ranges such as "2019 - 2023" or "2019-2023-2024"
+                if (preg_match('/^((19|20)\d{2}[\s.\-\/]*)+$/', $cand)) continue;
+                $contact = $cand;
+                break;
+            }
         }
         $name = '';
         foreach (preg_split('/\r?\n/', $text) as $line) {

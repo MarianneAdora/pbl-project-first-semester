@@ -27,6 +27,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     };
 
+    // Human-readable message for a CV that is missing required details.
+    // $missing is a list of: 'name', 'email', 'contact'.
+    $cvMissingMessage = function (array $missing): string {
+        $labels = ['email' => 'email address', 'name' => 'full name', 'contact' => 'contact number'];
+        $list = [];
+        foreach (['email', 'name', 'contact'] as $k) if (in_array($k, $missing, true)) $list[] = $labels[$k];
+        if (count($list) > 1) $last = array_pop($list);
+        return 'This CV was not accepted because it has no ' . (isset($last) ? implode(', ', $list) . ' and ' . $last : $list[0])
+            . '. The CV must show the applicant\'s full name, contact number and email address.';
+    };
+
     if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {
         $respond(['status' => 'error', 'message' => 'Your session has ended. Please log in again.'], 403);
     }
@@ -56,6 +67,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             require_once __DIR__ . '/../src/Services/CvParserService.php';
             $parser = new CvParserService();
             $parsed = $parser->parseFile($cv['tmp_name'], (string) ($cv['name'] ?? ''), (string) ($cv['type'] ?? ''));
+            // CV must contain full name + contact information + email address, otherwise it is rejected.
+            $missing = $parsed['missing'] ?? $parser->missingRequired($parsed);
+            if ($missing) {
+                $respond(['status' => 'invalid', 'missing' => $missing, 'message' => $cvMissingMessage($missing)], 422);
+            }
             $respond(['status' => 'success', 'parsed' => [
                 'name' => (string) ($parsed['name'] ?? ''),
                 'email' => (string) ($parsed['email'] ?? ''),
@@ -82,6 +98,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         if (($cvUpload['size'] ?? 0) === 0) {
             $respond(['status' => 'error', 'message' => 'This file is empty. Choose a different CV.'], 422);
+        }
+        // Re-check the required details on the server (the browser check can be bypassed).
+        try {
+            require_once __DIR__ . '/../src/Services/CvParserService.php';
+            $missing = (new CvParserService())->quickMissing($cvUpload['tmp_name'], (string) ($cvUpload['name'] ?? ''), (string) ($cvUpload['type'] ?? ''));
+        } catch (Throwable $e) {
+            $respond(['status' => 'invalid', 'message' => 'Could not read that CV. ' . $e->getMessage()], 422);
+        }
+        if ($missing) {
+            $respond(['status' => 'invalid', 'missing' => $missing, 'message' => $cvMissingMessage($missing)], 422);
         }
     } else {
         $cvUpload = null; // no file chosen: CV stays optional

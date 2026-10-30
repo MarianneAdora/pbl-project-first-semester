@@ -744,6 +744,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const CV_TYPES = ['pdf', 'doc', 'docx'];
     let sending = false;
     let lastApplicant = null;
+    // A CV is only accepted after the server confirmed it shows a full name, contact number and email address.
+    let cvVerified = false;
+    let cvCheckId = 0;   // lets a newer file cancel the check of an older one
 
     const fieldOf = (name) => form.querySelector(`.field[data-field="${name}"]`);
 
@@ -792,6 +795,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!CV_TYPES.includes(ext)) return (ext ? '.' + ext + ' files are not allowed. ' : '') + 'Upload a PDF, DOC or DOCX file.';
             if (f.size > MAX_CV) return 'The CV is ' + prettySize(f.size) + '. It must be 5 MB or smaller.';
             if (f.size === 0) return 'This file is empty. Choose a different CV.';
+            if (!cvVerified) return cvParsing ? 'Please wait, the CV is still being checked.' : 'This CV has not been checked yet. Choose the file again.';
             return '';
         }
     };
@@ -864,23 +868,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function clearFile() {
         fileInput.value = '';
+        cvVerified = false;
+        cvCheckId++;          // ignore any check still running
+        cvParsing = false;
         showFile();
     }
 
-    fileInput.addEventListener('change', () => {
+    fileInput.addEventListener('change', async () => {
         showFile();
+        cvVerified = false;
+        cvCheckId++;
+        cvParsing = false;
         if (!fileInput.files[0]) { setError('cv', ''); setAutofill(''); return; }
-        const ok = validateField('cv', true);          // wrong type / too big: show why
-        if (!ok) {
-            // drop the unusable file so the box is empty again, but keep the message visible
-            const msg = rules.cv();
-            fileInput.value = '';
-            showFile();
-            setError('cv', msg, false);
-            return;
-        }
-        parseCvAutofill(fileInput.files[0]);           // valid file: read name/email/contact into the form
+        setError('cv', '');
+        // 1) quick browser checks: type, size, empty (cv() skips the "verified" test while checking)
+        const f = fileInput.files[0];
+        const ext = f.name.includes('.') ? f.name.split('.').pop().toLowerCase() : '';
+        let msg = '';
+        if (!CV_TYPES.includes(ext)) msg = (ext ? '.' + ext + ' files are not allowed. ' : '') + 'Upload a PDF, DOC or DOCX file.';
+        else if (f.size > MAX_CV) msg = 'The CV is ' + prettySize(f.size) + '. It must be 5 MB or smaller.';
+        else if (f.size === 0) msg = 'This file is empty. Choose a different CV.';
+        if (msg) { rejectCv(msg, true); return; }
+        // 2) the server reads the CV: it must contain full name + contact number + email address
+        await parseCvAutofill(f);
     });
+
+    // Drop the unusable file so the box is empty again, but keep the reason visible.
+    function rejectCv(message, shake) {
+        clearFile();
+        setAutofill('');
+        setError('cv', message, shake !== false);
+    }
 
     fileRemove.addEventListener('click', () => { clearFile(); setError('cv', ''); setAutofill(''); });
 
@@ -892,7 +910,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!cvAutofill) return;
         cvAutofill.textContent = message || '';
         cvAutofill.classList.toggle('is-error', !!isError);
-        cvAutofill.classList.toggle('is-loading', message === 'Reading CV…');
+        cvAutofill.classList.toggle('is-loading', message === 'Checking CV…');
     }
 
     function fillField(name, value) {
@@ -909,9 +927,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function parseCvAutofill(file) {
-        if (cvParsing) return;
+        const myCheck = ++cvCheckId;
         cvParsing = true;
-        setAutofill('Reading CV…');
+        setAutofill('Checking CV…');
         try {
             const fd = new FormData();
             fd.append('action', 'parse_cv');
@@ -919,17 +937,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch('add-applicants.php', { method: 'POST', body: fd, credentials: 'same-origin' });
             let data;
             try { data = await res.json(); }
-            catch (e) { throw new Error('The server did not answer correctly. Please type the details manually.'); }
-            if (data.status !== 'success' || !data.parsed) throw new Error(data.message || 'Could not read that CV. Please type the details manually.');
+            catch (e) { throw new Error('The server did not answer correctly. Please try the file again.'); }
+            if (myCheck !== cvCheckId) return;                       // a newer file replaced this one
+            if (data.status !== 'success' || !data.parsed) {
+                // 'invalid' = CV is missing a required detail; anything else = could not be read
+                throw new Error(data.message || 'Could not read that CV. Please choose a different file.');
+            }
+            cvVerified = true;
+            setError('cv', '');
             const filled = ['name', 'email', 'contact'].filter(n => fillField(n, data.parsed[n]));
-            setAutofill(
-                filled.length ? 'Details filled from CV. Please review before sending.' : 'Could not find contact details in this CV. Please type them manually.',
-                !filled.length
-            );
+            setAutofill('CV accepted. Details filled from CV, please review before sending.');
         } catch (err) {
-            setAutofill(err.message || 'Could not read that CV. Please type the details manually.', true);
+            if (myCheck !== cvCheckId) return;
+            rejectCv(err.message || 'Could not read that CV. Please choose a different file.');
         } finally {
-            cvParsing = false;
+            if (myCheck === cvCheckId) cvParsing = false;
         }
     }
 
@@ -1007,6 +1029,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let data;
         try { data = await res.json(); }
         catch (e) { throw new Error('The server did not answer correctly. Please try again.'); }
+        if (data.status === 'invalid') { rejectCv(data.message || 'This CV was not accepted.'); throw new Error(data.message || 'This CV was not accepted.'); }
         if (data.status !== 'success') throw new Error(data.message || 'Something went wrong. Please try again.');
         return data;
     }
