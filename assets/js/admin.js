@@ -437,6 +437,13 @@ window.ADMIN = (function () {
         return (notify.activity || []).filter(at => at > seen);
     }
 
+    // HR changes (name, email, password) the Admin has not opened yet. Unlike the list above they are NOT cleared
+    // by opening the Dashboard: a row stays highlighted until the Admin opens it, or approves / rejects it.
+    // BACKEND: SELECT COUNT(*) FROM activity_log WHERE actor_role = 'hr' AND read_by_admin_at IS NULL
+    function unreadHrChanges() {
+        return notifyOn('activity') && window.HRREQ ? HRREQ.adminUnread().length : 0;
+    }
+
     function markActivitySeen() {
         const newest = (notify.activity || []).reduce((a, b) => (b > a ? b : a), readSeen());
         try { localStorage.setItem(SEEN_KEY, newest); } catch (err) { /* storage unavailable */ }
@@ -518,12 +525,12 @@ window.ADMIN = (function () {
     }
 
     function refreshBadges() {
-        const a = unseenActivity().length;
+        const a = unseenActivity().length + unreadHrChanges();
         const e = notifyOn('archive') ? expiring : 0;
         const h = hrNotifyOn() ? readNewHr().length : 0;
         ensureHrBadge();
         paintBadge('hrBadge', h, h + ' new HR ' + (h === 1 ? 'account' : 'accounts'));
-        paintBadge('dashboardBadge', a, a + ' new HR ' + (a === 1 ? 'activity' : 'activities') + ' since you last looked');
+        paintBadge('dashboardBadge', a, a + ' HR ' + (a === 1 ? 'update' : 'updates') + ' waiting for you');
         paintBadge('archiveBadge', e, e + ' archived ' + (e === 1 ? 'item' : 'items') + ' will be deleted for good within ' + (notify.days || 7) + ' days');
         document.dispatchEvent(new CustomEvent('admin:badges', { detail: { activity: a, expiring: e, hr: h } }));
         return { activity: a, expiring: e };
@@ -640,6 +647,7 @@ window.ADMIN = (function () {
         if (e.key === SETTINGS_KEY) { applySettings(null, true); refreshBadges(); }   // Settings saved in another tab
         if (e.key === PROFILE_KEY) applyProfile();
         if (e.key === SEEN_KEY || e.key === NEW_HR_KEY) refreshBadges();
+        if (e.key === 'ebsmi_activity_extra' || e.key === 'ebsmi_change_requests') refreshBadges();   // HR sent a change (other tab)
     });
 
     return {
@@ -647,7 +655,7 @@ window.ADMIN = (function () {
         menu: openMenu, closeMenu, pager, showing, flash, showFlash,
         flyToArchive, flyToNav, bumpArchive, bumpNav,
         hr: { note: noteNewHr, clear: clearNewHr, ids: readNewHr },
-        notify: { unseen: unseenActivity, markSeen: markActivitySeen, setExpiring: setExpiring, refresh: refreshBadges, poll: pollNotify, on: notifyOn },
+        notify: { unseen: unseenActivity, unreadChanges: unreadHrChanges, markSeen: markActivitySeen, setExpiring: setExpiring, refresh: refreshBadges, poll: pollNotify, on: notifyOn },
         settings: { get: readSettings, save: saveSettings, apply: applySettings, defaults: SETTINGS_DEFAULTS, profile: readProfile, saveProfile: saveProfile },
         arrivedViaTransition: false
     };
@@ -899,6 +907,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const roleDD = createDropdown(document.getElementById('roleDropdown'));
     const statusDD = createDropdown(document.getElementById('statusDropdown'));
+
+    /* ---------- Current password (view only) ----------
+       BACKEND: print the account's real current password into #current_password from PHP instead. */
+    if (isEdit && document.getElementById('current_password')) {
+        // demo value until the backend prints the real one
+        document.getElementById('current_password').value = HRREQ.password(config.account.id) || 'Demo@12345';
+    }
 
     /* ---------- the eye: show / hide the password ---------- */
     form.querySelectorAll('.eye-toggle').forEach(btn => {
@@ -3910,18 +3925,157 @@ document.addEventListener('DOMContentLoaded', () => {
     const fresh = new Set(ADMIN.notify.unseen());
 
     const body = document.getElementById('activityBody');
-    body.innerHTML = data.activity.length
-        ? data.activity.map((row, i) => {
-            const isNew = fresh.has(row.at) && String(row.by).toLowerCase() !== 'admin';
-            const who = String(row.by).toLowerCase() === 'admin' ? 'admin' : 'hr';
-            return '<tr class="row-in' + (isNew ? ' is-new' : '') + '" style="--r:' + i + '">' +
-                '<td>' + (isNew ? '<span class="new-dot" title="New since your last visit"></span>' : '') + esc(ADMIN.formatDate(row.at)) + '</td>' +
-                '<td title="' + esc(row.activity) + '"><strong>' + esc(row.activity) + '</strong></td>' +
-                '<td title="' + esc(row.details) + '">' + esc(row.details) + '</td>' +
-                '<td><span class="role-tag ' + who + '">' + esc(row.by) + '</span></td>' +
-            '</tr>';
-        }).join('')
-        : '<tr><td colspan="4" class="empty-row">No activity yet.</td></tr>';
+    const serverActivity = data.activity.slice();
+    const STATUS_LABEL = { pending: 'Needs approval', approved: 'Approved', rejected: 'Rejected' };
+
+    // BACKEND: the list (latest 10) should come from the server; HRREQ.activity() is the browser-side stand-in for HR changes
+    function allActivity() {
+        return serverActivity.concat(HRREQ.activity())
+            .sort((x, y) => String(y.at).localeCompare(String(x.at)))
+            .slice(0, 10);
+    }
+
+    function renderActivity(list, animate) {
+        body.innerHTML = list.length
+            ? list.map((row, i) => {
+                const fromHr = String(row.by).toLowerCase() !== 'admin';
+                // rows written by HR through the front-end stand-in carry an id + read flag; they stay highlighted until the Admin opens them
+                const isNew = fromHr && (row.id ? (!row.read && ADMIN.notify.on('activity')) : fresh.has(row.at));
+                const who = fromHr ? 'hr' : 'admin';
+                const rq = row.ref ? HRREQ.get(Number(row.ref)) : null;
+                const chip = rq ? ' <span class="req-chip is-' + esc(rq.status) + '">' + esc(STATUS_LABEL[rq.status] || rq.status) + '</span>' : '';
+                let click = '';
+                if (row.ref) click = ' data-ref="' + Number(row.ref) + '" tabindex="0" role="button" title="' + (isNew ? 'Click to read it and decide' : 'Click to see what changed') + '"';
+                else if (isNew && row.id) click = ' data-read="' + esc(row.id) + '" tabindex="0" role="button" title="Click to mark as read"';
+                return '<tr class="' + (animate === false ? '' : 'row-in') + (isNew ? ' is-new' : '') + (rq && rq.status === 'pending' ? ' needs-action' : '') + (row.ref || (isNew && row.id) ? ' is-click' : '') + '" style="--r:' + i + '"' + click + '>' +
+                    '<td>' + (isNew ? '<span class="new-dot" title="New since your last visit"></span>' : '') + esc(ADMIN.formatDate(row.at)) + '</td>' +
+                    '<td title="' + esc(row.activity) + '"><strong>' + esc(row.activity) + '</strong>' + chip + '</td>' +
+                    '<td title="' + esc(row.details) + '">' + esc(row.details) + '</td>' +
+                    '<td><span class="role-tag ' + who + '">' + esc(row.by) + '</span></td>' +
+                '</tr>';
+            }).join('')
+            : '<tr><td colspan="4" class="empty-row">No activity yet.</td></tr>';
+    }
+    renderActivity(allActivity());
+
+    /* ---------- 2b. HR change requests: click a row to see the new email / password and decide ---------- */
+    const reqModal = document.getElementById('reqModal');
+    const reqTitle = document.getElementById('reqTitle');
+    const reqSub = document.getElementById('reqSub');
+    const reqBody = document.getElementById('reqBody');
+    const reqActions = document.getElementById('reqActions');
+    let reqId = 0;
+    let reqLastFocus = null;
+
+    const EYE = '<svg class="eye-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>' +
+        '<svg class="eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2z"/></svg>';
+
+    // a password shown as dots with an eye
+    function secretLine(label, value) {
+        if (!value) return '<div class="req-line"><span class="req-key">' + esc(label) + '</span><span class="req-val is-muted">Not available</span></div>';
+        return '<div class="req-line"><span class="req-key">' + esc(label) + '</span>' +
+            '<span class="req-val req-secret" data-secret="' + esc(value) + '"><code>' + '•'.repeat(Math.min(12, String(value).length)) + '</code>' +
+            '<button type="button" class="req-eye" aria-pressed="false" aria-label="Show password">' + EYE + '</button></span></div>';
+    }
+
+    function drawRequest(r) {
+        reqTitle.textContent = r.status === 'pending' ? 'Approval needed' : 'Change request';
+        reqSub.innerHTML = '<strong>' + esc(r.hr_name) + '</strong> (HR) asked for the changes below · ' + esc(ADMIN.formatDate(r.created));
+
+        let html = '<div class="req-status is-' + esc(r.status) + '">' + esc(STATUS_LABEL[r.status] || r.status) + '</div>';
+        if (r.new_email) {
+            html += '<div class="req-group"><h4>Email</h4>' +
+                '<div class="req-line"><span class="req-key">Current</span><span class="req-val">' + esc(r.old_email) + '</span></div>' +
+                '<div class="req-line is-new"><span class="req-key">New</span><span class="req-val">' + esc(r.new_email) + '</span></div></div>';
+        }
+        if (r.new_password) {
+            html += '<div class="req-group"><h4>Password</h4>' +
+                secretLine('Current', r.current_password) +
+                secretLine('New', r.new_password) + '</div>';
+        }
+        if (r.status !== 'pending' && r.decided) {
+            html += '<p class="req-decided">' + esc(STATUS_LABEL[r.status]) + ' · ' + esc(ADMIN.formatDate(r.decided)) + '</p>';
+        }
+        reqBody.innerHTML = html;
+
+        reqBody.querySelectorAll('.req-eye').forEach(btn => btn.addEventListener('click', () => {
+            const box = btn.closest('.req-secret');
+            const show = btn.getAttribute('aria-pressed') !== 'true';
+            box.querySelector('code').textContent = show ? box.dataset.secret : '•'.repeat(Math.min(12, box.dataset.secret.length));
+            btn.setAttribute('aria-pressed', String(show));
+            btn.setAttribute('aria-label', (show ? 'Hide' : 'Show') + ' password');
+        }));
+
+        reqActions.innerHTML = r.status === 'pending'
+            ? '<button type="button" class="modal-btn is-cancel" data-do="rejected">Reject</button>' +
+              '<button type="button" class="modal-btn is-confirm" data-do="approved">Approve</button>'
+            : '<button type="button" class="modal-btn is-cancel" data-do="close">Close</button>';
+    }
+
+    // BACKEND: GET the request from the server instead of HRREQ.get()
+    function openRequest(id) {
+        const r = HRREQ.get(id);
+        if (!r) { ADMIN.toast('That request was not found.', { error: true, duration: 4000 }); return; }
+        if (HRREQ.markRequestRead(id)) refreshActivityUI();       // opening it counts as reading it: the highlight goes
+        reqId = id;
+        reqLastFocus = document.activeElement;
+        drawRequest(r);
+        reqModal.classList.add('active');
+        setTimeout(() => { const b = reqActions.querySelector('button:last-child'); if (b) b.focus(); }, 120);
+    }
+
+    function closeRequest() {
+        reqModal.classList.remove('active');
+        if (reqLastFocus && reqLastFocus.focus) reqLastFocus.focus();
+    }
+
+    // BACKEND: POST approve / reject to the server instead of HRREQ.decide()
+    function decide(status) {
+        const r = HRREQ.decide(reqId, status);
+        reqModal.classList.remove('active');
+        if (!r) { ADMIN.toast('This request was already handled.', { error: true, duration: 4000 }); return; }
+        refreshActivityUI();
+        ADMIN.toast(status === 'approved' ? 'Change approved. The HR account was updated.' : 'Change rejected. The HR account stays as it was.', { duration: 4500 });
+    }
+
+    // a row is opened (request) or marked as read (name change) by click / Enter / Space
+    function activateRow(tr) {
+        if (tr.dataset.ref) openRequest(Number(tr.dataset.ref));
+        else if (tr.dataset.read && HRREQ.markAdminRead(tr.dataset.read)) refreshActivityUI();
+    }
+    body.addEventListener('click', (e) => {
+        const tr = e.target.closest('tr[data-ref], tr[data-read]');
+        if (tr) activateRow(tr);
+    });
+    body.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        const tr = e.target.closest('tr[data-ref], tr[data-read]');
+        if (!tr) return;
+        e.preventDefault();
+        activateRow(tr);
+    });
+    const markAllBtn = document.getElementById('markAllRead');
+    if (markAllBtn) markAllBtn.addEventListener('click', () => { if (HRREQ.markAdminRead()) refreshActivityUI(); });
+    reqActions.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-do]');
+        if (!btn) return;
+        if (btn.dataset.do === 'close') closeRequest();
+        else decide(btn.dataset.do);
+    });
+    reqModal.addEventListener('click', (e) => { if (e.target === reqModal) closeRequest(); });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && reqModal.classList.contains('active')) closeRequest();
+    });
+    // a new HR request arrives while this page is open
+    window.addEventListener('storage', (e) => {
+        if (e.key !== 'ebsmi_activity_extra' && e.key !== 'ebsmi_change_requests') return;
+        const before = lastUnread;
+        refreshActivityUI();
+        if (lastUnread > before) {
+            const waiting = HRREQ.list().filter(r => r.status === 'pending').length;
+            ADMIN.toast('HR sent a change.' + (waiting ? ' ' + waiting + ' waiting for your approval.' : ''), { actionLabel: 'View', duration: 6000, onAction: jumpToActivities });
+        }
+    });
 
     // the list fades out at the bottom edge while there are more rows to scroll to (same as the HR Dashboard)
     const listScroll = document.querySelector('.activity-card .table-responsive');
@@ -3936,18 +4090,39 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(updateListFade, 900);                 // again once the entrance animation has settled
     }
 
-    // Opening the Dashboard counts as "seen" (the sidebar badge clears), like opening an applicant on the HR side
-    const newCount = data.activity.filter(r => fresh.has(r.at) && String(r.by).toLowerCase() !== 'admin').length;
+    // The "N new" chip counts what is still highlighted: the server's rows since the last visit (this visit only)
+    // plus the HR changes nobody opened yet (those stay until the Admin opens or decides them)
     const chip = document.getElementById('newChip');
+    const serverNew = data.activity.filter(r => fresh.has(r.at) && String(r.by).toLowerCase() !== 'admin').length;
+    let lastUnread = 0;
+    function paintChip() {
+        const hr = ADMIN.notify.unreadChanges();
+        const n = serverNew + hr;
+        chip.textContent = n + ' new';
+        chip.hidden = n <= 0;
+        if (markAllBtn) markAllBtn.hidden = hr <= 0;
+        lastUnread = hr;
+        return n;
+    }
+    // redraw the list, the chip and the sidebar badge after something was read, decided or received
+    function refreshActivityUI() {
+        renderActivity(allActivity(), false);
+        updateListFade();
+        paintChip();
+        ADMIN.notify.refresh();
+    }
+
+    const newCount = paintChip();
     if (newCount > 0) {
-        chip.textContent = newCount + ' new';
-        chip.hidden = false;
-        setTimeout(() => ADMIN.toast(newCount + ' new HR ' + (newCount === 1 ? 'activity' : 'activities') + ' since your last visit.', {
+        const waiting = HRREQ.list().filter(r => r.status === 'pending').length;
+        setTimeout(() => ADMIN.toast(newCount + ' new HR ' + (newCount === 1 ? 'update' : 'updates') + '.' +
+            (waiting ? ' ' + waiting + ' waiting for your approval.' : ''), {
             actionLabel: 'View',
             duration: 6000,
             onAction: jumpToActivities
         }), ADMIN.arrivedViaTransition ? 1500 : 900);
     }
+    // Opening the Dashboard counts as "seen" for the server's rows. HR changes stay highlighted until opened / decided.
     ADMIN.notify.markSeen();
 
     /* ---------- 3. Questionnaires Statistics: one bar per question, the answer most applicants chose ---------- */
@@ -4084,3 +4259,173 @@ document.addEventListener('DOMContentLoaded', () => {
     draw(true);
 });
 }
+
+/* ==========================================================================
+   HRREQ: front-end stand-in for "HR changes personal info -> Admin is notified -> Admin decides -> HR is told".
+   It keeps everything in this browser (localStorage) so the HR pages and the Admin pages can be tried
+   together. BACKEND: replace every HRREQ call with a request to the server; the data shapes below are
+   what the PHP should return.
+     request  = { id, hr_id, hr_name, old_email, new_email|null, new_password|null, current_password|null,
+                  status: 'pending'|'approved'|'rejected', created, decided|null, applied }
+     activity = { id, at, activity, details, by: 'HR'|'Admin', ref|null, hr_id|null, read }
+   "read" on an activity row means:
+     by 'HR'    -> the ADMIN has opened it   (until then it is highlighted on the Admin side)
+     by 'Admin' -> the HR it is about has read it   (until then it is highlighted on the HR side)
+   ========================================================================== */
+window.HRREQ = (function () {
+    const KEY = 'ebsmi_change_requests', ACT = 'ebsmi_activity_extra', PW = 'ebsmi_mock_passwords';
+    const read = (k, f) => { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? f : v; } catch (e) { return f; } };
+    const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } };
+    const pad = (n) => String(n).padStart(2, '0');
+    function now() {
+        const d = new Date();
+        return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+    }
+    let seq = 0;
+    const uid = () => 'a' + Date.now().toString(36) + (seq++).toString(36);
+    const isAdminRow = (a) => String(a.by).toLowerCase() === 'admin';
+    const partsOf = (r) => [r.new_email ? 'email' : '', r.new_password ? 'password' : ''].filter(Boolean).join(' & ');
+
+    // FRONT-END PREVIEW: sample rows so the design can be seen before the backend exists (set DEMO to false to switch off)
+    const DEMO = true;
+    if (DEMO && !read('ebsmi_demo_seeded', false)) {
+        const ago = (min) => { const d = new Date(Date.now() - min * 60000); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()); };
+        write(KEY, [
+            { id: 1, hr_id: 9001, hr_name: 'Maria Santos', old_email: 'maria.santos@expertise.com', new_email: 'maria.s@gmail.com',
+              new_password: 'NewPass123', current_password: 'OldPass123', status: 'pending', created: ago(18), decided: null, applied: false },
+            { id: 2, hr_id: 9002, hr_name: 'John Reyes', old_email: 'john.reyes@expertise.com', new_email: 'j.reyes@gmail.com',
+              new_password: null, current_password: null, status: 'approved', created: ago(190), decided: ago(150), applied: true }
+        ]);
+        write(ACT, [
+            { id: 'seed1', at: ago(18),  activity: 'HR Change Request',  details: 'Maria Santos (HR) · email & password · waiting for approval', by: 'HR',    ref: 1,    hr_id: 9001, read: false },
+            { id: 'seed2', at: ago(60),  activity: 'HR Name Changed',    details: 'Mariaa Santos → Maria Santos',                                 by: 'HR',    ref: null, hr_id: 9001, read: false },
+            { id: 'seed3', at: ago(150), activity: 'HR Change Approved', details: 'John Reyes (HR) · email',                                      by: 'Admin', ref: 2,    hr_id: 9002, read: false },
+            { id: 'seed4', at: ago(190), activity: 'HR Change Request',  details: 'John Reyes (HR) · email · waiting for approval',               by: 'HR',    ref: 2,    hr_id: 9002, read: true }
+        ]);
+        write('ebsmi_demo_seeded', true);
+    }
+
+    // Rows saved by an older version of this file have no id / read / hr_id: they count as already read
+    (function migrate() {
+        const a = read(ACT, []);
+        let changed = false;
+        a.forEach(r => {
+            if (r.id) return;
+            const rq = r.ref ? read(KEY, []).find(x => x.id === Number(r.ref)) : null;
+            r.id = uid(); r.read = true; r.hr_id = rq ? rq.hr_id : null; changed = true;
+        });
+        if (changed) write(ACT, a);
+    })();
+
+    // What the Admin's answer means for HR, in plain words (used by the bell, the Settings banner ...)
+    function describe(r, status) {
+        const what = r && r.new_email && r.new_password ? 'Email & password' : r && r.new_email ? 'Email' : 'Password';
+        const ok = status === 'approved';
+        const detail = [];
+        if (ok) {
+            if (r && r.new_email) detail.push('Your new email ' + r.new_email + ' is now active.');
+            if (r && r.new_password) detail.push('Your new password is now active. Use it the next time you log in.');
+            if (!detail.length) detail.push('The admin approved your change.');
+        } else {
+            detail.push('The admin did not approve it, so nothing was changed. You can send a new request from Settings.');
+        }
+        return { title: what + ' change ' + (ok ? 'approved' : 'rejected'), detail: detail.join(' ') };
+    }
+
+    const api = {
+        now: now,
+        list: () => read(KEY, []),
+        get: (id) => api.list().find(r => r.id === id) || null,
+        pendingFor: (hrId) => api.list().find(r => r.hr_id === hrId && r.status === 'pending') || null,
+        unappliedFor: (hrId) => api.list().find(r => r.hr_id === hrId && r.status !== 'pending' && !r.applied) || null,
+        activity: () => read(ACT, []),
+        log(activity, details, by, ref, hrId) {
+            const a = read(ACT, []);
+            const row = { id: uid(), at: now(), activity: activity, details: details, by: by, ref: ref || null, hr_id: hrId || null, read: false };
+            a.unshift(row);
+            write(ACT, a.slice(0, 50));
+            return row;
+        },
+        // HR sends a change; a second change while one is waiting is added to the same request
+        submit(hr, changes) {
+            const all = api.list();
+            let r = all.find(x => x.hr_id === hr.id && x.status === 'pending');
+            if (!r) {
+                r = { id: Date.now(), hr_id: hr.id, hr_name: hr.name, old_email: hr.email, new_email: null, new_password: null,
+                      current_password: null, status: 'pending', created: now(), decided: null, applied: false };
+                all.push(r);
+            }
+            if (changes.new_email) r.new_email = changes.new_email;
+            if (changes.new_password) { r.new_password = changes.new_password; r.current_password = changes.current_password || null; }
+            write(KEY, all);
+            api.log('HR Change Request', r.hr_name + ' (HR) · ' + partsOf(r) + ' · waiting for approval', 'HR', r.id, r.hr_id);
+            return r;
+        },
+        // Admin decides. The HR gets a new (unread) notice; the HR's own request row counts as read for the Admin.
+        decide(id, status) {
+            const all = api.list();
+            const r = all.find(x => x.id === id && x.status === 'pending');
+            if (!r) return null;
+            r.status = status;
+            r.decided = now();
+            write(KEY, all);
+            if (status === 'approved' && r.new_password) {
+                const m = read(PW, {}); m[r.hr_id] = r.new_password; write(PW, m);
+            }
+            api.markRequestRead(r.id);
+            api.log(status === 'approved' ? 'HR Change Approved' : 'HR Change Rejected', r.hr_name + ' (HR) · ' + partsOf(r), 'Admin', r.id, r.hr_id);
+            return r;
+        },
+        markApplied(id) {
+            const all = api.list();
+            const r = all.find(x => x.id === id);
+            if (r) { r.applied = true; write(KEY, all); }
+        },
+        // the password the Admin sees in Edit HR Account (null = "Not available yet")
+        password: (hrId) => read(PW, {})[hrId] || null,
+
+        /* ---- ADMIN side: what HR did that the Admin has not opened yet ---- */
+        adminUnread: () => read(ACT, []).filter(a => !isAdminRow(a) && !a.read),
+        // one row (by its id) or, with no id, every row
+        markAdminRead(id) {
+            const a = read(ACT, []);
+            let changed = false;
+            a.forEach(r => { if (!isAdminRow(r) && !r.read && (id == null || r.id === id)) { r.read = true; changed = true; } });
+            if (changed) write(ACT, a);
+            return changed;
+        },
+        // opening a request (or deciding it) reads every row that belongs to it
+        markRequestRead(refId) {
+            const a = read(ACT, []);
+            let changed = false;
+            a.forEach(r => { if (!isAdminRow(r) && !r.read && Number(r.ref) === Number(refId)) { r.read = true; changed = true; } });
+            if (changed) write(ACT, a);
+            return changed;
+        },
+
+        /* ---- HR side: the Admin's answers to this HR's requests ---- */
+        // newest first: { id, at, ref, status: 'approved'|'rejected', title, detail, read }
+        hrNotices(hrId) {
+            return read(ACT, [])
+                .filter(a => isAdminRow(a) && a.ref && Number(a.hr_id) === Number(hrId) && /^HR Change (Approved|Rejected)$/.test(a.activity))
+                .map(a => {
+                    const status = /Approved$/.test(a.activity) ? 'approved' : 'rejected';
+                    const d = describe(api.get(Number(a.ref)), status);
+                    return { id: a.id, at: a.at, ref: a.ref, status: status, title: d.title, detail: d.detail, read: !!a.read };
+                })
+                .sort((x, y) => String(y.at).localeCompare(String(x.at)));
+        },
+        hrUnread: (hrId) => api.hrNotices(hrId).filter(n => !n.read),
+        // one notice (by its id) or, with no id, all of this HR's notices
+        markHrRead(hrId, id) {
+            const a = read(ACT, []);
+            let changed = false;
+            a.forEach(r => {
+                if (isAdminRow(r) && !r.read && Number(r.hr_id) === Number(hrId) && (id == null || r.id === id)) { r.read = true; changed = true; }
+            });
+            if (changed) write(ACT, a);
+            return changed;
+        }
+    };
+    return api;
+})();

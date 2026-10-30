@@ -126,6 +126,7 @@ window.HR = (function () {
         applySettings(next, true);
         refreshDashboardBadge();               // badges appear / disappear right away
         refreshApplicantBadges();
+        refreshSettingsBadge();
         document.dispatchEvent(new CustomEvent('hr:settings-changed', { detail: next }));
         return ok;
     }
@@ -486,6 +487,50 @@ window.HR = (function () {
         return { close };
     }
 
+    /* ---- The Admin's answers (sidebar: Settings) ----------------------------------------------------
+       When the Admin approves or rejects HR's email / password change, Settings gets a red badge and the
+       Dashboard bell lists the answer, both until HR has read it (Settings > "Got it", or opening the bell).
+       Needs window.HR_ACCOUNT.id (printed by every HR page). The master switch in Settings > Notifications
+       hides the number, but the highlighted banner on the Settings page itself always shows.
+       BACKEND: unread = rows in the HR's notification table with read_at IS NULL. */
+    function accountId() { return Number((window.HR_ACCOUNT || {}).id) || 0; }
+
+    function unreadDecisions() {
+        if (!window.HRREQ || !accountId()) return [];
+        return readSettings().notifications === false ? [] : HRREQ.hrUnread(accountId());
+    }
+
+    function ensureSettingsBadge() {
+        let badge = document.getElementById('settingsBadge');
+        if (badge) return badge;
+        const link = document.querySelector('.sidebar-footer a[href$="setting-hr.php"]');
+        if (!link) return null;
+        badge = document.createElement('span');
+        badge.className = 'nav-badge alert';
+        badge.id = 'settingsBadge';
+        badge.hidden = true;
+        link.appendChild(badge);
+        return badge;
+    }
+
+    let lastSettingsCount = -1;
+    function refreshSettingsBadge() {
+        const badge = ensureSettingsBadge();
+        const count = unreadDecisions().length;
+        if (badge) {
+            badge.textContent = count > 99 ? '99+' : String(count);
+            badge.hidden = count <= 0;
+            badge.setAttribute('title', count + ' answer' + (count === 1 ? '' : 's') + ' from the admin to read');
+            if (count > lastSettingsCount && count > 0) {
+                badge.classList.remove('pop');
+                void badge.offsetWidth;
+                badge.classList.add('pop');
+            }
+        }
+        lastSettingsCount = count;
+        return count;
+    }
+
     // Sidebar badges on every HR page
     document.addEventListener('DOMContentLoaded', () => {
         purgeExpired();                       // 30 days in the Archive: gone for good
@@ -501,16 +546,22 @@ window.HR = (function () {
 
         refreshDashboardBadge();
         refreshApplicantBadges();
+        refreshSettingsBadge();
     });
+
+    // Back button (page restored from the cache): the Admin may have answered meanwhile
+    window.addEventListener('pageshow', (e) => { if (e.persisted) refreshSettingsBadge(); });
 
     // Keep the badge right when another tab changes things
     window.addEventListener('storage', (e) => {
         if ([SEEN_KEY, COMPLETED_KEY, KEY].includes(e.key)) refreshDashboardBadge();
         if (e.key === NEW_KEY) refreshApplicantBadges();
+        if (e.key === 'ebsmi_activity_extra' || e.key === 'ebsmi_change_requests') refreshSettingsBadge();   // the Admin answered
         if (e.key === SETTINGS_KEY) {          // Settings saved in another tab
             applySettings(null, true);
             refreshDashboardBadge();
             refreshApplicantBadges();
+            refreshSettingsBadge();
         }
         if (e.key === PROFILE_KEY) applyProfile();
     });
@@ -521,6 +572,7 @@ window.HR = (function () {
         setArchiveBadge, bumpArchive, toast,
         syncCompleted, isUnseen, markSeen, unseenCompleted, refreshDashboardBadge,
         noteNewApplicant, clearNewApplicants, refreshApplicantBadges,
+        refreshSettingsBadge, unreadDecisions,
         settings: { get: readSettings, save: saveSettings, apply: applySettings, defaults: SETTINGS_DEFAULTS, profile: readProfile, saveProfile: saveProfile },
         arrivedViaTransition: false
     };
@@ -2237,12 +2289,24 @@ document.addEventListener('DOMContentLoaded', () => {
         event:   'M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z',
         sync:    'M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z',
         done:    'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z',
+        cancel:  'M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z',
         dot:     'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z'
     };
 
     let feed = Array.isArray(window.HR_ACTIVITY) ? window.HR_ACTIVITY : [];
     let fresh = new Set();                            // lines that were new when the bell was opened (highlighted while it is open)
     let lastCount = -1;
+
+    // The Admin's answers to HR's email / password requests (window.HR_ACCOUNT is printed by dashboard-hr.php).
+    // Unread ones count on the bell and stay highlighted until the bell is opened (or Settings > "Got it").
+    const accountId = Number((window.HR_ACCOUNT || {}).id) || 0;
+    let freshDecisions = new Set();                   // answers that were unread when the bell was opened
+    const decisions = () => (window.HRREQ && accountId ? HRREQ.hrNotices(accountId) : []);
+    const unreadDecisions = () => decisions().filter(n => !n.read);
+    function readDecisions() {
+        if (window.HRREQ && accountId) HRREQ.markHrRead(accountId);
+        if (window.HR && HR.refreshSettingsBadge) HR.refreshSettingsBadge();
+    }
 
     const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const keyOf = (row) => row.at + '|' + row.activity + '|' + row.details;
@@ -2289,6 +2353,14 @@ document.addEventListener('DOMContentLoaded', () => {
     function paintList() {
         const done = completedLeft();
         let html = '';
+        decisions().slice(0, 10).forEach(n => {
+            const ok = n.status === 'approved';
+            html += '<li><a class="notif-item' + (freshDecisions.has(n.id) ? ' is-new' : '') + '" href="setting-hr.php">' +
+                '<span class="notif-ico ' + (ok ? 'tone-green' : 'tone-red') + '">' + svg(ok ? ICONS.done : ICONS.cancel) + '</span>' +
+                '<span class="notif-text"><strong>' + esc(n.title) + '</strong>' +
+                '<span class="notif-detail">' + esc(n.detail) + '</span>' +
+                '<span class="notif-time">' + esc(when(n.at)) + '</span></span></a></li>';
+        });
         if (done > 0) {
             html += '<li><a class="notif-item is-new" href="screening-list.php?status=Completed">' +
                 '<span class="notif-ico tone-green">' + svg(ICONS.done) + '</span>' +
@@ -2305,11 +2377,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }).join('');
         if (!html) html = '<li class="notif-empty">Nothing yet. When you add, delete or restore an applicant, or answer an interview schedule, it shows up here.</li>';
         listEl.innerHTML = html;
-        if (markAllBtn) markAllBtn.disabled = fresh.size === 0 && unread().length === 0;
+        if (markAllBtn) markAllBtn.disabled = fresh.size === 0 && unread().length === 0 && freshDecisions.size === 0 && unreadDecisions().length === 0;
     }
 
     function paintBadge() {
-        const total = notifyOn() ? unread().length + completedLeft() : 0;
+        const total = notifyOn() ? unread().length + completedLeft() + unreadDecisions().length : 0;
         badge.textContent = total > 99 ? '99+' : String(total);
         badge.hidden = total <= 0;
         bell.setAttribute('aria-label', total > 0 ? 'Notifications, ' + total + ' new' : 'Notifications');
@@ -2318,6 +2390,12 @@ document.addEventListener('DOMContentLoaded', () => {
             badge.classList.remove('pop');
             void badge.offsetWidth;                 // restart the animation
             badge.classList.add('pop');
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {     // a new one arrived: the bell rings again
+                bell.classList.remove('ring');
+                void bell.offsetWidth;
+                bell.classList.add('ring');
+                bell.addEventListener('animationend', () => bell.classList.remove('ring'), { once: true, capture: true });
+            }
         }
         lastCount = total;
         return total;
@@ -2327,7 +2405,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function openPanel() {
         fresh = new Set(unread().map(keyOf));      // highlighted while the panel is open
+        freshDecisions = new Set(unreadDecisions().map(n => n.id));
         writeSeen(newest() || readSeen());          // opening counts as reading them
+        readDecisions();
         panel.hidden = false;
         bell.setAttribute('aria-expanded', 'true');
         paintList();
@@ -2339,7 +2419,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (panel.hidden) return;
         panel.hidden = true;
         fresh = new Set();
+        freshDecisions = new Set();
         bell.setAttribute('aria-expanded', 'false');
+        paintBadge();
     }
 
     bell.addEventListener('click', (e) => {
@@ -2355,7 +2437,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (markAllBtn) {
         markAllBtn.addEventListener('click', () => {
             writeSeen(newest() || readSeen());
+            readDecisions();
             fresh = new Set();
+            freshDecisions = new Set();
             paint();
         });
     }
@@ -2393,7 +2477,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.addEventListener('pageshow', (e) => { if (e.persisted) { paint(); refreshFeed(); } });
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshFeed(); });
-    window.addEventListener('storage', (e) => { if (e.key === SEEN_KEY || e.key === 'hr_settings') paint(); });
+    window.addEventListener('storage', (e) => {
+        if (e.key === SEEN_KEY || e.key === 'hr_settings') paint();
+        if (e.key === 'ebsmi_activity_extra' || e.key === 'ebsmi_change_requests') {     // the Admin just answered (other tab)
+            if (!panel.hidden) {                       // panel is open: the answer counts as read, but shows highlighted
+                unreadDecisions().forEach(n => freshDecisions.add(n.id));
+                readDecisions();
+            }
+            paint();
+        }
+    });
     document.addEventListener('hr:settings-changed', paint);
 });
 }
@@ -4211,6 +4304,15 @@ document.addEventListener('DOMContentLoaded', () => {
        Until then the values are kept in this browser (HR.settings / HR.settings.saveProfile). */
     async function persist(state) {
         await new Promise(resolve => setTimeout(resolve, 650));
+        persist.note = '';
+        // Name: applies at once and shows in the Admin's Recent Activities
+        if (state.name !== saved.name) HRREQ.log('HR Name Changed', saved.name + ' → ' + state.name, 'HR', null, account.id);
+        // Email: not changed yet, it waits for the Admin's approval (the old email stays in use)
+        if (state.email !== saved.email) {
+            HRREQ.submit({ id: account.id, name: state.name, email: saved.email }, { new_email: state.email });
+            paintPending();
+            persist.note = 'Saved. Your new email is waiting for the admin\'s approval.';
+        }
         const okSettings = HR.settings.save({
             theme: state.theme,
             animations: state.animations,
@@ -4218,7 +4320,7 @@ document.addEventListener('DOMContentLoaded', () => {
             notifyCompleted: state.notifyCompleted,
             notifyNew: state.notifyNew
         });
-        const okProfile = HR.settings.saveProfile({ name: state.name, email: state.email });
+        const okProfile = HR.settings.saveProfile({ name: state.name, email: saved.email });
         if (!okSettings || !okProfile) throw new Error('Could not save. Please check your browser storage settings.');
     }
 
@@ -4235,13 +4337,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const state = collect();
+        if (state.email !== saved.email) {
+            const ok = await askConfirm(['New email: ' + state.email]);
+            if (!ok) return;
+        }
         setSaving(true);
         try {
             await persist(state);
             saved = readSaved();
+            fill(saved);                                // a requested email goes back to the one still in use
             saveBtn.classList.add('saved');
             saveBtn.querySelector('.btn-label').textContent = 'SAVED';
-            HR.toast('Settings saved.', { duration: 3500 });
+            HR.toast(persist.note || 'Settings saved.', { duration: persist.note ? 6000 : 3500 });
             setSaving(false);
             saveBtn.disabled = true;               // nothing left to save
             cancelBtn.disabled = true;
@@ -4268,6 +4375,98 @@ document.addEventListener('DOMContentLoaded', () => {
         refreshButtons();
         HR.toast('Changes discarded.', { duration: 2500 });
     });
+
+    /* ---------- Confirm before sending a change to the Admin ---------- */
+    const confirmModal = $('confirmModal');
+    let confirmDone = null;
+    function askConfirm(items) {
+        $('confirmText').textContent = 'These changes need the admin\'s approval before they take effect. Until then you keep your current email and password.';
+        $('confirmList').innerHTML = '';
+        items.forEach(t => { const li = document.createElement('li'); li.textContent = t; $('confirmList').appendChild(li); });
+        confirmModal.classList.add('active');
+        setTimeout(() => $('confirmOk').focus(), 120);
+        return new Promise(resolve => { confirmDone = resolve; });
+    }
+    function closeConfirm(answer) {
+        confirmModal.classList.remove('active');
+        if (confirmDone) { const d = confirmDone; confirmDone = null; d(answer); }
+    }
+    $('confirmOk').addEventListener('click', () => closeConfirm(true));
+    $('confirmCancel').addEventListener('click', () => closeConfirm(false));
+    confirmModal.addEventListener('click', (e) => { if (e.target === confirmModal) closeConfirm(false); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && confirmModal.classList.contains('active')) { e.stopImmediatePropagation(); closeConfirm(false); } }, true);
+
+    /* ---------- Waiting for the admin's approval ---------- */
+    const pendingBanner = $('pendingBanner');
+    const pendingText = $('pendingText');
+    const pwOpenBtn = $('pwOpen');
+    const pwOpenLabel = $('pwOpenLabel');
+
+    function paintPending() {
+        const p = HRREQ.pendingFor(account.id);
+        const parts = [];
+        if (p && p.new_email) parts.push('new email ' + p.new_email);
+        if (p && p.new_password) parts.push('a new password');
+        pendingBanner.hidden = !parts.length;
+        pendingText.textContent = parts.length
+            ? 'Your ' + parts.join(' and ') + ' will work after the admin approves it. Until then, keep logging in with your current email and password.'
+            : '';
+        pwOpenBtn.disabled = !!(p && p.new_password);
+        pwOpenLabel.textContent = p && p.new_password ? 'Waiting for approval' : 'Update Password';
+    }
+
+    /* ---------- The admin's answer: highlighted until HR reads it ("Got it") ---------- */
+    const decisionBox = $('decisionBanners');
+    const DECISION_ICON = {
+        approved: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z',
+        rejected: 'M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z'
+    };
+    const escHtml = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    function niceTime(at) {
+        const d = new Date(String(at || '').replace(' ', 'T'));
+        return isNaN(d) ? String(at || '') : d.toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+    }
+
+    const shownDecisions = new Set();
+    function paintDecisions() {
+        if (!decisionBox || !window.HRREQ) return;
+        const list = HRREQ.hrUnread(account.id);
+        decisionBox.innerHTML = list.map(n => {
+            const isFresh = !shownDecisions.has(n.id);
+            shownDecisions.add(n.id);
+            return '<div class="decision-banner is-' + n.status + (isFresh ? ' is-fresh' : '') + '" role="status" data-id="' + escHtml(n.id) + '">' +
+                '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + DECISION_ICON[n.status] + '"/></svg>' +
+                '<div class="pb-text"><strong>' + escHtml(n.title) + '</strong><span>' + escHtml(n.detail) + '</span>' +
+                '<em class="db-time">' + escHtml(niceTime(n.at)) + '</em></div>' +
+                '<button type="button" class="db-ok">Got it</button></div>';
+        }).join('');
+        HR.refreshSettingsBadge();
+    }
+    if (decisionBox) {
+        decisionBox.addEventListener('click', (e) => {
+            const btn = e.target.closest('.db-ok');
+            if (!btn) return;
+            HRREQ.markHrRead(account.id, btn.closest('.decision-banner').dataset.id);
+            paintDecisions();
+        });
+    }
+
+    // The Admin decided (maybe in another tab): apply an approved email, tell HR about it
+    function syncDecision() {
+        const r = HRREQ.unappliedFor(account.id);
+        if (!r) return;
+        HRREQ.markApplied(r.id);
+        if (r.status === 'approved') {
+            if (r.new_email) {
+                HR.settings.saveProfile({ name: readSaved().name, email: r.new_email });
+                account.email = r.new_email;
+                if (!isDirty() && !saving) { saved = readSaved(); fill(saved); refreshButtons(); }
+            }
+            HR.toast('The admin approved your change.', { duration: 6000 });
+        } else {
+            HR.toast('The admin rejected your change. Nothing was changed.', { error: true, duration: 6000 });
+        }
+    }
 
     /* ---------- Update password ---------- */
     const pwModal = $('pwModal');
@@ -4375,16 +4574,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if (pwBusy) return;
         const bad = pwValidate(true);
         if (bad) { $(bad).focus(); return; }
+        if (!(await askConfirm(['New password: ' + '•'.repeat(Math.min(12, pwNew.value.length))]))) return;
 
         pwBusy = true;
         pwSubmit.disabled = true;
-        pwSubmit.textContent = 'Updating...';
+        pwSubmit.textContent = 'Sending...';
         await new Promise(resolve => setTimeout(resolve, 800));
+        // BACKEND: the server must check the current password first (HRREQ below only stores the request in this browser)
+        HRREQ.submit({ id: account.id, name: saved.name, email: saved.email }, { new_password: pwNew.value, current_password: pwCurrent.value });
         pwBusy = false;
         pwSubmit.disabled = false;
-        pwSubmit.textContent = 'Update Password';
+        pwSubmit.textContent = 'Send for Approval';
         closePw();
-        HR.toast('Password updated.', { duration: 3500 });
+        paintPending();
+        HR.toast('Sent. Your new password is waiting for the admin\'s approval. Keep using your current password until then.', { duration: 7000 });
         const mask = $('pwMask').closest('.set-input');
         mask.classList.remove('pulse');
         void mask.offsetWidth;
@@ -4406,8 +4609,20 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     /* ---------- start ---------- */
+    syncDecision();
+    saved = readSaved();
     fill(saved);
+    paintPending();
+    paintDecisions();
     refreshButtons();
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'ebsmi_change_requests') {
+            paintPending();
+            syncDecision();
+        }
+        // the answer row is written right after the request itself, so both keys repaint the banner
+        if (e.key === 'ebsmi_change_requests' || e.key === 'ebsmi_activity_extra') paintDecisions();
+    });
 
     // Another tab saved Settings: show its values here
     window.addEventListener('storage', (e) => {
@@ -4419,3 +4634,173 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 }
+
+/* ==========================================================================
+   HRREQ: front-end stand-in for "HR changes personal info -> Admin is notified -> Admin decides -> HR is told".
+   It keeps everything in this browser (localStorage) so the HR pages and the Admin pages can be tried
+   together. BACKEND: replace every HRREQ call with a request to the server; the data shapes below are
+   what the PHP should return.
+     request  = { id, hr_id, hr_name, old_email, new_email|null, new_password|null, current_password|null,
+                  status: 'pending'|'approved'|'rejected', created, decided|null, applied }
+     activity = { id, at, activity, details, by: 'HR'|'Admin', ref|null, hr_id|null, read }
+   "read" on an activity row means:
+     by 'HR'    -> the ADMIN has opened it   (until then it is highlighted on the Admin side)
+     by 'Admin' -> the HR it is about has read it   (until then it is highlighted on the HR side)
+   ========================================================================== */
+window.HRREQ = (function () {
+    const KEY = 'ebsmi_change_requests', ACT = 'ebsmi_activity_extra', PW = 'ebsmi_mock_passwords';
+    const read = (k, f) => { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? f : v; } catch (e) { return f; } };
+    const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } };
+    const pad = (n) => String(n).padStart(2, '0');
+    function now() {
+        const d = new Date();
+        return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+    }
+    let seq = 0;
+    const uid = () => 'a' + Date.now().toString(36) + (seq++).toString(36);
+    const isAdminRow = (a) => String(a.by).toLowerCase() === 'admin';
+    const partsOf = (r) => [r.new_email ? 'email' : '', r.new_password ? 'password' : ''].filter(Boolean).join(' & ');
+
+    // FRONT-END PREVIEW: sample rows so the design can be seen before the backend exists (set DEMO to false to switch off)
+    const DEMO = true;
+    if (DEMO && !read('ebsmi_demo_seeded', false)) {
+        const ago = (min) => { const d = new Date(Date.now() - min * 60000); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()); };
+        write(KEY, [
+            { id: 1, hr_id: 9001, hr_name: 'Maria Santos', old_email: 'maria.santos@expertise.com', new_email: 'maria.s@gmail.com',
+              new_password: 'NewPass123', current_password: 'OldPass123', status: 'pending', created: ago(18), decided: null, applied: false },
+            { id: 2, hr_id: 9002, hr_name: 'John Reyes', old_email: 'john.reyes@expertise.com', new_email: 'j.reyes@gmail.com',
+              new_password: null, current_password: null, status: 'approved', created: ago(190), decided: ago(150), applied: true }
+        ]);
+        write(ACT, [
+            { id: 'seed1', at: ago(18),  activity: 'HR Change Request',  details: 'Maria Santos (HR) · email & password · waiting for approval', by: 'HR',    ref: 1,    hr_id: 9001, read: false },
+            { id: 'seed2', at: ago(60),  activity: 'HR Name Changed',    details: 'Mariaa Santos → Maria Santos',                                 by: 'HR',    ref: null, hr_id: 9001, read: false },
+            { id: 'seed3', at: ago(150), activity: 'HR Change Approved', details: 'John Reyes (HR) · email',                                      by: 'Admin', ref: 2,    hr_id: 9002, read: false },
+            { id: 'seed4', at: ago(190), activity: 'HR Change Request',  details: 'John Reyes (HR) · email · waiting for approval',               by: 'HR',    ref: 2,    hr_id: 9002, read: true }
+        ]);
+        write('ebsmi_demo_seeded', true);
+    }
+
+    // Rows saved by an older version of this file have no id / read / hr_id: they count as already read
+    (function migrate() {
+        const a = read(ACT, []);
+        let changed = false;
+        a.forEach(r => {
+            if (r.id) return;
+            const rq = r.ref ? read(KEY, []).find(x => x.id === Number(r.ref)) : null;
+            r.id = uid(); r.read = true; r.hr_id = rq ? rq.hr_id : null; changed = true;
+        });
+        if (changed) write(ACT, a);
+    })();
+
+    // What the Admin's answer means for HR, in plain words (used by the bell, the Settings banner ...)
+    function describe(r, status) {
+        const what = r && r.new_email && r.new_password ? 'Email & password' : r && r.new_email ? 'Email' : 'Password';
+        const ok = status === 'approved';
+        const detail = [];
+        if (ok) {
+            if (r && r.new_email) detail.push('Your new email ' + r.new_email + ' is now active.');
+            if (r && r.new_password) detail.push('Your new password is now active. Use it the next time you log in.');
+            if (!detail.length) detail.push('The admin approved your change.');
+        } else {
+            detail.push('The admin did not approve it, so nothing was changed. You can send a new request from Settings.');
+        }
+        return { title: what + ' change ' + (ok ? 'approved' : 'rejected'), detail: detail.join(' ') };
+    }
+
+    const api = {
+        now: now,
+        list: () => read(KEY, []),
+        get: (id) => api.list().find(r => r.id === id) || null,
+        pendingFor: (hrId) => api.list().find(r => r.hr_id === hrId && r.status === 'pending') || null,
+        unappliedFor: (hrId) => api.list().find(r => r.hr_id === hrId && r.status !== 'pending' && !r.applied) || null,
+        activity: () => read(ACT, []),
+        log(activity, details, by, ref, hrId) {
+            const a = read(ACT, []);
+            const row = { id: uid(), at: now(), activity: activity, details: details, by: by, ref: ref || null, hr_id: hrId || null, read: false };
+            a.unshift(row);
+            write(ACT, a.slice(0, 50));
+            return row;
+        },
+        // HR sends a change; a second change while one is waiting is added to the same request
+        submit(hr, changes) {
+            const all = api.list();
+            let r = all.find(x => x.hr_id === hr.id && x.status === 'pending');
+            if (!r) {
+                r = { id: Date.now(), hr_id: hr.id, hr_name: hr.name, old_email: hr.email, new_email: null, new_password: null,
+                      current_password: null, status: 'pending', created: now(), decided: null, applied: false };
+                all.push(r);
+            }
+            if (changes.new_email) r.new_email = changes.new_email;
+            if (changes.new_password) { r.new_password = changes.new_password; r.current_password = changes.current_password || null; }
+            write(KEY, all);
+            api.log('HR Change Request', r.hr_name + ' (HR) · ' + partsOf(r) + ' · waiting for approval', 'HR', r.id, r.hr_id);
+            return r;
+        },
+        // Admin decides. The HR gets a new (unread) notice; the HR's own request row counts as read for the Admin.
+        decide(id, status) {
+            const all = api.list();
+            const r = all.find(x => x.id === id && x.status === 'pending');
+            if (!r) return null;
+            r.status = status;
+            r.decided = now();
+            write(KEY, all);
+            if (status === 'approved' && r.new_password) {
+                const m = read(PW, {}); m[r.hr_id] = r.new_password; write(PW, m);
+            }
+            api.markRequestRead(r.id);
+            api.log(status === 'approved' ? 'HR Change Approved' : 'HR Change Rejected', r.hr_name + ' (HR) · ' + partsOf(r), 'Admin', r.id, r.hr_id);
+            return r;
+        },
+        markApplied(id) {
+            const all = api.list();
+            const r = all.find(x => x.id === id);
+            if (r) { r.applied = true; write(KEY, all); }
+        },
+        // the password the Admin sees in Edit HR Account (null = "Not available yet")
+        password: (hrId) => read(PW, {})[hrId] || null,
+
+        /* ---- ADMIN side: what HR did that the Admin has not opened yet ---- */
+        adminUnread: () => read(ACT, []).filter(a => !isAdminRow(a) && !a.read),
+        // one row (by its id) or, with no id, every row
+        markAdminRead(id) {
+            const a = read(ACT, []);
+            let changed = false;
+            a.forEach(r => { if (!isAdminRow(r) && !r.read && (id == null || r.id === id)) { r.read = true; changed = true; } });
+            if (changed) write(ACT, a);
+            return changed;
+        },
+        // opening a request (or deciding it) reads every row that belongs to it
+        markRequestRead(refId) {
+            const a = read(ACT, []);
+            let changed = false;
+            a.forEach(r => { if (!isAdminRow(r) && !r.read && Number(r.ref) === Number(refId)) { r.read = true; changed = true; } });
+            if (changed) write(ACT, a);
+            return changed;
+        },
+
+        /* ---- HR side: the Admin's answers to this HR's requests ---- */
+        // newest first: { id, at, ref, status: 'approved'|'rejected', title, detail, read }
+        hrNotices(hrId) {
+            return read(ACT, [])
+                .filter(a => isAdminRow(a) && a.ref && Number(a.hr_id) === Number(hrId) && /^HR Change (Approved|Rejected)$/.test(a.activity))
+                .map(a => {
+                    const status = /Approved$/.test(a.activity) ? 'approved' : 'rejected';
+                    const d = describe(api.get(Number(a.ref)), status);
+                    return { id: a.id, at: a.at, ref: a.ref, status: status, title: d.title, detail: d.detail, read: !!a.read };
+                })
+                .sort((x, y) => String(y.at).localeCompare(String(x.at)));
+        },
+        hrUnread: (hrId) => api.hrNotices(hrId).filter(n => !n.read),
+        // one notice (by its id) or, with no id, all of this HR's notices
+        markHrRead(hrId, id) {
+            const a = read(ACT, []);
+            let changed = false;
+            a.forEach(r => {
+                if (isAdminRow(r) && !r.read && Number(r.hr_id) === Number(hrId) && (id == null || r.id === id)) { r.read = true; changed = true; }
+            });
+            if (changed) write(ACT, a);
+            return changed;
+        }
+    };
+    return api;
+})();

@@ -26,4 +26,4 @@ function loadEnv($path) {
 }
 
 // Load the .env file from the root directory
-loadEnv(__DIR__ . '/../.env');
+loadEnv(__DIR__ . '/../../.env');

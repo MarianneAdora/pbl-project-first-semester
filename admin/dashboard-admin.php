@@ -120,6 +120,16 @@ $greeting     = 'Hello, ' . $display_name . '!';
         </div>
     </div>
 
+    <!-- HR change request: opens when a clickable Recent Activities row is clicked -->
+    <div class="modal-backdrop" id="reqModal" role="dialog" aria-modal="true" aria-labelledby="reqTitle">
+        <div class="modal-card req-card">
+            <h3 id="reqTitle">Change request</h3>
+            <p class="req-sub" id="reqSub"></p>
+            <div class="req-body" id="reqBody"></div>
+            <div class="modal-actions req-actions" id="reqActions"></div>
+        </div>
+    </div>
+
     <!-- Sidebar: Dashboard, HR Accounts, Questions, Archive (+ Settings and Log out at the bottom) -->
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header reveal" style="--i:0">
@@ -267,13 +277,14 @@ $greeting     = 'Hello, ' . $display_name . '!';
                 <div class="card-top">
                     <h3 id="activityTitle">Recent Activities</h3>
                     <span class="activity-count"><?php echo htmlspecialchars($log_count, ENT_QUOTES, 'UTF-8'); ?></span>
+                    <button type="button" class="mark-read-btn" id="markAllRead" hidden>Mark all as read</button>
                 </div>
                 <div class="table-responsive">
                     <table class="data-table activity-table">
                         <colgroup>
-                            <col style="width: 24%">
-                            <col style="width: 26%">
-                            <col style="width: 34%">
+                            <col style="width: 22%">
+                            <col style="width: 35%">
+                            <col style="width: 27%">
                             <col style="width: 16%">
                         </colgroup>
                         <thead>

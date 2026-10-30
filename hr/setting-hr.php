@@ -149,6 +149,18 @@ $account_email = trim((string) ($_SESSION['user_email'] ?? ''));
             <section class="set-card reveal" style="--i:2" aria-labelledby="accountTitle">
                 <h2 id="accountTitle">Account Settings</h2>
 
+                <!-- The Admin approved / rejected an email or password change: highlighted until HR clicks "Got it" -->
+                <div class="decision-stack" id="decisionBanners" aria-live="polite"></div>
+
+                <!-- Shown while an email / password change waits for the Admin -->
+                <div class="pending-banner" id="pendingBanner" role="status" aria-live="polite" hidden>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm.5-13H11v6l5.2 3.1.8-1.3-4.5-2.7V7z"/></svg>
+                    <div class="pb-text">
+                        <strong>Waiting for the admin's approval</strong>
+                        <span id="pendingText"></span>
+                    </div>
+                </div>
+
                 <div class="set-field" data-field="name">
                     <label for="setName">Name</label>
                     <div class="set-input">
@@ -180,7 +192,7 @@ $account_email = trim((string) ($_SESSION['user_email'] ?? ''));
                         <label for="pwOpen">Change Password</label>
                         <button type="button" class="btn-update-pw" id="pwOpen" aria-haspopup="dialog">
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path class="lock-shackle" d="M12 2C9.24 2 7 4.24 7 7v2h2V7c0-1.66 1.34-3 3-3s3 1.34 3 3v2h2V7c0-2.76-2.24-5-5-5z"/><path d="M18 9H6c-1.1 0-2 .9-2 2v9c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-9c0-1.1-.9-2-2-2zm-6 7.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
-                            Update Password
+                            <span id="pwOpenLabel">Update Password</span>
                         </button>
                     </div>
                 </div>
@@ -278,7 +290,7 @@ $account_email = trim((string) ($_SESSION['user_email'] ?? ''));
     <div class="modal-backdrop" id="pwModal" role="dialog" aria-modal="true" aria-labelledby="pwTitle">
         <div class="modal-card pw-modal">
             <h3 id="pwTitle">Update Password</h3>
-            <p>Choose a new password you do not use anywhere else.</p>
+            <p>Choose a new password you do not use anywhere else. The admin has to approve it before it replaces your current one.</p>
             <form id="pwForm" novalidate autocomplete="off">
                 <div class="set-field" data-field="pwCurrent">
                     <label for="pwCurrent">Current password</label>
@@ -313,9 +325,22 @@ $account_email = trim((string) ($_SESSION['user_email'] ?? ''));
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn-cancel" id="pwCancel">Cancel</button>
-                    <button type="submit" class="btn-blue" id="pwSubmit">Update Password</button>
+                    <button type="submit" class="btn-blue" id="pwSubmit">Send for Approval</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Confirm before an email / password change is sent to the Admin -->
+    <div class="modal-backdrop" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+        <div class="modal-card confirm-card">
+            <h3 id="confirmTitle">Send for approval?</h3>
+            <p id="confirmText"></p>
+            <ul class="confirm-list" id="confirmList"></ul>
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel" id="confirmCancel">Cancel</button>
+                <button type="button" class="btn-confirm" id="confirmOk">Send</button>
+            </div>
         </div>
     </div>
 
@@ -336,7 +361,7 @@ $account_email = trim((string) ($_SESSION['user_email'] ?? ''));
         } catch (Throwable $e) {}
         echo json_encode($archiveSync, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
     ?>;</script>
-    <script>window.HR_ACCOUNT = <?php echo json_encode(['name' => $account_name, 'email' => $account_email], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
+    <script>window.HR_ACCOUNT = <?php echo json_encode(['id' => (int) ($_SESSION['user_id'] ?? 0), 'name' => $account_name, 'email' => $account_email], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
     <script src="../assets/js/hr.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/hr.js'); ?>"></script>
 </body>
 </html>

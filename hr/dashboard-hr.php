@@ -276,7 +276,7 @@ function status_badge(string $status): string
                         <button type="button" class="notif-markall" id="notifMarkAll">Mark all as read</button>
                     </div>
                     <ul class="notif-list" id="notifList"></ul>
-                    <p class="notif-foot">Your activity also appears in the Admin's Recent Activities. Changes to Settings are not included.</p>
+                    <p class="notif-foot">Your activity also appears in the Admin's Recent Activities. The Admin's answers to your email or password requests show here too.</p>
                 </div>
             </div>
         </header>
@@ -482,6 +482,7 @@ function status_badge(string $status): string
         }
         echo json_encode($archiveSync, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
     ?>;</script>
+    <script>window.HR_ACCOUNT = <?php echo json_encode(['id' => (int) ($_SESSION['user_id'] ?? 0)], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
     <script src="../assets/js/hr.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/hr.js'); ?>"></script>
 </body>
 </html>
