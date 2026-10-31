@@ -16,6 +16,7 @@
  */
 
 require_once __DIR__ . '/../Helpers/db.php';
+require_once __DIR__ . '/../Repositories/ApplicantRepository.php';   // repo_normalize_email()
 
 class RiskScoringService
 {
@@ -335,7 +336,7 @@ class RiskScoringService
     {
         $st = $this->pdo->prepare(
             "SELECT applicant_id, name, email, phone_number
-             FROM applicant WHERE applicant_id <> :id AND deleted_at IS NULL"
+             FROM applicant WHERE applicant_id <> :id AND deleted_at IS NULL AND verified_at IS NOT NULL"
         );
         $st->execute([':id' => $excludeId]);
         return $st->fetchAll();
@@ -361,12 +362,12 @@ class RiskScoringService
         $st = $this->pdo->prepare(
             "SELECT MAX(created_at) AS last_at
              FROM applicant
-             WHERE LOWER(email) = LOWER(:email)
+             WHERE email_normalized = :email
                AND applicant_id <> :id
                AND LOWER(result) = 'rejected'
                AND deleted_at IS NULL"
         );
-        $st->execute([':email' => $email, ':id' => $excludeId]);
+        $st->execute([':email' => repo_normalize_email($email), ':id' => $excludeId]);
         $ts = $st->fetchColumn();
         if (!$ts) return null;
         return (int) floor((time() - strtotime((string) $ts)) / 86400);

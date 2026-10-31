@@ -23,6 +23,7 @@ $emailDisplay = $email !== '' ? htmlspecialchars($email, ENT_QUOTES, 'UTF-8') : 
 // ---- OTP backend (database via OtpService, session fallback for testing) ----
 require_once __DIR__ . '/../src/Helpers/db.php';
 require_once __DIR__ . '/../src/Services/OtpService.php';
+require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
 
 $otpDb = null;          // OtpService instance when the DB + applicant are available
 $otpDbError = '';
@@ -136,11 +137,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$locked) {      // a locked page i
         } elseif ($otpDb) {
             $check = $otpDb->verifyOtp($applicantId, $code, $maxAttempts, $lockSeconds);
             if ($check['ok']) {
+                // The applicant has proven they own this email: only NOW do they enter the system
+                // (Screening List, Dashboard counts, Recent Applicants all filter on verified_at).
+                try {
+                    $pdo = db();
+                    if (repo_mark_verified($applicantId, $pdo)) {
+                        repo_log_activity('Added An Applicant', $applicantName !== '' ? $applicantName : $email, 'Applicant', $pdo);
+                    }
+                } catch (Throwable $e) {
+                    error_log('verify-otp mark verified error: ' . $e->getMessage());
+                    $error = 'We could not finish verifying your account. Please try again.';
+                    $check['ok'] = false;
+                }
+            }
+            if ($check['ok']) {
                 $_SESSION['otp_verified'] = true;
                 header('Location: ' . $nextPage);
                 exit;
             }
-            $error = $check['error'];
+            if ($check['error'] !== '') $error = $check['error'];
             $attemptsLeft = $check['attempts_left'];
             if (!empty($check['locked_until'])) {
                 $locked = true;

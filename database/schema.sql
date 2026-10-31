@@ -27,8 +27,11 @@ CREATE TABLE applicant (
     encoded_by_user_id      INT REFERENCES users(user_id),
     name                    VARCHAR(255) NOT NULL,
     email                   VARCHAR(255) NOT NULL,
+    email_normalized        VARCHAR(255) NOT NULL,   -- lowercase; gmail dots/+tags removed -> one email, one applicant
     phone_number            VARCHAR(20),
     cv_file_url             VARCHAR(512),
+    cv_hash                 CHAR(64),                -- SHA-256 of the CV file -> one CV, one applicant
+    verified_at             TIMESTAMP,               -- NULL = invited only; set when the OTP is verified
     status                  VARCHAR(20)  NOT NULL DEFAULT 'pending'
                                 CHECK (status IN ('pending', 'in_progress', 'submitted', 'reviewed', 'rejected', 'accepted')),
     result                  VARCHAR(20),
@@ -170,7 +173,9 @@ CREATE TABLE score (
 -- ------------------------------------------------------------
 -- INDEXES
 -- ------------------------------------------------------------
-CREATE INDEX idx_applicant_email           ON applicant(email);
+CREATE UNIQUE INDEX uq_applicant_email_normalized ON applicant(email_normalized);
+CREATE UNIQUE INDEX uq_applicant_cv_hash          ON applicant(cv_hash) WHERE cv_hash IS NOT NULL;
+CREATE INDEX idx_applicant_unverified      ON applicant(created_at) WHERE verified_at IS NULL;
 CREATE INDEX idx_applicant_status          ON applicant(status);
 CREATE INDEX idx_applicant_deleted_at      ON applicant(deleted_at);
 

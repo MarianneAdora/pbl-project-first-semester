@@ -11,7 +11,7 @@ function repo_applicants_active(?PDO $pdo = null): array
     $pdo = $pdo ?: db();
     $rows = $pdo->query(
         "SELECT applicant_id, name, email, phone_number, status, result, created_at" .
-        " FROM applicant WHERE deleted_at IS NULL ORDER BY applicant_id ASC"
+        " FROM applicant WHERE deleted_at IS NULL AND verified_at IS NOT NULL ORDER BY applicant_id ASC"
     )->fetchAll();
     return array_map('applicant_to_display', $rows);
 }
@@ -29,12 +29,129 @@ function repo_generate_reference_code(PDO $pdo): string
     return sprintf('APP-%s-%s', $year, strtoupper(substr(bin2hex(random_bytes(4)), 0, 8)));
 }
 
+// ---------------------------------------------------------------------------
+// "One CV, one email" + "applicant joins the system only after OTP"
+//   applicant.verified_at IS NULL      -> invitation only (hidden from every HR list/count)
+//   applicant.verified_at IS NOT NULL  -> real applicant (set by repo_mark_verified on OTP success)
+// Every HR-facing read below filters on verified_at IS NOT NULL.
+// ---------------------------------------------------------------------------
+
+/** How long an unverified invitation (and its email link) stays usable. */
+const INVITE_LIFETIME_DAYS = 7;
+
+/** Raised when the email or CV already belongs to another applicant. $field is 'email' or 'cv'. */
+class DuplicateApplicantException extends InvalidArgumentException
+{
+    public string $field;
+    public function __construct(string $message, string $field)
+    {
+        parent::__construct($message);
+        $this->field = $field;
+    }
+}
+
 /**
- * Insert a new applicant (Add Applicant page).
- * Pass $cvUrl (Cloudinary secure URL) to store the uploaded CV; otherwise cv_file_url stays NULL.
- * Invitation email is still not sent here. Returns the new row mapped for the frontend.
+ * Canonical form of an email, used for the uniqueness rule.
+ * Lowercase + trim; for Gmail also ignores dots and "+tag", so
+ * Juan.Cruz+test@gmail.com and juancruz@gmail.com count as the SAME address.
  */
-function repo_add_applicant(string $name, string $email, string $phone, ?PDO $pdo = null, ?string $cvUrl = null): array
+function repo_normalize_email(string $email): string
+{
+    $email = strtolower(trim($email));
+    $at = strrpos($email, '@');
+    if ($at === false) return $email;
+    $local = substr($email, 0, $at);
+    $domain = substr($email, $at + 1);
+    if ($domain === 'googlemail.com') $domain = 'gmail.com';
+    if ($domain === 'gmail.com') {
+        $local = explode('+', $local, 2)[0];
+        $local = str_replace('.', '', $local);
+    }
+    return $local . '@' . $domain;
+}
+
+/** SHA-256 of the CV file contents (identical file = identical hash). */
+function repo_cv_hash(string $filePath): ?string
+{
+    $h = is_file($filePath) ? @hash_file('sha256', $filePath) : false;
+    return $h !== false ? $h : null;
+}
+
+/**
+ * Throws DuplicateApplicantException when the email or CV already belongs to a
+ * VERIFIED applicant (active or archived). Unverified invitations never block:
+ * repo_add_applicant replaces them.
+ */
+function repo_assert_not_duplicate(string $email, ?string $cvHash, ?PDO $pdo = null): void
+{
+    $pdo = $pdo ?: db();
+
+    $st = $pdo->prepare(
+        "SELECT deleted_at FROM applicant WHERE email_normalized = :e AND verified_at IS NOT NULL LIMIT 1"
+    );
+    $st->execute([':e' => repo_normalize_email($email)]);
+    $row = $st->fetch();
+    if ($row) {
+        throw new DuplicateApplicantException(
+            'This email address already belongs to an applicant'
+            . (!empty($row['deleted_at']) ? ' (currently in the Archive: restore them instead of adding again).' : '.')
+            . ' Each email can only be used once.',
+            'email'
+        );
+    }
+
+    if ($cvHash !== null && $cvHash !== '') {
+        $st = $pdo->prepare("SELECT deleted_at FROM applicant WHERE cv_hash = :h AND verified_at IS NOT NULL LIMIT 1");
+        $st->execute([':h' => $cvHash]);
+        $row = $st->fetch();
+        if ($row) {
+            throw new DuplicateApplicantException(
+                'This CV was already uploaded for another applicant'
+                . (!empty($row['deleted_at']) ? ' (currently in the Archive).' : '.')
+                . ' Each CV can only be used once.',
+                'cv'
+            );
+        }
+    }
+}
+
+/** Remove invitations nobody verified within INVITE_LIFETIME_DAYS (keeps the table lean). */
+function repo_purge_stale_invitations(?PDO $pdo = null): int
+{
+    $pdo = $pdo ?: db();
+    $st = $pdo->prepare(
+        "DELETE FROM applicant WHERE verified_at IS NULL AND created_at < NOW() - (:d || ' days')::INTERVAL"
+    );
+    $st->bindValue(':d', (string) INVITE_LIFETIME_DAYS, PDO::PARAM_STR);
+    $st->execute();
+    return $st->rowCount();
+}
+
+/**
+ * The applicant just verified their OTP: this is the moment they enter the system.
+ * Returns true only the first time (so callers can log it once).
+ */
+function repo_mark_verified(int $id, ?PDO $pdo = null): bool
+{
+    $pdo = $pdo ?: db();
+    $st = $pdo->prepare(
+        "UPDATE applicant SET verified_at = NOW() WHERE applicant_id = :id AND verified_at IS NULL AND deleted_at IS NULL"
+    );
+    $st->execute([':id' => $id]);
+    return $st->rowCount() > 0;
+}
+
+/**
+ * Create an INVITATION (Add Applicant page). The row is hidden from HR until
+ * the applicant verifies the OTP (repo_mark_verified).
+ *
+ * Rules (checked here and enforced again by the unique indexes):
+ *   - one email  -> one applicant (Gmail dots/+tags ignored)
+ *   - one CV     -> one applicant (SHA-256 of the file)
+ * An older UNVERIFIED invitation with the same email or CV is replaced, so HR can
+ * fix a typo or resend an invite that never arrived. Call inside a transaction.
+ */
+function repo_add_applicant(string $name, string $email, string $phone, ?PDO $pdo = null, ?string $cvUrl = null, ?string $cvHash = null): array
 {
     $pdo = $pdo ?: db();
 
@@ -45,6 +162,19 @@ function repo_add_applicant(string $name, string $email, string $phone, ?PDO $pd
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) throw new InvalidArgumentException('Enter a valid email address.');
     if ($phone === '') throw new InvalidArgumentException('Please enter the contact number.');
 
+    repo_purge_stale_invitations($pdo);
+    repo_assert_not_duplicate($email, $cvHash, $pdo);
+
+    // Replace any older unverified invitation for this email / CV.
+    $norm = repo_normalize_email($email);
+    if ($cvHash !== null && $cvHash !== '') {
+        $st = $pdo->prepare("DELETE FROM applicant WHERE verified_at IS NULL AND (email_normalized = :e OR cv_hash = :h)");
+        $st->execute([':e' => $norm, ':h' => $cvHash]);
+    } else {
+        $st = $pdo->prepare("DELETE FROM applicant WHERE verified_at IS NULL AND email_normalized = :e");
+        $st->execute([':e' => $norm]);
+    }
+
     $ref = repo_generate_reference_code($pdo);
     for ($i = 0; $i < 5; $i++) {
         $token = bin2hex(random_bytes(32));
@@ -54,12 +184,28 @@ function repo_add_applicant(string $name, string $email, string $phone, ?PDO $pd
     }
 
     $st = $pdo->prepare(
-        "INSERT INTO applicant (reference_code, secure_token, encoded_by_user_id, name, email, phone_number, cv_file_url, status)" .
-        " VALUES (:ref, :tok, :enc, :name, :email, :phone, :cv, 'pending') RETURNING applicant_id"
+        "INSERT INTO applicant (reference_code, secure_token, encoded_by_user_id, name, email, email_normalized, phone_number, cv_file_url, cv_hash, status)" .
+        " VALUES (:ref, :tok, :enc, :name, :email, :norm, :phone, :cv, :hash, 'pending') RETURNING applicant_id"
     );
     $enc = null;
     if (session_status() === PHP_SESSION_ACTIVE && isset($_SESSION['user_id'])) $enc = (int) $_SESSION['user_id'];
-    $st->execute([':ref' => $ref, ':tok' => $token, ':enc' => $enc, ':name' => $name, ':email' => $email, ':phone' => $phone, ':cv' => $cvUrl]);
+    try {
+        $st->execute([
+            ':ref' => $ref, ':tok' => $token, ':enc' => $enc, ':name' => $name, ':email' => $email,
+            ':norm' => $norm, ':phone' => $phone, ':cv' => $cvUrl, ':hash' => $cvHash,
+        ]);
+    } catch (PDOException $e) {
+        // Two HR users submitting at the same moment: the unique index is the final guard.
+        if ((string) $e->getCode() === '23505') {
+            $isCv = stripos($e->getMessage(), 'cv_hash') !== false;
+            throw new DuplicateApplicantException(
+                $isCv ? 'This CV was already uploaded for another applicant. Each CV can only be used once.'
+                      : 'This email address already belongs to an applicant. Each email can only be used once.',
+                $isCv ? 'cv' : 'email'
+            );
+        }
+        throw $e;
+    }
     $id = (int) $st->fetchColumn();
 
     return ['id' => $id, 'name' => $name, 'email' => $email, 'contact' => $phone, 'status' => 'Pending', 'result' => null, 'cv_file_url' => $cvUrl, 'secure_token' => $token];
@@ -70,7 +216,7 @@ function repo_find_applicant(int $id, ?PDO $pdo = null): ?array
     $pdo = $pdo ?: db();
     $st = $pdo->prepare(
         "SELECT applicant_id, name, email, phone_number, status, result, reference_code, secure_token, cv_file_url, created_at" .
-        " FROM applicant WHERE applicant_id = :id AND deleted_at IS NULL LIMIT 1"
+        " FROM applicant WHERE applicant_id = :id AND deleted_at IS NULL AND verified_at IS NOT NULL LIMIT 1"
     );
     $st->execute([':id' => $id]);
     $row = $st->fetch();
@@ -95,7 +241,8 @@ function repo_find_applicant_by_token(string $token, ?PDO $pdo = null): ?array
     if ($token === '') return null;
     $st = $pdo->prepare(
         "SELECT applicant_id, name, email, phone_number, status, result, reference_code, secure_token, cv_file_url, created_at" .
-        " FROM applicant WHERE secure_token = :t AND deleted_at IS NULL LIMIT 1"
+        " FROM applicant WHERE secure_token = :t AND deleted_at IS NULL" .
+        " AND (verified_at IS NOT NULL OR created_at > NOW() - INTERVAL '" . INVITE_LIFETIME_DAYS . " days') LIMIT 1"
     );
     $st->execute([':t' => $token]);
     $row = $st->fetch();
@@ -116,11 +263,11 @@ function repo_find_applicant_by_token(string $token, ?PDO $pdo = null): ?array
 function repo_find_applicant_by_email(string $email, ?PDO $pdo = null): ?array
 {
     $pdo = $pdo ?: db();
-    $email = strtolower(trim($email));
+    $email = repo_normalize_email($email);
     if ($email === '') return null;
     $st = $pdo->prepare(
         "SELECT applicant_id, name, email, phone_number, status, result, reference_code, secure_token, cv_file_url, created_at" .
-        " FROM applicant WHERE LOWER(email) = :e AND deleted_at IS NULL LIMIT 1"
+        " FROM applicant WHERE email_normalized = :e AND deleted_at IS NULL AND verified_at IS NOT NULL LIMIT 1"
     );
     $st->execute([':e' => $email]);
     $row = $st->fetch();
@@ -141,7 +288,7 @@ function repo_find_applicant_by_email(string $email, ?PDO $pdo = null): ?array
 function repo_mark_in_progress(int $id, ?PDO $pdo = null): int
 {
     $pdo = $pdo ?: db();
-    $st = $pdo->prepare("UPDATE applicant SET status = 'in_progress' WHERE applicant_id = :id AND status = 'pending' AND deleted_at IS NULL");
+    $st = $pdo->prepare("UPDATE applicant SET status = 'in_progress' WHERE applicant_id = :id AND status = 'pending' AND deleted_at IS NULL AND verified_at IS NOT NULL");
     $st->execute([':id' => $id]);
     return $st->rowCount();
 }
@@ -248,7 +395,7 @@ function repo_applicants_archived(?PDO $pdo = null): array
     $pdo = $pdo ?: db();
     $rows = $pdo->query(
         "SELECT applicant_id, name, email, phone_number, status, result, deleted_at, created_at" .
-        " FROM applicant WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC"
+        " FROM applicant WHERE deleted_at IS NOT NULL AND verified_at IS NOT NULL ORDER BY deleted_at DESC"
     )->fetchAll();
     $out = [];
     foreach ($rows as $r) {
@@ -264,7 +411,7 @@ function repo_dashboard_stats(?PDO $pdo = null): array
     $pdo = $pdo ?: db();
     $rows = $pdo->query(
         "SELECT LOWER(status) AS s, LOWER(COALESCE(result,'')) AS r, COUNT(*) AS c" .
-        " FROM applicant WHERE deleted_at IS NULL GROUP BY 1, 2"
+        " FROM applicant WHERE deleted_at IS NULL AND verified_at IS NOT NULL GROUP BY 1, 2"
     )->fetchAll();
 
     $stats = ['total' => 0, 'pending' => 0, 'in_progress' => 0, 'completed' => 0, 'passed' => 0, 'failed' => 0];
@@ -290,7 +437,7 @@ function repo_applicants_recent(?PDO $pdo = null, int $limit = 10): array
     $pdo = $pdo ?: db();
     $st = $pdo->prepare(
         "SELECT applicant_id, name, email, phone_number, status, result, created_at" .
-        " FROM applicant WHERE deleted_at IS NULL ORDER BY created_at DESC, applicant_id DESC LIMIT :lim"
+        " FROM applicant WHERE deleted_at IS NULL AND verified_at IS NOT NULL ORDER BY verified_at DESC, applicant_id DESC LIMIT :lim"
     );
     $st->bindValue(':lim', $limit, PDO::PARAM_INT);
     $st->execute();

@@ -14,7 +14,9 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {
 // Add Applicant writes straight to the database (PostgreSQL via PDO).
 // This page is also its own POST endpoint (replaces the old static-data.php call).
 // CV upload goes to Cloudinary under the ebsmi-shortlist-applicant-cvs folder and cv_file_url stores the secure URL.
-// After saving, a shortlist invite email is sent to the applicant's email address.
+// This page only creates an INVITATION (hidden from every HR list). The applicant joins the system
+// when they verify the OTP on applicant/verify-otp.php (repo_mark_verified).
+// Rules: one email -> one applicant, one CV -> one applicant (see ApplicantRepository.php).
 require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
 require_once __DIR__ . '/../src/Services/CloudinaryService.php';
 require_once __DIR__ . '/../src/Services/EmailService.php';
@@ -72,6 +74,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($missing) {
                 $respond(['status' => 'invalid', 'missing' => $missing, 'message' => $cvMissingMessage($missing)], 422);
             }
+            // One CV / one email: tell HR right away, before they fill in the rest of the form.
+            try {
+                repo_assert_not_duplicate((string) ($parsed['email'] ?? ''), repo_cv_hash($cv['tmp_name']));
+            } catch (DuplicateApplicantException $e) {
+                $respond(['status' => 'duplicate', 'field' => $e->field, 'message' => $e->getMessage()], 409);
+            }
             $respond(['status' => 'success', 'parsed' => [
                 'name' => (string) ($parsed['name'] ?? ''),
                 'email' => (string) ($parsed['email'] ?? ''),
@@ -117,12 +125,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo = db();
         $pdo->beginTransaction();
 
-        // 1. Insert first so the Cloudinary subfolder uses the real applicant id: ebsmi-shortlist-applicant-cvs/{id}
+        // 1. Create the invitation first (duplicates are rejected here, before anything is uploaded or emailed).
+        //    The Cloudinary subfolder uses the real applicant id: ebsmi-shortlist-applicant-cvs/{id}
+        $cvHash = $cvUpload ? repo_cv_hash($cvUpload['tmp_name']) : null;
         $applicant = repo_add_applicant(
             (string) ($input['name'] ?? ''),
             (string) ($input['email'] ?? ''),
             (string) ($input['contact'] ?? ''),
-            $pdo
+            $pdo,
+            null,
+            $cvHash
         );
 
         // 2. Upload the CV (if any) and save its URL on the row.
@@ -148,7 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $applicant['cv_name'] = $cvName;
         }
 
-        // 3. Send shortlist invite email. Applicant only committed after this succeeds.
+        // 3. Send the invite email. The invitation is only committed after this succeeds.
         $emailService = new EmailService();
         $emailSent = $emailService->sendInviteEmail(
             (string) ($applicant['email'] ?? ''),
@@ -159,8 +171,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception('Failed to send the invitation email. Applicant was not saved.');
         }
 
-        repo_log_activity('Added An Applicant', (string) ($applicant['name'] ?? '-'), null, $pdo);
-
+        // 'Added An Applicant' is logged later, when the applicant verifies the OTP.
         $pdo->commit();
 
         $respond([
@@ -173,6 +184,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'cv_uploaded' => $cvUrl !== null,
             'cv_url' => $cvUrl,
         ]);
+    } catch (DuplicateApplicantException $e) {
+        if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) $pdo->rollBack();
+        $respond(['status' => 'duplicate', 'field' => $e->field, 'message' => $e->getMessage()], 409);
     } catch (InvalidArgumentException $e) {
         if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) $pdo->rollBack();
         $respond(['status' => 'error', 'message' => $e->getMessage()], 422);
@@ -435,8 +449,8 @@ try {
                 <circle class="bc-circle" cx="40" cy="40" r="36"/>
                 <path class="bc-tick" d="M24 41l11 11 21-23"/>
             </svg>
-            <h2>Applicant Added Successfully</h2>
-            <p class="success-lead">The applicant has been added to the system and the invitation has been sent via email.</p>
+            <h2>Invitation Sent</h2>
+            <p class="success-lead">The invitation has been sent. The applicant will appear in the Screening List once they verify their email with the one-time code.</p>
 
             <div class="details-box">
                 <h4>Applicant Details</h4>
@@ -448,7 +462,7 @@ try {
             </div>
 
             <div class="success-actions">
-                <a href="screening-list.php" class="btn-primary">View Application List</a>
+                <a href="screening-list.php" class="btn-primary">View Screening List</a>
                 <button type="button" class="btn-outline" id="addAnother">Add Another Applicant</button>
             </div>
         </section>

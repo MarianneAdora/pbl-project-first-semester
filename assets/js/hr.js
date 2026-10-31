@@ -994,7 +994,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const data = await sendInvitation(new FormData(form));
             lastApplicant = data.applicant;
-            HR.noteNewApplicant(data.applicant.id);      // red badge on Applicants > Screening List
+            // No red badge here: the applicant only appears in the Screening List after they verify the OTP.
             openSentModal(data.applicant);
         } catch (err) {
             HR.toast(err.message || 'Something went wrong. Please try again.', { error: true, duration: 8000 });
@@ -1029,7 +1029,8 @@ document.addEventListener('DOMContentLoaded', () => {
         let data;
         try { data = await res.json(); }
         catch (e) { throw new Error('The server did not answer correctly. Please try again.'); }
-        if (data.status === 'invalid') { rejectCv(data.message || 'This CV was not accepted.'); throw new Error(data.message || 'This CV was not accepted.'); }
+        if (data.status === 'invalid' || (data.status === 'duplicate' && data.field === 'cv')) { rejectCv(data.message || 'This CV was not accepted.'); throw new Error(data.message || 'This CV was not accepted.'); }
+        if (data.status === 'duplicate' && data.field === 'email') setError('email', data.message, true);
         if (data.status !== 'success') throw new Error(data.message || 'Something went wrong. Please try again.');
         return data;
     }
