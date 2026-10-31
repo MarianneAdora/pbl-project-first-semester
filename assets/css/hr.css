@@ -870,6 +870,21 @@ html.js.is-ready.is-leaving .reveal {
     grid-column: 1 / -1;
 }
 
+/* First / Middle / Last name sit on one row */
+:where(html[data-page="addapplicants"]) .name-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 20px 28px;
+}
+:where(html[data-page="addapplicants"]) .field .opt {
+    font-weight: 400;
+    opacity: .65;
+    font-size: .85em;
+}
+@media (max-width: 900px) {
+    :where(html[data-page="addapplicants"]) .name-row { grid-template-columns: 1fr; }
+}
+
 :where(html[data-page="addapplicants"]) .field label,
 :where(html[data-page="addapplicants"]) .field > label {
     display: block;

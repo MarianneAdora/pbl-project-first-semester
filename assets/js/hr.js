@@ -752,16 +752,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* ---------- validation ---------- */
     // Each rule returns the error text (or '' when the value is fine). The messages say WHAT is wrong.
+    // First / middle / last name: letters, spaces, apostrophes, periods and hyphens. Middle name may be empty.
+    function namePart(v, label, required) {
+        const t = v.trim();
+        if (!t) return required ? 'Please enter the ' + label + '.' : '';
+        if (/\d/.test(t)) return 'The ' + label + ' cannot contain numbers.';
+        if (!/^[\p{L}\p{M}'.\- ]+$/u.test(t)) return 'Use letters only (spaces, apostrophes, periods and hyphens are fine).';
+        if (t.replace(/[^\p{L}]/gu, '').length < 2) return 'The ' + label + ' is too short (at least 2 letters).';
+        if (t.length > 100) return 'The ' + label + ' is too long (100 characters maximum).';
+        return '';
+    }
     const rules = {
-        name(v) {
-            const t = v.trim();
-            if (!t) return 'Please enter the full name.';
-            if (/\d/.test(t)) return 'The name cannot contain numbers.';
-            if (!/^[\p{L}\p{M}'.\- ]+$/u.test(t)) return 'Use letters only (spaces, apostrophes, periods and hyphens are fine).';
-            if (t.replace(/[^\p{L}]/gu, '').length < 2) return 'The name is too short (at least 2 letters).';
-            if (t.length > 100) return 'The name is too long (100 characters maximum).';
-            return '';
-        },
+        first_name(v) { return namePart(v, 'first name', true); },
+        middle_name(v) { return namePart(v, 'middle name', false); },
+        last_name(v) { return namePart(v, 'last name', true); },
         email(v) {
             const t = v.trim();
             if (!t) return 'Please enter the email address.';
@@ -829,7 +833,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // appears the moment something is wrong and goes away the moment it is fixed.
     // Leaving a box that was used (even if now empty) also checks it.
     const touched = new Set();
-    ['name', 'email', 'contact'].forEach(name => {
+    ['first_name', 'middle_name', 'last_name', 'email', 'contact'].forEach(name => {
         const input = form.elements[name];
         input.setAttribute('aria-describedby', name + 'Error');
         fieldOf(name).querySelector('.field-error').id = name + 'Error';
@@ -945,7 +949,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             cvVerified = true;
             setError('cv', '');
-            const filled = ['name', 'email', 'contact'].filter(n => fillField(n, data.parsed[n]));
+            const filled = ['first_name', 'middle_name', 'last_name', 'email', 'contact'].filter(n => fillField(n, data.parsed[n]));
             setAutofill('CV accepted. Details filled from CV, please review before sending.');
         } catch (err) {
             if (myCheck !== cvCheckId) return;
@@ -979,7 +983,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // validate everything, focus the first problem
         let firstBad = null;
-        ['name', 'email', 'contact', 'cv'].forEach(name => {
+        ['first_name', 'middle_name', 'last_name', 'email', 'contact', 'cv'].forEach(name => {
             if (!validateField(name, true) && !firstBad) firstBad = name;
         });
         if (firstBad) {
@@ -1030,7 +1034,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try { data = await res.json(); }
         catch (e) { throw new Error('The server did not answer correctly. Please try again.'); }
         if (data.status === 'invalid' || (data.status === 'duplicate' && data.field === 'cv')) { rejectCv(data.message || 'This CV was not accepted.'); throw new Error(data.message || 'This CV was not accepted.'); }
-        if (data.status === 'duplicate' && data.field === 'email') setError('email', data.message, true);
+        if (data.status === 'duplicate' && (data.field === 'email' || data.field === 'name')) {
+            if (data.field === 'email') setError('email', data.message, true);
+            else ['first_name', 'last_name'].forEach(n => setError(n, n === 'last_name' ? data.message : ' ', true));
+        }
         if (data.status !== 'success') throw new Error(data.message || 'Something went wrong. Please try again.');
         return data;
     }
@@ -1042,7 +1049,7 @@ document.addEventListener('DOMContentLoaded', () => {
             status: 'success',
             applicant: {
                 id: Date.now() % 1000000000,           // placeholder id until the database gives one
-                name: formData.get('name').trim(),
+                name: [formData.get('first_name'), formData.get('middle_name'), formData.get('last_name')].map(x => (x || '').trim()).filter(Boolean).join(' '),
                 email: formData.get('email').trim(),
                 contact: formData.get('contact').trim()
             }
@@ -1086,7 +1093,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('addAnother').addEventListener('click', () => {
         form.reset();
         clearFile();
-        ['name', 'email', 'contact', 'cv'].forEach(n => setError(n, ''));
+        ['first_name', 'middle_name', 'last_name', 'email', 'contact', 'cv'].forEach(n => setError(n, ''));
         touched.clear();
         updateNote();
         successCard.hidden = true;
@@ -1095,11 +1102,11 @@ document.addEventListener('DOMContentLoaded', () => {
         formCard.style.animation = 'none';
         void formCard.offsetWidth;
         formCard.style.animation = '';
-        form.elements.name.focus();
+        form.elements.first_name.focus();
     });
 
     /* ---------- Cancel (asks first when something was typed) ---------- */
-    const isDirty = () => ['name', 'email', 'contact', 'note'].some(n => form.elements[n].value.trim() !== '')
+    const isDirty = () => ['first_name', 'middle_name', 'last_name', 'email', 'contact', 'note'].some(n => form.elements[n].value.trim() !== '')
         || fileInput.files.length > 0;
 
     cancelBtn.addEventListener('click', () => {

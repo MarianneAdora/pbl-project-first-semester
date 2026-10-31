@@ -70,6 +70,24 @@ function repo_normalize_email(string $email): string
     return $local . '@' . $domain;
 }
 
+/** One-line full name from the three parts (middle name may be empty). */
+function repo_compose_name(string $first, string $middle, string $last): string
+{
+    return trim((string) preg_replace('/\s+/u', ' ', trim($first) . ' ' . trim($middle) . ' ' . trim($last)));
+}
+
+/**
+ * Canonical form of a full name, used for the "one person, one applicant" rule.
+ * Lowercase, dots/commas removed, single spaces. The first/middle/last boundary is ignored
+ * on purpose: "Maria Angelica" + "Reyes" equals "Maria" + "Angelica Reyes".
+ */
+function repo_normalize_name(string $fullName): string
+{
+    $n = mb_strtolower(trim($fullName), 'UTF-8');
+    $n = (string) preg_replace('/[.,]/u', '', $n);
+    return trim((string) preg_replace('/\s+/u', ' ', $n));
+}
+
 /** SHA-256 of the CV file contents (identical file = identical hash). */
 function repo_cv_hash(string $filePath): ?string
 {
@@ -82,7 +100,7 @@ function repo_cv_hash(string $filePath): ?string
  * VERIFIED applicant (active or archived). Unverified invitations never block:
  * repo_add_applicant replaces them.
  */
-function repo_assert_not_duplicate(string $email, ?string $cvHash, ?PDO $pdo = null): void
+function repo_assert_not_duplicate(string $email, ?string $cvHash, ?PDO $pdo = null, string $fullName = ''): void
 {
     $pdo = $pdo ?: db();
 
@@ -98,6 +116,21 @@ function repo_assert_not_duplicate(string $email, ?string $cvHash, ?PDO $pdo = n
             . ' Each email can only be used once.',
             'email'
         );
+    }
+
+    $nameKey = repo_normalize_name($fullName);
+    if ($nameKey !== '') {
+        $st = $pdo->prepare("SELECT deleted_at FROM applicant WHERE name_normalized = :n AND verified_at IS NOT NULL LIMIT 1");
+        $st->execute([':n' => $nameKey]);
+        $row = $st->fetch();
+        if ($row) {
+            throw new DuplicateApplicantException(
+                'An applicant named "' . trim($fullName) . '" already exists'
+                . (!empty($row['deleted_at']) ? ' (currently in the Archive: restore them instead of adding again).' : '.')
+                . ' Each applicant can only be added once.',
+                'name'
+            );
+        }
     }
 
     if ($cvHash !== null && $cvHash !== '') {
@@ -146,33 +179,41 @@ function repo_mark_verified(int $id, ?PDO $pdo = null): bool
  * the applicant verifies the OTP (repo_mark_verified).
  *
  * Rules (checked here and enforced again by the unique indexes):
+ *   - one person -> one applicant (same full name; case, spaces, dots and commas ignored)
  *   - one email  -> one applicant (Gmail dots/+tags ignored)
  *   - one CV     -> one applicant (SHA-256 of the file)
  * An older UNVERIFIED invitation with the same email or CV is replaced, so HR can
  * fix a typo or resend an invite that never arrived. Call inside a transaction.
  */
-function repo_add_applicant(string $name, string $email, string $phone, ?PDO $pdo = null, ?string $cvUrl = null, ?string $cvHash = null): array
+function repo_add_applicant(string $first, string $middle, string $last, string $email, string $phone, ?PDO $pdo = null, ?string $cvUrl = null, ?string $cvHash = null): array
 {
     $pdo = $pdo ?: db();
 
-    $name = trim($name);
+    $first = trim((string) preg_replace('/\s+/u', ' ', $first));
+    $middle = trim((string) preg_replace('/\s+/u', ' ', $middle));
+    $last = trim((string) preg_replace('/\s+/u', ' ', $last));
     $email = trim($email);
     $phone = trim($phone);
-    if ($name === '' || mb_strlen($name) < 2) throw new InvalidArgumentException('Please enter the full name.');
+    $partOk = fn(string $v) => preg_match('/^[\p{L}\p{M}\'.\- ]+$/u', $v) && preg_match_all('/\p{L}/u', $v) >= 2 && mb_strlen($v) <= 100;
+    if ($first === '' || !$partOk($first)) throw new InvalidArgumentException('Please enter a valid first name (letters only, at least 2).');
+    if ($middle !== '' && !preg_match('/^[\p{L}\p{M}\'.\- ]+$/u', $middle)) throw new InvalidArgumentException('The middle name can only have letters.');
+    if ($last === '' || !$partOk($last)) throw new InvalidArgumentException('Please enter a valid last name (letters only, at least 2).');
+    $name = repo_compose_name($first, $middle, $last);
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) throw new InvalidArgumentException('Enter a valid email address.');
     if ($phone === '') throw new InvalidArgumentException('Please enter the contact number.');
 
     repo_purge_stale_invitations($pdo);
-    repo_assert_not_duplicate($email, $cvHash, $pdo);
+    repo_assert_not_duplicate($email, $cvHash, $pdo, $name);
 
     // Replace any older unverified invitation for this email / CV.
     $norm = repo_normalize_email($email);
+    $nameKey = repo_normalize_name($name);
     if ($cvHash !== null && $cvHash !== '') {
-        $st = $pdo->prepare("DELETE FROM applicant WHERE verified_at IS NULL AND (email_normalized = :e OR cv_hash = :h)");
-        $st->execute([':e' => $norm, ':h' => $cvHash]);
+        $st = $pdo->prepare("DELETE FROM applicant WHERE verified_at IS NULL AND (email_normalized = :e OR name_normalized = :n OR cv_hash = :h)");
+        $st->execute([':e' => $norm, ':n' => $nameKey, ':h' => $cvHash]);
     } else {
-        $st = $pdo->prepare("DELETE FROM applicant WHERE verified_at IS NULL AND email_normalized = :e");
-        $st->execute([':e' => $norm]);
+        $st = $pdo->prepare("DELETE FROM applicant WHERE verified_at IS NULL AND (email_normalized = :e OR name_normalized = :n)");
+        $st->execute([':e' => $norm, ':n' => $nameKey]);
     }
 
     $ref = repo_generate_reference_code($pdo);
@@ -184,25 +225,27 @@ function repo_add_applicant(string $name, string $email, string $phone, ?PDO $pd
     }
 
     $st = $pdo->prepare(
-        "INSERT INTO applicant (reference_code, secure_token, encoded_by_user_id, name, email, email_normalized, phone_number, cv_file_url, cv_hash, status)" .
-        " VALUES (:ref, :tok, :enc, :name, :email, :norm, :phone, :cv, :hash, 'pending') RETURNING applicant_id"
+        "INSERT INTO applicant (reference_code, secure_token, encoded_by_user_id, name, first_name, middle_name, last_name, name_normalized, email, email_normalized, phone_number, cv_file_url, cv_hash, status)" .
+        " VALUES (:ref, :tok, :enc, :name, :first, :middle, :last, :nkey, :email, :norm, :phone, :cv, :hash, 'pending') RETURNING applicant_id"
     );
     $enc = null;
     if (session_status() === PHP_SESSION_ACTIVE && isset($_SESSION['user_id'])) $enc = (int) $_SESSION['user_id'];
     try {
         $st->execute([
-            ':ref' => $ref, ':tok' => $token, ':enc' => $enc, ':name' => $name, ':email' => $email,
-            ':norm' => $norm, ':phone' => $phone, ':cv' => $cvUrl, ':hash' => $cvHash,
+            ':ref' => $ref, ':tok' => $token, ':enc' => $enc, ':name' => $name, ':first' => $first, ':middle' => $middle, ':last' => $last,
+            ':nkey' => $nameKey, ':email' => $email, ':norm' => $norm, ':phone' => $phone, ':cv' => $cvUrl, ':hash' => $cvHash,
         ]);
     } catch (PDOException $e) {
         // Two HR users submitting at the same moment: the unique index is the final guard.
         if ((string) $e->getCode() === '23505') {
-            $isCv = stripos($e->getMessage(), 'cv_hash') !== false;
-            throw new DuplicateApplicantException(
-                $isCv ? 'This CV was already uploaded for another applicant. Each CV can only be used once.'
-                      : 'This email address already belongs to an applicant. Each email can only be used once.',
-                $isCv ? 'cv' : 'email'
-            );
+            $msg = $e->getMessage();
+            if (stripos($msg, 'cv_hash') !== false) {
+                throw new DuplicateApplicantException('This CV was already uploaded for another applicant. Each CV can only be used once.', 'cv');
+            }
+            if (stripos($msg, 'name_normalized') !== false) {
+                throw new DuplicateApplicantException('An applicant named "' . $name . '" already exists. Each applicant can only be added once.', 'name');
+            }
+            throw new DuplicateApplicantException('This email address already belongs to an applicant. Each email can only be used once.', 'email');
         }
         throw $e;
     }

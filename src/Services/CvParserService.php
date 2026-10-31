@@ -35,11 +35,16 @@ class CvParserService {
         $email = $this->pick($this->verifyEmail($ai['email'] ?? '', $text), $fallback['email'] ?? '');
         $phone = $this->pick($this->verifyPhone($ai['contact'] ?? '', $text), $fallback['contact'] ?? '');
 
+        $fullName = $this->normalizeName($name);
+        $parts = $this->splitName($fullName);
         $result = [
-            'name'     => $this->normalizeName($name),
-            'email'    => strtolower(trim($email)),
-            'contact'  => $this->normalizePhone($phone),
-            'raw_text' => mb_substr($text, 0, 20000),
+            'name'        => $fullName,
+            'first_name'  => $parts['first'],
+            'middle_name' => $parts['middle'],
+            'last_name'   => $parts['last'],
+            'email'       => strtolower(trim($email)),
+            'contact'     => $this->normalizePhone($phone),
+            'raw_text'    => mb_substr($text, 0, 20000),
         ];
         $result['missing'] = $this->missingRequired($result);
         return $result;
@@ -192,6 +197,36 @@ class CvParserService {
         $ai = trim((string) $ai);
         $fallback = trim((string) $fallback);
         return $ai !== '' ? $ai : $fallback;
+    }
+
+    /**
+     * Best-guess split of a full name into first / middle / last (HR can correct it in the form).
+     * "Reyes, Maria Angelica" -> last Reyes; otherwise the last word is the last name
+     * (kept together with a trailing Jr/Sr/II/III or a particle such as "dela", "de", "van").
+     * @return array{first:string,middle:string,last:string}
+     */
+    public function splitName(string $fullName): array {
+        $fullName = trim(preg_replace('/\s+/u', ' ', $fullName));
+        if ($fullName === '') return ['first' => '', 'middle' => '', 'last' => ''];
+
+        if (strpos($fullName, ',') !== false) {
+            [$last, $rest] = array_map('trim', explode(',', $fullName, 2));
+            $w = $rest === '' ? [] : preg_split('/\s+/u', $rest);
+            $first = $w ? array_shift($w) : '';
+            return ['first' => $first, 'middle' => implode(' ', $w), 'last' => $last];
+        }
+
+        $w = preg_split('/\s+/u', $fullName);
+        if (count($w) === 1) return ['first' => $w[0], 'middle' => '', 'last' => ''];
+
+        $suffixes  = ['jr', 'jr.', 'sr', 'sr.', 'ii', 'iii', 'iv', 'v'];
+        $particles = ['de', 'del', 'dela', 'delos', 'di', 'du', 'la', 'le', 'van', 'von', 'san', 'santa'];
+        $last = [array_pop($w)];
+        if (count($w) > 1 && in_array(strtolower($last[0]), $suffixes, true)) array_unshift($last, array_pop($w));
+        while (count($w) > 1 && in_array(strtolower(end($w)), $particles, true)) array_unshift($last, array_pop($w));
+
+        $first = array_shift($w);
+        return ['first' => $first, 'middle' => implode(' ', $w), 'last' => implode(' ', $last)];
     }
 
     /** Normalize a person's name: title-case with initials/suffixes preserved correctly. */

@@ -25,7 +25,11 @@ CREATE TABLE applicant (
     reference_code          VARCHAR(50)  NOT NULL UNIQUE,
     secure_token            VARCHAR(64)  NOT NULL UNIQUE,
     encoded_by_user_id      INT REFERENCES users(user_id),
-    name                    VARCHAR(255) NOT NULL,
+    name                    VARCHAR(255) NOT NULL,   -- full name = first + middle + last (kept for the rest of the app)
+    first_name              VARCHAR(100) NOT NULL,
+    middle_name             VARCHAR(100) NOT NULL DEFAULT '',
+    last_name               VARCHAR(100) NOT NULL,
+    name_normalized         VARCHAR(255) NOT NULL,   -- lowercase, no dots/commas, single spaces -> one person, one applicant
     email                   VARCHAR(255) NOT NULL,
     email_normalized        VARCHAR(255) NOT NULL,   -- lowercase; gmail dots/+tags removed -> one email, one applicant
     phone_number            VARCHAR(20),
@@ -174,6 +178,7 @@ CREATE TABLE score (
 -- INDEXES
 -- ------------------------------------------------------------
 CREATE UNIQUE INDEX uq_applicant_email_normalized ON applicant(email_normalized);
+CREATE UNIQUE INDEX uq_applicant_name_normalized  ON applicant(name_normalized);
 CREATE UNIQUE INDEX uq_applicant_cv_hash          ON applicant(cv_hash) WHERE cv_hash IS NOT NULL;
 CREATE INDEX idx_applicant_unverified      ON applicant(created_at) WHERE verified_at IS NULL;
 CREATE INDEX idx_applicant_status          ON applicant(status);

@@ -16,7 +16,7 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {
 // CV upload goes to Cloudinary under the ebsmi-shortlist-applicant-cvs folder and cv_file_url stores the secure URL.
 // This page only creates an INVITATION (hidden from every HR list). The applicant joins the system
 // when they verify the OTP on applicant/verify-otp.php (repo_mark_verified).
-// Rules: one email -> one applicant, one CV -> one applicant (see ApplicantRepository.php).
+// Rules: one person (same full name), one email and one CV -> one applicant (see ApplicantRepository.php).
 require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
 require_once __DIR__ . '/../src/Services/CloudinaryService.php';
 require_once __DIR__ . '/../src/Services/EmailService.php';
@@ -76,12 +76,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             // One CV / one email: tell HR right away, before they fill in the rest of the form.
             try {
-                repo_assert_not_duplicate((string) ($parsed['email'] ?? ''), repo_cv_hash($cv['tmp_name']));
+                repo_assert_not_duplicate((string) ($parsed['email'] ?? ''), repo_cv_hash($cv['tmp_name']), null, (string) ($parsed['name'] ?? ''));
             } catch (DuplicateApplicantException $e) {
                 $respond(['status' => 'duplicate', 'field' => $e->field, 'message' => $e->getMessage()], 409);
             }
             $respond(['status' => 'success', 'parsed' => [
                 'name' => (string) ($parsed['name'] ?? ''),
+                'first_name' => (string) ($parsed['first_name'] ?? ''),
+                'middle_name' => (string) ($parsed['middle_name'] ?? ''),
+                'last_name' => (string) ($parsed['last_name'] ?? ''),
                 'email' => (string) ($parsed['email'] ?? ''),
                 'contact' => (string) ($parsed['contact'] ?? ''),
             ]]);
@@ -129,7 +132,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         //    The Cloudinary subfolder uses the real applicant id: ebsmi-shortlist-applicant-cvs/{id}
         $cvHash = $cvUpload ? repo_cv_hash($cvUpload['tmp_name']) : null;
         $applicant = repo_add_applicant(
-            (string) ($input['name'] ?? ''),
+            (string) ($input['first_name'] ?? ''),
+            (string) ($input['middle_name'] ?? ''),
+            (string) ($input['last_name'] ?? ''),
             (string) ($input['email'] ?? ''),
             (string) ($input['contact'] ?? ''),
             $pdo,
@@ -369,13 +374,31 @@ try {
             <form id="applicantForm" novalidate autocomplete="off">
 
                 <div class="form-grid">
-                    <div class="field" data-field="name">
-                        <label for="name">Full Name <span class="req">*</span></label>
-                        <div class="input-box">
-                            <svg class="field-icon" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-                            <input type="text" id="name" name="name" placeholder="Enter full name" maxlength="100" required>
+                    <div class="field-wide name-row">
+                        <div class="field" data-field="first_name">
+                            <label for="first_name">First Name <span class="req">*</span></label>
+                            <div class="input-box">
+                                <svg class="field-icon" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                                <input type="text" id="first_name" name="first_name" placeholder="Enter first name" maxlength="100" autocomplete="off" required>
+                            </div>
+                            <p class="field-error" role="alert"></p>
                         </div>
-                        <p class="field-error" role="alert"></p>
+                        <div class="field" data-field="middle_name">
+                            <label for="middle_name">Middle Name <span class="opt">(optional)</span></label>
+                            <div class="input-box">
+                                <svg class="field-icon" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                                <input type="text" id="middle_name" name="middle_name" placeholder="Enter middle name" maxlength="100" autocomplete="off">
+                            </div>
+                            <p class="field-error" role="alert"></p>
+                        </div>
+                        <div class="field" data-field="last_name">
+                            <label for="last_name">Last Name <span class="req">*</span></label>
+                            <div class="input-box">
+                                <svg class="field-icon" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                                <input type="text" id="last_name" name="last_name" placeholder="Enter last name" maxlength="100" autocomplete="off" required>
+                            </div>
+                            <p class="field-error" role="alert"></p>
+                        </div>
                     </div>
 
                     <div class="field" data-field="email">
