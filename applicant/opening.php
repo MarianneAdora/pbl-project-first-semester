@@ -61,8 +61,20 @@ $fullName      = trim((string) $fullName);
 $displayName   = htmlspecialchars($fullName !== '' ? $fullName : 'Applicant', ENT_QUOTES, 'UTF-8');
 $estimatedTime = '15–20 minutes';
 
-// Where the button goes (the OTP page)
+// Where the button goes (the OTP page).
+// An applicant who already SENT their screening must never start it again: the button goes to the
+// status page instead (or to the OTP page first when this browser has not verified yet).
 $nextPage = 'verify-otp.php';
+$alreadySubmitted = false;
+try {
+    $alreadySubmitted = repo_has_submitted((int) ($_SESSION['applicant_id'] ?? 0));
+} catch (Throwable $e) {
+    error_log('opening submitted check error: ' . $e->getMessage());
+}
+if ($alreadySubmitted) {
+    $_SESSION['screening_submitted'] = true;
+    $nextPage = !empty($_SESSION['otp_verified']) ? 'application-status.php' : 'verify-otp.php';
+}
 
 // Help / contact link (change to your real contact page or mailto)
 $contactLink = 'mailto:hr@expertise.example';
@@ -142,7 +154,7 @@ $steps = [
             </p>
 
             <a href="<?= $nextPage ?>" class="invite__btn reveal" id="startBtn" data-leave style="--i:9">
-                <span class="invite__btn-label">Start Screening</span>
+                <span class="invite__btn-label"><?= $alreadySubmitted ? 'View Application Status' : 'Start Screening' ?></span>
                 <span class="invite__btn-arrow" aria-hidden="true">&rarr;</span>
             </a>
         </div>

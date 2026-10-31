@@ -5,6 +5,18 @@ session_start();
 $nextPage      = 'questionnaire.php';
 $estimatedTime = '15–20 minutes';
 
+// Already sent the screening (checked in the database, not just the session): no second try.
+require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
+try {
+    if (repo_has_submitted((int) ($_SESSION['applicant_id'] ?? 0))) {
+        $_SESSION['screening_submitted'] = true;
+        header('Location: application-status.php');
+        exit;
+    }
+} catch (Throwable $e) {
+    error_log('already-submitted guard error: ' . $e->getMessage());
+}
+
 // Stepper: 0 = Verification, 1 = Instructions, 2 = Questionnaires, 3 = Video, 4 = Submit
 $currentStep = 1;
 $stepLabels  = ['Verification', 'Instructions', 'Questionnaires', 'Video', 'Submit'];

@@ -22,6 +22,18 @@ if ($requireVerification) {
     if (!empty($_SESSION['screening_submitted'])) { header('Location: application-status.php'); exit; }   // already sent: no second try
 }
 
+// Already sent the screening (checked in the database, not just the session): no second try.
+require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
+try {
+    if (repo_has_submitted((int) ($_SESSION['applicant_id'] ?? 0))) {
+        $_SESSION['screening_submitted'] = true;
+        header('Location: application-status.php');
+        exit;
+    }
+} catch (Throwable $e) {
+    error_log('already-submitted guard error: ' . $e->getMessage());
+}
+
 // ---- Questions --------------------------------------------------------------
 // Served from the same store the Admin uses (admin/question-list.php) so whatever
 // the Admin adds/edits/deletes is exactly what applicants answer. Falls back to

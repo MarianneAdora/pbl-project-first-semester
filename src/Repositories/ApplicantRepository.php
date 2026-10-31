@@ -325,6 +325,23 @@ function repo_find_applicant_by_email(string $email, ?PDO $pdo = null): ?array
 }
 
 /**
+ * True once the applicant has SENT their screening (questionnaire + video): status is
+ * submitted / reviewed / accepted / rejected, or a result already exists.
+ * The database is the source of truth, so this still works after the browser session is lost.
+ */
+function repo_has_submitted(int $id, ?PDO $pdo = null): bool
+{
+    if ($id <= 0) return false;
+    $pdo = $pdo ?: db();
+    $st = $pdo->prepare("SELECT status, result FROM applicant WHERE applicant_id = :id AND deleted_at IS NULL LIMIT 1");
+    $st->execute([':id' => $id]);
+    $row = $st->fetch();
+    if (!$row) return false;
+    if (in_array(strtolower((string) $row['status']), ['submitted', 'reviewed', 'accepted', 'rejected'], true)) return true;
+    return trim((string) ($row['result'] ?? '')) !== '';
+}
+
+/**
  * Mark an applicant In Progress when they open the questionnaire
  * (Screening.startOnce). No-op for other statuses.
  */
