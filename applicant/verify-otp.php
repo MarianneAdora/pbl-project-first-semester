@@ -4,7 +4,10 @@ session_start();
 // ---- Settings ---------------------------------------------------------------
 $devMode     = false;   // true = shows the OTP on screen so you can test without email
 $otpLifetime = 300;     // seconds the code stays valid (5 minutes)
-$resendWait  = 60;      // seconds the applicant must wait before asking for another code (1 minute)
+$resendBase   = 30;     // seconds the applicant waits before the 1st resend
+$resendStep   = 10;     // +10 seconds for every further resend (30, 40, 50, 60 ...)
+$resendMax    = 10;     // resends allowed per window; after this a popup appears
+$resendWindow = 3600;   // 1 hour: the resend counter renews after this
 $maxAttempts = 3;       // wrong codes allowed (the usual OTP limit). Reaching it locks the page
 $lockSeconds = 900;     // how long the page stays locked after the last wrong attempt (15 minutes)
 $nextPage    = 'instruction.php';
@@ -61,6 +64,37 @@ $issueDbOtp = function () use ($otpDb, $applicantId, $email, $applicantName, $lo
     }
 };
 
+/** Timestamps of every code sent in the last hour (the first one is the initial send). */
+$getRequestStamps = function () use ($otpDb, $applicantId, $resendWindow): array {
+    if ($otpDb) {
+        try {
+            $st = db()->prepare(
+                "SELECT UNIX_TIMESTAMP(requested_at) FROM otp_request_log
+                 WHERE applicant_id = ? AND requested_at > (NOW() - INTERVAL {$resendWindow} SECOND)"
+            );
+            $st->execute([$applicantId]);
+            return array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN));
+        } catch (Throwable $e) {
+            error_log('otp_request_log read error: ' . $e->getMessage());
+            return [];
+        }
+    }
+    return array_values(array_filter($_SESSION['resend_log'] ?? [], fn($t) => $t > time() - $resendWindow));
+};
+
+/** Works out the current resend state: ['blocked' => bool, 'wait' => seconds]. */
+$resendState = function (array $stamps) use ($resendBase, $resendStep, $resendMax, $resendWindow): array {
+    if (!$stamps) return ['blocked' => false, 'wait' => 0];
+    $now     = time();
+    $resends = count($stamps) - 1;          // minus the initial send
+    $last    = max($stamps);
+    if ($resends >= $resendMax) {           // limit reached -> renewed 1 hour after the last send
+        return ['blocked' => true, 'wait' => max(0, $last + $resendWindow - $now)];
+    }
+    $required = $resendBase + $resendStep * $resends;   // 30, 40, 50, 60 ...
+    return ['blocked' => false, 'wait' => max(0, $required - ($now - $last))];
+};
+
 // ---- Attempt limit ----------------------------------------------------------
 // DB path: attempt_count + locked_until live in the otp table (OtpService).
 // Session fallback (no applicant_id, e.g. ?email= testing): the old session logic.
@@ -92,11 +126,13 @@ if ($otpDb) {
             $_SESSION['otp'] = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
             $_SESSION['otp_expires'] = time() + $otpLifetime;
             $_SESSION['otp_sent_at'] = time();
+            $_SESSION['resend_log'][] = time();   // initial send counts as the start of the resend clock
         }
         if ($_SERVER['REQUEST_METHOD'] !== 'POST' && time() > $_SESSION['otp_expires']) {
             $_SESSION['otp'] = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
             $_SESSION['otp_expires'] = time() + $otpLifetime;
             $_SESSION['otp_sent_at'] = time();
+            $_SESSION['resend_log'][] = time();
         }
     }
     $attemptsLeft = max(0, $maxAttempts - (int) $_SESSION['otp_attempts']);
@@ -108,25 +144,22 @@ $notice = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$locked) {      // a locked page ignores every submit
     if (isset($_POST['resend'])) {
-        if ($otpDb) {
-            $wait = $otpDb->resendWaitLeft($applicantId, $resendWait);
-            if ($wait > 0) {
-                $error = 'Please wait ' . $wait . ' second' . ($wait === 1 ? '' : 's') . ' before asking for a new code.';
-            } else {
-                $sendError = $issueDbOtp();
-                if ($sendError !== '') $error = $sendError;
-                else $notice = 'A new code has been sent to your email.';
-            }
+        $rs = $resendState($getRequestStamps());
+        if ($rs['blocked']) {
+            $error = 'You have reached the maximum number of resends. Please try again in '
+                   . max(1, (int) ceil($rs['wait'] / 60)) . ' minute(s).';
+        } elseif ($rs['wait'] > 0) {
+            $error = 'Please wait ' . $rs['wait'] . ' second' . ($rs['wait'] === 1 ? '' : 's') . ' before asking for a new code.';
+        } elseif ($otpDb) {
+            $sendError = $issueDbOtp();            // this also logs the request
+            if ($sendError !== '') $error = $sendError;
+            else $notice = 'A new code has been sent to your email.';
         } else {
-            $wait = ($_SESSION['otp_sent_at'] ?? 0) + $resendWait - time();
-            if ($wait > 0) {
-                $error = 'Please wait ' . $wait . ' second' . ($wait === 1 ? '' : 's') . ' before asking for a new code.';
-            } else {
-                $_SESSION['otp'] = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-                $_SESSION['otp_expires'] = time() + $otpLifetime;
-                $_SESSION['otp_sent_at'] = time();
-                $notice = 'A new code has been sent to your email.';
-            }
+            $_SESSION['otp'] = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            $_SESSION['otp_expires'] = time() + $otpLifetime;
+            $_SESSION['otp_sent_at'] = time();
+            $_SESSION['resend_log'][] = time();    // session-fallback log
+            $notice = 'A new code has been sent to your email.';
         }
     } else {
         $digits = array_filter((array) ($_POST['otp'] ?? []), 'is_string');
@@ -152,7 +185,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$locked) {      // a locked page i
             }
             if ($check['ok']) {
                 $_SESSION['otp_verified'] = true;
-                header('Location: ' . $nextPage);
+                $dest = $nextPage;
+                try {
+                    // Already sent their screening? Straight to the status page, never the questionnaire.
+                    if (repo_has_submitted($applicantId)) {
+                        $_SESSION['screening_submitted'] = true;
+                        $dest = 'application-status.php';
+                    }
+                } catch (Throwable $e) {
+                    error_log('verify-otp submitted check error: ' . $e->getMessage());
+                }
+                header('Location: ' . $dest);
                 exit;
             }
             if ($check['error'] !== '') $error = $check['error'];
@@ -182,7 +225,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$locked) {      // a locked page i
             $attemptsLeft = max(0, $left);
         } else {
             $_SESSION['otp_verified'] = true;
-            unset($_SESSION['otp'], $_SESSION['otp_expires'], $_SESSION['otp_sent_at'], $_SESSION['otp_attempts'], $_SESSION['otp_locked_until']);
+            unset($_SESSION['otp'], $_SESSION['otp_expires'], $_SESSION['otp_sent_at'], $_SESSION['otp_attempts'], $_SESSION['otp_locked_until'], $_SESSION['resend_log']);
             header('Location: ' . $nextPage);
             exit;
         }
@@ -193,14 +236,20 @@ if ($otpDb) {
     $row = $otpDb->latestOtp($applicantId);
     $expTs = $row ? strtotime((string) $row['expires_at']) : false;
     $remaining = (!$locked && $expTs) ? max(0, $expTs - time()) : 0;
-    $cooldown = $locked ? 0 : $otpDb->resendWaitLeft($applicantId, $resendWait);
     if ($row) $attemptsLeft = max(0, $maxAttempts - (int) $row['attempt_count']);
     $lockLeft = ($locked && $row && !empty($row['locked_until'])) ? max(0, strtotime((string) $row['locked_until']) - time()) : 0;
 } else {
     $remaining = ($locked || !isset($_SESSION['otp_expires'])) ? 0 : max(0, $_SESSION['otp_expires'] - time());
-    $cooldown  = max(0, ($_SESSION['otp_sent_at'] ?? 0) + $resendWait - time());
     $lockLeft  = $locked ? max(0, $_SESSION['otp_locked_until'] - time()) : 0;
 }
+
+// ---- Resend cooldown (30s, 40s, 50s ... max 10 resends, renews after 1 hour) ----
+$rs             = $resendState($getRequestStamps());
+$resendBlocked  = $rs['blocked'];
+$cooldown       = $locked ? 0 : $rs['wait'];
+$showLimitPopup = $resendBlocked && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['resend']);
+$blockMinutes   = max(1, (int) ceil($rs['wait'] / 60));
+
 $timerText = sprintf('%02d:%02d', intdiv($remaining, 60), $remaining % 60);
 $lockText     = sprintf('%02d:%02d', intdiv($lockLeft, 60), $lockLeft % 60);
 $contactLink  = 'mailto:hr@expertise.example';                                    // same address as opening.php
@@ -323,6 +372,21 @@ $logoSrc = is_file(__DIR__ . '/../assets/images/expertise.png') ? '../assets/ima
             </p>
 
         </form>
+
+        <?php if ($showLimitPopup): ?>
+        <div id="limitModal" role="dialog" aria-modal="true"
+             style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9999;">
+            <div style="background:#fff;padding:28px 32px;border-radius:14px;max-width:380px;text-align:center;font-family:inherit;">
+                <h3 style="margin:0 0 8px;color:#e11d34;">Resend Limit Reached</h3>
+                <p style="margin:0 0 18px;color:#444;">
+                    You&rsquo;ve used all <?= (int) $resendMax ?> resends. You can request a new code again in
+                    about <?= $blockMinutes ?> minute<?= $blockMinutes === 1 ? '' : 's' ?>.
+                </p>
+                <button type="button" onclick="document.getElementById('limitModal').remove()"
+                        style="background:#e11d34;color:#fff;border:0;border-radius:8px;padding:10px 28px;font-weight:600;cursor:pointer;">OK</button>
+            </div>
+        </div>
+        <?php endif; ?>
 
         <?php endif; ?>
     </main>
