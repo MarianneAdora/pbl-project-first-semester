@@ -377,6 +377,7 @@ function details_personal(array $a, ?array $submission): array
 
     return [
         ['label' => 'Full Name',                 'value' => $a['name']],
+        ['label' => 'Job Position',              'value' => !empty($a['position']) ? $a['position'] : 'Not set'],
         ['label' => 'Email Address',             'value' => $a['email']],
         ['label' => 'Contact Number',            'value' => $a['contact']],
         ['label' => 'Earliest Start Date',       'value' => !empty($answers['q6']) ? details_date_label((string) $answers['q6']) : 'Not given yet'],

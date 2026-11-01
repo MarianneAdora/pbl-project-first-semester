@@ -22,8 +22,10 @@
 
    THIS FILE IS ALSO THE ENDPOINT the admin JavaScript calls (see the bottom): a POST to static-admin.php
    with  action = question_add | question_update | question_archive | question_restore | question_purge |
-                  account_add | account_update | account_archive | account_restore | account_purge | notify
+                  account_add | account_update | account_archive | account_restore | account_purge | account_password | notify |
+                  password_decide
    changes the store and answers with JSON (the fresh lists, so the page can redraw itself).
+   password_decide = the Admin approves / rejects an HR password change (hr/static-data.php holds the rule).
    Questions can be KNOCK-OUT questions (question.knockout + question.pass_answer, and pass_follow for a Yes/No + list):
    an applicant whose answer does not match the passing answer fails the screening (applicant/static-evaluation.php)
    and HR sees why in the applicant's Questionnaires tab. The rule itself lives in applicant/static-applicant.php.
@@ -469,7 +471,7 @@ function static_admin_purge_question(string $id): bool
 // The account without its password (this is what the pages and the JavaScript get)
 function static_admin_public_account(array $a): array
 {
-    unset($a['password'], $a['hash']);
+    unset($a['password'], $a['hash'], $a['password_plain']);       // the pages never get a password; the Admin asks for it (account_password)
     $a['role'] = (string) ($a['role'] ?? 'HR Staff');
     return $a;
 }
@@ -505,6 +507,19 @@ function static_admin_accounts(): array
     return $out;
 }
 
+// The password the Admin sees in Edit HR: the readable copy kept when the Admin (or an approved request) set it,
+// or the plain sample password of the starting account. Null = not known (the account only has a hash).
+// SAMPLE ONLY: with the database, passwords stay hashed and this function (and 'password_plain') is deleted.
+function static_admin_password_of(int $id): ?array
+{
+    foreach (static_hr_accounts() as $a) {
+        if ((int) ($a['id'] ?? 0) !== $id) continue;
+        $plain = (string) ($a['password_plain'] ?? ($a['password'] ?? ''));
+        return ['password' => $plain !== '' ? $plain : null];
+    }
+    return null;
+}
+
 function static_admin_next_account_id(array $list): int
 {
     $max = 0;
@@ -522,7 +537,7 @@ function static_admin_check_account(array $in, array $list, ?int $skipId, bool $
     if ($name === '')                                throw new InvalidArgumentException('Please enter the full name.');
     if (mb_strlen($name) > 100)                      throw new InvalidArgumentException('The name is too long (100 characters at most).');
     if (!filter_var($email, FILTER_VALIDATE_EMAIL))  throw new InvalidArgumentException('Enter a valid email address (example: name@expertise.com).');
-    if ($email === 'admin@expertise.com')            throw new InvalidArgumentException('That email belongs to the Admin account.');
+    if ($email === 'admin@expertise.com' || $email === static_profile_admin_email()) throw new InvalidArgumentException('That email belongs to the Admin account.');
 
     foreach ($list as $a) {
         if ((int) $a['id'] === $skipId) continue;
@@ -557,6 +572,7 @@ function static_admin_add_account(array $in): array
             'email'       => $email,
             'role'        => 'HR Staff',
             'hash'        => password_hash($pass, PASSWORD_DEFAULT),
+            'password_plain' => $pass,                  // SAMPLE ONLY: lets the Admin see it in Edit HR (see static_admin_password_of)
             'status'      => ($in['status'] ?? 'Active') === 'Inactive' ? 'Inactive' : 'Active',
             'created'     => static_now()->format('Y-m-d H:i'),
             'archived_at' => null
@@ -591,6 +607,7 @@ function static_admin_update_account(int $id, array $in): array
         $list[$pos]['status'] = $status;
         if ($pass !== '') {                       // a new password replaces the old one (the old one is never shown)
             $list[$pos]['hash'] = password_hash($pass, PASSWORD_DEFAULT);
+            $list[$pos]['password_plain'] = $pass;
             unset($list[$pos]['password']);
         }
         $store['hr_accounts'] = $list;
@@ -755,10 +772,26 @@ function static_admin_overview(): array
    ========================================================================== */
 if (!defined('STATIC_ACTIVITY_SHOW_DAYS')) define('STATIC_ACTIVITY_SHOW_DAYS', 3);
 
-// Returns ['rows' => the lines to show (newest first, at most $limit), 'total' => how many lines are still listed]
+// Returns ['rows' => the lines to show (newest first, at most $limit), 'total' => how many lines are still listed,
+//          'pending' => HR password changes still waiting for the Admin]
+// A "Password Change Requested" line is special: while the request is still pending it is ALWAYS listed (it does not
+// expire after 3 days and it is not pushed out by newer lines), because the Admin opens it to approve or reject.
+// Every such line also gets 'req' = the live request (status, who, when), so the line shows what happened to it.
 function static_admin_recent_activity(int $limit = 10): array
 {
     $store   = static_store_read();
+    $reqs    = static_profile_requests_by_id($store);
+    // The Admin decides with the passwords in front of him: the HR's current one and the new one asked for.
+    // Only while the request is pending, and only on this Admin page (HR's own status never carries them).
+    // SAMPLE ONLY, like the readable copy in Edit HR.
+    foreach (static_profile_requests($store) as $raw) {
+        $rid = (int) ($raw['id'] ?? 0);
+        if (!isset($reqs[$rid]) || $reqs[$rid]['status'] !== 'pending') continue;
+        $cur = static_admin_password_of((int) ($raw['account_id'] ?? 0));
+        $reqs[$rid]['current_password'] = $cur['password'] ?? null;
+        $reqs[$rid]['new_password']     = !empty($raw['plain']) ? (string) $raw['plain'] : null;
+    }
+    $pending = count(array_filter($reqs, fn($r) => $r['status'] === 'pending'));
     $log     = isset($store['activity']) && is_array($store['activity']) ? array_values($store['activity']) : static_seed_activity();
     $now     = static_now();
     $nowText = $now->format('Y-m-d H:i:s');
@@ -772,13 +805,18 @@ function static_admin_recent_activity(int $limit = 10): array
     $total   = 0;
     $changed = false;
     foreach ($order as $i) {
+        $ref   = (int) ($log[$i]['ref'] ?? 0);
+        $isReq = ($log[$i]['kind'] ?? '') === 'pw_request' && isset($reqs[$ref]);
+        $keep  = $isReq && $reqs[$ref]['status'] === 'pending';   // still waiting for the Admin: stays on the list
+
         $seen = (string) ($log[$i]['admin_seen_at'] ?? '');
-        if ($seen !== '' && $seen <= $cut) continue;              // seen more than 3 days ago: gone from the list
+        if (!$keep && $seen !== '' && $seen <= $cut) continue;    // seen more than 3 days ago: gone from the list
         $total++;
-        if (count($rows) >= $limit) continue;                     // listed in total, but not among the latest ones shown
+        if (!$keep && count($rows) >= $limit) continue;          // listed in total, but not among the latest ones shown
         if ($seen === '') { $log[$i]['admin_seen_at'] = $nowText; $changed = true; }   // shown now = seen now
         $row = $log[$i];
         unset($row['admin_seen_at']);
+        if ($isReq) $row['req'] = $reqs[$ref];
         $rows[] = $row;
     }
 
@@ -786,7 +824,7 @@ function static_admin_recent_activity(int $limit = 10): array
         $store['activity'] = $log;
         static_store_write($store);
     }
-    return ['rows' => $rows, 'total' => $total];
+    return ['rows' => $rows, 'total' => $total, 'pending' => $pending];
 }
 
 // How favourable one answer is, 0 to 100 (null = this question is not scored)
@@ -1013,6 +1051,158 @@ function static_admin_question_stats(): array
 }
 
 /* ==========================================================================
+   DASHBOARD INSIGHT CARDS (the three small cards under Questionnaires Statistics)
+     static_admin_failure_rates()   Question-Level Failure Rate: % of applicants failing each knock-out question
+     static_admin_risk_flags()      Risk Flag Breakdown by Factor: share of the flags each factor raised
+     static_admin_volume()          Applicant Volume Over Time: applications received per week / per month
+   Everything is counted from the store (submissions, evaluations, applicants), nothing is typed in by hand.
+   BACKEND: failure  = per knock-out question, COUNT(*) of responses that do not match the passing answer / COUNT(*) answered
+            risk     = COUNT(*) of evaluation_factors WHERE points > 0 GROUP BY factor group
+            volume   = SELECT COUNT(*) FROM applicants GROUP BY YEAR(created_at), WEEK(created_at)
+   ========================================================================== */
+
+// Active knock-out questions, the share of applicants who did not pass each one (highest first)
+function static_admin_failure_rates(int $limit = 5): array
+{
+    $store = static_store_read();
+    $subs  = array_values(array_filter((array) ($store['submissions'] ?? []), 'is_array'));
+    $rows  = [];
+    $knock = 0;
+
+    foreach (static_admin_questions() as $q) {
+        if (($q['status'] ?? 'Active') !== 'Active' || static_question_rule($q) === null) continue;
+        $knock++;
+
+        $judged = 0;
+        $failed = 0;
+        foreach ($subs as $sub) {
+            $check = static_knockout_check($q, (array) ($sub['answers'] ?? []));
+            if ($check === null || $check['met'] === null) continue;      // no answer to judge
+            $judged++;
+            if ($check['met'] === false) $failed++;
+        }
+
+        $rows[] = [
+            'id'     => (string) $q['id'],
+            'label'  => strtoupper((string) $q['id']) . ': ' . static_admin_question_plain($q),
+            'failed' => $failed,
+            'judged' => $judged,
+            'rate'   => $judged > 0 ? round($failed / $judged * 100, 1) : 0
+        ];
+    }
+
+    usort($rows, fn($a, $b) => [$b['rate'], $b['failed']] <=> [$a['rate'], $a['failed']]);
+    return ['submissions' => count($subs), 'knockouts' => $knock, 'rows' => array_slice($rows, 0, $limit)];
+}
+
+// Which evaluation factors raised a flag (points above 0), grouped the way the Admin reads them
+function static_admin_risk_flags(): array
+{
+    $groups = [
+        'otp'    => ['label' => 'OTP retries',      'color' => '#f5a623'],
+        'fast'   => ['label' => 'Fast completion',  'color' => '#3b82f6'],
+        'device' => ['label' => 'Duplicate device', 'color' => '#a855f7'],
+        'video'  => ['label' => 'Duplicate video',  'color' => '#14b8a6']
+    ];
+    $groupOf = function (string $factor): ?string {
+        if (stripos($factor, 'OTP') !== false)                return 'otp';
+        if (stripos($factor, 'Questionnaire speed') === 0)    return 'fast';
+        if (stripos($factor, 'Same device') === 0)            return 'device';
+        if (stripos($factor, 'Video matches') === 0)          return 'video';
+        return null;
+    };
+
+    $store = static_store_read();
+    $evals = array_values(array_filter((array) ($store['evaluations'] ?? []), 'is_array'));
+    $count = array_fill_keys(array_keys($groups), 0);
+
+    foreach ($evals as $e) {
+        $hit = [];                                                         // one flag per group per screening
+        foreach ((array) ($e['factors'] ?? []) as $f) {
+            $g = $groupOf((string) ($f['label'] ?? ''));
+            if ($g !== null && (int) ($f['points'] ?? 0) > 0) $hit[$g] = true;
+        }
+        foreach ($hit as $g => $_) $count[$g]++;
+    }
+
+    // SAMPLE numbers: a factor nobody has been flagged for yet borrows these, so the chart is not three empty bars.
+    // Real flags are never replaced. BACKEND: delete $sample and this loop, the query returns the real counts.
+    $sample = ['otp' => 7, 'fast' => 9, 'device' => 5, 'video' => 3];
+    $isSample = [];
+    foreach ($count as $key => $n) {
+        if ($n === 0) { $count[$key] = $sample[$key]; $isSample[$key] = true; }
+    }
+
+    $total = array_sum($count);
+    $rows  = [];
+    foreach ($groups as $key => $g) {
+        $rows[] = [
+            'key'    => $key,
+            'label'  => $g['label'],
+            'color'  => $g['color'],
+            'count'  => $count[$key],
+            'share'  => $total > 0 ? round($count[$key] / $total * 100, 1) : 0,
+            'sample' => !empty($isSample[$key])
+        ];
+    }
+    usort($rows, fn($a, $b) => $b['count'] <=> $a['count']);
+    return ['evaluations' => count($evals), 'total' => $total, 'rows' => $rows, 'has_sample' => (bool) $isSample];
+}
+
+// Applications received: the last 6 weeks (Monday to Sunday) and the last 6 months, oldest first
+function static_admin_volume(): array
+{
+    $store = static_store_read();
+    $days  = [];
+    foreach ((array) ($store['applicants'] ?? []) as $a) {
+        $when = (string) ($a['invited_at'] ?? $a['updated'] ?? '');
+        if ($when !== '') $days[] = substr($when, 0, 10);
+    }
+
+    // SAMPLE history: a week / month that ends before the first real applicant uses these (real ones are never replaced).
+    // BACKEND: delete the two sample lists and the 'sample' flags, the query returns the real counts.
+    $firstDay    = $days ? min($days) : '';
+    $sampleWeek  = [9, 11, 10, 13, 12, 14];
+    $sampleMonth = [18, 24, 21, 29, 27, 31];
+
+    $countBetween = function (DateTimeImmutable $from, DateTimeImmutable $to) use ($days): int {
+        $f = $from->format('Y-m-d');
+        $t = $to->format('Y-m-d');
+        return count(array_filter($days, fn($d) => $d >= $f && $d < $t));
+    };
+
+    $now    = static_now()->setTime(0, 0);
+    $monday = $now->modify('monday this week');
+    $week   = ['labels' => [], 'ranges' => [], 'values' => [], 'sample' => []];
+    for ($i = 5; $i >= 0; $i--) {
+        $start = $monday->modify('-' . $i . ' weeks');
+        $end   = $start->modify('+7 days');
+        $last  = $end->modify('-1 day');
+        $week['labels'][] = 'W' . (6 - $i);
+        $week['ranges'][] = $start->format('M j') . ' to ' . ($start->format('M') === $last->format('M') ? $last->format('j') : $last->format('M j'));
+        $n = $countBetween($start, $end);
+        $useSample = $n === 0 && $firstDay !== '' && $end->format('Y-m-d') <= $firstDay;
+        $week['values'][] = $useSample ? $sampleWeek[5 - $i] : $n;
+        $week['sample'][] = $useSample;
+    }
+
+    $first = $now->modify('first day of this month');
+    $month = ['labels' => [], 'ranges' => [], 'values' => [], 'sample' => []];
+    for ($i = 5; $i >= 0; $i--) {
+        $start = $first->modify('-' . $i . ' months');
+        $month['labels'][] = $start->format('M');
+        $month['ranges'][] = $start->format('F Y');
+        $end = $start->modify('+1 month');
+        $n   = $countBetween($start, $end);
+        $useSample = $n === 0 && $firstDay !== '' && $end->format('Y-m-d') <= $firstDay;
+        $month['values'][] = $useSample ? $sampleMonth[5 - $i] : $n;
+        $month['sample'][] = $useSample;
+    }
+
+    return ['week' => $week, 'month' => $month];
+}
+
+/* ==========================================================================
    SIDEBAR BADGES (same idea as the HR badges; every admin page prints this into window.ADMIN_NOTIFY)
      activity  the time of every HR activity (the Dashboard badge counts the ones the Admin has not seen yet)
      expiring  archived items that will be deleted for good within `days` days (the Archive badge)
@@ -1124,6 +1314,24 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
             case 'account_purge':
                 if (!static_admin_purge_account((int) ($input['id'] ?? 0))) static_admin_respond(['status' => 'error', 'message' => $missing], 404);
                 $message = 'HR account deleted forever.';
+                break;
+
+            case 'account_password':    // Edit HR: show the HR account's current password to the Admin
+                $result = static_admin_password_of((int) ($input['id'] ?? 0));
+                if ($result === null) static_admin_respond(['status' => 'error', 'message' => $missing], 404);
+                static_admin_respond(['status' => 'success', 'message' => '', 'result' => $result]);
+                break;
+
+            case 'password_decide':     // Recent Activities pop-up: approve or reject an HR password change
+                // like hr/static-data.php: only our own pages can send this header, a form on another site cannot
+                if (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') !== 'XMLHttpRequest') static_admin_respond(['status' => 'error', 'message' => 'Invalid request.'], 400);
+                $decision = (string) ($input['decision'] ?? '');
+                $result   = static_profile_decide_request((int) ($input['id'] ?? 0), $decision, (string) ($input['reason'] ?? ''));
+                static_admin_respond([
+                    'status'  => 'success',
+                    'message' => $decision === 'approve' ? 'Password change approved.' : 'Password change rejected.',
+                    'result'  => $result
+                ]);
                 break;
 
             case 'notify':      // the sidebar badges ask for the fresh numbers every few seconds (admin-common.js)

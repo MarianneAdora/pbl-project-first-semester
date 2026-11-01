@@ -30,7 +30,7 @@
     --ease-out: cubic-bezier(0.22, 1, 0.36, 1);      /* elements entering + hover */
     --ease-in: cubic-bezier(0.55, 0, 0.8, 0.3);      /* elements leaving */
     --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);   /* hover pop (slight overshoot) */
-    --reveal-count: 7;                               /* highest --i used on the page */
+    --reveal-count: 11;                              /* highest --i used on the page (the dashboard) */
 }
 
 body {
@@ -1447,8 +1447,289 @@ html.js.is-ready.is-leaving .reveal {
     gap: 14px;
 }
 
+/* ---------- Name row (first / middle / last) ---------- */
+:where(html[data-page="addapplicants"]) .name-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px 28px;
+}
+
+/* ---------- Job Position dropdown (custom list: pick one, or "Add job position" at the end) ---------- */
+:where(html[data-page="addapplicants"]) .field.pd-open { position: relative; z-index: 20; }
+:where(html[data-page="addapplicants"]) .pd { position: relative; }
+
+:where(html[data-page="addapplicants"]) .pd-btn {
+    position: relative;
+    width: 100%;
+    min-height: 46px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 8px 0 44px;
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--ink);
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+:where(html[data-page="addapplicants"]) .pd-btn:hover { border-color: #b8bcc3; }
+:where(html[data-page="addapplicants"]) .pd-btn:focus-visible,
+:where(html[data-page="addapplicants"]) .pd.open .pd-btn {
+    outline: none;
+    border-color: var(--red);
+    box-shadow: 0 0 0 3px rgba(163, 8, 30, 0.12);
+}
+:where(html[data-page="addapplicants"]) .pd-icon {
+    position: absolute;
+    left: 14px;
+    width: 19px;
+    height: 19px;
+    fill: #7b7f87;
+    pointer-events: none;
+    transition: fill 0.2s ease;
+}
+:where(html[data-page="addapplicants"]) .pd-btn:focus-visible .pd-icon,
+:where(html[data-page="addapplicants"]) .pd.open .pd-icon,
+:where(html[data-page="addapplicants"]) .pd.has-value .pd-icon { fill: var(--red); }
+:where(html[data-page="addapplicants"]) .pd-value {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 600;
+}
+:where(html[data-page="addapplicants"]) .pd-value.is-placeholder { color: #8c9097; font-weight: 500; }
+:where(html[data-page="addapplicants"]) .pd-chevron {
+    flex: none;
+    width: 28px;
+    height: 28px;
+    padding: 3px;
+    box-sizing: border-box;
+    border-radius: 50%;
+    fill: #5b5f66;
+    transition: transform 0.35s var(--ease-pop), background-color 0.2s ease, fill 0.2s ease;
+}
+:where(html[data-page="addapplicants"]) .pd-btn:hover .pd-chevron { background: #eff0f2; }
+:where(html[data-page="addapplicants"]) .pd.open .pd-chevron { transform: rotate(180deg); background: #fdecee; fill: #a3081e; }
+
+:where(html[data-page="addapplicants"]) .field.has-error .pd-btn { border-color: var(--red-bright); background: #fff8f8; }
+:where(html[data-page="addapplicants"]) .field.has-error .pd-btn:focus-visible,
+:where(html[data-page="addapplicants"]) .field.has-error .pd.open .pd-btn { box-shadow: 0 0 0 3px rgba(209, 18, 42, 0.14); }
+
+/* the list */
+:where(html[data-page="addapplicants"]) .pd-menu {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 6px);
+    z-index: 30;
+    margin: 0;
+    padding: 6px;
+    list-style: none;
+    max-height: 288px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: #ffffff;
+    border: 1px solid #e3e5e9;
+    border-radius: 14px;
+    box-shadow: 0 16px 36px rgba(16, 24, 40, 0.16), 0 2px 6px rgba(16, 24, 40, 0.06);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-6px) scale(0.98);
+    transform-origin: top center;
+    transition: opacity 0.18s ease, transform 0.25s var(--ease-out), visibility 0s linear 0.25s;
+    scrollbar-width: thin;
+    scrollbar-color: #d3d7dc transparent;
+}
+:where(html[data-page="addapplicants"]) .pd.open .pd-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    transition-delay: 0s;
+}
+:where(html[data-page="addapplicants"]) .pd.drop-up .pd-menu { top: auto; bottom: calc(100% + 6px); transform-origin: bottom center; }
+
+:where(html[data-page="addapplicants"]) .pd-opt,
+:where(html[data-page="addapplicants"]) .pd-add {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 42px;
+    padding: 0 12px;
+    border-radius: 9px;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--ink);
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+:where(html[data-page="addapplicants"]) .pd-opt + .pd-opt { margin-top: 2px; }
+:where(html[data-page="addapplicants"]) .pd-opt:hover,
+:where(html[data-page="addapplicants"]) .pd-opt.is-focused { background: #f3f4f6; }
+:where(html[data-page="addapplicants"]) .pd-opt[aria-selected="true"] { background: #fdecee; color: #a3081e; font-weight: 800; }
+:where(html[data-page="addapplicants"]) .pd-opt[aria-selected="true"].is-focused { background: #fadadf; }
+:where(html[data-page="addapplicants"]) .pd-name {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+/* small tag: does this position already have a job description PDF? */
+:where(html[data-page="addapplicants"]) .pd-tag {
+    flex: none;
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    padding: 3px 8px;
+    border-radius: 20px;
+    background: #eef0f3;
+    color: #7b7f87;
+}
+:where(html[data-page="addapplicants"]) .pd-tag.has { background: #e3f6ea; color: #15803d; }
+:where(html[data-page="addapplicants"]) .pd-check {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    fill: #a3081e;
+    opacity: 0;
+    transform: scale(0.5);
+    transition: opacity 0.2s ease, transform 0.3s var(--ease-pop);
+}
+:where(html[data-page="addapplicants"]) .pd-opt[aria-selected="true"] .pd-check { opacity: 1; transform: none; }
+
+:where(html[data-page="addapplicants"]) .pd-sep { height: 1px; margin: 6px 4px; background: #e8eaee; }
+:where(html[data-page="addapplicants"]) .pd-add { color: #a3081e; font-weight: 800; }
+:where(html[data-page="addapplicants"]) .pd-add:hover,
+:where(html[data-page="addapplicants"]) .pd-add.is-focused { background: #fdecee; }
+:where(html[data-page="addapplicants"]) .pd-plus {
+    flex: none;
+    width: 24px;
+    height: 24px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: #fdecee;
+    transition: background-color 0.2s ease, transform 0.3s var(--ease-pop);
+}
+:where(html[data-page="addapplicants"]) .pd-plus svg { width: 16px; height: 16px; fill: #a3081e; transition: fill 0.2s ease; }
+:where(html[data-page="addapplicants"]) .pd-add:hover .pd-plus,
+:where(html[data-page="addapplicants"]) .pd-add.is-focused .pd-plus { background: #a3081e; transform: rotate(90deg); }
+:where(html[data-page="addapplicants"]) .pd-add:hover .pd-plus svg,
+:where(html[data-page="addapplicants"]) .pd-add.is-focused .pd-plus svg { fill: #ffffff; }
+
+@media (prefers-reduced-motion: reduce) {
+    :where(html[data-page="addapplicants"]) .pd-menu, :where(html[data-page="addapplicants"]) .pd-chevron, :where(html[data-page="addapplicants"]) .pd-plus, :where(html[data-page="addapplicants"]) .pd-check { transition: none; }
+}
+
+/* ---------- "Add Job Position" pop-up ---------- */
+:where(html[data-page="addapplicants"]) .modal-card.pos-modal {
+    max-width: 440px;
+    text-align: left;
+    padding: 28px 28px 24px;
+}
+:where(html[data-page="addapplicants"]) .modal-card.pos-modal .pos-lead { margin-bottom: 18px; line-height: 1.5; }
+:where(html[data-page="addapplicants"]) .pos-field { margin-bottom: 14px; }
+:where(html[data-page="addapplicants"]) .pos-field label {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 7px;
+}
+:where(html[data-page="addapplicants"]) .pos-field .req { color: var(--red-bright); margin-left: 2px; }
+:where(html[data-page="addapplicants"]) .pos-field .opt { font-weight: 500; color: var(--ink-soft); }
+:where(html[data-page="addapplicants"]) .pos-field input[type="text"] {
+    width: 100%;
+    height: 44px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 0 14px;
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--ink);
+    background: #ffffff;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+:where(html[data-page="addapplicants"]) .pos-field input[type="text"]:focus { border-color: var(--red); box-shadow: 0 0 0 3px rgba(163, 8, 30, 0.12); }
+:where(html[data-page="addapplicants"]) .pos-field.has-error input[type="text"],
+:where(html[data-page="addapplicants"]) .pos-field.has-error .pos-file { border-color: var(--red-bright); background: #fff8f8; }
+:where(html[data-page="addapplicants"]) .pos-file {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 46px;
+    padding: 5px 8px;
+    border: 1px dashed #b8bcc3;
+    border-radius: 10px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+:where(html[data-page="addapplicants"]) .pos-file:focus-within { border-color: var(--red); box-shadow: 0 0 0 3px rgba(163, 8, 30, 0.12); }
+:where(html[data-page="addapplicants"]) .pos-file input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+:where(html[data-page="addapplicants"]) .pos-file .pos-choose {
+    flex: none;
+    margin: 0;
+    cursor: pointer;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #ffffff;
+    background: #a3081e;
+    border-radius: 8px;
+    padding: 8px 14px;
+    transition: background 0.2s ease;
+}
+:where(html[data-page="addapplicants"]) .pos-file .pos-choose:hover { background: #8a0719; }
+:where(html[data-page="addapplicants"]) .pos-file-name {
+    flex: 1;
+    min-width: 0;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+:where(html[data-page="addapplicants"]) .pos-file.has-file .pos-file-name { color: var(--ink); font-weight: 600; }
+:where(html[data-page="addapplicants"]) .pos-file-remove {
+    flex: none;
+    width: 26px;
+    height: 26px;
+    display: grid;
+    place-items: center;
+    border: none;
+    background: transparent;
+    border-radius: 50%;
+    cursor: pointer;
+}
+:where(html[data-page="addapplicants"]) .pos-file-remove[hidden] { display: none; }
+:where(html[data-page="addapplicants"]) .pos-file-remove svg { width: 16px; height: 16px; fill: #7b7f87; }
+:where(html[data-page="addapplicants"]) .pos-file-remove:hover svg { fill: var(--red); }
+:where(html[data-page="addapplicants"]) .modal-card.pos-modal .pos-error {
+    margin: 6px 0 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--red-bright);
+}
+:where(html[data-page="addapplicants"]) .modal-card.pos-modal .pos-error:empty { display: none; }
+:where(html[data-page="addapplicants"]) .modal-card.pos-modal .pos-hint {
+    margin: 2px 0 18px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+}
+
 @media (max-width: 860px) {
     :where(html[data-page="addapplicants"]) .form-grid { grid-template-columns: 1fr; }
+    :where(html[data-page="addapplicants"]) .name-row { grid-template-columns: 1fr; }
     :where(html[data-page="addapplicants"]) .main-content { padding: 22px 20px 48px; }
     :where(html[data-page="addapplicants"]) .details-box dl { grid-template-columns: 1fr; gap: 2px; }
     :where(html[data-page="addapplicants"]) .details-box dd { margin-bottom: 8px; }
@@ -1467,6 +1748,11 @@ html.js.is-ready.is-leaving .reveal {
 :root:where([data-page="dashboardhr"]) {
     --ink: #1f1f23;                /* the one dark text colour used across the Recent Applicants card */
     --ink-soft: #5b5f66;
+    --fn-gap: #ffffff;             /* the thin gap between funnel stages = the card colour */
+    --hist-bar: #9ccbf0;           /* histogram bars (dashboardhr.js reads these) */
+    --hist-bar-hi: #1c8adb;
+    --hist-grid: #eceef1;
+    --hist-tick: #5b5f66;
 }
 
 /* the dashboard needs a little extra room: hover pops and their shadows are never cut */
@@ -1474,18 +1760,20 @@ html.js.is-ready.is-leaving .reveal {
     padding: 28px 40px 56px;
 }
 
+/* Wireframe order:  4 summary cards across  ->  Funnel | Passed/Rejected  ->  Histogram | (Turnaround + Quick Action)  ->  Recent Applicants
+   Two equal columns; the rows grow with their content and the main area scrolls when the window is short. */
 :where(html[data-page="dashboardhr"]) .dashboard-grid {
     display: grid;
-    grid-template-columns: 2.1fr 1fr;
-    grid-template-rows: auto minmax(260px, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-gap: 20px;
-    flex: 1 1 auto;
-    min-height: 560px;             /* on very short windows the main area scrolls instead */
+    align-content: start;
+    flex: 0 0 auto;
 }
 
 :where(html[data-page="dashboardhr"]) .metrics-container {
+    grid-column: 1 / -1;
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 20px;
 }
 
@@ -1495,7 +1783,7 @@ html.js.is-ready.is-leaving .reveal {
     --tone-soft: #fbe6e9;
     background: #ffffff;
     border-radius: 14px;
-    padding: 14px 22px 14px;
+    padding: 16px 22px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
     position: relative;
     overflow: hidden;
@@ -1654,8 +1942,8 @@ html.js.is-ready.is-leaving .reveal {
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: space-between;
+    align-items: stretch;
+    gap: 12px;                     /* same as the funnel card */
     text-align: center;
     position: relative;
     transition: transform 0.35s var(--ease-pop), box-shadow 0.3s var(--ease-out);
@@ -1688,10 +1976,45 @@ html.js.is-ready.is-leaving .reveal {
 
 :where(html[data-page="dashboardhr"]) .chart-wrapper {
     position: relative;
-    width: 184px;                  /* the ring draws ~12px smaller inside this box, so a hovered slice has room */
-    height: 184px;
+    width: min(100%, 270px);       /* square, sized by the card width only */
+    aspect-ratio: 1 / 1;
+    flex: none;
+    margin: auto;                  /* spare height goes evenly above and below */
     cursor: pointer;
-    margin: 6px 0;
+}
+
+/* ring entrance: sweeps round clockwise while it grows in, centre text fades in after.
+   hr.js adds .is-drawing when the chart is created */
+@property --ring-sweep {
+    syntax: '<angle>';
+    inherits: false;
+    initial-value: 360deg;
+}
+
+:where(html[data-page="dashboardhr"]) .chart-wrapper.is-drawing canvas {
+    -webkit-mask-image: conic-gradient(from 0deg, #000 var(--ring-sweep), transparent var(--ring-sweep));
+            mask-image: conic-gradient(from 0deg, #000 var(--ring-sweep), transparent var(--ring-sweep));
+    animation: ringIn 1.1s var(--ease-out) backwards;
+}
+
+:where(html[data-page="dashboardhr"]) .chart-wrapper.is-drawing .chart-center {
+    animation: ringCenterIn 0.7s var(--ease-out) 0.45s backwards;
+}
+
+@keyframes ringIn {
+    from { --ring-sweep: 0deg;   transform: scale(0.72) rotate(-35deg); opacity: 0; }
+    to   { --ring-sweep: 360deg; transform: scale(1) rotate(0deg);      opacity: 1; }
+}
+
+@keyframes ringCenterIn {
+    from { opacity: 0; transform: scale(0.8); }
+    to   { opacity: 1; transform: scale(1); }
+}
+
+/* canvas fills the box without adding to its size */
+:where(html[data-page="dashboardhr"]) .chart-wrapper canvas {
+    position: absolute;
+    inset: 0;
 }
 
 /* text in the hole of the ring */
@@ -1706,7 +2029,7 @@ html.js.is-ready.is-leaving .reveal {
 }
 
 :where(html[data-page="dashboardhr"]) .chart-center strong {
-    font-size: 30px;
+    font-size: 36px;
     font-weight: 800;
     line-height: 1;
     letter-spacing: -0.5px;
@@ -1714,8 +2037,8 @@ html.js.is-ready.is-leaving .reveal {
 }
 
 :where(html[data-page="dashboardhr"]) .chart-center span {
-    margin-top: 5px;
-    font-size: 11px;
+    margin-top: 6px;
+    font-size: 12px;
     font-weight: 700;
     color: var(--ink-soft);
 }
@@ -1733,7 +2056,7 @@ html.js.is-ready.is-leaving .reveal {
     display: flex;
     align-items: center;
     gap: 7px;
-    padding: 8px 10px;
+    padding: 8px 12px;
     border: 1px solid #e8eaed;
     border-radius: 10px;
     color: var(--ink);
@@ -1768,9 +2091,10 @@ html.js.is-ready.is-leaving .reveal {
 
 /* ---------- Recent Applicants ---------- */
 :where(html[data-page="dashboardhr"]) .recent-card {
+    grid-column: 1 / -1;
     background: #ffffff;
     border-radius: 14px;
-    padding: 18px 20px 20px;
+    padding: 20px 22px 22px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
     position: relative;
     display: flex;
@@ -1790,8 +2114,8 @@ html.js.is-ready.is-leaving .reveal {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
-    padding: 0 0 0 0;
+    margin-bottom: 12px;
+    padding: 0;
 }
 
 :where(html[data-page="dashboardhr"]) .card-top h3 {
@@ -1829,11 +2153,12 @@ html.js.is-ready.is-leaving .reveal {
 
 /* Scrollable list: fills the card edge to edge, shows as many rows as fit (up to 10), scrolls the rest */
 :where(html[data-page="dashboardhr"]) .table-responsive {
-    flex: 1 1 0;
+    flex: 0 1 auto;
+    max-height: 372px;             /* about 8 rows; the rest scrolls */
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
-    margin: 0 -20px 0;             /* header band touches the card sides; the card's bottom padding stays as a gap */
+    margin: 0 -22px 0;             /* header band touches the card sides; the card's bottom padding stays as a gap */
     scrollbar-width: thin;
     scrollbar-color: #cfd4da transparent;
 }
@@ -1898,9 +2223,9 @@ html.js.is-ready.is-leaving .reveal {
 
 /* line the first/last column up with the card title */
 :where(html[data-page="dashboardhr"]) .applicants-table th:first-child,
-:where(html[data-page="dashboardhr"]) .applicants-table td:first-child { padding-left: 20px; }
+:where(html[data-page="dashboardhr"]) .applicants-table td:first-child { padding-left: 22px; }
 :where(html[data-page="dashboardhr"]) .applicants-table th:last-child,
-:where(html[data-page="dashboardhr"]) .applicants-table td:last-child { padding-right: 20px; }
+:where(html[data-page="dashboardhr"]) .applicants-table td:last-child { padding-right: 22px; }
 
 :where(html[data-page="dashboardhr"]) .applicants-table td.empty-row {
     text-align: center;
@@ -1999,54 +2324,397 @@ html.js.is-ready.is-leaving .reveal {
     color: #888888;
 }
 
-/* ---------- Quick Action ---------- */
+/* ==========================================================================
+   Analytics cards (wireframe): Funnel Drop-Off, Time-to-Complete Distribution,
+   Scheduling Turnaround Time. The big cards share ONE look with the Passed/Rejected card:
+   same surface, same title + sub line, same chips at the bottom, same hover lift.
+   ========================================================================== */
+
+/* one hover for every big card (a wide card that grows 3% looks like it jumps, so the lift is smaller) */
+:where(html[data-page="dashboardhr"]) .chart-card,
+:where(html[data-page="dashboardhr"]) .insight-card,
+:where(html[data-page="dashboardhr"]) .ta-card,
 :where(html[data-page="dashboardhr"]) .quick-action-card {
     background: #ffffff;
     border-radius: 14px;
-    padding: 20px 22px 22px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
     position: relative;
-    min-height: 0;
     transition: transform 0.35s var(--ease-pop), box-shadow 0.3s var(--ease-out);
 }
 
+:where(html[data-page="dashboardhr"]) .chart-card:hover,
+:where(html[data-page="dashboardhr"]) .insight-card:hover,
+:where(html[data-page="dashboardhr"]) .ta-card:hover,
 :where(html[data-page="dashboardhr"]) .quick-action-card:hover {
-    transform: translateY(-6px) scale(1.03);
+    transform: translateY(-4px) scale(1.015);
     box-shadow: 0 12px 26px rgba(0, 0, 0, 0.12);
     z-index: 2;
 }
 
-:where(html[data-page="dashboardhr"]) .quick-action-card h3 {
-    font-size: 15px;
-    font-weight: 800;
-    color: var(--ink);
-    width: 100%;
-    text-align: left;
-}
-
-:where(html[data-page="dashboardhr"]) .qa-body {
-    flex: 1;
+:where(html[data-page="dashboardhr"]) .funnel-card,
+:where(html[data-page="dashboardhr"]) .hist-card {
+    padding: 20px 22px 22px;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 10px 0 12px;
+    gap: 12px;
+    text-align: left;
+    min-height: 330px;
 }
 
+/* the Passed/Rejected card sits next to the funnel: same height, content spread the same way */
+:where(html[data-page="dashboardhr"]) .chart-card.insight-card { min-height: 330px; }
+
+:where(html[data-page="dashboardhr"]) .block-empty {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-soft);
+}
+
+/* ---------- chips at the bottom of a card (same family as the Passed / Rejected legend) ---------- */
+:where(html[data-page="dashboardhr"]) .insight-foot {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+:where(html[data-page="dashboardhr"]) .insight-foot.three {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+:where(html[data-page="dashboardhr"]) .insight-chip {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    padding: 8px 12px;
+    border: 1px solid #e8eaed;
+    border-radius: 10px;
+    color: var(--ink);
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.3s var(--ease-pop);
+}
+
+:where(html[data-page="dashboardhr"]) .insight-chip:hover {
+    background: #f6f7f9;
+    border-color: #d5d9de;
+    transform: translateY(-2px) scale(1.03);
+}
+
+:where(html[data-page="dashboardhr"]) .chip-label {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    letter-spacing: 0.2px;
+}
+
+:where(html[data-page="dashboardhr"]) .chip-value {
+    font-size: 12.5px;
+    font-weight: 800;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ---------- Funnel ---------- */
+:where(html[data-page="dashboardhr"]) .funnel-body {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    min-height: 0;
+}
+
+:where(html[data-page="dashboardhr"]) .funnel-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;                  /* stretches to the legend's height so each stage sits beside its row */
+    overflow: visible;
+}
+
+:where(html[data-page="dashboardhr"]) .funnel-fig {
+    position: relative;
+    flex: 0 0 44%;
+    align-self: stretch;
+    min-height: 240px;
+    max-width: 340px;
+}
+
+:where(html[data-page="dashboardhr"]) .fn-count {
+    position: absolute;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #ffffff;
+    font-size: 17px;
+    font-weight: 800;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.35s var(--ease-pop);
+}
+
+/* stage numbers are html on top of the svg; they fade in and react to hover with their stage */
+:where(html[data-page="dashboardhr"].js:not(.is-ready)) .fn-count { opacity: 0; }
+
+html.js.is-ready:where([data-page="dashboardhr"]) .fn-count {
+    animation: fnCountIn 0.6s var(--ease-out) backwards;
+    animation-delay: calc(0.8s + var(--k, 0) * 110ms);
+}
+
+@keyframes fnCountIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+:where(html[data-page="dashboardhr"]) .funnel-body.has-focus .fn-count:not(.is-active) { opacity: 0.35; }
+:where(html[data-page="dashboardhr"]) .fn-count.is-active { transform: translate(-50%, -50%) scale(1.1); }
+
+/* narrow card: smaller funnel so the legend labels don't wrap as much */
+:where(html[data-page="dashboardhr"]) .funnel-card { container-type: inline-size; }
+
+@container (max-width: 680px) {
+    :where(html[data-page="dashboardhr"]) .funnel-body { gap: 16px; }
+    :where(html[data-page="dashboardhr"]) .funnel-fig { flex-basis: 38%; }
+}
+
+:where(html[data-page="dashboardhr"]) .fn-stage {
+    cursor: default;
+    transform-box: fill-box;
+    transform-origin: 50% 0;
+    transition: opacity 0.25s ease, transform 0.35s var(--ease-pop), filter 0.25s ease;
+}
+
+:where(html[data-page="dashboardhr"]) .fn-stage.is-link { cursor: pointer; }
+
+:where(html[data-page="dashboardhr"]) .fn-stage polygon,
+:where(html[data-page="dashboardhr"]) .fn-stage path {
+    fill: var(--c);
+    stroke: var(--fn-gap);
+    stroke-width: 2.5;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+}
+
+/* entrance: the stages drop in one after another, widest first (starts when the page is ready, so it also waits for the login stripes) */
+:where(html[data-page="dashboardhr"].js:not(.is-ready)) .fn-stage { opacity: 0; }
+
+html.js.is-ready:where([data-page="dashboardhr"]) .fn-stage {
+    opacity: 1;
+    animation: fnDrop 0.7s var(--ease-out) backwards;
+    animation-delay: calc(0.62s + var(--k, 0) * 110ms);
+}
+
+@keyframes fnDrop {
+    from { opacity: 0; transform: scaleX(0.25) translateY(-12px); }
+    to   { opacity: 1; transform: scaleX(1) translateY(0); }
+}
+
+/* hover on a stage or on its legend row: that stage lights up, the others step back */
+:where(html[data-page="dashboardhr"]) .funnel-body.has-focus .fn-stage:not(.is-active) { opacity: 0.35; }
+:where(html[data-page="dashboardhr"]) .fn-stage.is-active { filter: brightness(1.08) drop-shadow(0 4px 8px rgba(0, 0, 0, 0.22)); transform: scale(1.05); }
+
+:where(html[data-page="dashboardhr"]) .funnel-legend {
+    list-style: none;
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+:where(html[data-page="dashboardhr"]) .fl-item {
+    padding: 6px 10px;
+    gap: 9px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: default;
+}
+
+:where(html[data-page="dashboardhr"]) .fl-item.is-link { cursor: pointer; }
+:where(html[data-page="dashboardhr"]) .fl-item.is-active { background: #f6f7f9; border-color: #d5d9de; transform: translateY(-2px) scale(1.04); }
+
+:where(html[data-page="dashboardhr"]) .fl-item .legend-text {
+    min-width: 0;
+    line-height: 1.2;
+    font-size: 12px;
+}
+
+:where(html[data-page="dashboardhr"]) .fl-sub {
+    display: block;
+    margin-top: 1px;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--ink-soft);
+}
+
+:where(html[data-page="dashboardhr"]) .fl-sub.is-loss { color: #c4162a; }
+
+:where(html[data-page="dashboardhr"]) .fl-pct {
+    min-width: 36px;
+    text-align: right;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+}
+
+/* legend rows slide in with their stage */
+html.js.is-ready:where([data-page="dashboardhr"]) .fl-item {
+    animation: flIn 0.55s var(--ease-out) backwards;
+    animation-delay: calc(0.7s + var(--k, 0) * 110ms);
+}
+
+@keyframes flIn {
+    from { opacity: 0; transform: translateX(14px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ---------- Histogram ---------- */
+:where(html[data-page="dashboardhr"]) .hist-wrap {
+    position: relative;
+    flex: 1;
+    min-height: 190px;
+    width: 100%;
+    cursor: default;
+}
+
+/* ---------- Right column: Scheduling Turnaround + Quick Action ---------- */
+:where(html[data-page="dashboardhr"]) .side-stack {
+    display: grid;
+    grid-template-rows: 1fr 1fr;
+    gap: 20px;
+    min-height: 0;
+}
+
+:where(html[data-page="dashboardhr"]) .ta-card,
+:where(html[data-page="dashboardhr"]) .quick-action-card {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 22px;
+    padding: 20px 22px;
+    text-align: left;
+    min-height: 0;
+}
+
+:where(html[data-page="dashboardhr"]) .ta-card {
+    --tone: #159a43;              /* bar colour; changes with how the turnaround compares to the target */
+    cursor: pointer;
+}
+
+:where(html[data-page="dashboardhr"]) .ta-card.is-warn { --tone: #e29a00; }
+:where(html[data-page="dashboardhr"]) .ta-card.is-slow { --tone: #d1122a; }
+:where(html[data-page="dashboardhr"]) .ta-card.is-none { --tone: #9aa1ab; }
+
+:where(html[data-page="dashboardhr"]) .ta-card:focus-visible { outline: 2px solid #1c8adb; outline-offset: 3px; }
+
+/* the round icon: same size + dashed ring as the Quick Action icon */
+:where(html[data-page="dashboardhr"]) .ta-icon {
+    position: relative;
+    width: 72px;
+    height: 72px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: #d3f1f7;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+:where(html[data-page="dashboardhr"]) .ta-icon::after {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    border-radius: 50%;
+    border: 2px dashed #8fd3e6;
+    transition: transform 0.9s var(--ease-out);
+}
+
+:where(html[data-page="dashboardhr"]) .ta-card:hover .ta-icon::after { transform: rotate(120deg); }
+
+:where(html[data-page="dashboardhr"]) .ta-icon svg {
+    width: 42px;
+    height: 42px;
+    fill: none;
+    stroke: #1d3fd1;
+    stroke-width: 2.1;
+    stroke-linecap: round;
+    transition: transform 0.35s var(--ease-pop);
+}
+
+:where(html[data-page="dashboardhr"]) .ta-card:hover .ta-icon svg { transform: scale(1.1); }
+
+:where(html[data-page="dashboardhr"]) .ta-pin { fill: #1d3fd1; stroke: none; }
+
+/* the clock really runs: the minute hand goes round every 6 seconds, faster when you hover */
+:where(html[data-page="dashboardhr"]) .ta-hand-m,
+:where(html[data-page="dashboardhr"]) .ta-hand-h {
+    transform-box: view-box;
+    transform-origin: 12px 12px;
+    animation: clockSpin 6s linear infinite;
+}
+
+:where(html[data-page="dashboardhr"]) .ta-hand-h { animation-duration: 72s; }
+:where(html[data-page="dashboardhr"]) .ta-card:hover .ta-hand-m { animation-duration: 1.4s; }
+
+@keyframes clockSpin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+:where(html[data-page="dashboardhr"]) .ta-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+:where(html[data-page="dashboardhr"]) .ta-body .card-title { white-space: normal; font-size: 13.5px; }
+
+:where(html[data-page="dashboardhr"]) .ta-value {
+    display: flex;
+    align-items: baseline;
+    gap: 7px;
+}
+
+:where(html[data-page="dashboardhr"]) .ta-value .card-value { font-size: 34px; }
+
+:where(html[data-page="dashboardhr"]) .ta-unit {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--ink-soft);
+}
+
+/* the mark in the middle of the bar is the target; a bar that passes it is slower than the target */
+:where(html[data-page="dashboardhr"]) .ta-card .stat-bar { position: relative; }
+
+/* this card rises in later than the four summary cards, so its bar fills later too */
+:where(html[data-page="dashboardhr"]) .ta-card .stat-bar span { animation-delay: 1.15s; }
+
+:where(html[data-page="dashboardhr"]) .ta-card .stat-bar::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--ink);
+    opacity: 0.45;
+}
+
+/* ---------- Quick Action (wireframe: icon on the left, text + button on the right) ---------- */
 :where(html[data-page="dashboardhr"]) .avatar-circle {
     position: relative;
-    width: 68px;
-    height: 68px;
+    width: 72px;
+    height: 72px;
     background-color: #d3f1f7;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 16px;
     flex-shrink: 0;
 }
 
@@ -2060,9 +2728,7 @@ html.js.is-ready.is-leaving .reveal {
     transition: transform 0.9s var(--ease-out);
 }
 
-:where(html[data-page="dashboardhr"]) .quick-action-card:hover .avatar-circle::after {
-    transform: rotate(120deg);
-}
+:where(html[data-page="dashboardhr"]) .quick-action-card:hover .avatar-circle::after { transform: rotate(120deg); }
 
 :where(html[data-page="dashboardhr"]) .avatar-circle svg {
     width: 38px;
@@ -2071,28 +2737,35 @@ html.js.is-ready.is-leaving .reveal {
     transition: transform 0.35s var(--ease-pop);
 }
 
-:where(html[data-page="dashboardhr"]) .quick-action-card:hover .avatar-circle svg {
-    transform: scale(1.1);
+:where(html[data-page="dashboardhr"]) .quick-action-card:hover .avatar-circle svg { transform: scale(1.1); }
+
+:where(html[data-page="dashboardhr"]) .qa-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    padding: 0;
 }
 
 :where(html[data-page="dashboardhr"]) .quick-action-text {
     font-size: 13.5px;
     font-weight: 800;
     color: var(--ink);
-    margin-bottom: 6px;
 }
 
 :where(html[data-page="dashboardhr"]) .quick-action-sub {
-    max-width: 210px;
     font-size: 11.5px;
     font-weight: 500;
-    line-height: 1.45;
+    line-height: 1.4;
     color: var(--ink-soft);
+    margin-bottom: 6px;
 }
 
 :where(html[data-page="dashboardhr"]) .btn-add-new {
     width: 100%;
-    height: 40px;
+    height: 38px;
     background-color: #00a2ff;
     color: #ffffff;
     border: none;
@@ -2123,6 +2796,35 @@ html.js.is-ready.is-leaving .reveal {
 
 :where(html[data-page="dashboardhr"]) .btn-add-new:active {
     transform: translateY(0) scale(0.98);
+}
+
+/* ---------- Narrower windows ---------- */
+@media (max-width: 1280px) {
+    :where(html[data-page="dashboardhr"]) .metrics-container { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 1040px) {
+    :where(html[data-page="dashboardhr"]) .dashboard-grid { grid-template-columns: minmax(0, 1fr); }
+    :where(html[data-page="dashboardhr"]) .main-content { padding: 24px 22px 48px; }
+}
+
+@media (max-width: 600px) {
+    :where(html[data-page="dashboardhr"]) .funnel-body { flex-direction: column; align-items: stretch; }
+    :where(html[data-page="dashboardhr"]) .funnel-fig { flex: none; width: 100%; max-width: 320px; height: 260px; align-self: center; }
+    :where(html[data-page="dashboardhr"]) .metrics-container { grid-template-columns: minmax(0, 1fr); }
+    :where(html[data-page="dashboardhr"]) .insight-foot.three { grid-template-columns: minmax(0, 1fr); }
+    :where(html[data-page="dashboardhr"]) .ta-card,
+    :where(html[data-page="dashboardhr"]) .quick-action-card { gap: 16px; padding: 16px 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html.js.is-ready:where([data-page="dashboardhr"]) .fn-stage,
+    html.js.is-ready:where([data-page="dashboardhr"]) .fl-item,
+    html.js.is-ready:where([data-page="dashboardhr"]) .fn-count,
+    :where(html[data-page="dashboardhr"]) .chart-wrapper.is-drawing canvas,
+    :where(html[data-page="dashboardhr"]) .chart-wrapper.is-drawing .chart-center,
+    :where(html[data-page="dashboardhr"]) .ta-hand-m,
+    :where(html[data-page="dashboardhr"]) .ta-hand-h { animation: none; }
 }
 
 /* ==========================================================================
@@ -3845,27 +4547,47 @@ html:where([data-page="details"])[data-theme="dark"] .tab-ink { background: #ff6
     border: 1px solid #cfd3d8;
     border-radius: 12px;
     cursor: pointer;
-    transition: border-color 0.2s ease, box-shadow 0.25s var(--ease-out), transform 0.3s var(--ease-pop);
+    transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.25s var(--ease-out), transform 0.3s var(--ease-pop);
 }
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-toggle svg {
-    width: 24px;
-    height: 24px;
-    fill: #1a1a1a;
-    transition: fill 0.2s ease;
+    width: 23px;
+    height: 23px;
+    fill: #3a3d42;
+    transition: fill 0.2s ease, transform 0.4s var(--ease-pop);
 }
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-toggle:hover {
-    transform: translateY(-2px) scale(1.06);
-    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+    border-color: rgba(163, 8, 30, 0.45);
+    background: #fdf6f7;
+    box-shadow: 0 8px 18px rgba(163, 8, 30, 0.12);
+}
+
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-toggle:hover svg {
+    fill: #a3081e;
+    transform: scale(1.12) rotate(-8deg);
 }
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-toggle:active {
-    transform: scale(0.96);
+    transform: scale(0.95);
 }
 
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-toggle:focus-visible {
+    outline: none;
+    border-color: #a3081e;
+    box-shadow: 0 0 0 3px rgba(163, 8, 30, 0.18);
+}
+
+/* panel open: the funnel is tinted and ringed so it reads as "on" */
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-toggle[aria-expanded="true"] {
-    background: #fdf1f3;
+    background: #fdecee;
+    border-color: rgba(163, 8, 30, 0.5);
+    box-shadow: 0 0 0 3px rgba(163, 8, 30, 0.1);
+}
+
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-toggle[aria-expanded="true"]:hover {
+    box-shadow: 0 0 0 3px rgba(163, 8, 30, 0.1), 0 8px 18px rgba(163, 8, 30, 0.14);
 }
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-toggle[aria-expanded="true"] svg {
@@ -3940,7 +4662,30 @@ html:where([data-page="details"])[data-theme="dark"] .tab-ink { background: #ff6
     border: 1px solid #d9dce1;
     border-radius: 16px;
     padding: 16px 18px 18px;
-    transition: transform 0.35s var(--ease-pop), box-shadow 0.3s var(--ease-out), border-color 0.2s ease;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+    transition: transform 0.35s var(--ease-pop), box-shadow 0.3s var(--ease-out), border-color 0.2s ease, background-color 0.2s ease;
+}
+
+/* thin accent line along the top edge: grows in while this filter is on */
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-card::before {
+    content: "";
+    position: absolute;
+    top: -1px;
+    left: 20px;
+    right: 20px;
+    height: 3px;
+    border-radius: 0 0 4px 4px;
+    background: linear-gradient(90deg, #a3081e, #e0334a);
+    opacity: 0;
+    transform: scaleX(0.35);
+    transform-origin: left center;
+    transition: opacity 0.25s ease, transform 0.45s var(--ease-out);
+    pointer-events: none;
+}
+
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-card.is-active::before {
+    opacity: 1;
+    transform: none;
 }
 
 /* lift on hover only: focus must not leave one card floating above the other */
@@ -3985,13 +4730,22 @@ html:where([data-page="details"])[data-theme="dark"] .tab-ink { background: #ff6
 }
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-label svg {
-    width: 18px;
-    height: 18px;
+    width: 28px;
+    height: 28px;
+    padding: 6px;
+    box-sizing: border-box;
+    border-radius: 9px;
+    background: #fdecee;
     fill: #a3081e;
-    transition: transform 0.35s var(--ease-pop);
+    transition: transform 0.35s var(--ease-pop), background-color 0.25s ease, fill 0.25s ease;
 }
 
-:where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-card:hover .filter-label svg { transform: scale(1.2) rotate(-6deg); }
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-card:hover .filter-label svg { transform: scale(1.1) rotate(-6deg); }
+
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-card.is-active .filter-label svg {
+    background: #a3081e;
+    fill: #ffffff;
+}
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-reset {
     border: none;
@@ -4019,14 +4773,15 @@ html:where([data-page="details"])[data-theme="dark"] .tab-ink { background: #ff6
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-btn {
     width: 100%;
-    height: 46px;
+    height: 48px;
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 0 14px;
+    padding: 0 10px 0 14px;
     background: #ffffff;
-    border: 1.5px solid #cfd3d8;
+    border: 1.5px solid #d3d7dc;
     border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
     font-size: 14px;
     font-weight: 700;
     color: #222222;
@@ -4036,7 +4791,7 @@ html:where([data-page="details"])[data-theme="dark"] .tab-ink { background: #ff6
 }
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-btn:hover {
-    border-color: #a3a8af;
+    border-color: #b3b8bf;
     background: #fafbfc;
     transform: translateY(-1px);
 }
@@ -4045,7 +4800,7 @@ html:where([data-page="details"])[data-theme="dark"] .tab-ink { background: #ff6
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown.open .dropdown-btn {
     outline: none;
     border-color: #a3081e;
-    box-shadow: 0 0 0 3px rgba(163, 8, 30, 0.12);
+    box-shadow: 0 0 0 4px rgba(163, 8, 30, 0.12);
 }
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-value {
@@ -4056,15 +4811,25 @@ html:where([data-page="details"])[data-theme="dark"] .tab-ink { background: #ff6
     text-overflow: ellipsis;
 }
 
+/* chevron sits in a round chip that tints when the list is open */
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-chevron {
-    width: 22px;
-    height: 22px;
+    width: 28px;
+    height: 28px;
+    padding: 3px;
+    box-sizing: border-box;
     flex-shrink: 0;
+    border-radius: 50%;
     fill: #1a1a1a;
-    transition: transform 0.35s var(--ease-pop);
+    transition: transform 0.35s var(--ease-pop), background-color 0.2s ease, fill 0.2s ease;
 }
 
-:where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown.open .dropdown-chevron { transform: rotate(180deg); }
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-btn:hover .dropdown-chevron { background: #eff0f2; }
+
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown.open .dropdown-chevron {
+    transform: rotate(180deg);
+    background: #fdecee;
+    fill: #a3081e;
+}
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .dot {
     width: 10px;
@@ -4076,21 +4841,27 @@ html:where([data-page="details"])[data-theme="dark"] .tab-ink { background: #ff6
     transition: background-color 0.25s ease, transform 0.3s var(--ease-pop);
 }
 
-:where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-btn:hover .dot { transform: scale(1.2); }
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-btn:hover .dot,
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-option:hover .dot,
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-option.is-focused .dot { transform: scale(1.2); }
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-menu {
     position: absolute;
-    top: calc(100% + 8px);
+    top: calc(100% + 10px);
     left: 0;
     right: 0;
     margin: 0;
-    padding: 6px;
+    padding: 8px;
     list-style: none;
     background: #ffffff;
     border: 1px solid #e1e4e8;
-    border-radius: 14px;
-    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.16), 0 4px 12px rgba(0, 0, 0, 0.06);
+    border-radius: 16px;
+    box-shadow: 0 22px 48px rgba(16, 24, 40, 0.18), 0 4px 14px rgba(16, 24, 40, 0.07);
     z-index: 50;
+    max-height: min(320px, 60vh);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
     opacity: 0;
     visibility: hidden;
     transform-origin: top center;
@@ -4106,18 +4877,34 @@ html:where([data-page="details"])[data-theme="dark"] .tab-ink { background: #ff6
 }
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-option {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 10px;
-    height: 42px;
+    height: 44px;
     padding: 0 12px;
-    border-radius: 9px;
+    border-radius: 10px;
     font-size: 14px;
     font-weight: 600;
     color: #2a2a2a;
     cursor: pointer;
     user-select: none;
-    transition: background-color 0.15s ease, color 0.15s ease, transform 0.25s var(--ease-pop);
+    transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.2s ease;
+}
+
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-option + .dropdown-option { margin-top: 2px; }
+
+/* "All ..." is the reset row: a hairline separates it from the real choices */
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-option[data-value="all"] { margin-bottom: 8px; }
+
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-option[data-value="all"]::after {
+    content: "";
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    bottom: -5px;
+    height: 1px;
+    background: #eceef1;
 }
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown.open .dropdown-option {
@@ -4128,36 +4915,49 @@ html:where([data-page="details"])[data-theme="dark"] .tab-ink { background: #ff6
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-option:hover,
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-option.is-focused {
     background: #fdf1f3;
-    transform: translateX(4px);
 }
 
+/* the picked option: soft tint + a bar on its left edge */
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-option[aria-selected="true"] {
+    background: #fdecee;
+    box-shadow: inset 3px 0 0 #a3081e;
     color: #a3081e;
     font-weight: 800;
+}
+
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-option[aria-selected="true"]:hover,
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-option[aria-selected="true"].is-focused {
+    background: #fbe3e7;
 }
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .opt-label { flex: 1; }
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .opt-count {
-    min-width: 26px;
-    padding: 2px 8px;
+    min-width: 28px;
+    padding: 2px 9px;
     border-radius: 20px;
     background: #f0f1f3;
     color: #666666;
     font-size: 11.5px;
     font-weight: 800;
+    font-variant-numeric: tabular-nums;
     text-align: center;
+    transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-option[aria-selected="true"] .opt-count {
-    background: #fadadf;
+    background: #f9d3d9;
     color: #a3081e;
 }
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .opt-check {
-    width: 18px;
-    height: 18px;
-    fill: #a3081e;
+    width: 20px;
+    height: 20px;
+    padding: 4px;
+    box-sizing: border-box;
+    border-radius: 50%;
+    background: #a3081e;
+    fill: #ffffff;
     opacity: 0;
     transform: scale(0.4);
     transition: opacity 0.2s ease, transform 0.3s var(--ease-pop);
@@ -4168,9 +4968,22 @@ html:where([data-page="details"])[data-theme="dark"] .tab-ink { background: #ff6
     transform: none;
 }
 
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-menu::-webkit-scrollbar { width: 8px; }
+:where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-menu::-webkit-scrollbar-thumb { background: #d3d7dc; border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
+
 @keyframes optionIn-screeninglist {
     from { opacity: 0; transform: translateY(-6px); }
     to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-toggle,
+    :where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-toggle svg,
+    :where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-card::before,
+    :where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-label svg,
+    :where(html[data-page="archive"],html[data-page="screeninglist"]) .dropdown-chevron,
+    :where(html[data-page="archive"],html[data-page="screeninglist"]) .opt-check,
+    :where(html[data-page="archive"],html[data-page="screeninglist"]) .dot { transition: none; }
 }
 
 /* ---- Table card ---- */
@@ -5850,6 +6663,11 @@ html[data-theme="dark"] {
     --cancel-bg: #3a414a;
     --cancel-ink: #c9ced6;
     --chart-ring: #1f2329;              /* the gap between the doughnut slices (dashboardhr.js) */
+    --fn-gap: #1f2329;                  /* the gap between funnel stages */
+    --hist-bar: #35607f;                /* histogram bars (dashboardhr.js reads these) */
+    --hist-bar-hi: #5cc0ff;
+    --hist-grid: #2d323a;
+    --hist-tick: #a6acb6;
 }
 
 /* ---------- dark rules ---------- */
@@ -5927,6 +6745,8 @@ html[data-theme="dark"] {
 }
 :where(html[data-theme="dark"]) .stat-card,
 :where(html[data-theme="dark"]) .chart-card,
+:where(html[data-theme="dark"]) .insight-card,
+:where(html[data-theme="dark"]) .ta-card,
 :where(html[data-theme="dark"]) .recent-card,
 :where(html[data-theme="dark"]) .quick-action-card {
     background: var(--surface);
@@ -5934,9 +6754,34 @@ html[data-theme="dark"] {
 }
 :where(html[data-theme="dark"]) .stat-card:hover,
 :where(html[data-theme="dark"]) .chart-card:hover,
+:where(html[data-theme="dark"]) .insight-card:hover,
+:where(html[data-theme="dark"]) .ta-card:hover,
 :where(html[data-theme="dark"]) .recent-card:hover,
 :where(html[data-theme="dark"]) .quick-action-card:hover {
     box-shadow: 0 12px 26px rgba(0,0,0,0.5);
+}
+:where(html[data-theme="dark"]) .insight-chip {
+    border-color: var(--edge);
+}
+:where(html[data-theme="dark"]) .insight-chip:hover,
+:where(html[data-theme="dark"]) .fl-item.is-active {
+    background: var(--surface-2);
+    border-color: #4a515c;
+}
+:where(html[data-theme="dark"]) .fl-sub.is-loss {
+    color: #ff8a9b;
+}
+:where(html[data-theme="dark"]) .ta-icon {
+    background-color: rgba(0,162,255,0.16);
+}
+:where(html[data-theme="dark"]) .ta-icon::after {
+    border-color: rgba(0,162,255,0.45);
+}
+:where(html[data-theme="dark"]) .ta-icon svg {
+    stroke: #5cc0ff;
+}
+:where(html[data-theme="dark"]) .ta-pin {
+    fill: #5cc0ff;
 }
 :where(html[data-theme="dark"]) .stat-icon {
     background: color-mix(in srgb, var(--tone) 24%, transparent);
@@ -6098,6 +6943,75 @@ html[data-theme="dark"] {
 :where(html[data-theme="dark"]) .dropdown-option[aria-selected="true"] .opt-count {
     background: rgba(255,107,128,0.2);
     color: #ff8a9b;
+}
+/* filter funnel + dropdown refresh: dark counterparts */
+:where(html[data-theme="dark"]) .filter-toggle:not([aria-expanded="true"]):hover {
+    background: rgba(255,107,128,0.10);
+    border-color: rgba(255,107,128,0.5);
+    box-shadow: 0 8px 18px rgba(0,0,0,0.4);
+}
+:where(html[data-theme="dark"]) .filter-toggle:hover svg {
+    fill: #ff8a9b;
+}
+:where(html[data-theme="dark"]) .filter-toggle:focus-visible {
+    border-color: #ff8a9b;
+    box-shadow: 0 0 0 3px rgba(255,107,128,0.22);
+}
+:where(html[data-theme="dark"]) .filter-toggle[aria-expanded="true"] {
+    border-color: rgba(255,107,128,0.55);
+    box-shadow: 0 0 0 3px rgba(255,107,128,0.12);
+}
+:where(html[data-theme="dark"]) .filter-toggle[aria-expanded="true"]:hover {
+    box-shadow: 0 0 0 3px rgba(255,107,128,0.12), 0 8px 18px rgba(0,0,0,0.4);
+}
+:where(html[data-theme="dark"]) .filter-card {
+    box-shadow: none;
+}
+:where(html[data-theme="dark"]) .filter-card:hover {
+    box-shadow: 0 12px 26px rgba(0,0,0,0.45);
+}
+:where(html[data-theme="dark"]) .filter-card::before {
+    background: linear-gradient(90deg, #ff6b80, #ff9aa8);
+}
+:where(html[data-theme="dark"]) .filter-label svg {
+    background: rgba(255,107,128,0.16);
+}
+:where(html[data-theme="dark"]) .filter-card.is-active .filter-label svg {
+    background: #ff6b80;
+    fill: #14171b;
+}
+:where(html[data-theme="dark"]) .dropdown-btn {
+    box-shadow: none;
+}
+:where(html[data-theme="dark"]) .dropdown-btn:focus-visible,
+:where(html[data-theme="dark"]) .dropdown.open .dropdown-btn {
+    border-color: #ff8a9b;
+    box-shadow: 0 0 0 4px rgba(255,107,128,0.18);
+}
+:where(html[data-theme="dark"]) .dropdown-btn:hover .dropdown-chevron {
+    background: rgba(255,255,255,0.07);
+}
+:where(html[data-theme="dark"]) .dropdown.open .dropdown-chevron {
+    background: rgba(255,107,128,0.16);
+    fill: #ff8a9b;
+}
+:where(html[data-theme="dark"]) .dropdown-option[data-value="all"]::after {
+    background: var(--edge);
+}
+:where(html[data-theme="dark"]) .dropdown-option[aria-selected="true"] {
+    background: rgba(255,107,128,0.14);
+    box-shadow: inset 3px 0 0 #ff8a9b;
+}
+:where(html[data-theme="dark"]) .dropdown-option[aria-selected="true"]:hover,
+:where(html[data-theme="dark"]) .dropdown-option[aria-selected="true"].is-focused {
+    background: rgba(255,107,128,0.22);
+}
+:where(html[data-theme="dark"]) .opt-check {
+    background: #ff6b80;
+    fill: #14171b;
+}
+:where(html[data-theme="dark"]) .dropdown-menu::-webkit-scrollbar-thumb {
+    background: #4a515c;
 }
 :where(html[data-theme="dark"]) .table-card {
     background: var(--surface);
@@ -6304,78 +7218,209 @@ html[data-motion="off"] .spinner {              /* a loading spinner still has t
     animation-iteration-count: infinite !important;
 }
 
-/* ===== Settings: change waits for the admin's approval ===== */
-:where(html[data-page="settinghr"]) .pending-banner {
-    display: flex; align-items: center; gap: 12px;
-    margin: 0 0 18px; padding: 12px 14px;
-    border-radius: 12px;
-    background: #fff7e0; border: 1px solid #f3d27a; color: #6b4e00;
-}
-:where(html[data-page="settinghr"]) .pending-banner[hidden] { display: none; }
-:where(html[data-page="settinghr"]) .pending-banner svg { width: 22px; height: 22px; flex: none; fill: #c58a00; }
-:where(html[data-page="settinghr"]) .pb-text { flex: 1; min-width: 0; font-size: 13px; line-height: 1.45; display: flex; flex-direction: column; gap: 2px; }
-:where(html[data-page="settinghr"]) .pb-text strong { font-weight: 800; }
-:where(html[data-page="settinghr"]) .pb-text span { overflow-wrap: anywhere; }
-:where(html[data-page="settinghr"]) .btn-update-pw:disabled { opacity: .6; cursor: not-allowed; pointer-events: none; }
-html[data-theme="dark"]:where([data-page="settinghr"]) .pending-banner { background: #3a3120; border-color: #6b5a2a; color: #f3dca0; }
-html[data-theme="dark"]:where([data-page="settinghr"]) .pending-banner svg { fill: #f0c24a; }
-
-:where(html[data-page="settinghr"]) .confirm-card { max-width: 400px; }
-:where(html[data-page="settinghr"]) #confirmModal { z-index: 10001; }
-:where(html[data-page="settinghr"]) .confirm-list { list-style: none; margin: 0 0 20px; padding: 0; display: grid; gap: 8px; }
-:where(html[data-page="settinghr"]) .confirm-list li {
-    padding: 10px 12px; border-radius: 10px; font-size: 13px; font-weight: 700; text-align: left; overflow-wrap: anywhere;
-    background: var(--surface-2, #f3f4f6); border: 1px solid var(--surface-3, #e8eaed);
-}
-
-
-/* ===== Settings: the admin's answer (approved / rejected), highlighted until HR clicks "Got it" ===== */
-:where(html[data-page="settinghr"]) .decision-stack { display: grid; gap: 10px; margin: 0 0 18px; }
-:where(html[data-page="settinghr"]) .decision-stack:empty { display: none; }
-:where(html[data-page="settinghr"]) .decision-banner {
-    position: relative;
-    display: flex; align-items: center; gap: 12px;
-    padding: 12px 14px 12px 17px;
-    border-radius: 12px; border: 1px solid;
+/* ==========================================================================
+   Profile (added with hr/static-data.php)
+   - the round picture + the profile chip next to "Hello, ...!" on the Dashboard
+   - the picture block in Settings > Account
+   - the status box for HR's own password change request
+   Colours come from the theme variables, so the dark theme needs no extra rules.
+   ========================================================================== */
+:where(html[data-page="dashboardhr"], html[data-page="settinghr"]) .avatar {
+    width: 34px;
+    height: 34px;
+    flex: none;
+    display: grid;
+    place-items: center;
     overflow: hidden;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #d1122a, #a3081e);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    line-height: 1;
+    user-select: none;
 }
-/* thick edge on the left = "not read yet" */
-:where(html[data-page="settinghr"]) .decision-banner::before {
-    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px;
+
+:where(html[data-page="dashboardhr"], html[data-page="settinghr"]) .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+:where(html[data-page="dashboardhr"], html[data-page="settinghr"]) .avatar.avatar-xl { width: 88px; height: 88px; font-size: 28px; box-shadow: 0 0 0 3px var(--surface, #ffffff), 0 0 0 4px var(--edge, #d9dce1); }
+
+/* ---------- the chip on the Dashboard header ---------- */
+:where(html[data-page="dashboardhr"]) .content-header.has-profile {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
 }
-:where(html[data-page="settinghr"]) .decision-banner svg { width: 22px; height: 22px; flex: none; }
-:where(html[data-page="settinghr"]) .decision-banner .pb-text strong { font-size: 13.5px; }
-:where(html[data-page="settinghr"]) .db-time { font-style: normal; font-size: 11.5px; opacity: .75; margin-top: 2px; }
 
-:where(html[data-page="settinghr"]) .decision-banner.is-approved { background: #eaf7ee; border-color: #9fd4ad; color: #1d5c32; }
-:where(html[data-page="settinghr"]) .decision-banner.is-approved::before { background: #2e8b4f; }
-:where(html[data-page="settinghr"]) .decision-banner.is-approved svg { fill: #2e8b4f; }
-:where(html[data-page="settinghr"]) .decision-banner.is-rejected { background: #fdecee; border-color: #f1a9b2; color: #7a1220; }
-:where(html[data-page="settinghr"]) .decision-banner.is-rejected::before { background: #d1122a; }
-:where(html[data-page="settinghr"]) .decision-banner.is-rejected svg { fill: #d1122a; }
-html[data-theme="dark"]:where([data-page="settinghr"]) .decision-banner.is-approved { background: #1d3326; border-color: #3b6b4b; color: #b7e4c4; }
-html[data-theme="dark"]:where([data-page="settinghr"]) .decision-banner.is-approved svg { fill: #6fcf8c; }
-html[data-theme="dark"]:where([data-page="settinghr"]) .decision-banner.is-rejected { background: #3a1f25; border-color: #7a3640; color: #f4bcc4; }
-html[data-theme="dark"]:where([data-page="settinghr"]) .decision-banner.is-rejected svg { fill: #ff6b81; }
+:where(html[data-page="dashboardhr"]) .content-header .header-text { min-width: 0; flex: 1 1 auto; }
+:where(html[data-page="dashboardhr"]) .header-tools { display: flex; align-items: flex-start; gap: 12px; flex-shrink: 0; }
 
-:where(html[data-page="settinghr"]) .db-ok {
-    flex: none; padding: 7px 14px; border-radius: 999px; border: 1px solid currentColor;
-    background: transparent; color: inherit; font: inherit; font-size: 12px; font-weight: 800; cursor: pointer;
-    transition: background-color .15s ease, color .15s ease;
+:where(html[data-page="dashboardhr"]) .profile-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 46px;
+    padding: 0 16px 0 6px;
+    flex-shrink: 0;
+    border: 1px solid var(--edge, #e4e7eb);
+    border-radius: 999px;
+    background: var(--surface, #ffffff);
+    color: var(--ink, #1a1a1a);
+    text-decoration: none;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    transition: transform 0.3s var(--ease-pop), box-shadow 0.25s var(--ease-out), border-color 0.2s ease;
 }
-:where(html[data-page="settinghr"]) .decision-banner.is-approved .db-ok:hover { background: #2e8b4f; border-color: #2e8b4f; color: #fff; }
-:where(html[data-page="settinghr"]) .decision-banner.is-rejected .db-ok:hover { background: #d1122a; border-color: #d1122a; color: #fff; }
-:where(html[data-page="settinghr"]) .db-ok:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 
-/* a banner that has just arrived rises in and glows twice so it cannot be missed */
-:where(html[data-page="settinghr"]) .decision-banner.is-fresh { animation: decisionIn .5s ease both, decisionGlow 1.6s ease .5s 2; }
-@keyframes decisionIn  { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
-@keyframes decisionGlow { 0%, 100% { box-shadow: 0 0 0 0 rgba(209, 18, 42, 0); } 50% { box-shadow: 0 0 0 5px rgba(209, 18, 42, .18); } }
-html:where([data-page="settinghr"])[data-motion="off"] .decision-banner.is-fresh { animation: none; }
+:where(html[data-page="dashboardhr"]) .profile-chip:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(0, 0, 0, 0.12); border-color: var(--red-bright, #d1122a); }
+:where(html[data-page="dashboardhr"]) .profile-chip:active { transform: translateY(0) scale(0.98); }
+:where(html[data-page="dashboardhr"]) .profile-chip:focus-visible { outline: 3px solid rgba(209, 18, 42, 0.35); outline-offset: 2px; }
+:where(html[data-page="dashboardhr"]) .profile-chip .avatar { width: 34px; height: 34px; }
+
+:where(html[data-page="dashboardhr"]) .profile-meta { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+:where(html[data-page="dashboardhr"]) .profile-meta strong { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 800; }
+:where(html[data-page="dashboardhr"]) .profile-meta small { font-size: 11px; font-weight: 600; color: var(--ink-soft, #5b5f66); }
+
+@media (max-width: 760px) {
+    :where(html[data-page="dashboardhr"]) .profile-meta { display: none; }
+    :where(html[data-page="dashboardhr"]) .profile-chip { padding: 0 6px; }
+}
+
+/* ---------- Settings: the picture block ---------- */
+:where(html[data-page="settinghr"]) .avatar-edit { display: flex; align-items: center; gap: 22px; }
+:where(html[data-page="settinghr"]) .avatar-slot { flex: none; display: grid; }
+:where(html[data-page="settinghr"]) .avatar-edit-text { min-width: 0; }
+:where(html[data-page="settinghr"]) .set-field > label.avatar-title { margin-bottom: 2px; }
+:where(html[data-page="settinghr"]) .avatar-hint { font-size: 12px; line-height: 1.45; color: var(--ink-soft, #5b5f66); margin: 0 0 10px; }
+:where(html[data-page="settinghr"]) .avatar-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+:where(html[data-page="settinghr"]) .avatar-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 38px;
+    padding: 0 14px;
+    border: 2px solid var(--blue, #00a2ff);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--blue-ink, #0077c2);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease, transform 0.25s var(--ease-out);
+}
+
+:where(html[data-page="settinghr"]) .avatar-btn svg { width: 18px; height: 18px; fill: currentColor; }
+:where(html[data-page="settinghr"]) .avatar-btn:hover { background: var(--blue, #00a2ff); color: #ffffff; transform: translateY(-1px); }
+:where(html[data-page="settinghr"]) .avatar-btn.is-ghost { border-color: var(--edge, #d9dce1); color: var(--ink-soft, #5b5f66); }
+:where(html[data-page="settinghr"]) .avatar-btn.is-ghost:hover { background: transparent; border-color: var(--red-bright, #d1122a); color: var(--red, #a3081e); }
+:where(html[data-page="settinghr"]) .avatar-btn:focus-visible { outline: 3px solid rgba(0, 162, 255, 0.45); outline-offset: 2px; }
+:where(html[data-page="settinghr"]) .avatar-btn[hidden] { display: none; }
+:where(html[data-page="settinghr"]) .avatar-field.has-error .avatar-edit { margin-bottom: 4px; }
+
+@media (max-width: 480px) {
+    :where(html[data-page="settinghr"]) .avatar-edit { flex-direction: column; align-items: flex-start; }
+}
+
+/* ---------- HR Settings: where is my password change request? ---------- */
+:where(html[data-page="settinghr"]) .pw-status {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 6px;
+    padding: 14px 16px;
+    border: 1px solid var(--edge, #d9dce1);
+    border-left-width: 4px;
+    border-radius: 12px;
+    background: var(--surface-2, #f3f4f6);
+}
+:where(html[data-page="settinghr"]) .pw-status[hidden], :where(html[data-page="settinghr"]) .pw-status-btn[hidden] { display: none; }
+:where(html[data-page="settinghr"]) .pw-status[data-state="pending"]  { border-left-color: #e29a00; }
+:where(html[data-page="settinghr"]) .pw-status[data-state="approved"] { border-left-color: #159a43; }
+:where(html[data-page="settinghr"]) .pw-status[data-state="rejected"] { border-left-color: #d1122a; }
+
+:where(html[data-page="settinghr"]) .pw-status-ico { flex: none; width: 12px; height: 12px; border-radius: 50%; background: #8b9098; }
+:where(html[data-page="settinghr"]) .pw-status[data-state="pending"]  .pw-status-ico { background: #e29a00; animation: pwPulse 1.4s ease-in-out infinite; }
+:where(html[data-page="settinghr"]) .pw-status[data-state="approved"] .pw-status-ico { background: #159a43; }
+:where(html[data-page="settinghr"]) .pw-status[data-state="rejected"] .pw-status-ico { background: #d1122a; }
+@keyframes pwPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.35; transform: scale(0.7); } }
+
+:where(html[data-page="settinghr"]) .pw-status-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+:where(html[data-page="settinghr"]) .pw-status-text strong { font-size: 14px; font-weight: 800; color: var(--ink, #1f1f23); }
+:where(html[data-page="settinghr"]) .pw-status-text span { font-size: 12.5px; line-height: 1.45; color: var(--ink-soft, #5b5f66); }
+
+:where(html[data-page="settinghr"]) .pw-status-btn {
+    flex: none;
+    height: 36px;
+    padding: 0 14px;
+    border: 2px solid var(--edge, #d9dce1);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--ink-soft, #5b5f66);
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color 0.2s ease, color 0.2s ease;
+}
+:where(html[data-page="settinghr"]) .pw-status-btn:hover { border-color: var(--red-bright, #d1122a); color: var(--red, #a3081e); }
+:where(html[data-page="settinghr"]) .pw-status-btn:disabled { opacity: 0.6; cursor: wait; }
+
+:where(html[data-page="settinghr"]) .btn-update-pw:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; background: transparent; color: var(--blue-ink, #0077c2); }
+
+@media (max-width: 600px) {
+    :where(html[data-page="settinghr"]) .pw-status { flex-wrap: wrap; }
+}
 @media (prefers-reduced-motion: reduce) {
-    :where(html[data-page="settinghr"]) .decision-banner.is-fresh { animation: none; }
+    :where(html[data-page="settinghr"]) .pw-status[data-state="pending"] .pw-status-ico { animation: none; }
 }
-@media (max-width: 560px) {
-    :where(html[data-page="settinghr"]) .decision-banner { flex-wrap: wrap; }
-    :where(html[data-page="settinghr"]) .db-ok { margin-left: 34px; }
+
+/* ---- Add Applicant: job position list + "Add Job Position" pop-up, dark theme ---- */
+:where(html[data-theme="dark"]) .pos-field input[type="text"] {
+    background: var(--surface-2);
 }
+:where(html[data-theme="dark"]) .pos-field.has-error input[type="text"],
+:where(html[data-theme="dark"]) .pos-field.has-error .pos-file {
+    background: rgba(209,18,42,0.12);
+}
+:where(html[data-theme="dark"]) .pos-file {
+    border-color: #5a626d;
+}
+:where(html[data-theme="dark"]) .pos-file-remove svg {
+    fill: #8b93a0;
+}
+:where(html[data-theme="dark"]) .pd-btn { background: var(--surface-2); }
+:where(html[data-theme="dark"]) .pd-btn:hover { border-color: #5a626d; }
+:where(html[data-theme="dark"]) .pd-icon { fill: #8b93a0; }
+:where(html[data-theme="dark"]) .pd-btn:focus-visible .pd-icon,
+:where(html[data-theme="dark"]) .pd.open .pd-icon,
+:where(html[data-theme="dark"]) .pd.has-value .pd-icon { fill: #ff6b80; }
+:where(html[data-theme="dark"]) .pd-value.is-placeholder { color: #7c828c; }
+:where(html[data-theme="dark"]) .pd-chevron { fill: #a6acb6; }
+:where(html[data-theme="dark"]) .pd-btn:hover .pd-chevron { background: rgba(255,255,255,0.07); }
+:where(html[data-theme="dark"]) .pd.open .pd-chevron { background: rgba(255,107,128,0.16); fill: #ff6b80; }
+:where(html[data-theme="dark"]) .field.has-error .pd-btn { background: rgba(209,18,42,0.12); }
+:where(html[data-theme="dark"]) .pd-menu {
+    background: var(--surface);
+    border-color: #343942;
+    box-shadow: 0 16px 36px rgba(0,0,0,0.5);
+    scrollbar-color: #4a515c transparent;
+}
+:where(html[data-theme="dark"]) .pd-opt:hover,
+:where(html[data-theme="dark"]) .pd-opt.is-focused { background: rgba(255,255,255,0.07); }
+:where(html[data-theme="dark"]) .pd-opt[aria-selected="true"] { background: rgba(255,107,128,0.14); color: #ff8a9b; }
+:where(html[data-theme="dark"]) .pd-opt[aria-selected="true"].is-focused { background: rgba(255,107,128,0.22); }
+:where(html[data-theme="dark"]) .pd-check { fill: #ff8a9b; }
+:where(html[data-theme="dark"]) .pd-tag { background: rgba(255,255,255,0.08); color: #a6acb6; }
+:where(html[data-theme="dark"]) .pd-tag.has { background: rgba(34,197,94,0.16); color: #5fd98a; }
+:where(html[data-theme="dark"]) .pd-sep { background: #343942; }
+:where(html[data-theme="dark"]) .pd-add { color: #ff8a9b; }
+:where(html[data-theme="dark"]) .pd-add:hover,
+:where(html[data-theme="dark"]) .pd-add.is-focused { background: rgba(255,107,128,0.14); }
+:where(html[data-theme="dark"]) .pd-plus { background: rgba(255,107,128,0.16); }
+:where(html[data-theme="dark"]) .pd-plus svg { fill: #ff8a9b; }
+:where(html[data-theme="dark"]) .pd-add:hover .pd-plus,
+:where(html[data-theme="dark"]) .pd-add.is-focused .pd-plus { background: #d1122a; }
+:where(html[data-theme="dark"]) .pd-add:hover .pd-plus svg,
+:where(html[data-theme="dark"]) .pd-add.is-focused .pd-plus svg { fill: #ffffff; }

@@ -51,6 +51,33 @@ require_once __DIR__ . '/../src/Repositories/ResponseRepository.php';
 // ---------------------------------------------------------------------------
 const STATIC_JOB_DESCRIPTION_URL = 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
 
+// Every job position has its OWN job description PDF (HR adds it with the position in Add Applicant; see
+// "JOB POSITIONS" in hr/static-data.php). The applicant is shown the PDF of the position they were added under.
+// A position without a PDF (or an applicant without a position) falls back to the placeholder above.
+// DATABASE (later): SELECT p.jd_url FROM applicants a JOIN job_positions p ON p.id = a.position_id WHERE a.id = ?
+function static_job_description_url(?array $applicant): string
+{
+    if ($applicant && !empty($applicant['position_id'])) {
+        $url = static_position_jd_url(static_position_find((int) $applicant['position_id']), '../hr/data/');   // applicant/ -> hr/data/
+        if ($url !== '') return $url;
+    }
+    return STATIC_JOB_DESCRIPTION_URL;
+}
+
+// Points every "job description" link of the questions (the {link} in question 1) at this applicant's own PDF.
+// Links about anything else (the Admin can add others) are left exactly as they are.
+function static_apply_job_description(array $questions, ?array $applicant): array
+{
+    $url = static_job_description_url($applicant);
+    foreach ($questions as &$q) {
+        if (strpos((string) ($q['text'] ?? ''), '{link}') === false) continue;
+        if (!preg_match('/job\s*(description|posting)|\bJD\b/i', (string) ($q['link']['text'] ?? ''))) continue;
+        $q['link']['url'] = $url;
+    }
+    unset($q);
+    return $questions;
+}
+
 // ---------------------------------------------------------------------------
 // Video rules (the video page prints them: "only 10 seconds")
 // ---------------------------------------------------------------------------

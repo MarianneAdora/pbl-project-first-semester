@@ -138,15 +138,9 @@ window.HR = (function () {
         return ok;
     }
 
-    // The name HR saved replaces the one the session gave ("Hello, ...!" on the dashboard)
-    function applyProfile() {
-        const h = document.getElementById('greeting');
-        const name = String(readProfile().name || '').trim();
-        if (h && name) {
-            h.textContent = 'Hello, ' + name + '!';
-            h.title = h.textContent;
-        }
-    }
+    // The name and picture are saved on the server now (hr/static-data.php) and the page prints them, so there is
+    // nothing to override from this browser any more. (An old 'hr_profile' key in localStorage is simply ignored.)
+    function applyProfile() { /* kept so the calls below keep working */ }
 
     applySettings();                           // the <head> script already did this; harmless backup
     if (window.matchMedia) {
@@ -749,8 +743,23 @@ document.addEventListener('DOMContentLoaded', () => {
     let cvCheckId = 0;   // lets a newer file cancel the check of an older one
 
     const fieldOf = (name) => form.querySelector(`.field[data-field="${name}"]`);
+    const posInput = document.getElementById('position_id');          // hidden: the id that is sent
+    const posBtn = document.getElementById('positionBtn');            // the dropdown's button
+    // the control that belongs to a field (the CV and the job position are not plain inputs)
+    const inputOf = (name) => name === 'cv' ? fileInput : name === 'position' ? posBtn : form.elements[name];
 
     /* ---------- validation ---------- */
+    // One part of the name (first / middle / last). $required = false lets an empty value through (middle name).
+    function namePart(v, label, required, minLetters) {
+        const t = v.trim().replace(/\s+/g, ' ');
+        if (!t) return required ? 'Please enter the ' + label + '.' : '';
+        if (/\d/.test(t)) return 'The ' + label + ' cannot contain numbers.';
+        if (!/^[\p{L}\p{M}'.\- ]+$/u.test(t)) return 'Use letters only (spaces, apostrophes, periods and hyphens are fine).';
+        if (t.replace(/[^\p{L}]/gu, '').length < minLetters) return 'The ' + label + ' is too short (at least ' + minLetters + ' letter' + (minLetters === 1 ? '' : 's') + ').';
+        if (t.length > 50) return 'The ' + label + ' is too long (50 characters maximum).';
+        return '';
+    }
+
     // Each rule returns the error text (or '' when the value is fine). The messages say WHAT is wrong.
     // First / middle / last name: letters, spaces, apostrophes, periods and hyphens. Middle name may be empty.
     function namePart(v, label, required) {
@@ -763,9 +772,13 @@ document.addEventListener('DOMContentLoaded', () => {
         return '';
     }
     const rules = {
-        first_name(v) { return namePart(v, 'first name', true); },
-        middle_name(v) { return namePart(v, 'middle name', false); },
-        last_name(v) { return namePart(v, 'last name', true); },
+        first_name(v)  { return namePart(v, 'first name', true, 2); },
+        middle_name(v) { return namePart(v, 'middle name', false, 1); },      // optional: empty is fine, an initial (A.) is fine
+        last_name(v)   { return namePart(v, 'last name', true, 2); },
+        position(v) {
+            if (!v || v === '__add__') return 'Please choose a job position.';
+            return '';
+        },
         email(v) {
             const t = v.trim();
             if (!t) return 'Please enter the email address.';
@@ -811,7 +824,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function setError(name, message, shake) {
         const field = fieldOf(name);
         if (!field) return;
-        const input = name === 'cv' ? fileInput : form.elements[name];
+        const input = inputOf(name);
         field.classList.toggle('has-error', !!message);
         field.querySelector('.field-error').textContent = message || '';
         if (input) input.setAttribute('aria-invalid', message ? 'true' : 'false');
@@ -823,7 +836,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function validateField(name, shake) {
-        const value = name === 'cv' ? '' : form.elements[name].value;
+        const value = name === 'cv' ? '' : name === 'position' ? posInput.value : inputOf(name).value;
         const message = rules[name](value);
         setError(name, message, shake);
         return !message;
@@ -983,13 +996,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // validate everything, focus the first problem
         let firstBad = null;
-        ['first_name', 'middle_name', 'last_name', 'email', 'contact', 'cv'].forEach(name => {
+        ['first_name', 'middle_name', 'last_name', 'email', 'contact', 'position', 'cv'].forEach(name => {
             if (!validateField(name, true) && !firstBad) firstBad = name;
         });
         if (firstBad) {
             const bad = form.querySelectorAll('.field.has-error').length;
             HR.toast('Please fix the ' + bad + ' highlighted field' + (bad === 1 ? '' : 's') + ' before sending.', { error: true, duration: 4000 });
-            const target = firstBad === 'cv' ? fileBox.querySelector('.choose-btn') : form.elements[firstBad];
+            const target = firstBad === 'cv' ? fileBox.querySelector('.choose-btn') : inputOf(firstBad);
             if (target && target.focus) target.focus({ preventScroll: false });
             return;
         }
@@ -1049,7 +1062,8 @@ document.addEventListener('DOMContentLoaded', () => {
             status: 'success',
             applicant: {
                 id: Date.now() % 1000000000,           // placeholder id until the database gives one
-                name: [formData.get('first_name'), formData.get('middle_name'), formData.get('last_name')].map(x => (x || '').trim()).filter(Boolean).join(' '),
+                name: [formData.get('first_name'), formData.get('middle_name'), formData.get('last_name')].map(v => String(v || '').trim()).filter(Boolean).join(' '),
+                position: posInput.value ? document.getElementById('positionValue').textContent : '',
                 email: formData.get('email').trim(),
                 contact: formData.get('contact').trim()
             }
@@ -1077,6 +1091,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!lastApplicant) return;
 
         document.getElementById('detName').textContent = lastApplicant.name;
+        document.getElementById('detPosition').textContent = lastApplicant.position || '-';
         document.getElementById('detEmail').textContent = lastApplicant.email;
         document.getElementById('detContact').textContent = lastApplicant.contact;
 
@@ -1093,8 +1108,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('addAnother').addEventListener('click', () => {
         form.reset();
         clearFile();
-        ['first_name', 'middle_name', 'last_name', 'email', 'contact', 'cv'].forEach(n => setError(n, ''));
+        ['first_name', 'middle_name', 'last_name', 'email', 'contact', 'position', 'cv'].forEach(n => setError(n, ''));
         touched.clear();
+        setPosOpen(false);
+        setPosition('');
         updateNote();
         successCard.hidden = true;
         formCard.hidden = false;
@@ -1105,9 +1122,263 @@ document.addEventListener('DOMContentLoaded', () => {
         form.elements.first_name.focus();
     });
 
+    /* ---------- Job position list + "+ Add job position" ----------
+       The last entry of the list opens a small pop-up: HR types the new position and (optionally) attaches that
+       position's job description PDF. It is saved through static-data.php (action position_add), added to the
+       list and selected. Each position has its own job description: the applicant sees the PDF of the position
+       they were added under (applicant/questionnaire.php). */
+    const positionModal = document.getElementById('positionModal');
+    const positionForm = document.getElementById('positionForm');
+    const positionName = document.getElementById('positionName');
+    const positionJd = document.getElementById('positionJd');
+    const positionFileBox = document.getElementById('positionFileBox');
+    const positionFileName = document.getElementById('positionFileName');
+    const positionFileRemove = document.getElementById('positionFileRemove');
+    const positionSave = document.getElementById('positionSave');
+    const POS_FILE_HINT = positionFileName.textContent;
+    let savingPosition = false;
+
+    /* ---------- the dropdown itself ----------
+       A button + a list (not the browser's plain select). Mouse: click to open, click a row to pick.
+       Keyboard: Enter / Space / arrows open it, arrows + Home / End move, Enter picks, Esc closes, typing jumps
+       to a position. The last row ("Add job position") opens the pop-up instead of picking something. */
+    const posDd = document.getElementById('positionDropdown');
+    const posMenu = document.getElementById('positionMenu');
+    const posValueEl = document.getElementById('positionValue');
+    const posField = fieldOf('position');
+    const POS_PLACEHOLDER = posValueEl.textContent;
+    const posItems = () => Array.from(posMenu.querySelectorAll('.pd-opt, .pd-add'));
+    let posFocus = -1;
+    let posType = '', posTypeTimer = null;
+
+    function setPosition(value, label) {
+        posInput.value = value || '';
+        posValueEl.textContent = value ? label : POS_PLACEHOLDER;
+        posValueEl.classList.toggle('is-placeholder', !value);
+        posDd.classList.toggle('has-value', !!value);
+        posItems().forEach(li => li.setAttribute('aria-selected', value && li.dataset.value === value ? 'true' : 'false'));
+    }
+
+    function focusPosItem(i, scroll) {
+        const items = posItems();
+        items.forEach(li => li.classList.remove('is-focused'));
+        posFocus = i;
+        const li = items[i];
+        if (!li) { posBtn.removeAttribute('aria-activedescendant'); return; }
+        li.classList.add('is-focused');
+        posBtn.setAttribute('aria-activedescendant', li.id);
+        if (scroll) {
+            const top = li.offsetTop, bottom = top + li.offsetHeight;
+            if (top < posMenu.scrollTop) posMenu.scrollTop = top - 6;
+            else if (bottom > posMenu.scrollTop + posMenu.clientHeight) posMenu.scrollTop = bottom - posMenu.clientHeight + 6;
+        }
+    }
+
+    function setPosOpen(open) {
+        if (open === posDd.classList.contains('open')) return;
+        posDd.classList.toggle('open', open);
+        posField.classList.toggle('pd-open', open);       // lifts this row above the fields under it
+        posBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (open) {
+            // not enough room below? open upwards
+            const r = posBtn.getBoundingClientRect();
+            const below = window.innerHeight - r.bottom;
+            posDd.classList.toggle('drop-up', below < 320 && r.top > below);
+            const cur = posItems().findIndex(li => posInput.value !== '' && li.dataset.value === posInput.value);
+            focusPosItem(cur >= 0 ? cur : 0, true);
+        } else {
+            posItems().forEach(li => li.classList.remove('is-focused'));
+            posFocus = -1;
+            posBtn.removeAttribute('aria-activedescendant');
+        }
+    }
+
+    function choosePosItem(li) {
+        if (!li) return;
+        if (li.dataset.action === 'add') {                // "Add job position" is an action, never a value
+            setPosOpen(false);
+            openPositionModal();
+            return;
+        }
+        setPosition(li.dataset.value, li.querySelector('.pd-name').textContent);
+        setPosOpen(false);
+        posBtn.focus({ preventScroll: true });
+        touched.add('position');
+        validateField('position', false);
+    }
+
+    // a position HR just added goes in right above the divider
+    function addPosOption(p) {
+        const li = document.createElement('li');
+        li.className = 'pd-opt';
+        li.setAttribute('role', 'option');
+        li.setAttribute('aria-selected', 'false');
+        li.id = 'pd-opt-' + p.id;
+        li.dataset.value = String(p.id);
+        li.innerHTML = '<span class="pd-name"></span><span class="pd-tag"></span>'
+            + '<svg class="pd-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>';
+        li.querySelector('.pd-name').textContent = p.name;
+        const tag = li.querySelector('.pd-tag');
+        tag.textContent = p.has_jd ? 'PDF' : 'No PDF';
+        tag.classList.toggle('has', !!p.has_jd);
+        posMenu.insertBefore(li, posMenu.querySelector('.pd-sep'));
+    }
+
+    posBtn.addEventListener('click', () => setPosOpen(!posDd.classList.contains('open')));
+    posMenu.addEventListener('click', (e) => choosePosItem(e.target.closest('.pd-opt, .pd-add')));
+    posMenu.addEventListener('mouseover', (e) => {
+        const li = e.target.closest('.pd-opt, .pd-add');
+        if (li) focusPosItem(posItems().indexOf(li), false);
+    });
+    posMenu.addEventListener('mousedown', (e) => e.preventDefault());      // keep the focus on the button
+    document.addEventListener('mousedown', (e) => { if (!posDd.contains(e.target)) setPosOpen(false); });
+
+    posBtn.addEventListener('keyup', (e) => { if (e.key === ' ') e.preventDefault(); });   // Firefox clicks a button on Space-up
+    posDd.addEventListener('keydown', (e) => {
+        const open = posDd.classList.contains('open');
+        const items = posItems();
+        switch (e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                if (open) focusPosItem(Math.min(items.length - 1, posFocus + 1), true); else setPosOpen(true);
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                if (open) focusPosItem(Math.max(0, posFocus - 1), true); else setPosOpen(true);
+                break;
+            case 'Home': if (open) { e.preventDefault(); focusPosItem(0, true); } break;
+            case 'End':  if (open) { e.preventDefault(); focusPosItem(items.length - 1, true); } break;
+            case 'Enter':
+            case ' ':
+                if (open && posFocus >= 0) { e.preventDefault(); choosePosItem(items[posFocus]); }
+                else if (!open && e.target === posBtn) { e.preventDefault(); setPosOpen(true); }
+                break;
+            case 'Escape':
+                if (open) { e.preventDefault(); setPosOpen(false); posBtn.focus({ preventScroll: true }); }
+                break;
+            case 'Tab':
+                if (open) setPosOpen(false);
+                break;
+            default:
+                // typing letters jumps to the position that starts with them
+                if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey && /\S/.test(e.key)) {
+                    posType += e.key.toLowerCase();
+                    clearTimeout(posTypeTimer);
+                    posTypeTimer = setTimeout(() => { posType = ''; }, 700);
+                    const hit = items.findIndex(li => li.classList.contains('pd-opt') && li.querySelector('.pd-name').textContent.trim().toLowerCase().startsWith(posType));
+                    if (hit >= 0) { if (!open) setPosOpen(true); focusPosItem(hit, true); }
+                }
+        }
+    });
+
+    const pField = (key) => positionForm.querySelector(`.pos-field[data-pfield="${key}"]`);
+    function setPosError(key, message) {
+        const f = pField(key);
+        f.classList.toggle('has-error', !!message);
+        f.querySelector('.pos-error').textContent = message || '';
+    }
+
+    function posNameError(v) {
+        const t = v.trim().replace(/\s+/g, ' ');
+        if (!t) return 'Please enter the job position.';
+        if (t.length > 80) return 'The job position is too long (80 characters maximum).';
+        if (!/^[\p{L}\p{M}\p{N}\s&\/\-.,()'+#]+$/u.test(t)) return 'Use letters, numbers, spaces and & / - . , ( ) only.';
+        if (t.replace(/[^\p{L}]/gu, '').length < 2) return 'The job position is too short (at least 2 letters).';
+        const taken = Array.from(posMenu.querySelectorAll('.pd-opt .pd-name')).some(n => n.textContent.trim().toLowerCase() === t.toLowerCase());
+        if (taken) return 'This job position already exists. Choose it from the list.';
+        return '';
+    }
+
+    function posFileError() {
+        const f = positionJd.files[0];
+        if (!f) return '';                                  // the PDF is optional
+        const ext = f.name.includes('.') ? f.name.split('.').pop().toLowerCase() : '';
+        if (ext !== 'pdf') return (ext ? '.' + ext + ' files are not allowed. ' : '') + 'Upload a PDF file.';
+        if (f.size === 0) return 'This file is empty. Choose a different PDF.';
+        if (f.size > MAX_CV) return 'The PDF is ' + prettySize(f.size) + '. It must be 5 MB or smaller.';
+        return '';
+    }
+
+    function showPosFile() {
+        const f = positionJd.files[0];
+        positionFileBox.classList.toggle('has-file', !!f);
+        positionFileRemove.hidden = !f;
+        positionFileName.textContent = f ? `${f.name} (${prettySize(f.size)})` : POS_FILE_HINT;
+        positionFileName.title = f ? f.name : '';
+    }
+
+    function openPositionModal() {
+        positionForm.reset();
+        showPosFile();
+        setPosError('name', '');
+        setPosError('jd', '');
+        positionModal.classList.add('active');
+        setTimeout(() => positionName.focus(), 60);
+    }
+
+    function closePositionModal() {
+        if (savingPosition) return;
+        positionModal.classList.remove('active');
+        posBtn.focus({ preventScroll: true });
+    }
+
+    positionName.addEventListener('input', () => { if (pField('name').classList.contains('has-error')) setPosError('name', posNameError(positionName.value)); });
+    positionJd.addEventListener('change', () => {
+        const msg = posFileError();
+        if (msg) { positionJd.value = ''; showPosFile(); setPosError('jd', msg); return; }
+        showPosFile();
+        setPosError('jd', '');
+    });
+    positionFileRemove.addEventListener('click', () => { positionJd.value = ''; showPosFile(); setPosError('jd', ''); });
+    document.getElementById('positionCancel').addEventListener('click', closePositionModal);
+    positionModal.addEventListener('click', (e) => { if (e.target === positionModal) closePositionModal(); });
+
+    positionForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (savingPosition) return;
+
+        const nameMsg = posNameError(positionName.value);
+        const fileMsg = posFileError();
+        setPosError('name', nameMsg);
+        setPosError('jd', fileMsg);
+        if (nameMsg) { positionName.focus(); return; }
+        if (fileMsg) return;
+
+        savingPosition = true;
+        positionSave.disabled = true;
+        positionSave.textContent = 'Saving...';
+        try {
+            const body = new FormData();
+            body.append('action', 'position_add');
+            body.append('name', positionName.value.trim().replace(/\s+/g, ' '));
+            if (positionJd.files[0]) body.append('jd', positionJd.files[0]);
+
+            const res = await fetch('static-data.php', { method: 'POST', body, credentials: 'same-origin' });
+            let data;
+            try { data = await res.json(); } catch (err) { throw new Error('The server did not answer correctly. Please try again.'); }
+            if (data.status !== 'success') throw new Error(data.message || 'Something went wrong. Please try again.');
+
+            // the new position goes in right above "+ Add job position", and is chosen
+            addPosOption(data.position);
+            setPosition(String(data.position.id), data.position.name);
+            setError('position', '');
+
+            savingPosition = false;
+            closePositionModal();
+            HR.toast('Job position "' + data.position.name + '" added' + (data.position.has_jd ? ' with its job description.' : '. No job description PDF yet: applicants see the sample one.'), { duration: 5000 });
+        } catch (err) {
+            const msg = err.message || 'Something went wrong. Please try again.';
+            setPosError(/PDF|job description/i.test(msg) ? 'jd' : 'name', msg);
+        } finally {
+            savingPosition = false;
+            positionSave.disabled = false;
+            positionSave.textContent = 'Add Position';
+        }
+    });
+
     /* ---------- Cancel (asks first when something was typed) ---------- */
     const isDirty = () => ['first_name', 'middle_name', 'last_name', 'email', 'contact', 'note'].some(n => form.elements[n].value.trim() !== '')
-        || fileInput.files.length > 0;
+        || posInput.value !== '' || fileInput.files.length > 0;
 
     cancelBtn.addEventListener('click', () => {
         if (isDirty()) discardModal.classList.add('active');
@@ -1124,6 +1395,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('keydown', (e) => {
         if (e.key !== 'Escape') return;
         if (sentModal.classList.contains('active')) finishSent();
+        else if (positionModal.classList.contains('active')) closePositionModal();
         else if (discardModal.classList.contains('active')) discardModal.classList.remove('active');
     });
 });
@@ -2187,19 +2459,31 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // 3. Numbers count up when the cards rise in
+    // When does the card around an element start rising in? (its --i is set in the PHP; the cards come one
+    // after another, 70ms apart, and after a login they wait for the stripes to clear). Used so every
+    // number, chart and bar starts at the moment ITS card appears, not before.
+    const motionOff = document.documentElement.getAttribute('data-motion') === 'off';   // Settings > Page animations
+    const cardStart = (el, extra) => {
+        const card = el.closest('.reveal');
+        const i = card ? (parseInt(card.style.getPropertyValue('--i'), 10) || 0) : 0;
+        return (arrivedViaTransition ? 700 : 0) + 50 + i * 70 + (extra || 0);
+    };
+
+    // 3. Numbers count up when the cards rise in (data-decimals keeps "2.4" from becoming "2")
     document.querySelectorAll('.card-value[data-count]').forEach(el => {
-        const target = parseInt(el.dataset.count, 10);
-        if (reduceMotion || !target) return;
-        const start = (arrivedViaTransition ? 700 : 300) + 250;
+        const target = parseFloat(el.dataset.count);
+        const decimals = parseInt(el.dataset.decimals || '0', 10);
+        if (reduceMotion || motionOff || !target) return;
+        const start = cardStart(el, 250);
         const duration = 800;
-        el.textContent = '0';
+        el.textContent = (0).toFixed(decimals);
         setTimeout(() => {
             const t0 = performance.now();
             const tick = (now) => {
                 const p = Math.min(1, (now - t0) / duration);
-                el.textContent = String(Math.round(target * (1 - Math.pow(1 - p, 3))));
+                el.textContent = (target * (1 - Math.pow(1 - p, 3))).toFixed(decimals);
                 if (p < 1) requestAnimationFrame(tick);
+                else el.textContent = target.toFixed(decimals);
             };
             requestAnimationFrame(tick);
         }, start);
@@ -2223,11 +2507,13 @@ document.addEventListener('DOMContentLoaded', () => {
             centerLabel.textContent = label;
         };
 
-        // After a login, start drawing just as the stripes finish clearing, so the chart
-        // card is never left empty while the rest of the page is already up
-        const chartDelay = arrivedViaTransition ? 700 : 50 + 4 * 70 + 200;
+        // Start drawing just as this chart's card has risen in (after a login: once the stripes have
+        // cleared), so the card is never left empty while the rest of the page is already up
+        const chartDelay = cardStart(ctx, 200);
 
         setTimeout(() => {
+            // entrance is a css sweep (.chart-wrapper.is-drawing); chart.js' own draw gets cancelled by any resize
+            ctx.parentElement.classList.add('is-drawing');
             new Chart(ctx, {
                 type: 'doughnut',
                 data: {
@@ -2273,7 +2559,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     animation: {
                         animateScale: true,
                         animateRotate: true,
-                        duration: document.documentElement.getAttribute('data-motion') === 'off' ? 0 : 1000   // Settings > Page animations
+                        duration: 0                  // first draw is instant, hover still animates
                     }
                 }
             });
@@ -2291,6 +2577,137 @@ document.addEventListener('DOMContentLoaded', () => {
             el.addEventListener('mouseenter', () => showCenter(n, status + ' · ' + Math.round(n / total * 100) + '%'));
             el.addEventListener('mouseleave', () => showCenter(defaults.value, defaults.label));
         });
+    }
+
+    // 5. Funnel Drop-Off ------------------------------------------------------
+    //    The funnel itself is drawn by PHP (an SVG). Hovering a stage or its row lights up that stage and dims
+    //    the rest; a stage that has a list behind it (Applied, Completed, Passed) opens the Screening List.
+    const funnelBody = document.getElementById('funnelBody');
+    if (funnelBody) {
+        const stageEls = Array.from(funnelBody.querySelectorAll('.fn-stage, .fl-item, .fn-count'));
+        const light = (stage) => {
+            funnelBody.classList.toggle('has-focus', stage !== null);
+            stageEls.forEach(el => el.classList.toggle('is-active', stage !== null && el.dataset.stage === stage));
+        };
+        stageEls.forEach(el => {
+            el.addEventListener('mouseenter', () => light(el.dataset.stage));
+            el.addEventListener('mouseleave', () => light(null));
+            el.addEventListener('focus', () => light(el.dataset.stage));
+            el.addEventListener('blur', () => light(null));
+            const url = el.dataset.url;
+            if (!url) return;
+            el.addEventListener('click', () => { window.location.href = url; });
+            el.addEventListener('keydown', (e) => { if (e.key === 'Enter') window.location.href = url; });
+        });
+    }
+
+    // 6. Time-to-Complete Distribution (histogram) ------------------------------
+    //    Bars rise one after another once the card is in. The tallest bar is the strongest colour; the number
+    //    of applicants sits on top of each bar and follows it while it grows. Colours come from CSS tokens
+    //    (--hist-*), so the dark theme needs nothing here.
+    const timeCanvas = document.getElementById('timeToCompleteChart');
+    const dur = window.DASH_INSIGHTS && window.DASH_INSIGHTS.duration;
+    if (timeCanvas && dur && dur.n > 0 && typeof Chart !== 'undefined') {
+        const css = getComputedStyle(document.documentElement);
+        const token = (name, fallback) => css.getPropertyValue(name).trim() || fallback;
+        const barColor  = token('--hist-bar', '#9ccbf0');
+        const barHi     = token('--hist-bar-hi', '#1c8adb');
+        const gridColor = token('--hist-grid', '#eceef1');
+        const tickColor = token('--hist-tick', '#5b5f66');
+        const inkColor  = token('--ink', '#1f1f23');
+        const font = { family: "'Plus Jakarta Sans', sans-serif", size: 11, weight: '600' };
+        const peak = dur.counts.indexOf(Math.max.apply(null, dur.counts));
+
+        const valueLabels = {
+            id: 'valueLabels',
+            afterDatasetsDraw(chart) {
+                const c = chart.ctx;
+                c.save();
+                c.font = "800 12px 'Plus Jakarta Sans', sans-serif";
+                c.fillStyle = inkColor;
+                c.textAlign = 'center';
+                c.textBaseline = 'bottom';
+                chart.getDatasetMeta(0).data.forEach((bar, i) => {
+                    if (dur.counts[i] > 0) c.fillText(String(dur.counts[i]), bar.x, bar.y - 5);
+                });
+                c.restore();
+            }
+        };
+
+        setTimeout(() => {
+            new Chart(timeCanvas, {
+                type: 'bar',
+                data: {
+                    labels: dur.labels,
+                    datasets: [{
+                        label: 'Applicants',
+                        data: dur.counts,
+                        backgroundColor: dur.counts.map((n, i) => i === peak ? barHi : barColor),
+                        hoverBackgroundColor: barHi,
+                        borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 },
+                        borderSkipped: false,
+                        categoryPercentage: 1,      // bars touch their neighbours: it reads as a histogram
+                        barPercentage: 0.92
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: { padding: { top: 20, right: 4 } },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            border: { color: gridColor },
+                            ticks: { color: tickColor, font },
+                            title: { display: true, text: 'Time from invite to submission', color: tickColor, font: Object.assign({}, font, { size: 10.5 }), padding: { top: 6 } }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grace: '12%',
+                            grid: { color: gridColor },
+                            border: { display: false },
+                            ticks: { color: tickColor, font, precision: 0, maxTicksLimit: 6 },
+                            title: { display: true, text: 'Applicants', color: tickColor, font: Object.assign({}, font, { size: 10.5 }) }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1f1f23',
+                            titleColor: '#ffffff',
+                            bodyColor: '#e6e8ec',
+                            padding: 10,
+                            cornerRadius: 8,
+                            displayColors: false,
+                            titleFont: { family: font.family, size: 12, weight: '800' },
+                            bodyFont: { family: font.family, size: 12, weight: '600' },
+                            callbacks: {
+                                title: (items) => dur.titles[items[0].dataIndex],
+                                label: (item) => {
+                                    const n = item.parsed.y;
+                                    return n + (n === 1 ? ' applicant' : ' applicants') + ' \u00b7 ' + Math.round(n / dur.n * 100) + '%';
+                                }
+                            }
+                        }
+                    },
+                    onHover: (evt, elements) => { evt.native.target.style.cursor = elements.length ? 'pointer' : 'default'; },
+                    animation: {
+                        duration: motionOff ? 0 : 900,
+                        easing: 'easeOutQuart',
+                        delay: (c) => (c.type === 'data' && c.mode === 'default' && !motionOff) ? c.dataIndex * 90 : 0
+                    }
+                },
+                plugins: [valueLabels]
+            });
+        }, cardStart(timeCanvas, 250));
+    }
+
+    // 7. Scheduling Turnaround Time: the whole card opens the passed applicants (they are the ones waiting for a schedule)
+    const taCard = document.querySelector('.ta-card');
+    if (taCard && taCard.dataset.url) {
+        const goTa = () => { window.location.href = taCard.dataset.url; };
+        taCard.addEventListener('click', goTa);
+        taCard.addEventListener('keydown', (e) => { if (e.key === 'Enter') goTa(); });
     }
 });
 
@@ -2320,8 +2737,10 @@ document.addEventListener('DOMContentLoaded', () => {
         event:   'M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z',
         sync:    'M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z',
         done:    'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z',
-        cancel:  'M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z',
-        dot:     'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z'
+        dot:     'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z',
+        person:  'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z',
+        lock:    'M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z',
+        cancel:  'M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z'
     };
 
     let feed = Array.isArray(window.HR_ACTIVITY) ? window.HR_ACTIVITY : [];
@@ -2370,6 +2789,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function look(activity) {
         const a = String(activity).toLowerCase();
+        if (a.indexOf('password') !== -1 && a.indexOf('approved') !== -1) return { icon: ICONS.done, tone: 'tone-green' };
+        if (a.indexOf('password') !== -1 && a.indexOf('rejected') !== -1) return { icon: ICONS.cancel, tone: 'tone-red' };
+        if (a.indexOf('password') !== -1) return { icon: ICONS.lock, tone: 'tone-amber' };
+        if (a.indexOf('profile') !== -1 || a.indexOf('name changed') !== -1 || a.indexOf('email changed') !== -1) return { icon: ICONS.person, tone: 'tone-blue' };
         if (a.indexOf('forever') !== -1) return { icon: ICONS.remove, tone: 'tone-red' };
         if (a.indexOf('deleted') !== -1) return { icon: ICONS.remove, tone: 'tone-amber' };
         if (a.indexOf('restored') !== -1) return { icon: ICONS.restore, tone: 'tone-blue' };
@@ -2406,7 +2829,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 '<span class="notif-detail">' + esc(row.details) + '</span>' +
                 '<span class="notif-time">' + esc(when(row.at)) + '</span></span></li>';
         }).join('');
-        if (!html) html = '<li class="notif-empty">Nothing yet. When you add, delete or restore an applicant, or answer an interview schedule, it shows up here.</li>';
+        if (!html) html = '<li class="notif-empty">Nothing yet. When you add, delete or restore an applicant, answer an interview schedule or change your profile, it shows up here.</li>';
         listEl.innerHTML = html;
         if (markAllBtn) markAllBtn.disabled = fresh.size === 0 && unread().length === 0 && freshDecisions.size === 0 && unreadDecisions().length === 0;
     }
@@ -4202,11 +4625,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // (window.HR_ACCOUNT is printed by setting-hr.php).
     const account = window.HR_ACCOUNT || { name: '', email: '' };
     function readSaved() {
-        const profile = HR.settings.profile();
         const s = HR.settings.get();
         return {
-            name: String(profile.name || account.name || '').trim(),
-            email: String(profile.email || account.email || '').trim(),
+            name: String(account.name || '').trim(),
+            email: String(account.email || '').trim(),
+            photo: 'same',
             theme: ['light', 'dark', 'system'].includes(s.theme) ? s.theme : 'light',
             notifications: s.notifications !== false,
             notifyCompleted: s.notifyCompleted !== false,
@@ -4222,6 +4645,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return {
             name: nameInput.value.trim(),
             email: emailInput.value.trim(),
+            photo: photoState(),
             theme: checked ? checked.value : 'light',
             notifications: toggles.notifications.checked,
             notifyCompleted: toggles.notifyCompleted.checked,
@@ -4233,6 +4657,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function fill(state) {
         nameInput.value = state.name;
         emailInput.value = state.email;
+        resetPhoto();
         themeRadios.forEach(r => { r.checked = r.value === state.theme; });
         Object.keys(toggles).forEach(k => { toggles[k].checked = !!state[k]; });
         syncSubGroup();
@@ -4308,6 +4733,7 @@ document.addEventListener('DOMContentLoaded', () => {
         input.addEventListener('input', () => {
             touched.add(name);
             validate(name, false);
+            if (name === 'name' && !shownUrl()) paintAvatar();
             refreshButtons();
         });
         input.addEventListener('blur', () => { if (touched.has(name)) validate(name, false); });
@@ -4319,6 +4745,117 @@ document.addEventListener('DOMContentLoaded', () => {
     toggles.notifyNew.addEventListener('change', refreshButtons);
     toggles.animations.addEventListener('change', () => { preview(); refreshButtons(); });
 
+    /* ---------- profile picture ----------
+       The Change photo button opens the file picker. The picture is cropped to a square in the browser and shown at once,
+       but it is only kept (sent to the server) when SAVE is pressed; CANCEL puts the saved picture back. */
+    const avatarSlot = $('avatarPreview');
+    const avatarFile = $('avatarFile');
+    const avatarPick = $('avatarPick');
+    const avatarRemove = $('avatarRemove');
+    let photoBlob = null;          // a new picture, already square (sent on SAVE)
+    let photoRemoved = false;      // the saved picture will be taken off on SAVE
+    let photoUrl = '';             // preview address of the new picture
+
+    const escHtml = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    // "Anna Marie Reyes" -> "AR", "HR" -> "HR", "Admin" -> "AD" (the same rule as static-data.php)
+    function initialsOf(name) {
+        const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+        if (!parts.length) return '?';
+        const chars = (s) => Array.from(s);
+        if (parts.length === 1) return chars(parts[0]).slice(0, 2).join('').toUpperCase();
+        return (chars(parts[0])[0] + chars(parts[parts.length - 1])[0]).toUpperCase();
+    }
+    const shownUrl = () => (photoBlob ? photoUrl : (photoRemoved ? '' : (account.avatarUrl || '')));
+    const photoState = () => (photoBlob ? 'new' : (photoRemoved ? 'removed' : 'same'));
+
+    function paintAvatar() {
+        const url = shownUrl();
+        avatarSlot.innerHTML = url
+            ? '<span class="avatar avatar-xl has-img" aria-hidden="true"><img alt="" src="' + escHtml(url) + '"></span>'
+            : '<span class="avatar avatar-xl" aria-hidden="true">' + escHtml(initialsOf(nameInput.value || account.name)) + '</span>';
+        avatarRemove.hidden = !url;
+    }
+
+    function resetPhoto() {
+        if (photoUrl) URL.revokeObjectURL(photoUrl);
+        photoBlob = null;
+        photoRemoved = false;
+        photoUrl = '';
+        setError(fieldOf('avatar'), '');
+        paintAvatar();
+    }
+
+    // Centre-crops the chosen file to a 400 x 400 JPEG (small, and every picture fits the round frame)
+    function squarePicture(file) {
+        return new Promise((resolve, reject) => {
+            const src = URL.createObjectURL(file);
+            const img = new Image();
+            img.onload = () => {
+                try {
+                    const side = Math.min(img.naturalWidth, img.naturalHeight);
+                    if (!side) throw new Error('empty');
+                    const canvas = document.createElement('canvas');
+                    canvas.width = canvas.height = 400;
+                    const g = canvas.getContext('2d');
+                    g.fillStyle = '#ffffff';                    // a see-through PNG gets a white background
+                    g.fillRect(0, 0, 400, 400);
+                    g.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, 400, 400);
+                    canvas.toBlob(blob => { URL.revokeObjectURL(src); blob ? resolve(blob) : reject(new Error('blob')); }, 'image/jpeg', 0.9);
+                } catch (err) { URL.revokeObjectURL(src); reject(err); }
+            };
+            img.onerror = () => { URL.revokeObjectURL(src); reject(new Error('decode')); };
+            img.src = src;
+        });
+    }
+
+    avatarPick.addEventListener('click', () => avatarFile.click());
+    avatarFile.addEventListener('change', async () => {
+        const file = avatarFile.files && avatarFile.files[0];
+        avatarFile.value = '';
+        if (!file) return;
+        const field = fieldOf('avatar');
+        if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { setError(field, 'Choose a JPG, PNG or WEBP picture.', true); return; }
+        if (file.size > 10 * 1024 * 1024) { setError(field, 'That picture is too big (10 MB at most).', true); return; }
+        let blob;
+        try { blob = await squarePicture(file); } catch (err) { setError(field, 'That file could not be read as a picture.', true); return; }
+        setError(field, '');
+        if (photoUrl) URL.revokeObjectURL(photoUrl);
+        photoBlob = blob;
+        photoUrl = URL.createObjectURL(blob);
+        photoRemoved = false;
+        paintAvatar();
+        refreshButtons();
+    });
+    avatarRemove.addEventListener('click', () => {
+        if (photoUrl) URL.revokeObjectURL(photoUrl);
+        photoBlob = null;
+        photoUrl = '';
+        photoRemoved = !!account.avatarUrl;            // a saved picture is taken off on SAVE; a new, unsaved one is just dropped
+        setError(fieldOf('avatar'), '');
+        paintAvatar();
+        refreshButtons();
+    });
+
+    /* ---------- requests to static-data.php ----------
+       Resolves with the answer; rejects with an Error (message is safe to show, .field = the field it belongs to). */
+    async function postProfile(body) {
+        const isForm = body instanceof FormData;
+        const headers = { 'X-Requested-With': 'XMLHttpRequest' };
+        if (!isForm) headers['Content-Type'] = 'application/json';
+        let res;
+        try {
+            res = await fetch(account.endpoint, { method: 'POST', credentials: 'same-origin', headers: headers, body: isForm ? body : JSON.stringify(body) });
+        } catch (err) { throw new Error('Could not reach the server. Please check your connection and try again.'); }
+        let data;
+        try { data = await res.json(); } catch (err) { throw new Error('The server did not answer correctly. Please try again.'); }
+        if (data.status !== 'success') {
+            const failure = new Error(data.message || 'Something went wrong. Please try again.');
+            failure.field = data.field || '';
+            throw failure;
+        }
+        return data;
+    }
+
     /* ---------- SAVE ---------- */
     function setSaving(state) {
         saving = state;
@@ -4328,22 +4865,24 @@ document.addEventListener('DOMContentLoaded', () => {
         cancelBtn.disabled = state;
     }
 
-    /* BACKEND: replace the body with a real request, for example
-           const res = await fetch('setting-hr.php', { method: 'POST', body: JSON.stringify(state), ... });
-           const data = await res.json();                 // { status: 'success' }
-           if (data.status !== 'success') throw new Error(data.message);
-       Until then the values are kept in this browser (HR.settings / HR.settings.saveProfile). */
+    // Saves the profile on the server first (name, email, picture; static-data.php). Only when that worked are the
+    // look settings kept in this browser, so a refused email never leaves a half-saved page.
     async function persist(state) {
-        await new Promise(resolve => setTimeout(resolve, 650));
-        persist.note = '';
-        // Name: applies at once and shows in the Admin's Recent Activities
-        if (state.name !== saved.name) HRREQ.log('HR Name Changed', saved.name + ' → ' + state.name, 'HR', null, account.id);
-        // Email: not changed yet, it waits for the Admin's approval (the old email stays in use)
-        if (state.email !== saved.email) {
-            HRREQ.submit({ id: account.id, name: state.name, email: saved.email }, { new_email: state.email });
-            paintPending();
-            persist.note = 'Saved. Your new email is waiting for the admin\'s approval.';
-        }
+        const form = new FormData();
+        form.append('action', 'profile_save');
+        form.append('name', state.name);
+        form.append('email', state.email);
+        if (photoBlob) form.append('avatar', photoBlob, 'avatar.jpg');
+        else if (photoRemoved) form.append('avatar_remove', '1');
+
+        const data = await postProfile(form);
+
+        const p = data.profile || {};
+        account.name = p.name || state.name;
+        account.email = p.email || state.email;
+        account.avatar = p.avatar || null;
+        account.avatarUrl = p.avatar ? account.avatarBase + encodeURIComponent(p.avatar) + '?v=' + (p.avatar_v || 0) : '';
+
         const okSettings = HR.settings.save({
             theme: state.theme,
             animations: state.animations,
@@ -4351,8 +4890,8 @@ document.addEventListener('DOMContentLoaded', () => {
             notifyCompleted: state.notifyCompleted,
             notifyNew: state.notifyNew
         });
-        const okProfile = HR.settings.saveProfile({ name: state.name, email: saved.email });
-        if (!okSettings || !okProfile) throw new Error('Could not save. Please check your browser storage settings.');
+        if (!okSettings) throw new Error('Could not save. Please check your browser storage settings.');
+        return data;
     }
 
     form.addEventListener('submit', async (e) => {
@@ -4374,12 +4913,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         setSaving(true);
         try {
-            await persist(state);
+            const data = await persist(state);
             saved = readSaved();
-            fill(saved);                                // a requested email goes back to the one still in use
+            fill(saved);                           // shows what the server kept (trimmed name, lower-case email, the new picture)
             saveBtn.classList.add('saved');
             saveBtn.querySelector('.btn-label').textContent = 'SAVED';
-            HR.toast(persist.note || 'Settings saved.', { duration: persist.note ? 6000 : 3500 });
+            const changed = (data.changes || []).length > 0;
+            HR.toast(account.role === 'hr' && changed ? 'Settings saved. The Admin can see this change in Recent Activities.' : 'Settings saved.', { duration: 4500 });
             setSaving(false);
             saveBtn.disabled = true;               // nothing left to save
             cancelBtn.disabled = true;
@@ -4392,6 +4932,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {
             setSaving(false);
             refreshButtons();
+            const bad = err.field ? fieldOf(err.field) : null;
+            if (bad) setError(bad, err.message, true);
             HR.toast(err.message || 'Something went wrong. Please try again.', { error: true, duration: 6000 });
         }
     });
@@ -4596,10 +5138,8 @@ document.addEventListener('DOMContentLoaded', () => {
     pwConfirm.addEventListener('input', () => setError(pwField('pwConfirm'), pwConfirm.value === pwNew.value ? '' : 'The passwords do not match.'));
     pwCurrent.addEventListener('input', () => setError(pwField('pwCurrent'), ''));
 
-    /* BACKEND: check the current password and store the new one, for example
-           const res = await fetch('setting-hr.php', { method: 'POST', body: JSON.stringify({ action: 'password', current, next }) });
-       and show data.message when the current password is wrong (use setError(pwField('pwCurrent'), data.message, true)).
-       The browser cannot check the current password on its own, so for now it only has to be filled in. */
+    // The server checks the current password (static-data.php). Admin: the new password is saved at once.
+    // HR: the change is sent to the Admin and only works after the Admin approves it.
     pwForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         if (pwBusy) return;
@@ -4607,23 +5147,105 @@ document.addEventListener('DOMContentLoaded', () => {
         if (bad) { $(bad).focus(); return; }
         if (!(await askConfirm(['New password: ' + '•'.repeat(Math.min(12, pwNew.value.length))]))) return;
 
+        const label = pwSubmit.dataset.label || (pwSubmit.dataset.label = pwSubmit.textContent);
         pwBusy = true;
         pwSubmit.disabled = true;
-        pwSubmit.textContent = 'Sending...';
-        await new Promise(resolve => setTimeout(resolve, 800));
-        // BACKEND: the server must check the current password first (HRREQ below only stores the request in this browser)
-        HRREQ.submit({ id: account.id, name: saved.name, email: saved.email }, { new_password: pwNew.value, current_password: pwCurrent.value });
+        pwSubmit.textContent = account.role === 'hr' ? 'Sending...' : 'Updating...';
+        let data = null;
+        let failure = null;
+        try {
+            data = await postProfile({ action: 'password_change', current: pwCurrent.value, next: pwNew.value });
+        } catch (err) { failure = err; }
         pwBusy = false;
         pwSubmit.disabled = false;
-        pwSubmit.textContent = 'Send for Approval';
+        pwSubmit.textContent = label;
+
+        if (failure) {
+            const field = failure.field ? pwField(failure.field) : null;
+            if (field) { setError(field, failure.message, true); $(failure.field).focus(); }
+            else HR.toast(failure.message, { error: true, duration: 6000 });
+            return;
+        }
+
         closePw();
-        paintPending();
-        HR.toast('Sent. Your new password is waiting for the admin\'s approval. Keep using your current password until then.', { duration: 7000 });
+        if (data.mode === 'pending') {
+            // HR: nothing changed yet. The Admin has to approve it first.
+            HR.toast(data.message, { duration: 5000 });
+            if (typeof showRequest === 'function') showRequest(data.request);
+            return;
+        }
+        HR.toast('Password updated.', { duration: 3500 });
         const mask = $('pwMask').closest('.set-input');
         mask.classList.remove('pulse');
         void mask.offsetWidth;
         mask.classList.add('pulse');
     });
+
+    /* ---------- HR only: where is my password change request? ----------
+       The new password only works after the Admin approves it. This box shows Pending / Approved / Rejected, and while it
+       is pending the page asks the server every few seconds, so the answer shows up without reloading. */
+    const pwStatus = $('pwStatus');
+    const pwCancelReq = $('pwCancelReq');
+    let currentReq = null;
+
+    function whenText(at) {
+        const m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(String(at || ''));
+        if (!m) return String(at || '');
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        let out = months[Number(m[2]) - 1] + ' ' + Number(m[3]) + ', ' + m[1];
+        if (m[4] !== undefined) { const h = Number(m[4]); out += ' \u00b7 ' + (h % 12 || 12) + ':' + m[5] + ' ' + (h >= 12 ? 'PM' : 'AM'); }
+        return out;
+    }
+
+    function showRequest(r) {
+        currentReq = r || null;
+        if (!pwStatus) return;
+        const show = !!r && r.status !== 'cancelled';
+        pwStatus.hidden = !show;
+        const pending = !!r && r.status === 'pending';
+        pwOpen.disabled = pending;
+        pwOpen.title = pending ? 'Wait for the Admin to answer your request first' : '';
+        pwCancelReq.hidden = !pending;
+        if (!show) return;
+
+        const t = {
+            pending:  ['Password change waiting for approval', 'Sent ' + whenText(r.requested_at) + '. Your current password still works until the Admin approves the new one.'],
+            approved: ['Password change approved', 'Approved ' + whenText(r.decided_at) + '. Use your new password the next time you log in.'],
+            rejected: ['Password change rejected', 'Rejected ' + whenText(r.decided_at) + '. Your current password stays.' + (r.reason ? ' Reason: ' + r.reason : '')]
+        }[r.status] || ['', ''];
+        pwStatus.dataset.state = r.status;
+        $('pwStatusTitle').textContent = t[0];
+        $('pwStatusSub').textContent = t[1];
+    }
+
+    async function refreshRequest() {
+        if (!pwStatus || document.hidden || !currentReq || currentReq.status !== 'pending') return;
+        try {
+            const data = await postProfile({ action: 'password_status' });
+            const before = currentReq;
+            showRequest(data.request);
+            if (before.status === 'pending' && data.request && data.request.status === 'approved') HR.toast('The Admin approved your new password.', { duration: 6000 });
+            if (before.status === 'pending' && data.request && data.request.status === 'rejected') HR.toast('The Admin rejected your password change.', { error: true, duration: 6000 });
+        } catch (err) { /* offline or the session ended: try again next time */ }
+    }
+
+    if (pwStatus) {
+        pwCancelReq.addEventListener('click', async () => {
+            pwCancelReq.disabled = true;
+            try {
+                const data = await postProfile({ action: 'password_cancel' });
+                showRequest(data.request);
+                HR.toast(data.message, { duration: 3500 });
+            } catch (err) {
+                HR.toast(err.message, { error: true, duration: 6000 });
+                refreshRequest();
+            }
+            pwCancelReq.disabled = false;
+        });
+        showRequest(account.request || null);
+        setInterval(refreshRequest, 8000);
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshRequest(); });
+    }
 
     // Tab stays inside the open dialog
     pwModal.addEventListener('keydown', (e) => {

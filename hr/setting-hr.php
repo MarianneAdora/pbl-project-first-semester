@@ -14,10 +14,14 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {
 // HR settings page; archive sync is loaded from the database below.
 require_once __DIR__ . '/../src/Helpers/db.php';
 
-// Starting values for the account fields: whoever logged in.
-// BACKEND: this is the logged-in user's row (name, email). Settings > Account saves back to it.
-$account_name  = trim((string) ($_SESSION['user_name'] ?? ''));
-$account_email = trim((string) ($_SESSION['user_email'] ?? ''));
+// Starting values for the account fields: the saved profile of whoever is logged in (name, email, picture),
+// and the newest password-change request (it waits for the Admin's approval).
+// Settings > Account saves back through static-data.php.
+$profile            = static_profile_for_page('data/avatars/');
+$account_name       = $profile['name'];
+$account_email      = $profile['email'];
+$account_avatar     = $profile['avatar'];
+$account_avatar_url = $profile['avatar_url'];
 ?>
 <!DOCTYPE html>
 <html lang="en" data-page="settinghr">
@@ -149,16 +153,24 @@ $account_email = trim((string) ($_SESSION['user_email'] ?? ''));
             <section class="set-card reveal" style="--i:2" aria-labelledby="accountTitle">
                 <h2 id="accountTitle">Account Settings</h2>
 
-                <!-- The Admin approved / rejected an email or password change: highlighted until HR clicks "Got it" -->
-                <div class="decision-stack" id="decisionBanners" aria-live="polite"></div>
-
-                <!-- Shown while an email / password change waits for the Admin -->
-                <div class="pending-banner" id="pendingBanner" role="status" aria-live="polite" hidden>
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm.5-13H11v6l5.2 3.1.8-1.3-4.5-2.7V7z"/></svg>
-                    <div class="pb-text">
-                        <strong>Waiting for the admin's approval</strong>
-                        <span id="pendingText"></span>
+                <!-- Profile picture: choose a photo, see it here at once, it is kept when you press SAVE below -->
+                <div class="set-field avatar-field" data-field="avatar">
+                    <div class="avatar-edit">
+                        <span class="avatar-slot" id="avatarPreview"><?php echo static_profile_avatar_html($account_name, $account_avatar_url, 'avatar-xl'); ?></span>
+                        <div class="avatar-edit-text">
+                            <label for="avatarFile" class="avatar-title">Profile picture</label>
+                            <p class="avatar-hint">Shown next to your name on the Dashboard. JPG, PNG or WEBP, up to 2 MB.</p>
+                            <div class="avatar-actions">
+                                <button type="button" class="avatar-btn" id="avatarPick">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/></svg>
+                                    Change photo
+                                </button>
+                                <button type="button" class="avatar-btn is-ghost" id="avatarRemove"<?php echo $account_avatar ? '' : ' hidden'; ?>>Remove photo</button>
+                            </div>
+                            <input type="file" id="avatarFile" accept="image/jpeg,image/png,image/webp" hidden>
+                        </div>
                     </div>
+                    <p class="set-error" id="avatarError" role="alert"></p>
                 </div>
 
                 <div class="set-field" data-field="name">
@@ -195,6 +207,16 @@ $account_email = trim((string) ($_SESSION['user_email'] ?? ''));
                             <span id="pwOpenLabel">Update Password</span>
                         </button>
                     </div>
+                </div>
+
+                <!-- A new password only works after the Admin approves it. This box shows where the request is. -->
+                <div class="pw-status" id="pwStatus" role="status" aria-live="polite" hidden>
+                    <span class="pw-status-ico" id="pwStatusIco" aria-hidden="true"></span>
+                    <div class="pw-status-text">
+                        <strong id="pwStatusTitle"></strong>
+                        <span id="pwStatusSub"></span>
+                    </div>
+                    <button type="button" class="pw-status-btn" id="pwCancelReq" hidden>Cancel request</button>
                 </div>
             </section>
 
@@ -290,7 +312,7 @@ $account_email = trim((string) ($_SESSION['user_email'] ?? ''));
     <div class="modal-backdrop" id="pwModal" role="dialog" aria-modal="true" aria-labelledby="pwTitle">
         <div class="modal-card pw-modal">
             <h3 id="pwTitle">Update Password</h3>
-            <p>Choose a new password you do not use anywhere else. The admin has to approve it before it replaces your current one.</p>
+            <p>Choose a new password you do not use anywhere else. It only starts to work after the Admin approves it. Until then, your current password stays.</p>
             <form id="pwForm" novalidate autocomplete="off">
                 <div class="set-field" data-field="pwCurrent">
                     <label for="pwCurrent">Current password</label>
@@ -345,23 +367,13 @@ $account_email = trim((string) ($_SESSION['user_email'] ?? ''));
     </div>
 
     <!-- Shared HR behaviour first, then this page's script -->
-    <script>window.HR_SERVER_ARCHIVE = <?php
-        $archiveSync = ['ids' => [], 'at' => new stdClass()];
-        try {
-            $pdo = db();
-            $rows = $pdo->query("SELECT applicant_id, deleted_at FROM applicant WHERE deleted_at IS NOT NULL")->fetchAll();
-            $ids = []; $at = [];
-            foreach ($rows as $r) {
-                $id = (int) $r['applicant_id'];
-                $ids[] = $id;
-                $ts = strtotime((string) $r['deleted_at']);
-                if ($ts !== false) $at[$id] = $ts * 1000;
-            }
-            $archiveSync = ['ids' => $ids, 'at' => (object) $at];
-        } catch (Throwable $e) {}
-        echo json_encode($archiveSync, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
-    ?>;</script>
-    <script>window.HR_ACCOUNT = <?php echo json_encode(['id' => (int) ($_SESSION['user_id'] ?? 0), 'name' => $account_name, 'email' => $account_email], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
+    <script>window.HR_SERVER_ARCHIVE = <?php echo json_encode(static_archive_sync(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
+    <script>window.HR_ACCOUNT = <?php echo json_encode([
+        'name' => $account_name, 'email' => $account_email,
+        'avatar' => $account_avatar, 'avatarUrl' => $account_avatar_url, 'avatarBase' => $profile['avatar_base'],
+        'initials' => $profile['initials'], 'role' => 'hr', 'endpoint' => 'static-data.php',
+        'request' => $profile['request']
+    ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;</script>
     <script src="../assets/js/hr.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/hr.js'); ?>"></script>
 </body>
 </html>
