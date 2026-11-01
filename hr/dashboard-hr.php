@@ -16,6 +16,7 @@ date_default_timezone_set('Asia/Manila');
 // Login/dashboard data now comes from the database (applicant table).
 require_once __DIR__ . '/../src/Helpers/db.php';
 require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
+require_once __DIR__ . '/static-data.php';
 
 // Summary cards + Passed/Rejected chart are LIVE from the applicant table.
 try {
@@ -52,11 +53,46 @@ $passed_pct   = $pass_rate;
 $failed_pct   = $screened > 0 ? 100 - $pass_rate : 0;
 
 // The three analytics cards (Funnel Drop-Off, Time-to-Complete Distribution, Scheduling Turnaround Time).
-// Everything is worked out in static-data.php from the same applicant list as the cards above, so the
-// funnel's "Applied" is always the Total Applicants number, "Completed" is the Completed card, and so on.
-// BACKEND: static_dashboard_insights() becomes three queries (the SQL is written above that function).
+// All computed live from the database: applicants + interview schedules.
+$all_applicants = [];
+$interviews     = [];
 try {
-    $insights = static_dashboard_insights($all_applicants);
+    $pdo = db();
+    $rows = $pdo->query(
+        "SELECT applicant_id, name, email, phone_number, status, result, created_at, verified_at,
+                invited_at, submitted_at, passed_at
+         FROM applicant
+         WHERE deleted_at IS NULL AND verified_at IS NOT NULL"
+    )->fetchAll();
+    foreach ($rows as $r) {
+        $all_applicants[] = [
+            'id'          => (int) $r['applicant_id'],
+            'name'        => (string) $r['name'],
+            'email'       => (string) $r['email'],
+            'contact'     => (string) ($r['phone_number'] ?? ''),
+            'status'      => strtolower((string) $r['status']),
+            'result'      => strtolower((string) ($r['result'] ?? '')),
+            'invited_at'  => $r['invited_at']  ? (string) $r['invited_at']  : '',
+            'submitted_at'=> $r['submitted_at'] ? (string) $r['submitted_at'] : '',
+            'passed_at'   => $r['passed_at']   ? (string) $r['passed_at']   : '',
+        ];
+    }
+    // Interview answers: confirmed/rescheduled rows from the schedule table
+    $ivRows = $pdo->query(
+        "SELECT applicant_id, status, updated_at FROM schedule WHERE status IN ('confirmed', 'rescheduled')"
+    )->fetchAll();
+    foreach ($ivRows as $r) {
+        $interviews[(int) $r['applicant_id']] = [
+            'status'      => (string) $r['status'],
+            'answered_at' => (string) $r['updated_at'],
+        ];
+    }
+} catch (Throwable $e) {
+    $all_applicants = [];
+    $interviews     = [];
+}
+try {
+    $insights = static_dashboard_insights($all_applicants, $interviews);
 } catch (Throwable $e) {
     $insights = static_dashboard_empty_insights();     // the cards show "no data" rather than the page failing
 }
@@ -91,9 +127,38 @@ $fn_round = function (array $p, $r) {
 $fn_height = count($funnel['stages']) * ($fn_h + $fn_gap) - $fn_gap;
 $fn_has_data = $funnel['stages'][0]['count'] > 0;
 
-// Name shown in the greeting. The backend should set $_SESSION['user_name'] at login.
-$profile      = static_profile_for_page('data/avatars/');
-$display_name = $profile['name'];
+// Name + greeting from the database (users table). Falls back to session data if the query fails.
+$display_name = trim((string) ($_SESSION['user_name'] ?? 'HR'));
+$profile_email = trim((string) ($_SESSION['user_email'] ?? ''));
+
+try {
+    $pdo = db();
+    $stmt = $pdo->prepare("SELECT name, email, role FROM users WHERE user_id = :id AND deleted_at IS NULL LIMIT 1");
+    $stmt->execute([':id' => (int) ($_SESSION['user_id'] ?? 0)]);
+    $profileRow = $stmt->fetch();
+    if ($profileRow) {
+        $display_name = (string) $profileRow['name'];
+        $profile_email = (string) $profileRow['email'];
+        $profile_role_label = $profileRow['role'] === 'admin' ? 'Administrator' : 'HR Staff';
+    } else {
+        $profile_role_label = 'HR Staff';
+    }
+} catch (Throwable $e) {
+    $profile_role_label = 'HR Staff';
+}
+
+$profile = [
+    'name'           => $display_name,
+    'email'          => $profile_email,
+    'role'           => $profile_role_label,
+    'role_label'     => $profile_role_label,
+    'avatar'         => null,
+    'avatar_url'     => '',
+    'avatar_base'    => 'data/avatars/',
+    'initials'       => static_profile_initials($display_name),
+    'request'        => null
+];
+$avatar_html = static_profile_avatar_html($display_name, $profile['avatar_url']);
 
 // IDs of EVERY applicant whose status is Completed (backend: SELECT id ... WHERE status = 'Completed').
 // The red mark + the Dashboard notification badge are built from this list; an applicant stops
@@ -324,7 +389,7 @@ function status_badge(string $status): string
 
             <!-- Your profile: click it to open Settings (change the picture, name, email, password) -->
             <a class="profile-chip" id="profileChip" href="settinghr.php" title="Open your profile in Settings" aria-label="<?php echo htmlspecialchars($display_name . ', ' . $profile['role_label'] . '. Open your profile in Settings', ENT_QUOTES, 'UTF-8'); ?>">
-                <?php echo static_profile_avatar_html($display_name, $profile['avatar_url']); ?>
+                <?php echo $avatar_html; ?>
                 <span class="profile-meta">
                     <strong><?php echo htmlspecialchars($display_name, ENT_QUOTES, 'UTF-8'); ?></strong>
                     <small><?php echo htmlspecialchars($profile['role_label'], ENT_QUOTES, 'UTF-8'); ?></small>

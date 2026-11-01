@@ -37,8 +37,11 @@ CREATE TABLE applicant (
     cv_hash                 CHAR(64),                -- SHA-256 of the CV file -> one CV, one applicant
     verified_at             TIMESTAMP,               -- NULL = invited only; set when the OTP is verified
     status                  VARCHAR(20)  NOT NULL DEFAULT 'pending'
-                                CHECK (status IN ('pending', 'in_progress', 'submitted', 'reviewed', 'rejected', 'accepted')),
+                                CHECK (status IN ('pending', 'in_progress', 'completed', 'submitted', 'reviewed', 'rejected', 'accepted')),
     result                  VARCHAR(20),
+    invited_at              TIMESTAMP,               -- when the invitation was sent
+    submitted_at            TIMESTAMP,               -- when the screening was completed
+    passed_at               TIMESTAMP,               -- when the result became Passed
     deleted_at              TIMESTAMP,
     created_at              TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -150,6 +153,7 @@ CREATE TABLE schedule (
     status          VARCHAR(20) NOT NULL DEFAULT 'pending'
                         CHECK (status IN ('pending', 'confirmed', 'rescheduled', 'completed', 'cancelled')),
     email_sent_at   TIMESTAMP,
+    answered_at     TIMESTAMP,               -- when HR confirmed/rescheduled the interview
     created_at      TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

@@ -951,7 +951,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const fd = new FormData();
             fd.append('action', 'parse_cv');
             fd.append('cv', file, file.name);
-            const res = await fetch('add-applicants.php', { method: 'POST', body: fd, credentials: 'same-origin' });
+            const res = await fetch('../hr/static-data.php', { method: 'POST', body: fd, credentials: 'same-origin' });
             let data;
             try { data = await res.json(); }
             catch (e) { throw new Error('The server did not answer correctly. Please try the file again.'); }
@@ -1042,7 +1042,7 @@ document.addEventListener('DOMContentLoaded', () => {
        Invitation email still not sent. */
     async function sendInvitation(formData) {
         formData.delete('note'); // no notes column yet
-        const res = await fetch('add-applicants.php', { method: 'POST', body: formData, credentials: 'same-origin' });
+        const res = await fetch('../hr/static-data.php', { method: 'POST', body: formData, credentials: 'same-origin' });
         let data;
         try { data = await res.json(); }
         catch (e) { throw new Error('The server did not answer correctly. Please try again.'); }

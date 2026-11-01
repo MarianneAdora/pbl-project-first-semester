@@ -225,8 +225,8 @@ function repo_add_applicant(string $first, string $middle, string $last, string 
     }
 
     $st = $pdo->prepare(
-        "INSERT INTO applicant (reference_code, secure_token, encoded_by_user_id, name, first_name, middle_name, last_name, name_normalized, email, email_normalized, phone_number, cv_file_url, cv_hash, status)" .
-        " VALUES (:ref, :tok, :enc, :name, :first, :middle, :last, :nkey, :email, :norm, :phone, :cv, :hash, 'pending') RETURNING applicant_id"
+        "INSERT INTO applicant (reference_code, secure_token, encoded_by_user_id, name, first_name, middle_name, last_name, name_normalized, email, email_normalized, phone_number, cv_file_url, cv_hash, status, invited_at)" .
+        " VALUES (:ref, :tok, :enc, :name, :first, :middle, :last, :nkey, :email, :norm, :phone, :cv, :hash, 'pending', NOW()) RETURNING applicant_id"
     );
     $enc = null;
     if (session_status() === PHP_SESSION_ACTIVE && isset($_SESSION['user_id'])) $enc = (int) $_SESSION['user_id'];
@@ -440,13 +440,17 @@ function repo_set_status(int $id, string $status, ?string $result = null): bool
     }
 
     $st = $pdo->prepare(
-        "UPDATE applicant SET status = :status, result = :result WHERE applicant_id = :id AND deleted_at IS NULL"
+        "UPDATE applicant SET status = :status, result = :result" .
+        ("$s" === 'completed' ? ", submitted_at = COALESCE(submitted_at, NOW()), passed_at = :pass" : "") .
+        " WHERE applicant_id = :id AND deleted_at IS NULL"
     );
-    $st->execute([
+    $params = [
         ':id' => $id,
         ':status' => $s,
         ':result' => $result,
-    ]);
+    ];
+    if ("$s" === 'completed') $params[':pass'] = $result === 'passed' ? (new DateTimeImmutable('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d H:i:s') : null;
+    $st->execute($params);
     return $st->rowCount() > 0;
 }
 
@@ -509,4 +513,5 @@ function repo_applicants_recent(?PDO $pdo = null, int $limit = 10): array
     }
     return $out;
 }
+
 

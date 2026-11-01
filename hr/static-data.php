@@ -259,11 +259,9 @@ function static_dashboard_empty_insights(): array
 }
 
 // All three blocks, worked out from the ACTIVE applicants (archived ones are not counted) + the interview rows.
-function static_dashboard_insights(array $applicants): array
+function static_dashboard_insights(array $applicants, array $interviews = []): array
 {
     $out        = static_dashboard_empty_insights();
-    $store      = static_store_read();
-    $interviews = is_array($store['interviews'] ?? null) ? $store['interviews'] : [];
 
     // when HR answered the interview (null = still waiting / no row yet)
     $answeredAt = function (int $id) use ($interviews): ?int {
@@ -1751,6 +1749,12 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
                     isset($_FILES['cv']) && is_array($_FILES['cv']) ? $_FILES['cv'] : null
                 );
                 static_log('Added An Applicant', (string) $extra['applicant']['name']);
+                break;
+
+            case 'parse_cv':
+                // CV text extraction requires a PDF parsing library (e.g. smalot/pdfparser).
+                // Not installed in this project; return a clear error so the frontend can fall back to manual entry.
+                static_respond(['status' => 'error', 'message' => 'CV autofill is not available on this server. Please fill in the details manually.'], 501);
                 break;
 
             case 'position_add':
