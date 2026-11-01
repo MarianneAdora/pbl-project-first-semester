@@ -80,15 +80,9 @@ window.ADMIN = (function () {
         return ok;
     }
 
-    // The name saved in Settings replaces the one the session gave ("Hello, ...!" on the dashboard)
-    function applyProfile() {
-        const h = document.getElementById('greeting');
-        const name = String(readProfile().name || '').trim();
-        if (h && name) {
-            h.textContent = 'Hello, ' + name + '!';
-            h.title = h.textContent;
-        }
-    }
+    // The name and picture are saved on the server now (hr/static-data.php) and the page prints them, so there is
+    // nothing to override from this browser any more. (An old 'admin_profile' key in localStorage is simply ignored.)
+    function applyProfile() { /* kept so the calls below keep working */ }
 
     function saveProfile(profile) {
         const ok = store(PROFILE_KEY, Object.assign(readProfile(), profile || {}));
@@ -111,7 +105,7 @@ window.ADMIN = (function () {
     function request(action, payload) {
         return fetch(SERVER_API, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
             credentials: 'same-origin',
             body: JSON.stringify(Object.assign({ action: action }, payload || {}))
         })
@@ -899,6 +893,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const roleDD = createDropdown(document.getElementById('roleDropdown'));
     const statusDD = createDropdown(document.getElementById('statusDropdown'));
+
+    /* ---------- Edit only: the HR's current password (the Admin may see it) ---------- */
+    const currentPw = document.getElementById('current_password');
+    if (isEdit && currentPw) {
+        const unavailable = (text) => {
+            currentPw.type = 'text';
+            currentPw.value = '';
+            currentPw.placeholder = text;
+            const eye = form.querySelector('.eye-toggle[data-target="current_password"]');
+            if (eye) eye.hidden = true;
+        };
+        ADMIN.request('account_password', { id: config.account.id })
+            .then(res => {
+                const pw = res.result && res.result.password;
+                if (pw) currentPw.value = pw;
+                else unavailable('Not available. Set a new password below to make it visible.');
+            })
+            .catch(err => unavailable(err.message || 'Could not load the password.'));
+    }
 
     /* ---------- the eye: show / hide the password ---------- */
     form.querySelectorAll('.eye-toggle').forEach(btn => {
@@ -3144,11 +3157,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // (window.ADMIN_ACCOUNT is printed by settingsadmin.php).
     const account = window.ADMIN_ACCOUNT || { name: '', email: '' };
     function readSaved() {
-        const profile = ADMIN.settings.profile();
         const s = ADMIN.settings.get();
         return {
-            name: String(profile.name || account.name || '').trim(),
-            email: String(profile.email || account.email || '').trim(),
+            name: String(account.name || '').trim(),
+            email: String(account.email || '').trim(),
+            photo: 'same',
             theme: ['light', 'dark', 'system'].includes(s.theme) ? s.theme : 'light',
             notifications: s.notifications !== false,
             notifyActivity: s.notifyActivity !== false,
@@ -3164,6 +3177,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return {
             name: nameInput.value.trim(),
             email: emailInput.value.trim(),
+            photo: photoState(),
             theme: checked ? checked.value : 'light',
             notifications: toggles.notifications.checked,
             notifyActivity: toggles.notifyActivity.checked,
@@ -3175,6 +3189,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function fill(state) {
         nameInput.value = state.name;
         emailInput.value = state.email;
+        resetPhoto();
         themeRadios.forEach(r => { r.checked = r.value === state.theme; });
         Object.keys(toggles).forEach(k => { toggles[k].checked = !!state[k]; });
         syncSubGroup();
@@ -3250,6 +3265,7 @@ document.addEventListener('DOMContentLoaded', () => {
         input.addEventListener('input', () => {
             touched.add(name);
             validate(name, false);
+            if (name === 'name' && !shownUrl()) paintAvatar();
             refreshButtons();
         });
         input.addEventListener('blur', () => { if (touched.has(name)) validate(name, false); });
@@ -3261,6 +3277,117 @@ document.addEventListener('DOMContentLoaded', () => {
     toggles.notifyArchive.addEventListener('change', refreshButtons);
     toggles.animations.addEventListener('change', () => { preview(); refreshButtons(); });
 
+    /* ---------- profile picture ----------
+       The Change photo button opens the file picker. The picture is cropped to a square in the browser and shown at once,
+       but it is only kept (sent to the server) when SAVE is pressed; CANCEL puts the saved picture back. */
+    const avatarSlot = $('avatarPreview');
+    const avatarFile = $('avatarFile');
+    const avatarPick = $('avatarPick');
+    const avatarRemove = $('avatarRemove');
+    let photoBlob = null;          // a new picture, already square (sent on SAVE)
+    let photoRemoved = false;      // the saved picture will be taken off on SAVE
+    let photoUrl = '';             // preview address of the new picture
+
+    const escHtml = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    // "Anna Marie Reyes" -> "AR", "HR" -> "HR", "Admin" -> "AD" (the same rule as static-data.php)
+    function initialsOf(name) {
+        const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+        if (!parts.length) return '?';
+        const chars = (s) => Array.from(s);
+        if (parts.length === 1) return chars(parts[0]).slice(0, 2).join('').toUpperCase();
+        return (chars(parts[0])[0] + chars(parts[parts.length - 1])[0]).toUpperCase();
+    }
+    const shownUrl = () => (photoBlob ? photoUrl : (photoRemoved ? '' : (account.avatarUrl || '')));
+    const photoState = () => (photoBlob ? 'new' : (photoRemoved ? 'removed' : 'same'));
+
+    function paintAvatar() {
+        const url = shownUrl();
+        avatarSlot.innerHTML = url
+            ? '<span class="avatar avatar-xl has-img" aria-hidden="true"><img alt="" src="' + escHtml(url) + '"></span>'
+            : '<span class="avatar avatar-xl" aria-hidden="true">' + escHtml(initialsOf(nameInput.value || account.name)) + '</span>';
+        avatarRemove.hidden = !url;
+    }
+
+    function resetPhoto() {
+        if (photoUrl) URL.revokeObjectURL(photoUrl);
+        photoBlob = null;
+        photoRemoved = false;
+        photoUrl = '';
+        setError(fieldOf('avatar'), '');
+        paintAvatar();
+    }
+
+    // Centre-crops the chosen file to a 400 x 400 JPEG (small, and every picture fits the round frame)
+    function squarePicture(file) {
+        return new Promise((resolve, reject) => {
+            const src = URL.createObjectURL(file);
+            const img = new Image();
+            img.onload = () => {
+                try {
+                    const side = Math.min(img.naturalWidth, img.naturalHeight);
+                    if (!side) throw new Error('empty');
+                    const canvas = document.createElement('canvas');
+                    canvas.width = canvas.height = 400;
+                    const g = canvas.getContext('2d');
+                    g.fillStyle = '#ffffff';                    // a see-through PNG gets a white background
+                    g.fillRect(0, 0, 400, 400);
+                    g.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, 400, 400);
+                    canvas.toBlob(blob => { URL.revokeObjectURL(src); blob ? resolve(blob) : reject(new Error('blob')); }, 'image/jpeg', 0.9);
+                } catch (err) { URL.revokeObjectURL(src); reject(err); }
+            };
+            img.onerror = () => { URL.revokeObjectURL(src); reject(new Error('decode')); };
+            img.src = src;
+        });
+    }
+
+    avatarPick.addEventListener('click', () => avatarFile.click());
+    avatarFile.addEventListener('change', async () => {
+        const file = avatarFile.files && avatarFile.files[0];
+        avatarFile.value = '';
+        if (!file) return;
+        const field = fieldOf('avatar');
+        if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { setError(field, 'Choose a JPG, PNG or WEBP picture.', true); return; }
+        if (file.size > 10 * 1024 * 1024) { setError(field, 'That picture is too big (10 MB at most).', true); return; }
+        let blob;
+        try { blob = await squarePicture(file); } catch (err) { setError(field, 'That file could not be read as a picture.', true); return; }
+        setError(field, '');
+        if (photoUrl) URL.revokeObjectURL(photoUrl);
+        photoBlob = blob;
+        photoUrl = URL.createObjectURL(blob);
+        photoRemoved = false;
+        paintAvatar();
+        refreshButtons();
+    });
+    avatarRemove.addEventListener('click', () => {
+        if (photoUrl) URL.revokeObjectURL(photoUrl);
+        photoBlob = null;
+        photoUrl = '';
+        photoRemoved = !!account.avatarUrl;            // a saved picture is taken off on SAVE; a new, unsaved one is just dropped
+        setError(fieldOf('avatar'), '');
+        paintAvatar();
+        refreshButtons();
+    });
+
+    /* ---------- requests to static-data.php ----------
+       Resolves with the answer; rejects with an Error (message is safe to show, .field = the field it belongs to). */
+    async function postProfile(body) {
+        const isForm = body instanceof FormData;
+        const headers = { 'X-Requested-With': 'XMLHttpRequest' };
+        if (!isForm) headers['Content-Type'] = 'application/json';
+        let res;
+        try {
+            res = await fetch(account.endpoint, { method: 'POST', credentials: 'same-origin', headers: headers, body: isForm ? body : JSON.stringify(body) });
+        } catch (err) { throw new Error('Could not reach the server. Please check your connection and try again.'); }
+        let data;
+        try { data = await res.json(); } catch (err) { throw new Error('The server did not answer correctly. Please try again.'); }
+        if (data.status !== 'success') {
+            const failure = new Error(data.message || 'Something went wrong. Please try again.');
+            failure.field = data.field || '';
+            throw failure;
+        }
+        return data;
+    }
+
     /* ---------- SAVE ---------- */
     function setSaving(state) {
         saving = state;
@@ -3270,13 +3397,24 @@ document.addEventListener('DOMContentLoaded', () => {
         cancelBtn.disabled = state;
     }
 
-    /* BACKEND: replace the body with a real request, for example
-           const res = await fetch('settingsadmin.php', { method: 'POST', body: JSON.stringify(state), ... });
-           const data = await res.json();                 // { status: 'success' }
-           if (data.status !== 'success') throw new Error(data.message);
-       Until then the values are kept in this browser (ADMIN.settings / ADMIN.settings.saveProfile). */
+    // Saves the profile on the server first (name, email, picture; static-data.php). Only when that worked are the
+    // look settings kept in this browser, so a refused email never leaves a half-saved page.
     async function persist(state) {
-        await new Promise(resolve => setTimeout(resolve, 650));
+        const form = new FormData();
+        form.append('action', 'profile_save');
+        form.append('name', state.name);
+        form.append('email', state.email);
+        if (photoBlob) form.append('avatar', photoBlob, 'avatar.jpg');
+        else if (photoRemoved) form.append('avatar_remove', '1');
+
+        const data = await postProfile(form);
+
+        const p = data.profile || {};
+        account.name = p.name || state.name;
+        account.email = p.email || state.email;
+        account.avatar = p.avatar || null;
+        account.avatarUrl = p.avatar ? account.avatarBase + encodeURIComponent(p.avatar) + '?v=' + (p.avatar_v || 0) : '';
+
         const okSettings = ADMIN.settings.save({
             theme: state.theme,
             animations: state.animations,
@@ -3284,8 +3422,8 @@ document.addEventListener('DOMContentLoaded', () => {
             notifyActivity: state.notifyActivity,
             notifyArchive: state.notifyArchive
         });
-        const okProfile = ADMIN.settings.saveProfile({ name: state.name, email: state.email });
-        if (!okSettings || !okProfile) throw new Error('Could not save. Please check your browser storage settings.');
+        if (!okSettings) throw new Error('Could not save. Please check your browser storage settings.');
+        return data;
     }
 
     form.addEventListener('submit', async (e) => {
@@ -3303,11 +3441,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const state = collect();
         setSaving(true);
         try {
-            await persist(state);
+            const data = await persist(state);
             saved = readSaved();
+            fill(saved);                           // shows what the server kept (trimmed name, lower-case email, the new picture)
             saveBtn.classList.add('saved');
             saveBtn.querySelector('.btn-label').textContent = 'SAVED';
-            ADMIN.toast('Settings saved.', { duration: 3500 });
+            const changed = (data.changes || []).length > 0;
+            ADMIN.toast(account.role === 'hr' && changed ? 'Settings saved. The Admin can see this change in Recent Activities.' : 'Settings saved.', { duration: 4500 });
             setSaving(false);
             saveBtn.disabled = true;               // nothing left to save
             cancelBtn.disabled = true;
@@ -3320,6 +3460,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {
             setSaving(false);
             refreshButtons();
+            const bad = err.field ? fieldOf(err.field) : null;
+            if (bad) setError(bad, err.message, true);
             ADMIN.toast(err.message || 'Something went wrong. Please try again.', { error: true, duration: 6000 });
         }
     });
@@ -3432,30 +3574,113 @@ document.addEventListener('DOMContentLoaded', () => {
     pwConfirm.addEventListener('input', () => setError(pwField('pwConfirm'), pwConfirm.value === pwNew.value ? '' : 'The passwords do not match.'));
     pwCurrent.addEventListener('input', () => setError(pwField('pwCurrent'), ''));
 
-    /* BACKEND: check the current password and store the new one, for example
-           const res = await fetch('settingsadmin.php', { method: 'POST', body: JSON.stringify({ action: 'password', current, next }) });
-       and show data.message when the current password is wrong (use setError(pwField('pwCurrent'), data.message, true)).
-       The browser cannot check the current password on its own, so for now it only has to be filled in. */
+    // The server checks the current password (static-data.php). Admin: the new password is saved at once.
+    // HR: the change is sent to the Admin and only works after the Admin approves it.
     pwForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         if (pwBusy) return;
         const bad = pwValidate(true);
         if (bad) { $(bad).focus(); return; }
 
+        const label = pwSubmit.dataset.label || (pwSubmit.dataset.label = pwSubmit.textContent);
         pwBusy = true;
         pwSubmit.disabled = true;
-        pwSubmit.textContent = 'Updating...';
-        await new Promise(resolve => setTimeout(resolve, 800));
+        pwSubmit.textContent = account.role === 'hr' ? 'Sending...' : 'Updating...';
+        let data = null;
+        let failure = null;
+        try {
+            data = await postProfile({ action: 'password_change', current: pwCurrent.value, next: pwNew.value });
+        } catch (err) { failure = err; }
         pwBusy = false;
         pwSubmit.disabled = false;
-        pwSubmit.textContent = 'Update Password';
+        pwSubmit.textContent = label;
+
+        if (failure) {
+            const field = failure.field ? pwField(failure.field) : null;
+            if (field) { setError(field, failure.message, true); $(failure.field).focus(); }
+            else ADMIN.toast(failure.message, { error: true, duration: 6000 });
+            return;
+        }
+
         closePw();
+        if (data.mode === 'pending') {
+            // HR: nothing changed yet. The Admin has to approve it first.
+            ADMIN.toast(data.message, { duration: 5000 });
+            if (typeof showRequest === 'function') showRequest(data.request);
+            return;
+        }
         ADMIN.toast('Password updated.', { duration: 3500 });
         const mask = $('pwMask').closest('.set-input');
         mask.classList.remove('pulse');
         void mask.offsetWidth;
         mask.classList.add('pulse');
     });
+
+    /* ---------- HR only: where is my password change request? ----------
+       The new password only works after the Admin approves it. This box shows Pending / Approved / Rejected, and while it
+       is pending the page asks the server every few seconds, so the answer shows up without reloading. */
+    const pwStatus = $('pwStatus');
+    const pwCancelReq = $('pwCancelReq');
+    let currentReq = null;
+
+    function whenText(at) {
+        const m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(String(at || ''));
+        if (!m) return String(at || '');
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        let out = months[Number(m[2]) - 1] + ' ' + Number(m[3]) + ', ' + m[1];
+        if (m[4] !== undefined) { const h = Number(m[4]); out += ' \u00b7 ' + (h % 12 || 12) + ':' + m[5] + ' ' + (h >= 12 ? 'PM' : 'AM'); }
+        return out;
+    }
+
+    function showRequest(r) {
+        currentReq = r || null;
+        if (!pwStatus) return;
+        const show = !!r && r.status !== 'cancelled';
+        pwStatus.hidden = !show;
+        const pending = !!r && r.status === 'pending';
+        pwOpen.disabled = pending;
+        pwOpen.title = pending ? 'Wait for the Admin to answer your request first' : '';
+        pwCancelReq.hidden = !pending;
+        if (!show) return;
+
+        const t = {
+            pending:  ['Password change waiting for approval', 'Sent ' + whenText(r.requested_at) + '. Your current password still works until the Admin approves the new one.'],
+            approved: ['Password change approved', 'Approved ' + whenText(r.decided_at) + '. Use your new password the next time you log in.'],
+            rejected: ['Password change rejected', 'Rejected ' + whenText(r.decided_at) + '. Your current password stays.' + (r.reason ? ' Reason: ' + r.reason : '')]
+        }[r.status] || ['', ''];
+        pwStatus.dataset.state = r.status;
+        $('pwStatusTitle').textContent = t[0];
+        $('pwStatusSub').textContent = t[1];
+    }
+
+    async function refreshRequest() {
+        if (!pwStatus || document.hidden || !currentReq || currentReq.status !== 'pending') return;
+        try {
+            const data = await postProfile({ action: 'password_status' });
+            const before = currentReq;
+            showRequest(data.request);
+            if (before.status === 'pending' && data.request && data.request.status === 'approved') ADMIN.toast('The Admin approved your new password.', { duration: 6000 });
+            if (before.status === 'pending' && data.request && data.request.status === 'rejected') ADMIN.toast('The Admin rejected your password change.', { error: true, duration: 6000 });
+        } catch (err) { /* offline or the session ended: try again next time */ }
+    }
+
+    if (pwStatus) {
+        pwCancelReq.addEventListener('click', async () => {
+            pwCancelReq.disabled = true;
+            try {
+                const data = await postProfile({ action: 'password_cancel' });
+                showRequest(data.request);
+                ADMIN.toast(data.message, { duration: 3500 });
+            } catch (err) {
+                ADMIN.toast(err.message, { error: true, duration: 6000 });
+                refreshRequest();
+            }
+            pwCancelReq.disabled = false;
+        });
+        showRequest(account.request || null);
+        setInterval(refreshRequest, 8000);
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshRequest(); });
+    }
 
     // Tab stays inside the open dialog
     pwModal.addEventListener('keydown', (e) => {
@@ -3909,19 +4134,144 @@ document.addEventListener('DOMContentLoaded', () => {
     // What HR did since the Admin last opened the Dashboard (read BEFORE it is marked as seen)
     const fresh = new Set(ADMIN.notify.unseen());
 
+    const PILL = { pending: 'Needs approval', approved: 'Approved', rejected: 'Rejected', cancelled: 'Cancelled' };
     const body = document.getElementById('activityBody');
     body.innerHTML = data.activity.length
         ? data.activity.map((row, i) => {
             const isNew = fresh.has(row.at) && String(row.by).toLowerCase() !== 'admin';
             const who = String(row.by).toLowerCase() === 'admin' ? 'admin' : 'hr';
-            return '<tr class="row-in' + (isNew ? ' is-new' : '') + '" style="--r:' + i + '">' +
+            // A "Password Change Requested" line opens the approve / reject pop-up (it shows what happened to it, too)
+            const req = row.kind === 'pw_request' && row.req ? row.req : null;
+            const pill = req ? ' <span class="req-pill is-' + esc(req.status) + '" data-pill>' + esc(PILL[req.status] || req.status) + '</span>' : '';
+            return '<tr class="row-in' + (isNew ? ' is-new' : '') + (req ? ' is-click' : '') + '" style="--r:' + i + '"' +
+                (req ? ' data-req="' + Number(req.id) + '" tabindex="0" role="button" title="Click to review this request"' : '') + '>' +
                 '<td>' + (isNew ? '<span class="new-dot" title="New since your last visit"></span>' : '') + esc(ADMIN.formatDate(row.at)) + '</td>' +
                 '<td title="' + esc(row.activity) + '"><strong>' + esc(row.activity) + '</strong></td>' +
-                '<td title="' + esc(row.details) + '">' + esc(row.details) + '</td>' +
+                '<td title="' + esc(row.details) + '">' + esc(row.details) + pill + '</td>' +
                 '<td><span class="role-tag ' + who + '">' + esc(row.by) + '</span></td>' +
             '</tr>';
         }).join('')
         : '<tr><td colspan="4" class="empty-row">No activity yet.</td></tr>';
+
+    /* ---------- 2b. HR password changes: click the line -> approve or reject ----------
+       Each "Password Change Requested" line carries its live request (row.req). The pop-up reads it, and the answer goes to
+       static-admin.php (action password_decide). HR sees the result in Settings and in the bell on the HR Dashboard. */
+    const requests = {};
+    data.activity.forEach(r => { if (r.req) requests[r.req.id] = r.req; });
+
+    const pendingChip = document.getElementById('pendingChip');
+    function paintPending() {
+        const n = Object.values(requests).filter(r => r.status === 'pending').length;
+        pendingChip.hidden = n === 0;
+        pendingChip.textContent = n + ' waiting for your approval';
+    }
+    paintPending();
+
+    const reqModal = document.getElementById('pwReqModal');
+    const reqApprove = document.getElementById('pwReqApprove');
+    const reqReject = document.getElementById('pwReqReject');
+    const reqReason = document.getElementById('pwReqReason');
+    let openId = null;
+    let reqBusy = false;
+    let reqFocus = null;
+
+    function openRequest(id) {
+        const r = requests[id];
+        if (!r) return;
+        openId = id;
+        reqFocus = document.activeElement;
+        const pending = r.status === 'pending';
+        document.getElementById('pwReqName').textContent = r.name;
+        document.getElementById('pwReqEmail').textContent = r.email;
+        document.getElementById('pwReqWhen').textContent = ADMIN.formatDate(r.requested_at);
+        document.getElementById('pwReqStatus').innerHTML = '<span class="req-pill is-' + esc(r.status) + '">' + esc(PILL[r.status] || r.status) + '</span>' +
+            (r.decided_at ? ' <small>' + esc(ADMIN.formatDate(r.decided_at)) + '</small>' : '') +
+            (r.status === 'rejected' && r.reason ? '<small class="req-why">Reason: ' + esc(r.reason) + '</small>' : '');
+        document.getElementById('pwReqLead').textContent = pending
+            ? 'This HR account asked to change its password. It stays the same until you answer.'
+            : 'This request was already answered.';
+        // the two passwords, hidden behind dots until the Admin presses Show (only while pending)
+        [['pwReqCur', r.current_password, 'Not available'], ['pwReqNew', r.new_password, 'Not available']].forEach(([id, value, none]) => {
+            const span = document.getElementById(id);
+            const btn = span.parentNode.querySelector('.pw-show');
+            span.closest('div').hidden = !pending;
+            span.dataset.value = value || '';
+            span.textContent = value ? '\u2022'.repeat(Math.min(value.length, 12)) : none;
+            span.classList.toggle('is-none', !value);
+            btn.hidden = !value;
+            btn.textContent = 'Show';
+        });
+        document.getElementById('pwReqReasonBox').hidden = !pending;
+        document.getElementById('pwReqNote').hidden = !pending;
+        reqApprove.hidden = !pending;
+        reqReject.hidden = !pending;
+        reqReason.value = '';
+        reqModal.classList.add('active');
+        setTimeout(() => (pending ? reqApprove : document.getElementById('pwReqClose')).focus(), 120);
+    }
+
+    function closeRequest() {
+        if (reqBusy) return;
+        reqModal.classList.remove('active');
+        openId = null;
+        if (reqFocus && reqFocus.focus) reqFocus.focus();
+    }
+
+    async function decide(decision) {
+        if (reqBusy || openId === null) return;
+        reqBusy = true;
+        reqApprove.disabled = reqReject.disabled = true;
+        const id = openId;
+        try {
+            const res = await ADMIN.request('password_decide', { id: id, decision: decision, reason: reqReason.value.trim() });
+            requests[id] = res.result;
+            // the line on the list shows the new status at once
+            const rowEl = body.querySelector('tr[data-req="' + id + '"]');
+            if (rowEl) {
+                const pill = rowEl.querySelector('[data-pill]');
+                if (pill) { pill.className = 'req-pill is-' + res.result.status; pill.textContent = PILL[res.result.status]; }
+            }
+            paintPending();
+            reqBusy = false;
+            closeRequest();
+            ADMIN.toast(res.message + ' HR can see the answer.', { duration: 4500 });
+        } catch (err) {
+            reqBusy = false;
+            ADMIN.toast(err.message, { error: true, duration: 6000 });
+        }
+        reqApprove.disabled = reqReject.disabled = false;
+    }
+
+    body.addEventListener('click', (e) => {
+        const tr = e.target.closest('tr[data-req]');
+        if (tr) openRequest(Number(tr.dataset.req));
+    });
+    body.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        const tr = e.target.closest('tr[data-req]');
+        if (tr) { e.preventDefault(); openRequest(Number(tr.dataset.req)); }
+    });
+    reqModal.querySelectorAll('.pw-show').forEach(btn => btn.addEventListener('click', () => {
+        const span = document.getElementById(btn.dataset.for);
+        const showing = btn.textContent === 'Hide';
+        span.textContent = showing ? '\u2022'.repeat(Math.min(span.dataset.value.length, 12)) : span.dataset.value;
+        btn.textContent = showing ? 'Show' : 'Hide';
+    }));
+    reqApprove.addEventListener('click', () => decide('approve'));
+    reqReject.addEventListener('click', () => decide('reject'));
+    document.getElementById('pwReqClose').addEventListener('click', closeRequest);
+    reqModal.addEventListener('click', (e) => { if (e.target === reqModal) closeRequest(); });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && reqModal.classList.contains('active') && !document.getElementById('logoutModal').classList.contains('active')) closeRequest();
+    });
+    reqModal.addEventListener('keydown', (e) => {          // Tab stays inside the open pop-up
+        if (e.key !== 'Tab') return;
+        const items = Array.from(reqModal.querySelectorAll('button, textarea')).filter(el => !el.disabled && !el.hidden && el.offsetParent !== null);
+        if (!items.length) return;
+        const first = items[0], last = items[items.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    });
 
     // the list fades out at the bottom edge while there are more rows to scroll to (same as the HR Dashboard)
     const listScroll = document.querySelector('.activity-card .table-responsive');

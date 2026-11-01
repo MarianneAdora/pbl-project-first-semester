@@ -89,7 +89,8 @@ $fn_height = count($funnel['stages']) * ($fn_h + $fn_gap) - $fn_gap;
 $fn_has_data = $funnel['stages'][0]['count'] > 0;
 
 // Name shown in the greeting. The backend should set $_SESSION['user_name'] at login.
-$display_name = trim($_SESSION['user_name'] ?? '') !== '' ? $_SESSION['user_name'] : 'HR';
+$profile      = static_profile_for_page('data/avatars/');
+$display_name = $profile['name'];
 
 // IDs of EVERY applicant whose status is Completed (backend: SELECT id ... WHERE status = 'Completed').
 // The red mark + the Dashboard notification badge are built from this list; an applicant stops
@@ -288,6 +289,7 @@ function status_badge(string $status): string
                 <p>Overview of application activity.</p>
             </div>
 
+            <div class="header-tools">
             <!-- Notification bell: your recent activity (the Admin sees the same lines) + completed screenings to review -->
             <div class="notif-wrap">
                 <button type="button" class="notif-bell" id="notifBell" aria-haspopup="true" aria-expanded="false" aria-controls="notifPanel" aria-label="Notifications" title="Notifications">
@@ -301,8 +303,18 @@ function status_badge(string $status): string
                         <button type="button" class="notif-markall" id="notifMarkAll">Mark all as read</button>
                     </div>
                     <ul class="notif-list" id="notifList"></ul>
-                    <p class="notif-foot">Your activity also appears in the Admin's Recent Activities. Changes to Settings are not included.</p>
+                    <p class="notif-foot">Your activity, including changes to your name, email and picture, also appears in the Admin's Recent Activities. Theme and display preferences are not included.</p>
                 </div>
+            </div>
+
+            <!-- Your profile: click it to open Settings (change the picture, name, email, password) -->
+            <a class="profile-chip" id="profileChip" href="settinghr.php" title="Open your profile in Settings" aria-label="<?php echo htmlspecialchars($display_name . ', ' . $profile['role_label'] . '. Open your profile in Settings', ENT_QUOTES, 'UTF-8'); ?>">
+                <?php echo static_profile_avatar_html($display_name, $profile['avatar_url']); ?>
+                <span class="profile-meta">
+                    <strong><?php echo htmlspecialchars($display_name, ENT_QUOTES, 'UTF-8'); ?></strong>
+                    <small><?php echo htmlspecialchars($profile['role_label'], ENT_QUOTES, 'UTF-8'); ?></small>
+                </span>
+            </a>
             </div>
         </header>
 

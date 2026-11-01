@@ -13,6 +13,9 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {
 
 // Keeps the browser copy of the Archive in step with static-data.php
 require_once __DIR__ . '/static-data.php';
+
+// The Job Position list (each position has its own job description PDF). BACKEND: SELECT id, name FROM job_positions
+$positions = static_positions();
 ?>
 <!DOCTYPE html>
 <html lang="en" data-page="addapplicants">
@@ -80,6 +83,38 @@ require_once __DIR__ . '/static-data.php';
                 <button class="btn-cancel" id="keepEditing" type="button">Keep Editing</button>
                 <button class="btn-confirm" id="confirmDiscard" type="button">Discard</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Add Job Position Modal (opened by the last entry of the Job Position list) -->
+    <div class="modal-backdrop" id="positionModal" role="dialog" aria-modal="true" aria-labelledby="positionTitle">
+        <div class="modal-card pos-modal">
+            <h3 id="positionTitle">Add Job Position</h3>
+            <p class="pos-lead">Type the new position and attach its job description. Applicants added under it will see this PDF in their questionnaire.</p>
+            <form id="positionForm" novalidate autocomplete="off">
+                <div class="pos-field" data-pfield="name">
+                    <label for="positionName">Job Position <span class="req">*</span></label>
+                    <input type="text" id="positionName" name="name" maxlength="80" placeholder="e.g. Quality Analyst">
+                    <p class="pos-error" role="alert"></p>
+                </div>
+                <div class="pos-field" data-pfield="jd">
+                    <label for="positionJd">Job Description PDF <span class="opt">(Optional)</span></label>
+                    <div class="pos-file" id="positionFileBox">
+                        <input type="file" id="positionJd" name="jd" accept=".pdf,application/pdf">
+                        <label for="positionJd" class="pos-choose">Choose PDF</label>
+                        <span class="pos-file-name" id="positionFileName">PDF only, up to 5 MB</span>
+                        <button type="button" class="pos-file-remove" id="positionFileRemove" aria-label="Remove file" hidden>
+                            <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                        </button>
+                    </div>
+                    <p class="pos-error" role="alert"></p>
+                </div>
+                <p class="pos-hint">Without a PDF, the applicants of this position are shown the sample job description until one is added.</p>
+                <div class="modal-actions">
+                    <button class="btn-cancel" id="positionCancel" type="button">Cancel</button>
+                    <button class="btn-confirm" id="positionSave" type="submit">Add Position</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -175,13 +210,31 @@ require_once __DIR__ . '/static-data.php';
             <form id="applicantForm" novalidate autocomplete="off">
 
                 <div class="form-grid">
-                    <div class="field" data-field="name">
-                        <label for="name">Full Name <span class="req">*</span></label>
-                        <div class="input-box">
-                            <svg class="field-icon" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-                            <input type="text" id="name" name="name" placeholder="Enter full name" maxlength="100" required>
+                    <div class="name-row field-wide">
+                        <div class="field" data-field="first_name">
+                            <label for="first_name">First Name <span class="req">*</span></label>
+                            <div class="input-box">
+                                <svg class="field-icon" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                                <input type="text" id="first_name" name="first_name" placeholder="Enter first name" maxlength="50" required>
+                            </div>
+                            <p class="field-error" role="alert"></p>
                         </div>
-                        <p class="field-error" role="alert"></p>
+                        <div class="field" data-field="middle_name">
+                            <label for="middle_name">Middle Name <span class="opt">(Optional)</span></label>
+                            <div class="input-box">
+                                <svg class="field-icon" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                                <input type="text" id="middle_name" name="middle_name" placeholder="Enter middle name" maxlength="50">
+                            </div>
+                            <p class="field-error" role="alert"></p>
+                        </div>
+                        <div class="field" data-field="last_name">
+                            <label for="last_name">Last Name <span class="req">*</span></label>
+                            <div class="input-box">
+                                <svg class="field-icon" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                                <input type="text" id="last_name" name="last_name" placeholder="Enter last name" maxlength="50" required>
+                            </div>
+                            <p class="field-error" role="alert"></p>
+                        </div>
                     </div>
 
                     <div class="field" data-field="email">
@@ -198,6 +251,34 @@ require_once __DIR__ . '/static-data.php';
                         <div class="input-box">
                             <svg class="field-icon" viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
                             <input type="tel" id="contact" name="contact" placeholder="Enter contact number" maxlength="20" inputmode="tel" required>
+                        </div>
+                        <p class="field-error" role="alert"></p>
+                    </div>
+
+                    <div class="field" data-field="position">
+                        <label id="positionLabel" for="positionBtn">Job Position <span class="req">*</span></label>
+                        <!-- Custom dropdown: the hidden input is what gets sent, the last row opens "Add Job Position" -->
+                        <div class="pd" id="positionDropdown">
+                            <input type="hidden" id="position_id" name="position_id" value="">
+                            <button type="button" class="pd-btn" id="positionBtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="positionMenu" aria-labelledby="positionLabel positionValue">
+                                <svg class="pd-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-6 0h-4V4h4v2z"/></svg>
+                                <span class="pd-value is-placeholder" id="positionValue">Select job position</span>
+                                <svg class="pd-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
+                            </button>
+                            <ul class="pd-menu" id="positionMenu" role="listbox" tabindex="-1" aria-labelledby="positionLabel">
+<?php foreach ($positions as $p): $hasJd = !empty($p['jd']['file']); ?>
+                                <li class="pd-opt" role="option" id="pd-opt-<?php echo (int) $p['id']; ?>" data-value="<?php echo (int) $p['id']; ?>" aria-selected="false">
+                                    <span class="pd-name"><?php echo htmlspecialchars((string) $p['name'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                    <span class="pd-tag<?php echo $hasJd ? ' has' : ''; ?>"><?php echo $hasJd ? 'PDF' : 'No PDF'; ?></span>
+                                    <svg class="pd-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>
+                                </li>
+<?php endforeach; ?>
+                                <li class="pd-sep" role="presentation"></li>
+                                <li class="pd-add" role="option" id="pd-add" data-action="add" aria-selected="false">
+                                    <span class="pd-plus" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/></svg></span>
+                                    <span>Add job position</span>
+                                </li>
+                            </ul>
                         </div>
                         <p class="field-error" role="alert"></p>
                     </div>
@@ -261,6 +342,7 @@ require_once __DIR__ . '/static-data.php';
                 <h4>Applicant Details</h4>
                 <dl>
                     <dt>Name:</dt><dd id="detName">-</dd>
+                    <dt>Job Position:</dt><dd id="detPosition">-</dd>
                     <dt>Email:</dt><dd id="detEmail">-</dd>
                     <dt>Contact Number:</dt><dd id="detContact">-</dd>
                 </dl>

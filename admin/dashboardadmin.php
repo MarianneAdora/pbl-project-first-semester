@@ -22,6 +22,7 @@ $stats    = static_admin_question_stats();       // Questionnaires Statistics: e
 $all_log  = static_activity();                   // everything HR and the Admin did, newest first
 $recent_view = static_admin_recent_activity(10);   // Recent Activities: the latest 10; a line is hidden 3 days after the Admin first saw it
 $recent   = $recent_view['rows'];
+$pending  = (int) $recent_view['pending'];       // HR password changes waiting for the Admin's approval
 $failure  = static_admin_failure_rates(5);       // Question-Level Failure Rate
 $risk     = static_admin_risk_flags();           // Risk Flag Breakdown by Factor
 $volume   = static_admin_volume();               // Applicant Volume Over Time
@@ -48,7 +49,9 @@ $stats_sub = $q_count . ' question' . ($q_count === 1 ? '' : 's') . ' · ' . (
 $log_total = (int) $recent_view['total'];
 $log_count = $log_total > 10 ? 'Latest 10 of ' . $log_total : $log_total . ' in total';
 
-$display_name = trim($_SESSION['user_name'] ?? '') !== '' ? $_SESSION['user_name'] : 'Admin';
+// The profile chip next to the greeting (name + picture saved in Settings; see hr/static-data.php)
+$profile      = static_profile_for_page('../hr/data/avatars/');
+$display_name = $profile['name'];
 $greeting     = 'Hello, ' . $display_name . '!';
 ?>
 <!DOCTYPE html>
@@ -102,6 +105,36 @@ $greeting     = 'Hello, ' . $display_name . '!';
             <div class="modal-actions">
                 <button type="button" class="modal-btn is-cancel" id="cancelLogout">Cancel</button>
                 <button type="button" class="modal-btn is-confirm" id="confirmLogout">Log Out</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- HR password change: opens when the Admin clicks a "Password Change Requested" line in Recent Activities -->
+    <div class="modal-backdrop" id="pwReqModal" role="dialog" aria-modal="true" aria-labelledby="pwReqTitle">
+        <div class="modal-card req-card">
+            <h3 id="pwReqTitle">Password change request</h3>
+            <p id="pwReqLead">An HR account asked to change its password.</p>
+
+            <dl class="req-facts">
+                <div><dt>HR account</dt><dd id="pwReqName"></dd></div>
+                <div><dt>Email</dt><dd id="pwReqEmail"></dd></div>
+                <div><dt>Requested</dt><dd id="pwReqWhen"></dd></div>
+                <div id="pwReqCurRow"><dt>Current password</dt><dd><span class="pw-val" id="pwReqCur"></span> <button type="button" class="pw-show" data-for="pwReqCur">Show</button></dd></div>
+                <div id="pwReqNewRow"><dt>New password</dt><dd><span class="pw-val" id="pwReqNew"></span> <button type="button" class="pw-show" data-for="pwReqNew">Show</button></dd></div>
+                <div><dt>Status</dt><dd id="pwReqStatus"></dd></div>
+            </dl>
+
+            <!-- only while the request is pending -->
+            <div class="req-reason" id="pwReqReasonBox">
+                <label for="pwReqReason">Reason if you reject <span>(optional, HR will read it)</span></label>
+                <textarea id="pwReqReason" maxlength="200" rows="2" placeholder="Example: please ask the Admin in person first."></textarea>
+            </div>
+            <p class="req-note" id="pwReqNote">If you approve, the new password works from the next login and the old one stops. Compare the two passwords above before you decide.</p>
+
+            <div class="modal-actions req-actions">
+                <button type="button" class="modal-btn is-cancel" id="pwReqClose">Close</button>
+                <button type="button" class="modal-btn is-reject" id="pwReqReject">Reject</button>
+                <button type="button" class="modal-btn is-approve" id="pwReqApprove">Approve</button>
             </div>
         </div>
     </div>
@@ -161,9 +194,20 @@ $greeting     = 'Hello, ' . $display_name . '!';
     <!-- Main Content Panel Area -->
     <main class="main-content">
         <!-- Top Greeting Header -->
-        <header class="content-header reveal" style="--i:1">
-            <h1 id="greeting" title="<?php echo htmlspecialchars($greeting, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($greeting, ENT_QUOTES, 'UTF-8'); ?></h1>
-            <p>Overview of the system activities and key information</p>
+        <header class="content-header has-profile reveal" style="--i:1">
+            <div class="header-text">
+                <h1 id="greeting" title="<?php echo htmlspecialchars($greeting, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($greeting, ENT_QUOTES, 'UTF-8'); ?></h1>
+                <p>Overview of the system activities and key information</p>
+            </div>
+
+            <!-- Your profile: click it to open Settings (change the picture, name, email, password) -->
+            <a class="profile-chip" id="profileChip" href="settingsadmin.php" title="Open your profile in Settings" aria-label="<?php echo htmlspecialchars($display_name . ', ' . $profile['role_label'] . '. Open your profile in Settings', ENT_QUOTES, 'UTF-8'); ?>">
+                <?php echo static_profile_avatar_html($display_name, $profile['avatar_url']); ?>
+                <span class="profile-meta">
+                    <strong><?php echo htmlspecialchars($display_name, ENT_QUOTES, 'UTF-8'); ?></strong>
+                    <small><?php echo htmlspecialchars($profile['role_label'], ENT_QUOTES, 'UTF-8'); ?></small>
+                </span>
+            </a>
         </header>
 
         <div class="admin-dashboard">
@@ -332,7 +376,11 @@ $greeting     = 'Hello, ' . $display_name . '!';
             <!-- Recent Activities: the latest 10 things HR and the Admin did in the system -->
             <section class="dash-card activity-card reveal" style="--i:9" id="recentActivities" aria-labelledby="activityTitle">
                 <div class="card-top">
-                    <h3 id="activityTitle">Recent Activities</h3>
+                    <div class="activity-title">
+                        <h3 id="activityTitle">Recent Activities</h3>
+                        <!-- HR password changes waiting for you: the line is clickable (approve / reject) -->
+                        <span class="pending-chip" id="pendingChip" hidden></span>
+                    </div>
                     <span class="activity-count"><?php echo htmlspecialchars($log_count, ENT_QUOTES, 'UTF-8'); ?></span>
                 </div>
                 <div class="table-responsive">
@@ -362,7 +410,7 @@ $greeting     = 'Hello, ' . $display_name . '!';
     <!-- Pass PHP Variables to JavaScript -->
     <script>
         window.ADMIN_NOTIFY = <?php echo json_encode(static_admin_notify(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
-        window.ADMIN_DASH = <?php echo json_encode(['stats' => $stats, 'activity' => $recent, 'volume' => $volume], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
+        window.ADMIN_DASH = <?php echo json_encode(['stats' => $stats, 'activity' => $recent, 'volume' => $volume, 'pending' => $pending], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
     </script>
     <!-- Shared admin behaviour first, then this page's script -->
     <script src="../assets/js/admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/admin.js'); ?>"></script>

@@ -14,10 +14,14 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {
 // Keeps the browser copy of the Archive in step with static-data.php
 require_once __DIR__ . '/static-data.php';
 
-// Starting values for the account fields: whoever logged in.
-// BACKEND: this is the logged-in user's row (name, email). Settings > Account saves back to it.
-$account_name  = trim((string) ($_SESSION['user_name'] ?? ''));
-$account_email = trim((string) ($_SESSION['user_email'] ?? ''));
+// Starting values for the account fields: the saved profile of whoever is logged in (name, email, picture),
+// and the newest password-change request (it waits for the Admin's approval).
+// Settings > Account saves back through static-data.php.
+$profile            = static_profile_for_page('data/avatars/');
+$account_name       = $profile['name'];
+$account_email      = $profile['email'];
+$account_avatar     = $profile['avatar'];
+$account_avatar_url = $profile['avatar_url'];
 ?>
 <!DOCTYPE html>
 <html lang="en" data-page="settinghr">
@@ -149,6 +153,26 @@ $account_email = trim((string) ($_SESSION['user_email'] ?? ''));
             <section class="set-card reveal" style="--i:2" aria-labelledby="accountTitle">
                 <h2 id="accountTitle">Account Settings</h2>
 
+                <!-- Profile picture: choose a photo, see it here at once, it is kept when you press SAVE below -->
+                <div class="set-field avatar-field" data-field="avatar">
+                    <div class="avatar-edit">
+                        <span class="avatar-slot" id="avatarPreview"><?php echo static_profile_avatar_html($account_name, $account_avatar_url, 'avatar-xl'); ?></span>
+                        <div class="avatar-edit-text">
+                            <label for="avatarFile" class="avatar-title">Profile picture</label>
+                            <p class="avatar-hint">Shown next to your name on the Dashboard. JPG, PNG or WEBP, up to 2 MB.</p>
+                            <div class="avatar-actions">
+                                <button type="button" class="avatar-btn" id="avatarPick">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/></svg>
+                                    Change photo
+                                </button>
+                                <button type="button" class="avatar-btn is-ghost" id="avatarRemove"<?php echo $account_avatar ? '' : ' hidden'; ?>>Remove photo</button>
+                            </div>
+                            <input type="file" id="avatarFile" accept="image/jpeg,image/png,image/webp" hidden>
+                        </div>
+                    </div>
+                    <p class="set-error" id="avatarError" role="alert"></p>
+                </div>
+
                 <div class="set-field" data-field="name">
                     <label for="setName">Name</label>
                     <div class="set-input">
@@ -183,6 +207,16 @@ $account_email = trim((string) ($_SESSION['user_email'] ?? ''));
                             Update Password
                         </button>
                     </div>
+                </div>
+
+                <!-- A new password only works after the Admin approves it. This box shows where the request is. -->
+                <div class="pw-status" id="pwStatus" role="status" aria-live="polite" hidden>
+                    <span class="pw-status-ico" id="pwStatusIco" aria-hidden="true"></span>
+                    <div class="pw-status-text">
+                        <strong id="pwStatusTitle"></strong>
+                        <span id="pwStatusSub"></span>
+                    </div>
+                    <button type="button" class="pw-status-btn" id="pwCancelReq" hidden>Cancel request</button>
                 </div>
             </section>
 
@@ -278,7 +312,7 @@ $account_email = trim((string) ($_SESSION['user_email'] ?? ''));
     <div class="modal-backdrop" id="pwModal" role="dialog" aria-modal="true" aria-labelledby="pwTitle">
         <div class="modal-card pw-modal">
             <h3 id="pwTitle">Update Password</h3>
-            <p>Choose a new password you do not use anywhere else.</p>
+            <p>Choose a new password you do not use anywhere else. It only starts to work after the Admin approves it. Until then, your current password stays.</p>
             <form id="pwForm" novalidate autocomplete="off">
                 <div class="set-field" data-field="pwCurrent">
                     <label for="pwCurrent">Current password</label>
@@ -313,7 +347,7 @@ $account_email = trim((string) ($_SESSION['user_email'] ?? ''));
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn-cancel" id="pwCancel">Cancel</button>
-                    <button type="submit" class="btn-blue" id="pwSubmit">Update Password</button>
+                    <button type="submit" class="btn-blue" id="pwSubmit">Send for Approval</button>
                 </div>
             </form>
         </div>
@@ -321,7 +355,12 @@ $account_email = trim((string) ($_SESSION['user_email'] ?? ''));
 
     <!-- Shared HR behaviour first, then this page's script -->
     <script>window.HR_SERVER_ARCHIVE = <?php echo json_encode(static_archive_sync(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
-    <script>window.HR_ACCOUNT = <?php echo json_encode(['name' => $account_name, 'email' => $account_email], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
+    <script>window.HR_ACCOUNT = <?php echo json_encode([
+        'name' => $account_name, 'email' => $account_email,
+        'avatar' => $account_avatar, 'avatarUrl' => $account_avatar_url, 'avatarBase' => $profile['avatar_base'],
+        'initials' => $profile['initials'], 'role' => 'hr', 'endpoint' => 'static-data.php',
+        'request' => $profile['request']
+    ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;</script>
     <script src="../assets/js/hr.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/hr.js'); ?>"></script>
 </body>
 </html>
