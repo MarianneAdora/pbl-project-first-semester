@@ -66,6 +66,13 @@ foreach ($applicants as $a) {
         if (new URLSearchParams(location.search).get('transition') === 'out') {
             document.documentElement.classList.add('is-transitioning');
         }
+        // Safety: if hr.js fails to load, never leave the page invisible
+        setTimeout(function () {
+            document.documentElement.classList.add('is-ready');
+            document.documentElement.classList.remove('is-transitioning');
+            var overlay = document.getElementById('pageOverlay');
+            if (overlay) overlay.classList.add('sweep-out');
+        }, 3000);
     </script>
 
     <!-- Google Fonts -->

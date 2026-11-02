@@ -13,6 +13,7 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {
 
 // HR settings page; archive sync is loaded from the database below.
 require_once __DIR__ . '/../src/Helpers/db.php';
+require_once __DIR__ . '/static-data.php';
 
 // Starting values for the account fields: the saved profile of whoever is logged in (name, email, picture),
 // and the newest password-change request (it waits for the Admin's approval).
@@ -43,6 +44,13 @@ $account_avatar_url = $profile['avatar_url'];
             document.documentElement.setAttribute('data-theme', t === 'dark' ? 'dark' : 'light');
             if (s.animations === false) document.documentElement.setAttribute('data-motion', 'off');
         } catch (e) {}
+        // Safety: if hr.js fails to load, never leave the page invisible
+        setTimeout(function () {
+            document.documentElement.classList.add('is-ready');
+            document.documentElement.classList.remove('is-transitioning');
+            var overlay = document.getElementById('pageOverlay');
+            if (overlay) overlay.classList.add('sweep-out');
+        }, 3000);
     </script>
 
     <!-- Google Fonts -->
