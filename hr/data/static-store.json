@@ -2108,7 +2108,8 @@
             "at": "2026-11-02 01:24:46",
             "activity": "Added An Applicant",
             "details": "Test Applicant",
-            "by": "HR"
+            "by": "HR",
+            "admin_seen_at": "2026-11-03 05:02:02"
         }
     ],
     "questions": [

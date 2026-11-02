@@ -15,6 +15,7 @@ date_default_timezone_set('Asia/Manila');
 
 require_once __DIR__ . '/../src/Repositories/AdminRepository.php';
 require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
+require_once __DIR__ . '/static-admin.php';
 
 // Every number on this page comes from static-admin.php (the one place for the admin sample data).
 // BACKEND: when the database is ready, only static-admin.php changes.

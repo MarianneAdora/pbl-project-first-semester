@@ -16,6 +16,7 @@ date_default_timezone_set('Asia/Manila');
 // Sidebar badges: new HR activity + archived questions/accounts expiring soon.
 require_once __DIR__ . '/../src/Helpers/db.php';
 require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
+require_once __DIR__ . '/../hr/static-data.php';
 
 // Starting values for the account fields: the saved profile of whoever is logged in (name, email, picture).
 // Settings > Account saves back to it through hr/static-data.php.
