@@ -689,13 +689,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // elements rise in just behind them.
         root.style.setProperty('--reveal-base', '0.3s');
 
-        // Wait for the first painted frame so the solid red is actually shown first
+        // Wait for the first painted frame so the solid red is actually shown first.
+        // (The head script already applies is-transitioning before first paint, so
+        // the red overlay is visible immediately on page load.)
         requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                root.classList.remove('is-transitioning');
-                pageOverlay.classList.add('sweep-out');
-                root.classList.add('is-ready');
-            });
+            root.classList.remove('is-transitioning');
+            pageOverlay.classList.add('sweep-out');
+            root.classList.add('is-ready');
         });
 
         // Remove only the transition flag from the URL (keep any other parts)

@@ -43,7 +43,7 @@ $positions = static_positions();
             document.documentElement.classList.remove('is-transitioning');
             var overlay = document.getElementById('pageOverlay');
             if (overlay) overlay.classList.add('sweep-out');
-        }, 3000);
+        }, 1000);
     </script>
 
     <!-- Google Fonts -->
@@ -68,6 +68,15 @@ $positions = static_positions();
         <div class="overlay-stripe stripe-7"></div>
         <div class="overlay-stripe stripe-8"></div>
     </div>
+    <!-- Start sweep-out immediately without waiting for hr.js to load -->
+    <script>
+        requestAnimationFrame(() => {
+            document.documentElement.classList.remove('is-transitioning');
+            document.documentElement.classList.add('is-ready');
+            var overlay = document.getElementById('pageOverlay');
+            if (overlay) overlay.classList.add('sweep-out');
+        });
+    </script>
 
     <!-- Logout Confirmation Modal -->
     <div class="modal-backdrop" id="logoutModal">
