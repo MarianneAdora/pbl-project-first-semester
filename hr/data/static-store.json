@@ -1587,7 +1587,7 @@
     "hr_accounts": [
         {
             "id": 1,
-            "name": "Edward Nashton",
+            "name": "The Riddler",
             "email": "hr@expertise.com",
             "role": "HR Staff",
             "status": "Active",
@@ -2124,7 +2124,8 @@
                     "from": "Photo",
                     "to": "New photo"
                 }
-            ]
+            ],
+            "admin_seen_at": "2026-11-03 14:53:53"
         },
         {
             "at": "2026-11-03 14:50:45",
@@ -2139,7 +2140,8 @@
                     "from": "Photo",
                     "to": "New photo"
                 }
-            ]
+            ],
+            "admin_seen_at": "2026-11-03 14:53:53"
         },
         {
             "at": "2026-11-03 14:53:03",
@@ -2154,7 +2156,24 @@
                     "from": "HR",
                     "to": "Edward Nashton"
                 }
-            ]
+            ],
+            "admin_seen_at": "2026-11-03 14:53:53"
+        },
+        {
+            "at": "2026-11-03 14:56:53",
+            "activity": "Name Changed",
+            "details": "Name: Edward Nashton → The Riddler",
+            "by": "HR",
+            "kind": "profile",
+            "owner": 1,
+            "changes": [
+                {
+                    "field": "Name",
+                    "from": "Edward Nashton",
+                    "to": "The Riddler"
+                }
+            ],
+            "admin_seen_at": "2026-11-03 14:57:12"
         }
     ],
     "questions": [
@@ -2387,7 +2406,7 @@
     ],
     "timeline_seeded": true,
     "admin_account": {
-        "name": "Admin",
+        "name": "Administrator",
         "email": "admin@expertise.com",
         "avatar": "admin-7978d8f0a326.jpg",
         "hash": "$2y$10$TggIZEgjf8zgB.We1aEKe.3O8MCiEYMRT00bM/d0P7MbyLZSuT77."

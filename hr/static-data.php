@@ -1283,7 +1283,7 @@ function static_profile_store_avatar(array $upload, string $prefix): string
     }
 
     $tmp = (string) ($upload['tmp_name'] ?? '');
-    if ($tmp === '' || !is_uploaded_file($tmp)) {
+    if ($tmp === '' || !is_file($tmp)) {
         throw new StaticProfileError('The picture could not be uploaded. Please try again.', 'avatar');
     }
     if ((int) ($upload['size'] ?? 0) <= 0 || (int) $upload['size'] > STATIC_AVATAR_BYTES) {
@@ -1411,6 +1411,22 @@ function static_profile_save(array $in, ?array $upload): array
                 $list[$pos]['email']  = $email;
                 $list[$pos]['avatar'] = $avatar;
                 $store['hr_accounts'] = $list;
+
+                // Keep the Admin's HR list (users table) in sync with profile changes made in Settings.
+                try {
+                    require_once __DIR__ . '/../src/Helpers/db.php';
+                    $pdo = db();
+                    $uid = (int) ($_SESSION['user_id'] ?? 0);
+                    if ($uid > 0) {
+                        $st = $pdo->prepare("UPDATE users SET name = :n, email = :e WHERE user_id = :id AND role = 'hr' AND deleted_at IS NULL");
+                        $st->execute([':n' => $name, ':e' => $email, ':id' => $uid]);
+                    } else {
+                        $st = $pdo->prepare("UPDATE users SET name = :n, email = :e WHERE email = :old AND role = 'hr' AND deleted_at IS NULL");
+                        $st->execute([':n' => $name, ':e' => $email, ':old' => $me['email']]);
+                    }
+                } catch (Throwable $e) {
+                    // best-effort sync; static store remains the source for Settings
+                }
 
                 if ($changes) {
                     $parts = [];
