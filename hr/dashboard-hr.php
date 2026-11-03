@@ -158,6 +158,17 @@ $profile = [
     'initials'       => static_profile_initials($display_name),
     'request'        => null
 ];
+// Use the profile saved in Settings (static store + Cloudinary) for the picture and name.
+try {
+    $sp = static_profile_for_page('data/avatars/');
+    if (trim((string) ($sp['name'] ?? '')) !== '') $display_name = (string) $sp['name'];
+    $profile['name']       = $display_name;
+    $profile['avatar']     = $sp['avatar'] ?? null;
+    $profile['avatar_url'] = $sp['avatar_url'] ?? '';
+    $profile['initials']   = static_profile_initials($display_name);
+} catch (Throwable $e) {
+    // keep fallbacks above
+}
 $avatar_html = static_profile_avatar_html($display_name, $profile['avatar_url']);
 
 // IDs of EVERY applicant whose status is Completed (backend: SELECT id ... WHERE status = 'Completed').
@@ -404,7 +415,7 @@ function status_badge(string $status): string
             </div>
 
             <!-- Your profile: click it to open Settings (change the picture, name, email, password) -->
-            <a class="profile-chip" id="profileChip" href="settinghr.php" title="Open your profile in Settings" aria-label="<?php echo htmlspecialchars($display_name . ', ' . $profile['role_label'] . '. Open your profile in Settings', ENT_QUOTES, 'UTF-8'); ?>">
+            <a class="profile-chip" id="profileChip" href="setting-hr.php" title="Open your profile in Settings" aria-label="<?php echo htmlspecialchars($display_name . ', ' . $profile['role_label'] . '. Open your profile in Settings', ENT_QUOTES, 'UTF-8'); ?>">
                 <?php echo $avatar_html; ?>
                 <span class="profile-meta">
                     <strong><?php echo htmlspecialchars($display_name, ENT_QUOTES, 'UTF-8'); ?></strong>

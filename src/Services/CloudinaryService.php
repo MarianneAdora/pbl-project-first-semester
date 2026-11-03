@@ -44,6 +44,7 @@ class CloudinaryService {
                 'header' => "Content-Type: multipart/form-data; boundary=$boundary\r\n",
                 'content' => $body,
                 'timeout' => 60,
+                'ignore_errors' => true,
             ],
             'ssl' => [
                 'verify_peer' => false,
@@ -123,10 +124,10 @@ class CloudinaryService {
         }
 
         $signed = [
-            'folder'          => $folderBase,
-            'public_id'       => $publicId,
-            'timestamp'       => $timestamp,
-            'type'            => 'private',
+            'folder'     => $folderBase,
+            'public_id'  => $publicId,
+            'timestamp'  => $timestamp,
+            'type'       => 'private',
             'unique_filename' => 'false',
             'use_filename'    => 'true',
         ];
@@ -181,10 +182,10 @@ class CloudinaryService {
 
         // 2. Generate Signature (folder + public_id + timestamp + overwrite, raw key=value string)
         $signed = [
-            'folder' => $folderBase,
-            'overwrite' => 'true',
-            'public_id' => $publicId,
-            'timestamp' => $timestamp,
+            'folder'      => $folderBase,
+            'overwrite'   => 'true',
+            'public_id'   => $publicId,
+            'timestamp'   => $timestamp,
             'unique_filename' => 'false',
         ];
         $signature = $this->signParams($signed);
@@ -214,6 +215,75 @@ class CloudinaryService {
             ];
         } else {
             throw new Exception("Cloudinary Video upload failed: " . $response);
+        }
+    }
+
+    /**
+     * Uploads a profile picture (JPG/PNG/WEBP) to Cloudinary.
+     * Layout: flat inside $folderBase (default 'ebsmi-user-profiles') — NO subfolders.
+     * Filename: avatar-{applicantId}-{original}, e.g. ebsmi-user-profiles/avatar-3-resume.jpg
+     * Type: image/* only; resource_type=auto; private so only proxies can serve it.
+     * Returns ['url', 'public_id', 'name'].
+     * @param string $filePath Local temp path of the uploaded file.
+     * @param int $applicantId 0 for Admin, HR id for HR staff (used in filename, NOT a subfolder).
+     * @param string $folderBase Cloudinary folder (default 'ebsmi-user-profiles').
+     * @param string|null $originalName Original client filename (e.g. $_FILES['avatar']['name']).
+     * @param string|null $mimeType MIME type (auto-detected when omitted).
+     * @return array ['url', 'public_id', 'name']
+     */
+    public function uploadAvatar($filePath, $applicantId = 0, $folderBase = 'ebsmi-user-profiles', $originalName = null, $mimeType = null) {
+        $timestamp = time();
+        $folderBase = trim((string) $folderBase) !== '' ? trim((string) $folderBase) : 'ebsmi-user-profiles';
+        $folderBase = trim($folderBase, '/');
+        $originalName = basename(trim((string) ($originalName ?? '')));
+        if ($originalName === '' || $originalName === '.') $originalName = 'avatar.jpg';
+        $safe = preg_replace('/[^A-Za-z0-9._-]+/', '-', $originalName);
+        $safe = trim($safe, '-.');
+        if ($safe === '') $safe = 'avatar.jpg';
+        $base = pathinfo($safe, PATHINFO_FILENAME);
+        $base = trim(preg_replace('/[^A-Za-z0-9_-]+/', '-', $base), '-');
+        if ($base === '') $base = 'avatar';
+        $publicId = 'avatar-' . ($applicantId ?? 'unassigned') . '-' . substr($base, 0, 60);
+        if (!$mimeType) {
+            $detected = function_exists('mime_content_type') ? @mime_content_type($filePath) : false;
+            $mimeType = $detected ?: 'application/octet-stream';
+        }
+        $detectedType = explode('/', $mimeType, 2)[0] ?? 'image';
+        if (!in_array($detectedType, ['image'], true)) {
+            throw new Exception("Cloudinary Avatar upload failed: only image files are allowed.");
+        }
+        $signed = [
+            'folder'     => $folderBase,
+            'public_id'  => $publicId,
+            'timestamp'  => $timestamp,
+            'type'       => 'private',
+            'unique_filename' => 'false',
+            'use_filename'    => 'true',
+        ];
+        $signature = $this->signParams($signed);
+        $url = "https://api.cloudinary.com/v1_1/{$this->cloudName}/upload";
+        $fields = [
+            'api_key'         => $this->apiKey,
+            'timestamp'       => $timestamp,
+            'folder'          => $folderBase,
+            'public_id'       => $publicId,
+            'type'            => 'private',
+            'use_filename'    => 'true',
+            'unique_filename' => 'false',
+            'signature'       => $signature,
+        ];
+        $files = ['file' => $filePath];
+        $response = $this->multipartPost($url, $fields, $files);
+        $httpCode = $this->httpCode();
+        if ($httpCode === 200) {
+            $result = json_decode($response, true);
+            return [
+                'url'       => $result['secure_url'] ?? '',
+                'public_id' => $result['public_id'] ?? ($folderBase . '/' . $publicId),
+                'name'      => $safe,
+            ];
+        } else {
+            throw new Exception('Cloudinary Avatar upload failed: ' . $response);
         }
     }
 }

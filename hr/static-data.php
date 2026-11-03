@@ -1124,7 +1124,7 @@ function static_purge_expired(): int
 
 
 const STATIC_AVATAR_DIR   = __DIR__ . '/data/avatars';       // where the pictures are kept (next to data/cv)
-const STATIC_AVATAR_BYTES = 2 * 1024 * 1024;                 // 2 MB at most
+const STATIC_AVATAR_BYTES = 10 * 1024 * 1024;                // 10 MB at most
 const STATIC_ADMIN_EMAIL  = 'admin@expertise.com';           // the Admin's email until the Admin changes it
 
 // An error the Settings page can show under a specific field ('name', 'email', 'avatar', 'pwCurrent', 'pwNew')
@@ -1236,13 +1236,17 @@ function static_profile_initials(string $name): string
 // A picture file name is only ever one we made ourselves: letters, digits and dashes + jpg / png / webp
 function static_profile_avatar_name_ok(?string $file): bool
 {
-    return $file !== null && $file !== '' && preg_match('/^[a-z0-9\-]+\.(?:jpg|png|webp)$/', $file) === 1;
+    // Cloudinary absolute URLs (res.cloudinary.com) are also accepted.
+    if (is_string($file) && strpos((string) $file, '://') !== false) return true;
+    return $file !== null && $file !== '' && preg_match('/^[a-z0-9\-]+\.(?:jpg|png|webp)$/', (string) $file) === 1;
 }
 
 // The address of the picture for a page ($base = how that page reaches hr/data/avatars/), '' when there is none.
 // ?v= is the file's time, so a new picture always shows (the file name changes too).
 function static_profile_avatar_url(?string $file, string $base): string
 {
+    // Cloudinary URL: return as-is (already includes /v= timestamp).
+    if (is_string($file) && strpos((string) $file, '://') !== false) return (string) $file;
     if (!static_profile_avatar_name_ok($file)) return '';
     $path = STATIC_AVATAR_DIR . '/' . $file;
     if (!is_file($path)) return '';
@@ -1272,7 +1276,7 @@ function static_profile_store_avatar(array $upload, string $prefix): string
 {
     $err = (int) ($upload['error'] ?? UPLOAD_ERR_NO_FILE);
     if ($err === UPLOAD_ERR_INI_SIZE || $err === UPLOAD_ERR_FORM_SIZE) {
-        throw new StaticProfileError('The picture is too big (2 MB at most).', 'avatar');
+        throw new StaticProfileError('The picture is too big (10 MB at most).', 'avatar');
     }
     if ($err !== UPLOAD_ERR_OK) {
         throw new StaticProfileError('The picture could not be uploaded. Please try again.', 'avatar');
@@ -1283,7 +1287,7 @@ function static_profile_store_avatar(array $upload, string $prefix): string
         throw new StaticProfileError('The picture could not be uploaded. Please try again.', 'avatar');
     }
     if ((int) ($upload['size'] ?? 0) <= 0 || (int) $upload['size'] > STATIC_AVATAR_BYTES) {
-        throw new StaticProfileError('The picture is too big (2 MB at most).', 'avatar');
+        throw new StaticProfileError('The picture is too big (10 MB at most).', 'avatar');
     }
 
     $info  = @getimagesize($tmp);
@@ -1291,16 +1295,25 @@ function static_profile_store_avatar(array $upload, string $prefix): string
     if (!$info || !isset($types[$info[2]])) {
         throw new StaticProfileError('Choose a JPG, PNG or WEBP picture.', 'avatar');
     }
+    // Derive the MIME type from getimagesize() so it is always a real image type,
+    // even if the server's mime_content_type() extension is missing or misconfigured.
+    $mimeType = $info[2] === IMAGETYPE_JPEG ? 'image/jpeg' : ($info[2] === IMAGETYPE_PNG ? 'image/png' : 'image/webp');
 
-    if (!is_dir(STATIC_AVATAR_DIR) && !@mkdir(STATIC_AVATAR_DIR, 0775, true)) {
-        throw new StaticProfileError('The picture could not be saved. Please try again.', 'avatar');
-    }
+    // Cloudinary upload — profile pictures are stored in the eb-smssi-user-profiles folder.
+    // Admin = 0, HR = numeric id extracted from the prefix ('hr-123' -> 123).
+    require_once __DIR__ . '/../src/Services/CloudinaryService.php';
+    $applicantId = ($prefix === 'admin') ? 0 : (int) substr($prefix, 3);
+    $cloud = new CloudinaryService();
+    $result = $cloud->uploadAvatar(
+        $tmp,
+        $applicantId,
+        'ebsmi-user-profiles',
+        null,
+        $mimeType   // pass the confirmed MIME type instead of relying on mime_content_type()
+    );
 
-    $file = $prefix . '-' . bin2hex(random_bytes(6)) . '.' . $types[$info[2]];
-    if (!@move_uploaded_file($tmp, STATIC_AVATAR_DIR . '/' . $file)) {
-        throw new StaticProfileError('The picture could not be saved. Please try again.', 'avatar');
-    }
-    return $file;
+    // Return the Cloudinary secure_url (e.g. https://res.cloudinary.com/y0s0brvb/image/upload/v.../avatar-123-my-photo.jpg)
+    return $result['url'];
 }
 
 /* ==========================================================================
@@ -1420,7 +1433,13 @@ function static_profile_save(array $in, ?array $upload): array
                 $store['admin_account'] = $adm;
             }
 
-            return ['name' => $name, 'email' => $email, 'avatar' => $avatar, 'changes' => $changes];
+            return [
+                'name' => $name,
+                'email' => $email,
+                'avatar' => $avatar,
+                'avatarUrl' => static_profile_avatar_url($avatar, $me['role'] === 'hr' ? 'data/avatars/' : '../hr/data/avatars/'),
+                'changes' => $changes
+            ];
         });
     } catch (Throwable $e) {
         static_profile_delete_avatar($newFile);         // the change failed: do not leave the new picture behind
@@ -1721,7 +1740,7 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
 
     // the server threw a form away (post_max_size): the picture was far too big
     if (!$_POST && !$_FILES && stripos($_SERVER['CONTENT_TYPE'] ?? '', 'application/json') === false && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
-        static_respond(['status' => 'error', 'message' => 'The picture is too big (2 MB at most).', 'field' => 'avatar'], 413);
+        static_respond(['status' => 'error', 'message' => 'The picture is too big (10 MB at most).', 'field' => 'avatar'], 413);
     }
 
     $action = (string) ($input['action'] ?? '');
@@ -1822,6 +1841,7 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
                         'name'     => $res['name'],
                         'email'    => $res['email'],
                         'avatar'   => $res['avatar'],
+                        'avatarUrl'=> $res['avatarUrl'] ?? '',
                         'avatar_v' => $apath !== '' && is_file($apath) ? (int) @filemtime($apath) : 0,
                         'initials' => static_profile_initials($res['name'])
                     ],

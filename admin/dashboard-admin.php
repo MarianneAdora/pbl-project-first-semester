@@ -203,7 +203,7 @@ $greeting     = 'Hello, ' . $display_name . '!';
             </div>
 
             <!-- Your profile: click it to open Settings (change the picture, name, email, password) -->
-            <a class="profile-chip" id="profileChip" href="settingsadmin.php" title="Open your profile in Settings" aria-label="<?php echo htmlspecialchars($display_name . ', ' . $profile['role_label'] . '. Open your profile in Settings', ENT_QUOTES, 'UTF-8'); ?>">
+            <a class="profile-chip" id="profileChip" href="settings-admin.php" title="Open your profile in Settings" aria-label="<?php echo htmlspecialchars($display_name . ', ' . $profile['role_label'] . '. Open your profile in Settings', ENT_QUOTES, 'UTF-8'); ?>">
                 <?php echo static_profile_avatar_html($display_name, $profile['avatar_url']); ?>
                 <span class="profile-meta">
                     <strong><?php echo htmlspecialchars($display_name, ENT_QUOTES, 'UTF-8'); ?></strong>

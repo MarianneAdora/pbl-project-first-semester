@@ -3421,7 +3421,7 @@ document.addEventListener('DOMContentLoaded', () => {
         account.name = p.name || state.name;
         account.email = p.email || state.email;
         account.avatar = p.avatar || null;
-        account.avatarUrl = p.avatar ? account.avatarBase + encodeURIComponent(p.avatar) + '?v=' + (p.avatar_v || 0) : '';
+        account.avatarUrl = p.avatarUrl || (p.avatar ? account.avatarBase + encodeURIComponent(p.avatar) + '?v=' + (p.avatar_v || 0) : '');
 
         const okSettings = ADMIN.settings.save({
             theme: state.theme,

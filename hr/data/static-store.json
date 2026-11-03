@@ -1587,13 +1587,13 @@
     "hr_accounts": [
         {
             "id": 1,
-            "name": "HR",
+            "name": "Edward Nashton",
             "email": "hr@expertise.com",
             "role": "HR Staff",
             "status": "Active",
             "created": "2026-08-03 09:00",
             "archived_at": null,
-            "avatar": "hr-1-06991a9599f4.jpg",
+            "avatar": "https://res.cloudinary.com/y0s0brvb/image/private/s--_gAHhkYe--/v1793688646/ebsmi-user-profiles/avatar-1-avatar.jpg",
             "hash": "$2y$10$Q7OyZfjLPSdGUh7VVRbCBeqvdUX.h7k32eInaPU.sEAYrhYr0Jr.2",
             "password_plain": "Hrr_12345"
         },
@@ -2110,6 +2110,51 @@
             "details": "Test Applicant",
             "by": "HR",
             "admin_seen_at": "2026-11-03 05:02:02"
+        },
+        {
+            "at": "2026-11-03 14:50:04",
+            "activity": "Profile Picture Changed",
+            "details": "Profile picture changed",
+            "by": "HR",
+            "kind": "profile",
+            "owner": 1,
+            "changes": [
+                {
+                    "field": "Profile picture",
+                    "from": "Photo",
+                    "to": "New photo"
+                }
+            ]
+        },
+        {
+            "at": "2026-11-03 14:50:45",
+            "activity": "Profile Picture Changed",
+            "details": "Profile picture changed",
+            "by": "HR",
+            "kind": "profile",
+            "owner": 1,
+            "changes": [
+                {
+                    "field": "Profile picture",
+                    "from": "Photo",
+                    "to": "New photo"
+                }
+            ]
+        },
+        {
+            "at": "2026-11-03 14:53:03",
+            "activity": "Name Changed",
+            "details": "Name: HR → Edward Nashton",
+            "by": "HR",
+            "kind": "profile",
+            "owner": 1,
+            "changes": [
+                {
+                    "field": "Name",
+                    "from": "HR",
+                    "to": "Edward Nashton"
+                }
+            ]
         }
     ],
     "questions": [
