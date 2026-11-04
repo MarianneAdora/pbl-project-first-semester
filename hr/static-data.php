@@ -856,16 +856,19 @@ function static_position_public(array $p): array
     return [
         'id'      => (int) $p['id'],
         'name'    => (string) $p['name'],
-        'has_jd'  => !empty($p['jd']['file']),
-        'jd_name' => !empty($p['jd']['name']) ? (string) $p['jd']['name'] : ''
+        'has_jd'  => !empty($p['jd']['url'] ?? $p['jd']['file']),
+        'jd_name' => !empty($p['jd']['name']) ? (string) $p['jd']['name'] : '',
+        'jd_url'  => !empty($p['jd']['url']) ? (string) $p['jd']['url'] : ''
     ];
 }
 
 // The address of a position's job description PDF, or '' when it has none.
+// Returns the Cloudinary URL when the position has one (new positions uploaded via
+// "+ Add job position"); falls back to the local data/jd/ file for seed positions.
 // $base = how the calling page reaches hr/data/  (applicant pages: '../hr/data/', HR pages: 'data/').
-// ?v= is the file's time, so a replaced PDF is never served from an old cache.
 function static_position_jd_url(?array $position, string $base): string
 {
+    if ($position && !empty($position['jd']['url'])) return (string) $position['jd']['url'];
     $file = $position['jd']['file'] ?? '';
     if (!is_string($file) || !preg_match('/^[A-Za-z0-9._\-]+\.pdf$/', $file)) return '';
     $path = STATIC_JD_DIR . '/' . $file;
@@ -915,10 +918,24 @@ function static_position_add(string $name, ?array $jdUpload = null): array
 
         $jd = null;
         if ($hasUpload) {
-            if (!is_dir(STATIC_JD_DIR) && !@mkdir(STATIC_JD_DIR, 0775, true)) throw new InvalidArgumentException('The job description could not be saved. Please try again.');
-            $file = 'jd-' . $id . '.pdf';
-            if (!@move_uploaded_file((string) $jdUpload['tmp_name'], STATIC_JD_DIR . '/' . $file)) throw new InvalidArgumentException('The job description could not be saved. Please try again.');
-            $jd = ['name' => basename((string) $jdUpload['name']), 'size' => (int) $jdUpload['size'], 'file' => $file];
+            try {
+                require_once __DIR__ . '/../src/Services/CloudinaryService.php';
+                $cloud = new CloudinaryService();
+                $uploaded = $cloud->uploadJobDescription(
+                    (string) $jdUpload['tmp_name'],
+                    $id,
+                    'ebsmi-job-position-pdfs',
+                    (string) ($jdUpload['name'] ?? '')
+                );
+                $jd = [
+                    'name' => $uploaded['name'],
+                    'size' => (int) $jdUpload['size'],
+                    'url'  => $uploaded['url'],
+                ];
+            } catch (Throwable $e) {
+                error_log('Job Description Cloudinary upload error: ' . $e->getMessage());
+                throw new InvalidArgumentException('The job description could not be uploaded. Please try again.');
+            }
         }
 
         $position = ['id' => $id, 'name' => $name, 'jd' => $jd, 'created' => static_now()->format('Y-m-d H:i'), 'archived_at' => null];

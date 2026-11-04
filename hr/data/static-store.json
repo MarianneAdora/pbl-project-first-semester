@@ -1587,7 +1587,7 @@
     "hr_accounts": [
         {
             "id": 1,
-            "name": "The Riddler",
+            "name": "Edward Nashton",
             "email": "hr@expertise.com",
             "role": "HR Staff",
             "status": "Active",
@@ -2174,6 +2174,22 @@
                 }
             ],
             "admin_seen_at": "2026-11-03 14:57:12"
+        },
+        {
+            "at": "2026-11-03 15:00:02",
+            "activity": "Name Changed",
+            "details": "Name: The Riddler → Edward Nashton",
+            "by": "HR",
+            "kind": "profile",
+            "owner": 1,
+            "changes": [
+                {
+                    "field": "Name",
+                    "from": "The Riddler",
+                    "to": "Edward Nashton"
+                }
+            ],
+            "admin_seen_at": "2026-11-03 15:00:31"
         }
     ],
     "questions": [

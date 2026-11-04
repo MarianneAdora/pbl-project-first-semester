@@ -162,6 +162,76 @@ class CloudinaryService {
     }
 
     /**
+     * Uploads a job description PDF to Cloudinary.
+     * Layout: flat inside $folderBase (default 'ebsmi-job-position-pdfs') — NO subfolders.
+     * Filename: jd-{positionId}-{original}, e.g. ebsmi-job-position-pdfs/jd-5-job-description.pdf
+     * (unique_filename=false, so re-uploading overwrites it).
+     * Type: default (public) so applicants can view the PDF; resource_type=auto makes PDFs previewable.
+     * Returns ['url', 'public_id', 'name'].
+     * @param string $filePath     Local temp path of the uploaded file.
+     * @param mixed $positionId    Position id (used in the filename, NOT a subfolder).
+     * @param string $folderBase   Cloudinary folder (default 'ebsmi-job-position-pdfs').
+     * @param string|null $originalName Original client filename (e.g. $_FILES['jd']['name']).
+     * @param string|null $mimeType MIME type (auto-detected when omitted).
+     * @return array ['url', 'public_id', 'name']
+     */
+    public function uploadJobDescription($filePath, $positionId = null, $folderBase = 'ebsmi-job-position-pdfs', $originalName = null, $mimeType = null) {
+        $timestamp = time();
+        $folderBase = trim((string) $folderBase) !== '' ? trim((string) $folderBase) : 'ebsmi-job-position-pdfs';
+        $folderBase = trim($folderBase, '/');
+
+        $originalName = basename(trim((string) ($originalName ?? '')));
+        if ($originalName === '' || $originalName === '.') $originalName = 'jd.pdf';
+        $safe = preg_replace('/[^A-Za-z0-9._-]+/', '-', $originalName);
+        $safe = trim($safe, '-.');
+        if ($safe === '') $safe = 'jd.pdf';
+        $base = pathinfo($safe, PATHINFO_FILENAME);
+        $base = trim(preg_replace('/[^A-Za-z0-9_-]+/', '-', $base), '-');
+        if ($base === '') $base = 'jd';
+        $publicId = 'jd-' . ($positionId ?? 'unassigned') . '-' . substr($base, 0, 60);
+
+        if (!$mimeType) {
+            $detected = function_exists('mime_content_type') ? @mime_content_type($filePath) : false;
+            $mimeType = $detected ?: 'application/pdf';
+        }
+
+        $signed = [
+            'folder'     => $folderBase,
+            'public_id'  => $publicId,
+            'timestamp'  => $timestamp,
+            'unique_filename' => 'false',
+            'use_filename'    => 'true',
+        ];
+        $signature = $this->signParams($signed);
+
+        $url = "https://api.cloudinary.com/v1_1/{$this->cloudName}/auto/upload";
+        $fields = [
+            'api_key'         => $this->apiKey,
+            'timestamp'       => $timestamp,
+            'folder'          => $folderBase,
+            'public_id'       => $publicId,
+            'use_filename'    => 'true',
+            'unique_filename' => 'false',
+            'signature'       => $signature,
+        ];
+        $files = ['file' => $filePath];
+
+        $response = $this->multipartPost($url, $fields, $files);
+        $httpCode = $this->httpCode();
+
+        if ($httpCode === 200) {
+            $result = json_decode($response, true);
+            return [
+                'url'       => $result['secure_url'] ?? '',
+                'public_id' => $result['public_id'] ?? ($folderBase . '/' . $publicId),
+                'name'      => $safe,
+            ];
+        } else {
+            throw new Exception('Cloudinary Job Description upload failed: ' . $response);
+        }
+    }
+
+    /**
      * Uploads an applicant video to Cloudinary and returns its URL + SHA-256 hash.
      * Layout: flat inside $folderBase (default 'ebsmi-shortlist-applicant-videos') — NO per-applicant subfolders.
      * Filename: video-{applicantId}-{timestamp}, e.g. ebsmi-shortlist-applicant-videos/video-9-1729...
