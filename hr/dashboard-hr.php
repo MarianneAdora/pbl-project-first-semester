@@ -659,7 +659,7 @@ function status_badge(string $status): string
                     <div class="qa-body">
                         <p class="quick-action-text">Add Shortlisted Applicants</p>
                         <p class="quick-action-sub">Register a new applicant and add them to the screening list.</p>
-                        <a href="addapplicants.php" class="btn-add-new">
+                        <a href="add-applicants.php" class="btn-add-new">
                             <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
                             ADD NEW
                         </a>
