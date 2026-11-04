@@ -68,7 +68,6 @@ function repo_admin_questions_list(?PDO $pdo = null): array
 
         $type = (string) $r['question_type'];
         $text = (string) $r['question_text'];
-        if (!empty($cfg['link']['text'])) $text = str_replace('{link}', $cfg['link']['text'], $text);
 
         $q = [
             'id'         => 'q' . $r['question_id'],

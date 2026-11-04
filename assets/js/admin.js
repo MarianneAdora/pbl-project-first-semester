@@ -1414,7 +1414,7 @@ document.addEventListener('DOMContentLoaded', () => {
         consent: ['body', 'checkbox']
     };
 
-    const hasLink = () => textInput.value.indexOf('{link}') !== -1;
+    const hasLink = () => !!(Q && Q.link);
 
     function showTypeBox() {
         const type = typeDD.getValue();
