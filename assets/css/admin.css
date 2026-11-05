@@ -4462,3 +4462,21 @@ html:where([data-page="settingsadmin"])[data-theme="dark"] .tile-face { backgrou
 /* Collapsed sidebar: only the round picture stays */
 :where(html[data-page="dashboardadmin"], html[data-page="hrlist"], html[data-page="questionlist"], html[data-page="archiveadmin"], html[data-page="addhr"], html[data-page="addquestion"]) .sidebar.collapsed .profile-chip.sidebar-profile { justify-content: center; padding: 8px 0; background: transparent; border-color: transparent; }
 :where(html[data-page="dashboardadmin"], html[data-page="hrlist"], html[data-page="questionlist"], html[data-page="archiveadmin"], html[data-page="addhr"], html[data-page="addquestion"]) .sidebar.collapsed .profile-meta { display: none; }
+
+/* ---------- Sidebar profile: keep the picture exactly centred in its box ---------- */
+:where(html[data-page="dashboardadmin"], html[data-page="hrlist"], html[data-page="questionlist"], html[data-page="archiveadmin"], html[data-page="addhr"], html[data-page="addquestion"]) .sidebar .profile-chip.sidebar-profile { box-sizing: border-box; }
+:where(html[data-page="dashboardadmin"], html[data-page="hrlist"], html[data-page="questionlist"], html[data-page="archiveadmin"], html[data-page="addhr"], html[data-page="addquestion"]) .sidebar.collapsed .profile-chip.sidebar-profile {
+    width: 100%; min-width: 0; min-height: 56px; padding: 8px 0; gap: 0;
+    justify-content: center; align-items: center;
+}
+:where(html[data-page="dashboardadmin"], html[data-page="hrlist"], html[data-page="questionlist"], html[data-page="archiveadmin"], html[data-page="addhr"], html[data-page="addquestion"]) .sidebar.collapsed .profile-chip .avatar { margin: 0; }
+
+/* ---------- Narrow window: the sidebar shrinks to icons by itself, so the profile card does the same ---------- */
+@media (max-width: 760px) {
+    :where(html[data-page="dashboardadmin"], html[data-page="hrlist"], html[data-page="questionlist"], html[data-page="archiveadmin"], html[data-page="addhr"], html[data-page="addquestion"]) .sidebar .profile-meta { display: none; }
+    :where(html[data-page="dashboardadmin"], html[data-page="hrlist"], html[data-page="questionlist"], html[data-page="archiveadmin"], html[data-page="addhr"], html[data-page="addquestion"]) .sidebar .profile-chip.sidebar-profile {
+        box-sizing: border-box; width: 100%; min-width: 0; padding: 8px 0; gap: 0;
+        justify-content: center; align-items: center;
+    }
+    :where(html[data-page="dashboardadmin"], html[data-page="hrlist"], html[data-page="questionlist"], html[data-page="archiveadmin"], html[data-page="addhr"], html[data-page="addquestion"]) .sidebar .profile-chip .avatar { margin: 0; }
+}

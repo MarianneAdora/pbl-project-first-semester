@@ -7507,3 +7507,39 @@ html[data-motion="off"] .spinner {              /* a loading spinner still has t
 /* Collapsed sidebar: only the round picture stays */
 :where(html[data-page="screeninglist"], html[data-page="addapplicants"], html[data-page="archive"]) .sidebar.collapsed .profile-chip.sidebar-profile { justify-content: center; padding: 8px 0; background: transparent; border-color: transparent; }
 :where(html[data-page="screeninglist"], html[data-page="addapplicants"], html[data-page="archive"]) .sidebar.collapsed .profile-meta { display: none; }
+
+/* ---------- Sidebar profile: keep the picture exactly centred in its box ---------- */
+:where(html[data-page="dashboardhr"], html[data-page="screeninglist"], html[data-page="addapplicants"], html[data-page="archive"]) .sidebar .profile-chip.sidebar-profile { box-sizing: border-box; }
+:where(html[data-page="dashboardhr"], html[data-page="screeninglist"], html[data-page="addapplicants"], html[data-page="archive"]) .sidebar.collapsed .profile-chip.sidebar-profile {
+    width: 100%; min-width: 0; min-height: 56px; padding: 8px 0; gap: 0;
+    justify-content: center; align-items: center;
+}
+:where(html[data-page="dashboardhr"], html[data-page="screeninglist"], html[data-page="addapplicants"], html[data-page="archive"]) .sidebar.collapsed .profile-chip .avatar { margin: 0; }
+
+/* ==========================================================================
+   Narrow window (760px or less): the sidebar shrinks to icons by itself,
+   exactly like the collapsed sidebar (and like the Admin pages)
+   ========================================================================== */
+@media (max-width: 760px) {
+    .sidebar { width: 78px; padding: 24px 10px; }          /* 10px sides, like the Admin: gives the picture room inside its box */
+    .sidebar .sidebar-header { justify-content: center; padding: 0; }
+    .sidebar .brand-container { max-width: 0; opacity: 0; }
+    .sidebar .toggle-btn { display: none; }               /* nothing left to toggle */
+    .sidebar .nav-text { opacity: 0; display: none; }
+    .sidebar .dropdown-arrow-btn { display: none; }
+    .sidebar .sub-menu { display: none; }
+    .sidebar .nav-badge {
+        position: absolute; top: 3px; right: 5px;
+        min-width: 18px; height: 18px; padding: 0 5px; margin: 0;
+        font-size: 10px; box-shadow: 0 0 0 2px #a3081e;
+    }
+    .sidebar .nav-group.active .nav-main-link .nav-badge:not([hidden]) { display: inline-flex; }
+
+    /* profile card: only the round picture, centred in its box */
+    .sidebar .profile-chip.sidebar-profile {
+        box-sizing: border-box; width: 100%; min-width: 0; min-height: 56px;
+        padding: 8px 0; gap: 0; justify-content: center; align-items: center;
+    }
+    .sidebar .profile-chip.sidebar-profile .profile-meta { display: none; }
+    .sidebar .profile-chip .avatar { margin: 0; }
+}
