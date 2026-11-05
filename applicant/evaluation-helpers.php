@@ -343,6 +343,37 @@ function static_run_evaluation(): array
     $pdo = db();
     $scorer = new RiskScoringService($pdo);
     $result = $scorer->score($applicantId);
+
+    // Consistency factor (best-effort, bounded 0-3 pts)
+    try {
+        require_once __DIR__ . '/../src/Services/GeminiAnswerConsistencyService.php';
+        require_once __DIR__ . '/applicant-helpers.php';
+        $questions = static_questionnaire();
+        $stAns = $pdo->prepare("SELECT answers_json FROM response WHERE applicant_id = :id LIMIT 1");
+        $stAns->execute([':id' => $applicantId]);
+        $ansRow = $stAns->fetch();
+        $answers = json_decode((string) ($ansRow['answers_json'] ?? '{}'), true);
+        $answers = is_array($answers) ? $answers : [];
+        if (!empty($questions) && !empty($answers)) {
+            $consService = new GeminiAnswerConsistencyService();
+            $consistency = $consService->evaluate($questions, $answers);
+            $consPts = max(0, min(3, (int) ($consistency['points'] ?? 0)));
+            $issues  = is_array($consistency['issues'] ?? null) ? $consistency['issues'] : [];
+            $reason  = trim((string) ($consistency['reason'] ?? ''));
+            if ($reason === '') $reason = $consPts > 0 ? 'Inconsistent or irrelevant answers detected.' : 'No inconsistent or irrelevant answers detected.';
+            if ($issues) $reason .= ' Issues: ' . implode('; ', $issues);
+            $result['factors'][] = ['label' => 'Inconsistent or irrelevant answers', 'points' => $consPts, 'max' => 3, 'reason' => $reason];
+            $result['points'] = array_sum(array_column($result['factors'], 'points'));
+            $cfg = require __DIR__ . '/../config/risk_config.php';
+            $band = $result['points'] <= $cfg['bands']['low_max'] ? 'Low' : ($result['points'] <= $cfg['bands']['medium_max'] ? 'Medium' : 'High');
+            if (!empty($result['autoWhy'])) $band = 'High';
+            $result['band'] = $band;
+            $result['consistency'] = ['points' => $consPts, 'issues' => $issues, 'reason' => $reason];
+        }
+    } catch (Throwable $e) {
+        error_log('static_run_evaluation consistency error: ' . $e->getMessage());
+    }
+
     $scorer->saveScore($applicantId, $result);
 
     $_SESSION['screening_submitted'] = true;

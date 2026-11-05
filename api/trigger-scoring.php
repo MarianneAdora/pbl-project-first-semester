@@ -80,6 +80,65 @@ try {
     $scorer  = new RiskScoringService($pdo);
     $result  = $scorer->score($applicantId);
 
+    // ---- Gemini answer-consistency factor (best-effort, bounded 0-3 pts) ----
+    // Detects semantic contradictions / irrelevant answers across the WHOLE
+    // question set, so it stays flexible when admins add/change questions.
+    // Never blocks submission; falls back to 0 pts on any error.
+    $consistency = ['points' => 0, 'reason' => 'Not evaluated.', 'issues' => []];
+    try {
+        require_once __DIR__ . '/../applicant/applicant-helpers.php';
+        $questions = static_questionnaire();
+        if (empty($questions)) {
+            require_once __DIR__ . '/../src/Repositories/AdminRepository.php';
+            $questions = db_questions_for_applicant($pdo);
+        }
+
+        $stAns = $pdo->prepare("SELECT answers_json FROM response WHERE applicant_id = :id LIMIT 1");
+        $stAns->execute([':id' => $applicantId]);
+        $ansRow = $stAns->fetch();
+        $answers = json_decode((string) ($ansRow['answers_json'] ?? '{}'), true);
+        $answers = is_array($answers) ? $answers : [];
+
+        if (!empty($questions) && !empty($answers)) {
+            require_once __DIR__ . '/../src/Services/GeminiAnswerConsistencyService.php';
+            $consService = new GeminiAnswerConsistencyService();
+            $consistency = $consService->evaluate($questions, $answers);
+        }
+    } catch (Throwable $e) {
+        error_log('trigger-scoring consistency error: ' . $e->getMessage());
+        $consistency = ['points' => 0, 'reason' => 'Consistency evaluation failed; not scored.', 'issues' => []];
+    }
+
+    $consPts = max(0, min(3, (int) ($consistency['points'] ?? 0)));
+    $issues  = is_array($consistency['issues'] ?? null) ? $consistency['issues'] : [];
+    $reason  = trim((string) ($consistency['reason'] ?? ''));
+    if ($reason === '') {
+        $reason = $consPts > 0 ? 'Inconsistent or irrelevant answers detected.' : 'No inconsistent or irrelevant answers detected.';
+    }
+    if ($issues) {
+        $reason .= ' Issues: ' . implode('; ', $issues);
+    }
+
+    $result['factors'][] = [
+        'label'  => 'Inconsistent or irrelevant answers',
+        'points' => $consPts,
+        'max'    => 3,
+        'reason' => $reason,
+    ];
+    $result['points'] = array_sum(array_column($result['factors'], 'points'));
+
+    $cfg = require __DIR__ . '/../config/risk_config.php';
+    $band = $result['points'] <= $cfg['bands']['low_max'] ? 'Low'
+          : ($result['points'] <= $cfg['bands']['medium_max'] ? 'Medium' : 'High');
+    if (!empty($result['autoWhy'])) $band = 'High';
+    $result['band'] = $band;
+
+    $result['consistency'] = [
+        'points' => $consPts,
+        'issues' => $issues,
+        'reason' => $reason,
+    ];
+
     // Persist score + mirror outcome on applicant row FIRST, so a slow/failed
     // Gemini call can never leave the applicant stuck in "under review".
     $result['narrative'] = [];

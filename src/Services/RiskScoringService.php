@@ -509,6 +509,7 @@ class RiskScoringService
                 'factors'   => $result['factors'],
                 'knockouts' => $result['knockouts'],
                 'outcome'   => $result['outcome'],
+                'consistency' => $result['consistency'] ?? [],
             ], JSON_UNESCAPED_UNICODE),
             ':narr'  => json_encode($result['narrative'] ?? [], JSON_UNESCAPED_UNICODE),
             ':dec'   => $riskLevel,

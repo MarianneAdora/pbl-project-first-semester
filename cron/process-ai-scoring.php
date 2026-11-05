@@ -14,7 +14,9 @@ define('TRIGGER_SCORING_INTERNAL', true);
 require_once __DIR__ . '/../src/Helpers/db.php';
 require_once __DIR__ . '/../src/Services/RiskScoringService.php';
 require_once __DIR__ . '/../src/Services/GeminiRiskService.php';
+require_once __DIR__ . '/../src/Services/GeminiAnswerConsistencyService.php';
 require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
+require_once __DIR__ . '/../applicant/applicant-helpers.php';
 
 $pdo = db();
 
@@ -44,6 +46,40 @@ foreach ($pending as $applicantId) {
     $applicantId = (int) $applicantId;
     try {
         $result    = $scorer->score($applicantId);
+
+        // Consistency factor (best-effort, bounded 0-3 pts)
+        $consistency = ['points' => 0, 'reason' => 'Not evaluated.', 'issues' => []];
+        try {
+            $questions = static_questionnaire();
+            if (empty($questions)) {
+                require_once __DIR__ . '/../src/Repositories/AdminRepository.php';
+                $questions = db_questions_for_applicant($pdo);
+            }
+            $stAns = $pdo->prepare("SELECT answers_json FROM response WHERE applicant_id = :id LIMIT 1");
+            $stAns->execute([':id' => $applicantId]);
+            $ansRow = $stAns->fetch();
+            $answers = json_decode((string) ($ansRow['answers_json'] ?? '{}'), true);
+            $answers = is_array($answers) ? $answers : [];
+            if (!empty($questions) && !empty($answers)) {
+                $consService = new GeminiAnswerConsistencyService();
+                $consistency = $consService->evaluate($questions, $answers);
+            }
+        } catch (Throwable $e) {
+            error_log("cron consistency error for applicant $applicantId: " . $e->getMessage());
+        }
+        $consPts = max(0, min(3, (int) ($consistency['points'] ?? 0)));
+        $issues  = is_array($consistency['issues'] ?? null) ? $consistency['issues'] : [];
+        $reason  = trim((string) ($consistency['reason'] ?? ''));
+        if ($reason === '') $reason = $consPts > 0 ? 'Inconsistent or irrelevant answers detected.' : 'No inconsistent or irrelevant answers detected.';
+        if ($issues) $reason .= ' Issues: ' . implode('; ', $issues);
+        $result['factors'][] = ['label' => 'Inconsistent or irrelevant answers', 'points' => $consPts, 'max' => 3, 'reason' => $reason];
+        $result['points'] = array_sum(array_column($result['factors'], 'points'));
+        $cfg = require __DIR__ . '/../config/risk_config.php';
+        $band = $result['points'] <= $cfg['bands']['low_max'] ? 'Low' : ($result['points'] <= $cfg['bands']['medium_max'] ? 'Medium' : 'High');
+        if (!empty($result['autoWhy'])) $band = 'High';
+        $result['band'] = $band;
+        $result['consistency'] = ['points' => $consPts, 'issues' => $issues, 'reason' => $reason];
+
         $applicant = repo_find_applicant($applicantId, $pdo);
         try {
             $result['narrative'] = $gemini->narrative($applicant ?? [], $result);
