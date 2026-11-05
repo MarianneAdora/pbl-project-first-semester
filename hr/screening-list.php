@@ -126,6 +126,28 @@ foreach ($archived_rows as $a) {
             </button>
         </div>
 
+        <?php
+        // Profile card: the name + picture saved in Settings (clicking it opens Settings)
+        require_once __DIR__ . '/static-data.php';
+        $sbp_name = trim((string) ($_SESSION['user_name'] ?? 'HR'));
+        $sbp_role = 'HR Staff';
+        try {
+            $sbp = static_profile_for_page('data/avatars/');
+            if (trim((string) ($sbp['name'] ?? '')) !== '') $sbp_name = (string) $sbp['name'];
+            $sbp_role = (string) ($sbp['role_label'] ?? 'HR Staff');
+            $sbp_html = static_profile_avatar_html($sbp_name, (string) ($sbp['avatar_url'] ?? ''));
+        } catch (Throwable $e) {
+            $sbp_html = static_profile_avatar_html($sbp_name, '');
+        }
+        ?>
+        <a class="profile-chip sidebar-profile reveal" id="profileChip" href="setting-hr.php" style="--i:1" title="<?php echo htmlspecialchars($sbp_name . ' - open your profile in Settings', ENT_QUOTES, 'UTF-8'); ?>" aria-label="<?php echo htmlspecialchars($sbp_name . ', ' . $sbp_role . '. Open your profile in Settings', ENT_QUOTES, 'UTF-8'); ?>">
+            <?php echo $sbp_html; ?>
+            <span class="profile-meta">
+                <strong><?php echo htmlspecialchars($sbp_name, ENT_QUOTES, 'UTF-8'); ?></strong>
+                <small><?php echo htmlspecialchars($sbp_role, ENT_QUOTES, 'UTF-8'); ?></small>
+            </span>
+        </a>
+
         <nav class="sidebar-nav">
             <a href="dashboard-hr.php" class="nav-item reveal" style="--i:1">
                 <svg class="nav-icon" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
