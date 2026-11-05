@@ -24,6 +24,7 @@ try {
 } catch (Throwable $e) {
     $stats = ['total' => 0, 'pending' => 0, 'in_progress' => 0, 'completed' => 0, 'passed' => 0, 'failed' => 0];
 }
+
 /* Original hard-coded numbers (kept for reference):
 $stats = [
     'total'       => 35,

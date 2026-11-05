@@ -10,6 +10,21 @@ INSERT INTO users (role, name, email, password_hash) VALUES
     ('hr',    'HR Staff',     'hr@expertise.com',    '$2y$10$KSG4v4z3WMhknlDs8LZf3.d066DL98eITbXnpPboAXQ5P6es4fFuy');
 
 
+-- =============================================================
+-- APPLICANTS
+-- One row per invited applicant.
+-- =============================================================
+DELETE FROM applicant;
+
+INSERT INTO applicant (reference_code, secure_token, encoded_by_user_id, name, first_name, middle_name, last_name, name_normalized, email, email_normalized, phone_number, cv_file_url, cv_hash, verified_at, status, result, invited_at, submitted_at, passed_at, deleted_at, created_at) VALUES
+('APP001', 'tok001', 1, 'Maria Clara Santos', 'Maria', 'Clara', 'Santos', 'maria clara santos', 'maria.santos@example.com', 'maria.santos@example.com', '+639171234567', NULL, NULL, '2026-10-06 07:50:15', 'completed', 'passed', '2026-10-01 07:50:15', '2026-09-26 07:50:15', '2026-09-16 07:50:15', NULL, NOW()),
+('APP002', 'tok002', 1, 'Juan Dela Cruz', 'Juan', '', 'Dela Cruz', 'juan dela cruz', 'juan.dela.cruz@example.com', 'juan.dela.cruz@example.com', '+639177654321', NULL, NULL, '2026-10-20 07:50:15', 'completed', 'rejected', '2026-10-30 07:50:15', '2026-10-25 07:50:15', NULL, NOW()),
+('APP003', 'tok003', 1, 'Pedro Reyes', 'Pedro', '', 'Reyes', 'pedro reyes', 'pedro.reyes@example.com', 'pedro.reyes@example.com', '+639179998877', NULL, NULL, NULL, 'in_progress', NULL, '2026-10-26 07:50:15', NULL, NULL, NOW()),
+('APP004', 'tok004', 1, 'Ana Garcia', 'Ana', '', 'Garcia', 'ana garcia', 'ana.garcia@example.com', 'ana.garcia@example.com', '+639175556666', NULL, NULL, NULL, 'pending', NULL, NULL, NULL, NOW()),
+('APP005', 'tok005', 1, 'Luis Martinez', 'Luis', '', 'Martinez', 'luis martinez', 'luis.martinez@example.com', 'luis.martinez@example.com', '+639174445555', '2026-11-01 07:50:15', 'completed', 'passed', '2026-10-22 07:50:15', '2026-10-12 07:50:15', '2026-10-02 07:50:15', NULL, NOW()),
+('APP006', 'tok006', 1, 'Rocio Fernandez', 'Rocio', '', 'Fernandez', 'rocio fernandez', 'rocio.fernandez@example.com', 'rocio.fernandez@example.com', '+639173332222', NULL, NULL, '2026-10-28 07:50:15', 'completed', 'passed', '2026-10-24 07:50:15', '2026-10-14 07:50:15', '2026-10-04 07:50:15', NULL, NOW()),
+('APP007', 'tok007', 1, 'Chen Wei', 'Chen', '', 'Wei', 'chen wei', 'chen.wei@example.com', 'chen.wei@example.com', '+639178887777', NULL, NULL, '2026-11-01 07:50:15', 'completed', 'rejected', '2026-10-25 07:50:15', '2026-10-19 07:50:15', NULL, NOW()),
+('APP008', 'tok008', 1, 'Sophie Bernard', 'Sophie', '', 'Bernard', 'sophie bernard', 'sophie.bernard@example.com', 'sophie.bernard@example.com', '+639177778888', NULL, NULL, '2026-11-01 07:50:15', 'in_progress', NULL, '2026-11-01 07:50:15', NULL, NULL, NOW());
 -- ============================================================
 -- QUESTIONS
 -- 13 questions across 5 sections. Safe to re-run (DELETE first).
