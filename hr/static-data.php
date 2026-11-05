@@ -235,10 +235,10 @@ function static_dashboard_empty_insights(): array
 {
     $bins = static_time_bins();
     $stages = [
-        ['key' => 'applied',   'label' => 'Applied',                'count' => 0, 'url' => 'screeninglist.php?status=all'],
+        ['key' => 'applied',   'label' => 'Applied',                'count' => 0, 'url' => 'screening-list.php?status=all'],
         ['key' => 'started',   'label' => 'Started Screening',      'count' => 0, 'url' => ''],
-        ['key' => 'completed', 'label' => 'Completed Questionnaire', 'count' => 0, 'url' => 'screeninglist.php?status=Completed'],
-        ['key' => 'passed',    'label' => 'Passed Screening',       'count' => 0, 'url' => 'screeninglist.php?status=Passed'],
+        ['key' => 'completed', 'label' => 'Completed Questionnaire', 'count' => 0, 'url' => 'screening-list.php?status=Completed'],
+        ['key' => 'passed',    'label' => 'Passed Screening',       'count' => 0, 'url' => 'screening-list.php?status=Passed'],
         ['key' => 'scheduled', 'label' => 'Interview Scheduled',    'count' => 0, 'url' => '']
     ];
     foreach ($stages as $i => &$s) { $s['lost'] = 0; $s['lost_pct'] = 0; $s['of_applied'] = 0; }

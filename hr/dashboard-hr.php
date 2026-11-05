@@ -404,7 +404,7 @@ function status_badge(string $status): string
             <div class="header-start">
                 <div class="header-text">
                     <h1 id="greeting" title="Hello, <?php echo htmlspecialchars($display_name); ?>!">Hello, <?php echo htmlspecialchars($display_name); ?>!</h1>
-                    
+                    <p>Overview of application activity.</p>
                 </div>
             </div>
 
@@ -624,7 +624,7 @@ function status_badge(string $status): string
             <div class="side-stack">
 
                 <!-- Scheduling Turnaround Time: time between PASS and HR entering the final interview schedule -->
-                <div class="ta-card is-<?php echo htmlspecialchars($turnaround['state']); ?> reveal" style="--i:9" data-url="screeninglist.php?status=Passed" role="link" tabindex="0" aria-label="Scheduling Turnaround Time">
+                <div class="ta-card is-<?php echo htmlspecialchars($turnaround['state']); ?> reveal" style="--i:9" data-url="screening-list.php?status=Passed" role="link" tabindex="0" aria-label="Scheduling Turnaround Time">
                     <div class="ta-icon">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
                             <circle class="ta-face" cx="12" cy="12" r="9.2"></circle>
