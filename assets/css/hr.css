@@ -7254,6 +7254,14 @@ html[data-motion="off"] .spinner {              /* a loading spinner still has t
 }
 
 :where(html[data-page="dashboardhr"]) .content-header .header-text { min-width: 0; flex: 1 1 auto; }
+/* Layout: greeting + profile on the left, bell on the right */
+:where(html[data-page="dashboardhr"]) .content-header .header-start {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    min-width: 0;
+    flex: 1 1 auto;
+}
 :where(html[data-page="dashboardhr"]) .header-tools { display: flex; align-items: flex-start; gap: 12px; flex-shrink: 0; }
 
 :where(html[data-page="dashboardhr"]) .profile-chip {

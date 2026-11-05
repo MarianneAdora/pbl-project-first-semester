@@ -391,10 +391,21 @@ function status_badge(string $status): string
     <!-- Main Content Panel Area -->
     <main class="main-content">
         <!-- Top Greeting Header -->
-        <header class="content-header has-bell reveal" style="--i:1">
-            <div class="header-text">
-                <h1 id="greeting" title="Hello, <?php echo htmlspecialchars($display_name); ?>!">Hello, <?php echo htmlspecialchars($display_name); ?>!</h1>
-                <p>Overview of application activity.</p>
+        <header class="content-header has-bell has-profile reveal" style="--i:1">
+            <div class="header-start">
+                <div class="header-text">
+                    <h1 id="greeting" title="Hello, <?php echo htmlspecialchars($display_name); ?>!">Hello, <?php echo htmlspecialchars($display_name); ?>!</h1>
+                    <p>Overview of application activity.</p>
+                </div>
+
+                <!-- Your profile: click it to open Settings (now at the top-left, next to the greeting) -->
+                <a class="profile-chip" id="profileChip" href="setting-hr.php" title="Open your profile in Settings" aria-label="<?php echo htmlspecialchars($display_name . ', ' . $profile['role_label'] . '. Open your profile in Settings', ENT_QUOTES, 'UTF-8'); ?>">
+                    <?php echo $avatar_html; ?>
+                    <span class="profile-meta">
+                        <strong><?php echo htmlspecialchars($display_name, ENT_QUOTES, 'UTF-8'); ?></strong>
+                        <small><?php echo htmlspecialchars($profile['role_label'], ENT_QUOTES, 'UTF-8'); ?></small>
+                    </span>
+                </a>
             </div>
 
             <div class="header-tools">
@@ -414,15 +425,6 @@ function status_badge(string $status): string
                     <p class="notif-foot">Your activity, including changes to your name, email and picture, also appears in the Admin's Recent Activities. Theme and display preferences are not included.</p>
                 </div>
             </div>
-
-            <!-- Your profile: click it to open Settings (change the picture, name, email, password) -->
-            <a class="profile-chip" id="profileChip" href="setting-hr.php" title="Open your profile in Settings" aria-label="<?php echo htmlspecialchars($display_name . ', ' . $profile['role_label'] . '. Open your profile in Settings', ENT_QUOTES, 'UTF-8'); ?>">
-                <?php echo $avatar_html; ?>
-                <span class="profile-meta">
-                    <strong><?php echo htmlspecialchars($display_name, ENT_QUOTES, 'UTF-8'); ?></strong>
-                    <small><?php echo htmlspecialchars($profile['role_label'], ENT_QUOTES, 'UTF-8'); ?></small>
-                </span>
-            </a>
             </div>
         </header>
 
