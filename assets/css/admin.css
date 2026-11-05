@@ -841,6 +841,7 @@ html[data-theme="dark"] .toast-error { background: #7a0010; border-color: rgba(2
 .cut-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
     line-height: 1.4;
@@ -2335,6 +2336,7 @@ html:where([data-page="dashboardadmin"])[data-theme="dark"] .stat-icon { backgro
 :where(html[data-page="dashboardadmin"]) .q-text span.q-title {
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
@@ -4433,3 +4435,30 @@ html:where([data-page="settingsadmin"])[data-theme="dark"] .tile-face { backgrou
 }
 :where(html[data-page="dashboardadmin"]) .pw-show:hover { background: var(--surface-3); }
 :where(html[data-page="dashboardadmin"]) .pw-show[hidden] { display: none; }
+
+/* ---------- Profile card in the sidebar: Dashboard, HR Accounts, Questions, Archive, Add HR, Add Question ---------- */
+:where(html[data-page="dashboardadmin"], html[data-page="hrlist"], html[data-page="questionlist"], html[data-page="archiveadmin"], html[data-page="addhr"], html[data-page="addquestion"]) .sidebar .sidebar-header { margin-bottom: 20px; }
+:where(html[data-page="dashboardadmin"], html[data-page="hrlist"], html[data-page="questionlist"], html[data-page="archiveadmin"], html[data-page="addhr"], html[data-page="addquestion"]) .sidebar .profile-chip .avatar {
+    width: 40px; height: 40px; flex: none; display: grid; place-items: center; overflow: hidden;
+    border-radius: 50%; background: linear-gradient(135deg, #d1122a, #a3081e); color: #ffffff;
+    font-size: 13px; font-weight: 800; letter-spacing: 0.02em; line-height: 1; user-select: none;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85);
+}
+:where(html[data-page="dashboardadmin"], html[data-page="hrlist"], html[data-page="questionlist"], html[data-page="archiveadmin"], html[data-page="addhr"], html[data-page="addquestion"]) .sidebar .profile-chip .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+:where(html[data-page="dashboardadmin"], html[data-page="hrlist"], html[data-page="questionlist"], html[data-page="archiveadmin"], html[data-page="addhr"], html[data-page="addquestion"]) .sidebar .profile-chip.sidebar-profile {
+    display: flex; align-items: center; gap: 10px;
+    width: 100%; height: auto; min-height: 56px; margin: 0 0 24px; padding: 10px 12px; flex-shrink: 0;
+    border-radius: 14px; border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.12); color: #ffffff; text-decoration: none; box-shadow: none;
+    overflow: hidden; white-space: nowrap;
+    transition: background 0.2s ease, transform 0.3s ease, border-color 0.2s ease, padding 0.3s ease;
+}
+:where(html[data-page="dashboardadmin"], html[data-page="hrlist"], html[data-page="questionlist"], html[data-page="archiveadmin"], html[data-page="addhr"], html[data-page="addquestion"]) .sidebar .profile-chip.sidebar-profile:hover { background: rgba(255, 255, 255, 0.22); border-color: rgba(255, 255, 255, 0.4); box-shadow: none; transform: translateY(-1px); }
+:where(html[data-page="dashboardadmin"], html[data-page="hrlist"], html[data-page="questionlist"], html[data-page="archiveadmin"], html[data-page="addhr"], html[data-page="addquestion"]) .sidebar .profile-chip.sidebar-profile:focus-visible { outline: 3px solid rgba(255, 255, 255, 0.55); outline-offset: 2px; }
+:where(html[data-page="dashboardadmin"], html[data-page="hrlist"], html[data-page="questionlist"], html[data-page="archiveadmin"], html[data-page="addhr"], html[data-page="addquestion"]) .sidebar .profile-meta { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; line-height: 1.2; }
+:where(html[data-page="dashboardadmin"], html[data-page="hrlist"], html[data-page="questionlist"], html[data-page="archiveadmin"], html[data-page="addhr"], html[data-page="addquestion"]) .sidebar .profile-meta strong { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #ffffff; font-size: 14px; font-weight: 800; }
+:where(html[data-page="dashboardadmin"], html[data-page="hrlist"], html[data-page="questionlist"], html[data-page="archiveadmin"], html[data-page="addhr"], html[data-page="addquestion"]) .sidebar .profile-meta small { font-size: 11px; font-weight: 600; color: rgba(255, 255, 255, 0.78); }
+
+/* Collapsed sidebar: only the round picture stays */
+:where(html[data-page="dashboardadmin"], html[data-page="hrlist"], html[data-page="questionlist"], html[data-page="archiveadmin"], html[data-page="addhr"], html[data-page="addquestion"]) .sidebar.collapsed .profile-chip.sidebar-profile { justify-content: center; padding: 8px 0; background: transparent; border-color: transparent; }
+:where(html[data-page="dashboardadmin"], html[data-page="hrlist"], html[data-page="questionlist"], html[data-page="archiveadmin"], html[data-page="addhr"], html[data-page="addquestion"]) .sidebar.collapsed .profile-meta { display: none; }

@@ -152,6 +152,20 @@ $greeting     = 'Hello, ' . $display_name . '!';
             </button>
         </div>
 
+        <?php
+        // Profile card: the name + picture saved in Settings (clicking it opens Settings)
+        $sbp_name = $display_name;
+        $sbp_role = (string) ($profile['role_label'] ?? 'Administrator');
+        $sbp_html = static_profile_avatar_html($display_name, (string) ($profile['avatar_url'] ?? ''));
+        ?>
+        <a class="profile-chip sidebar-profile reveal" id="profileChip" href="settings-admin.php" style="--i:1" title="<?php echo htmlspecialchars($sbp_name . ' - open your profile in Settings', ENT_QUOTES, 'UTF-8'); ?>" aria-label="<?php echo htmlspecialchars($sbp_name . ', ' . $sbp_role . '. Open your profile in Settings', ENT_QUOTES, 'UTF-8'); ?>">
+            <?php echo $sbp_html; ?>
+            <span class="profile-meta">
+                <strong><?php echo htmlspecialchars($sbp_name, ENT_QUOTES, 'UTF-8'); ?></strong>
+                <small><?php echo htmlspecialchars($sbp_role, ENT_QUOTES, 'UTF-8'); ?></small>
+            </span>
+        </a>
+
         <nav class="sidebar-nav" aria-label="Admin">
             <a href="dashboard-admin.php" class="nav-item reveal active" id="dashboardLink" style="--i:1" title="Dashboard" aria-current="page">
                 <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
@@ -201,15 +215,6 @@ $greeting     = 'Hello, ' . $display_name . '!';
                 <h1 id="greeting" title="<?php echo htmlspecialchars($greeting, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($greeting, ENT_QUOTES, 'UTF-8'); ?></h1>
                 <p>Overview of the system activities and key information</p>
             </div>
-
-            <!-- Your profile: click it to open Settings (change the picture, name, email, password) -->
-            <a class="profile-chip" id="profileChip" href="settings-admin.php" title="Open your profile in Settings" aria-label="<?php echo htmlspecialchars($display_name . ', ' . $profile['role_label'] . '. Open your profile in Settings', ENT_QUOTES, 'UTF-8'); ?>">
-                <?php echo static_profile_avatar_html($display_name, $profile['avatar_url']); ?>
-                <span class="profile-meta">
-                    <strong><?php echo htmlspecialchars($display_name, ENT_QUOTES, 'UTF-8'); ?></strong>
-                    <small><?php echo htmlspecialchars($profile['role_label'], ENT_QUOTES, 'UTF-8'); ?></small>
-                </span>
-            </a>
         </header>
 
         <div class="admin-dashboard">
