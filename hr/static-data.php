@@ -1,4 +1,8 @@
 <?php
+require_once __DIR__ . '/../src/Services/EmailService.php';
+require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
+require_once __DIR__ . '/../src/Helpers/db.php';
+
 /* ==========================================================================
    STATIC DATA: the ONE place for every piece of sample data in the project.
    Everything here is temporary and is deleted when the database is connected.
@@ -728,15 +732,7 @@ function static_add_applicant(array $in, ?array $cvUpload = null): array
     if ($position === null)                           throw new InvalidArgumentException('Please choose a job position.');
 
     return static_store_update(function (array &$store) use ($first, $middle, $last, $name, $email, $contact, $position, $cvUpload) {
-        foreach ($store['applicants'] as $a) {
-            if (strcasecmp($a['email'], $email) === 0) {
-                throw new InvalidArgumentException(
-                    empty($a['archived_at'])
-                        ? 'An applicant with this email already exists.'
-                        : 'An applicant with this email is in the Archive. Restore them instead.'
-                );
-            }
-        }
+        $secureToken = bin2hex(random_bytes(16));
         $applicant = [
             'id'          => static_next_id($store),
             'name'        => $name,
@@ -754,7 +750,9 @@ function static_add_applicant(array $in, ?array $cvUpload = null): array
             // timeline for the dashboard analytics (filled in as the applicant moves along)
             'invited_at'   => static_now()->format('Y-m-d H:i'),
             'submitted_at' => null,
-            'passed_at'    => null
+            'passed_at'    => null,
+            // secure token used for the applicant's personal screening link
+            'secure_token' => $secureToken,
         ];
         // the CV file (shown on the Applicant Details page). A problem with the file never stops the applicant from being added.
         $cv = static_save_cv((int) $applicant['id'], $cvUpload);
@@ -1316,7 +1314,7 @@ function static_profile_store_avatar(array $upload, string $prefix): string
     // even if the server's mime_content_type() extension is missing or misconfigured.
     $mimeType = $info[2] === IMAGETYPE_JPEG ? 'image/jpeg' : ($info[2] === IMAGETYPE_PNG ? 'image/png' : 'image/webp');
 
-    // Cloudinary upload — profile pictures are stored in the eb-smssi-user-profiles folder.
+    // Cloudinary upload â€” profile pictures are stored in the eb-smssi-user-profiles folder.
     // Admin = 0, HR = numeric id extracted from the prefix ('hr-123' -> 123).
     require_once __DIR__ . '/../src/Services/CloudinaryService.php';
     $applicantId = ($prefix === 'admin') ? 0 : (int) substr($prefix, 3);
@@ -1450,13 +1448,13 @@ function static_profile_save(array $in, ?array $upload): array
                     foreach ($changes as $c) {
                         $parts[] = $c['field'] === 'Profile picture'
                             ? ($avatar === null ? 'Profile picture removed' : 'Profile picture changed')
-                            : $c['field'] . ': ' . $c['from'] . ' → ' . $c['to'];
+                            : $c['field'] . ': ' . $c['from'] . ' â†’ ' . $c['to'];
                     }
                     $title = 'Profile Updated';
                     if (count($changes) === 1) {
                         $title = $changes[0]['field'] === 'Profile picture' ? 'Profile Picture Changed' : $changes[0]['field'] . ' Changed';
                     }
-                    static_profile_log($store, $title, implode(' · ', $parts), 'HR', ['kind' => 'profile', 'owner' => $me['id'], 'changes' => $changes]);
+                    static_profile_log($store, $title, implode(' Â· ', $parts), 'HR', ['kind' => 'profile', 'owner' => $me['id'], 'changes' => $changes]);
                 }
             } else {
                 $adm = isset($store['admin_account']) && is_array($store['admin_account']) ? $store['admin_account'] : [];
@@ -1789,24 +1787,154 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
 
         switch ($action) {
             case 'add':
-                $extra['applicant'] = static_add_applicant(
-                    [
-                        'first_name'  => (string) ($input['first_name']  ?? ''),
-                        'middle_name' => (string) ($input['middle_name'] ?? ''),
-                        'last_name'   => (string) ($input['last_name']   ?? ''),
-                        'email'       => (string) ($input['email']       ?? ''),
-                        'contact'     => (string) ($input['contact']     ?? ''),
-                        'position_id' => (int) ($input['position_id']    ?? 0)
-                    ],
-                    isset($_FILES['cv']) && is_array($_FILES['cv']) ? $_FILES['cv'] : null
+                // Save CV file locally and compute its hash
+                $cvUrl   = null;
+                $cvHash  = null;
+                if (isset($_FILES['cv']) && is_array($_FILES['cv']) && isset($_FILES['cv']['tmp_name']) && $_FILES['cv']['error'] === UPLOAD_ERR_OK) {
+                    $cvUpload = $_FILES['cv'];
+                    $ext = strtolower(pathinfo((string) ($cvUpload['name'] ?? ''), PATHINFO_EXTENSION));
+                    if (in_array($ext, ['pdf', 'doc', 'docx'], true) && (int) ($cvUpload['size'] ?? 0) > 0 && (int) ($cvUpload['size'] ?? 0) <= 5 * 1024 * 1024) {
+                        $dir = __DIR__ . '/data/cv';
+                        if (!is_dir($dir) && !@mkdir($dir, 0775, true)) {
+                            // directory creation failed; continue without CV
+                        } else {
+                            // Generate a unique filename for the CV
+                            $cvFile = bin2hex(random_bytes(8)) . '.' . $ext;
+                            if (move_uploaded_file($cvUpload['tmp_name'], $dir . '/' . $cvFile)) {
+                                $cvUrl = 'data/cv/' . $cvFile;
+                                $cvHash = hash_file('sha256', $dir . '/' . $cvFile);
+                            }
+                        }
+                    }
+                }
+
+                // Add applicant to the database
+                $extra['applicant'] = repo_add_applicant(
+                    (string) ($input['first_name']  ?? ''),
+                    (string) ($input['middle_name'] ?? ''),
+                    (string) ($input['last_name']   ?? ''),
+                    (string) ($input['email']       ?? ''),
+                    (string) ($input['contact']     ?? ''),
+                    db(),
+                    $cvUrl,
+                    $cvHash
                 );
                 static_log('Added An Applicant', (string) $extra['applicant']['name']);
+
+                // Send the screening invitation email (failure does not block the applicant from being added)
+                try {
+                    $emailService = new EmailService();
+                    $emailService->sendInviteEmail(
+                        (string) ($extra['applicant']['email'] ?? ''),
+                        (string) ($extra['applicant']['name'] ?? ''),
+                        (string) ($extra['applicant']['secure_token'] ?? '')
+                    );
+                } catch (Throwable $e) {
+                    error_log('Invitation email failed: ' . $e->getMessage());
+                }
                 break;
 
             case 'parse_cv':
-                // CV text extraction requires a PDF parsing library (e.g. smalot/pdfparser).
-                // Not installed in this project; return a clear error so the frontend can fall back to manual entry.
-                static_respond(['status' => 'error', 'message' => 'CV autofill is not available on this server. Please fill in the details manually.'], 501);
+                // CV text extraction using smalot/pdfparser (already installed via composer.json)
+                if (!isset($_FILES['cv']) || !is_array($_FILES['cv']) || !isset($_FILES['cv']['tmp_name'])) {
+                    static_respond(['status' => 'error', 'message' => 'No CV file uploaded. Please choose a file.'], 400);
+                }
+                $cv = $_FILES['cv'];
+                $name    = (string) ($cv['name']     ?? '');
+                $tmpName = (string) ($cv['tmp_name'] ?? '');
+                $type    = (string) ($cv['type']     ?? '');
+                $size    = (int)    ($cv['size']     ?? 0);
+                $maxSize = 5 * 1024 * 1024; // 5 MB
+                if ($tmpName === '' || !is_uploaded_file($tmpName)) {
+                    static_respond(['status' => 'error', 'message' => 'Upload failed. Please choose the file again.'], 400);
+                }
+                if ($size > $maxSize) {
+                    static_respond(['status' => 'error', 'message' => 'File too large. Maximum 5 MB.'], 413);
+                }
+                $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+                if (!in_array($ext, ['pdf', 'doc', 'docx'], true)) {
+                    static_respond(['status' => 'error', 'message' => 'Unsupported file type. Use PDF, DOC or DOCX.'], 415);
+                }
+                if ($ext !== 'pdf') {
+                    static_respond(['status' => 'error', 'message' => 'Only PDF files can be auto-filled. Please fill in the details manually for other formats.'], 415);
+                }
+                try {
+                    require_once __DIR__ . '/../vendor/autoload.php';
+                    $parser = new \Smalot\PdfParser\Parser();
+                    $pdf    = $parser->parseFile($tmpName);
+                    $text   = (string) $pdf->getText();
+                    if ($text === '' || trim($text) === '') {
+                        static_respond(['status' => 'error', 'message' => 'Could not read text from this PDF. Please fill in the details manually.'], 422);
+                    }
+                    // Extract email
+                    $email = '';
+                    if (preg_match('/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/', $text, $m)) {
+                        $email = $m[0];
+                    }
+                    // Extract phone / contact number
+                    $contact = '';
+                    if (preg_match('/(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/', $text, $m)) {
+                        $contact = $m[0];
+                    }
+                    // Extract name: scan the top portion of the CV (first 10 non-empty lines).
+                    // Skip obvious header lines like "CURRICULUM VITAE", "RESUME", "CV", etc.
+                    // Middle name is optional — left empty when the name has only 2 parts.
+                    $firstName = '';
+                    $middleName = '';
+                    $lastName = '';
+                    $lines   = array_map('trim', preg_split('/\r\n|\r|\n/', $text));
+                    $checked = 0;
+                    foreach ($lines as $line) {
+                        if ($line === '') continue;
+                        $checked++;
+                        if ($checked > 10) break; // only scan the top of the CV
+
+                        // Skip header/title lines
+                        if (preg_match('/^(curriculum\s+vitae|resume|cv|profile|personal\s+details?)$/i', trim($line))) continue;
+
+                        $words = preg_split('/\s+/', $line);
+                        $wordCount = count($words);
+                        $allAlpha = true;
+                        foreach ($words as $w) {
+                            if (!preg_match('/^[A-Za-z\.\'-]+$/', $w)) { $allAlpha = false; break; }
+                        }
+                        if ($wordCount >= 2 && $wordCount <= 4 && $allAlpha) {
+                            if ($wordCount === 2) { $firstName = $words[0]; $lastName = $words[1]; $middleName = ''; }
+                            elseif ($wordCount === 3) { $firstName = $words[0]; $middleName = $words[1]; $lastName = $words[2]; }
+                            else { $firstName = $words[0]; $middleName = $words[1]; $lastName = $words[2] . ' ' . $words[3]; }
+                            break; // found a name, stop scanning
+                        }
+                    }
+                    // Only accept the CV if it contains ALL required details: name + email + contact.
+                    // If any is missing, reject it so HR fills in manually instead of guessing.
+                    $hasName    = $firstName != '' && $lastName != '';
+                    $hasEmail   = $email != '';
+                    $hasContact = $contact != '';
+                    if (!$hasName || !$hasEmail || !$hasContact) {
+                        $missing = [];
+                        if (!$hasName)    $missing[] = 'name';
+                        if (!$hasEmail)   $missing[] = 'email address';
+                        if (!$hasContact) $missing[] = 'contact number';
+
+                        static_respond([
+                            'status' => 'error',
+                            'message' => 'This CV does not contain your ' . implode(', ', $missing) . '. Please fill in the details manually.',
+                        ], 422);
+                    }
+
+                    static_respond([
+                        'status' => 'success',
+                        'parsed' => [
+                            'first_name'  => $firstName,
+                            'middle_name' => $middleName,
+                            'last_name'   => $lastName,
+                            'email'       => $email,
+                            'contact'     => $contact,
+                        ],
+                    ]);
+                } catch (\Throwable $e) {
+                    static_respond(['status' => 'error', 'message' => 'Could not read that CV. Please choose a different file.'], 422);
+                }
                 break;
 
             case 'position_add':
@@ -1852,7 +1980,7 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
                 $ok = static_set_status($sid, $newStatus, $newResult);
                 if (!$ok) static_respond(['status' => 'error', 'message' => 'That applicant or status was not found.'], 404);
                 if ($before && ($before['status'] !== $newStatus || ($before['result'] ?? null) !== $newResult)) {
-                    static_log('Applicant Status Changed', $before['name'] . ' · ' . $newStatus . ($newResult ? ' · ' . $newResult : ''));
+                    static_log('Applicant Status Changed', $before['name'] . ' Â· ' . $newStatus . ($newResult ? ' Â· ' . $newResult : ''));
                 }
                 break;
 

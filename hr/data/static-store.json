@@ -503,6 +503,75 @@
             "submitted_at": null,
             "passed_at": null,
             "archived_at": null
+        },
+        {
+            "id": 143,
+            "name": "PAOLO GABRIEL RIVERA",
+            "first_name": "PAOLO",
+            "middle_name": "GABRIEL",
+            "last_name": "RIVERA",
+            "email": "ebsmi.screening@gmail.com",
+            "contact": "0935 901 2345",
+            "position_id": 3,
+            "position": "Back Office Associate",
+            "status": "Pending",
+            "result": null,
+            "updated": "2026-11-04 20:19",
+            "invited_at": "2026-11-04 20:19",
+            "submitted_at": null,
+            "passed_at": null,
+            "cv": {
+                "name": "PAOLO GABRIEL RIVERA CV sample.pdf",
+                "size": 51198,
+                "file": "143.pdf"
+            },
+            "archived_at": null
+        },
+        {
+            "id": 144,
+            "name": "Cristina Mae Dalumay",
+            "first_name": "Cristina",
+            "middle_name": "Mae",
+            "last_name": "Dalumay",
+            "email": "cristinamaedalumay0206@gmail.com",
+            "contact": "0927 000 0303",
+            "position_id": 3,
+            "position": "Back Office Associate",
+            "status": "Pending",
+            "result": null,
+            "updated": "2026-11-04 22:49",
+            "invited_at": "2026-11-04 22:49",
+            "submitted_at": null,
+            "passed_at": null,
+            "cv": {
+                "name": "CV_Cristina_Mae_Dalumay.pdf",
+                "size": 3496,
+                "file": "144.pdf"
+            },
+            "archived_at": null
+        },
+        {
+            "id": 145,
+            "name": "MARK ANGELO BAUTISTA",
+            "first_name": "MARK",
+            "middle_name": "ANGELO",
+            "last_name": "BAUTISTA",
+            "email": "ebsmi.screening@gmail.com",
+            "contact": "0927 567 8901",
+            "position_id": 3,
+            "position": "Back Office Associate",
+            "status": "Pending",
+            "result": null,
+            "updated": "2026-11-05 09:02",
+            "invited_at": "2026-11-05 09:02",
+            "submitted_at": null,
+            "passed_at": null,
+            "cv": {
+                "name": "MARK ANGELO BAUTISTA CV sample.pdf",
+                "size": 53390,
+                "file": "145.pdf"
+            },
+            "archived_at": null
         }
     ],
     "submissions": [
@@ -2190,6 +2259,34 @@
                 }
             ],
             "admin_seen_at": "2026-11-03 15:00:31"
+        },
+        {
+            "at": "2026-11-04 20:19:10",
+            "activity": "Added An Applicant",
+            "details": "PAOLO GABRIEL RIVERA",
+            "by": "HR",
+            "admin_seen_at": "2026-11-04 23:00:40"
+        },
+        {
+            "at": "2026-11-04 22:49:51",
+            "activity": "Added An Applicant",
+            "details": "Cristina Mae Dalumay",
+            "by": "HR",
+            "admin_seen_at": "2026-11-04 23:00:40"
+        },
+        {
+            "at": "2026-11-05 09:02:19",
+            "activity": "Added An Applicant",
+            "details": "MARK ANGELO BAUTISTA",
+            "by": "HR",
+            "admin_seen_at": "2026-11-05 10:45:09"
+        },
+        {
+            "at": "2026-11-05 10:12:36",
+            "activity": "Added An Applicant",
+            "details": "LIZA MARIE FERNANDEZ",
+            "by": "HR",
+            "admin_seen_at": "2026-11-05 10:45:09"
         }
     ],
     "questions": [

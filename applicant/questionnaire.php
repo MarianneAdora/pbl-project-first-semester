@@ -52,7 +52,8 @@ if (empty($questions)) {
 
 // Question 1 links to the job description. It is the PDF of the position this applicant was added under
 // (the applicant is found by the email that passed the OTP check); a sample PDF is used when that is not known.
-$questions = static_apply_job_description($questions, static_applicant_by_email((string) ($_SESSION['applicant_email'] ?? '')));
+$applicant = repo_find_applicant_by_email((string) ($_SESSION['applicant_email'] ?? ''));
+$questions = static_apply_job_description($questions, $applicant);
 
 // What the scripts need (printed as JSON below)
 $screening = [
