@@ -1138,6 +1138,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const POS_FILE_HINT = positionFileName.textContent;
     let savingPosition = false;
 
+    // Delete position confirmation modal
+    const deletePositionModal = document.getElementById('deletePositionModal');
+    const deletePositionTitle = document.getElementById('deletePositionTitle');
+    const deletePositionText = document.getElementById('deletePositionText');
+    const cancelDeletePosition = document.getElementById('cancelDeletePosition');
+    const confirmDeletePosition = document.getElementById('confirmDeletePosition');
+    let deletePendingId = null;
+    let deletePendingName = null;
+
     /* ---------- the dropdown itself ----------
        A button + a list (not the browser's plain select). Mouse: click to open, click a row to pick.
        Keyboard: Enter / Space / arrows open it, arrows + Home / End move, Enter picks, Esc closes, typing jumps
@@ -1216,6 +1225,9 @@ document.addEventListener('DOMContentLoaded', () => {
         li.id = 'pd-opt-' + p.id;
         li.dataset.value = String(p.id);
         li.innerHTML = '<span class="pd-name"></span><span class="pd-tag"></span>'
+            + '<button type="button" class="pd-delete" data-id="' + String(p.id) + '" aria-label="Delete" title="Delete">'
+            + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>'
+            + '</button>'
             + '<svg class="pd-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>';
         li.querySelector('.pd-name').textContent = p.name;
         const tag = li.querySelector('.pd-tag');
@@ -1225,7 +1237,61 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     posBtn.addEventListener('click', () => setPosOpen(!posDd.classList.contains('open')));
-    posMenu.addEventListener('click', (e) => choosePosItem(e.target.closest('.pd-opt, .pd-add')));
+    posMenu.addEventListener('click', async (e) => {
+        const del = e.target.closest('.pd-delete');
+        if (del) {
+            e.stopPropagation();
+            e.preventDefault();
+            const li = del.closest('.pd-opt');
+            const id = del.dataset.id;
+            const name = li ? li.querySelector('.pd-name').textContent : 'this position';
+            // open custom confirmation modal instead of browser confirm()
+            deletePendingId = id;
+            deletePendingName = name;
+            deletePositionTitle.textContent = 'Delete job position "' + name + '"?';
+            deletePositionText.textContent = 'Its job description PDF will also be removed.';
+            deletePositionModal.classList.add('active');
+            cancelDeletePosition.focus();
+            return;
+        }
+        choosePosItem(e.target.closest('.pd-opt, .pd-add'));
+    });
+
+    // Delete position modal: confirm
+    confirmDeletePosition.addEventListener('click', async () => {
+        const id = deletePendingId;
+        const name = deletePendingName;
+        deletePendingId = null;
+        deletePendingName = null;
+        deletePositionModal.classList.remove('active');
+        if (!id) return;
+        try {
+            const body = new FormData();
+            body.append('action', 'position_delete');
+            body.append('id', id);
+            const res = await fetch('static-data.php', { method: 'POST', body, credentials: 'same-origin' });
+            let data;
+            try { data = await res.json(); } catch (err) { throw new Error('The server did not answer correctly. Please try again.'); }
+            if (data.status !== 'success') throw new Error(data.message || 'Could not delete the position.');
+            const li = document.getElementById('pd-opt-' + id);
+            if (li) li.remove();
+            HR.toast('Job position "' + name + '" deleted.', { duration: 4000 });
+            // if the deleted position was the currently selected one, clear the selection
+            if (posInput.value === String(id)) { setPosition('', POS_PLACEHOLDER); }
+        } catch (err) {
+            alert(err.message || 'Could not delete the job position. Please try again.');
+        }
+    });
+
+    // Delete position modal: cancel
+    cancelDeletePosition.addEventListener('click', () => {
+        deletePendingId = null;
+        deletePendingName = null;
+        deletePositionModal.classList.remove('active');
+    });
+
+    // Delete position modal: click backdrop to close
+    deletePositionModal.addEventListener('click', (e) => { if (e.target === deletePositionModal) { deletePendingId = null; deletePendingName = null; deletePositionModal.classList.remove('active'); } });
     posMenu.addEventListener('mouseover', (e) => {
         const li = e.target.closest('.pd-opt, .pd-add');
         if (li) focusPosItem(posItems().indexOf(li), false);
@@ -1397,6 +1463,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sentModal.classList.contains('active')) finishSent();
         else if (positionModal.classList.contains('active')) closePositionModal();
         else if (discardModal.classList.contains('active')) discardModal.classList.remove('active');
+        else if (deletePositionModal.classList.contains('active')) { deletePendingId = null; deletePendingName = null; deletePositionModal.classList.remove('active'); }
     });
 });
 }

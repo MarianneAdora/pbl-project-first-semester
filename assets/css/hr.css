@@ -1605,6 +1605,31 @@ html.js.is-ready.is-leaving .reveal {
 }
 :where(html[data-page="addapplicants"]) .pd-opt[aria-selected="true"] .pd-check { opacity: 1; transform: none; }
 
+/* delete button on each job position row — hidden until you hover the row */
+:where(html[data-page="addapplicants"]) .pd-delete {
+    flex: none;
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    background: #ffffff;
+    color: #a3081e;
+    cursor: pointer;
+    opacity: 0;
+    transform: translateX(8px);
+    transition: opacity 0.15s ease, transform 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+    pointer-events: auto;
+    padding: 0;
+    margin-left: 8px;
+}
+:where(html[data-page="addapplicants"]) .pd-delete svg { width: 14px; height: 14px; fill: currentColor; pointer-events: none; }
+:where(html[data-page="addapplicants"]) .pd-delete:hover { background: #fdecee; border-color: #a3081e; }
+:where(html[data-page="addapplicants"]) .pd-delete:focus-visible { outline: 2px solid #a3081e; outline-offset: 1px; }
+:where(html[data-page="addapplicants"]) .pd-opt:hover .pd-delete,
+:where(html[data-page="addapplicants"]) .pd-opt.is-focused .pd-delete { opacity: 1; transform: translateX(0); }
+
 :where(html[data-page="addapplicants"]) .pd-sep { height: 1px; margin: 6px 4px; background: #e8eaee; }
 :where(html[data-page="addapplicants"]) .pd-add { color: #a3081e; font-weight: 800; }
 :where(html[data-page="addapplicants"]) .pd-add:hover,

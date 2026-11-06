@@ -231,6 +231,41 @@ class CloudinaryService {
         }
     }
 
+    /** Deletes a resource from Cloudinary by public_id (used for job description PDFs). */
+    public function deleteResource(string $publicId, string $resourceType = 'auto', string $type = 'default'): array
+    {
+        $timestamp = time();
+        $signed = [
+            'public_id'  => $publicId,
+            'timestamp'  => $timestamp,
+            'type'       => $type,
+        ];
+        $signature = $this->signParams($signed);
+
+        $url = "https://api.cloudinary.com/v1_1/{$this->cloudName}/destroy";
+        $fields = [
+            'api_key'       => $this->apiKey,
+            'timestamp'     => $timestamp,
+            'public_id'     => $publicId,
+            'resource_type' => $resourceType,
+            'type'          => $type,
+            'signature'     => $signature,
+        ];
+
+        $response = $this->multipartPost($url, $fields);
+        $httpCode = $this->httpCode();
+
+        if ($httpCode === 200) {
+            $result = json_decode($response, true);
+            return [
+                'success'  => !empty($result['result']) && in_array($result['result'], ['ok', 'deleted', 'not_found'], true),
+                'result'   => $result['result'] ?? 'unknown',
+                'response' => $result,
+            ];
+        }
+        throw new Exception('Cloudinary delete failed: ' . $response);
+    }
+
     /**
      * Uploads an applicant video to Cloudinary and returns its URL + SHA-256 hash.
      * Layout: flat inside $folderBase (default 'ebsmi-shortlist-applicant-videos') — NO per-applicant subfolders.

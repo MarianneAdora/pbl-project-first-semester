@@ -928,9 +928,10 @@ function static_position_add(string $name, ?array $jdUpload = null): array
                     (string) ($jdUpload['name'] ?? '')
                 );
                 $jd = [
-                    'name' => $uploaded['name'],
-                    'size' => (int) $jdUpload['size'],
-                    'url'  => $uploaded['url'],
+                    'name'       => $uploaded['name'],
+                    'size'       => (int) $jdUpload['size'],
+                    'url'        => $uploaded['url'],
+                    'public_id'  => $uploaded['public_id'] ?? '',
                 ];
             } catch (Throwable $e) {
                 error_log('Job Description Cloudinary upload error: ' . $e->getMessage());
@@ -942,6 +943,49 @@ function static_position_add(string $name, ?array $jdUpload = null): array
         $list[] = $position;
         $store['job_positions'] = $list;
         return $position;
+    });
+    return static_position_public($saved);
+}
+
+// Archive a job position and delete its Cloudinary job-description PDF.
+// Returns the archived position. Throws InvalidArgumentException if not found or in use.
+function static_position_delete(int $id): array
+{
+    $saved = static_store_update(function (array &$store) use ($id) {
+        $list = isset($store['job_positions']) && is_array($store['job_positions']) ? $store['job_positions'] : [];
+
+        $pos = null;
+        $posIdx = null;
+        foreach ($list as $i => $p) {
+            if (is_array($p) && (int) ($p['id'] ?? 0) === $id) { $pos = $p; $posIdx = $i; break; }
+        }
+        if ($pos === null) throw new InvalidArgumentException('That job position was not found.');
+        if (!empty($pos['archived_at'])) throw new InvalidArgumentException('That job position is already archived.');
+
+        // Prevent deletion if any active applicant uses this position
+        foreach ($store['applicants'] as $a) {
+            if (!is_array($a)) continue;
+            if (empty($a['archived_at']) && (int) ($a['position_id'] ?? 0) === $id) {
+                throw new InvalidArgumentException('Cannot delete "' . htmlspecialchars((string) ($pos['name'] ?? ''), ENT_QUOTES) . '" — it is used by at least one active applicant.');
+            }
+        }
+
+        // Delete the job description PDF from Cloudinary if it has one
+        $jd = $pos['jd'] ?? null;
+        if (is_array($jd) && !empty($jd['public_id'])) {
+            try {
+                require_once __DIR__ . '/../src/Services/CloudinaryService.php';
+                $cloud = new CloudinaryService();
+                $cloud->deleteResource((string) $jd['public_id'], 'auto', 'default');
+            } catch (Throwable $e) {
+                error_log('Job Description Cloudinary delete error: ' . $e->getMessage());
+                // continue archiving even if Cloudinary delete fails
+            }
+        }
+
+        $list[$posIdx]['archived_at'] = static_now()->format('Y-m-d H:i:s');
+        $store['job_positions'] = $list;
+        return $pos;
     });
     return static_position_public($saved);
 }
@@ -1846,6 +1890,24 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
 
             case 'positions':
                 static_respond(['status' => 'success', 'positions' => array_map('static_position_public', static_positions())]);
+                break;
+
+            case 'position_delete':
+                $pid = (int) ($input['id'] ?? 0);
+                if ($pid <= 0) static_respond(['status' => 'error', 'message' => 'Invalid position id.'], 400);
+                try {
+                    $deleted = static_position_delete($pid);
+                    static_log('Job Position Deleted', $deleted['name']);
+                    static_respond([
+                        'status'  => 'success',
+                        'message' => 'Job position "' . htmlspecialchars($deleted['name'], ENT_QUOTES) . '" deleted.',
+                        'id'      => $pid,
+                    ]);
+                } catch (InvalidArgumentException $e) {
+                    static_respond(['status' => 'error', 'message' => $e->getMessage()], 400);
+                } catch (Throwable $e) {
+                    static_respond(['status' => 'error', 'message' => 'Could not delete the job position. Please try again.'], 500);
+                }
                 break;
 
             case 'archive':
