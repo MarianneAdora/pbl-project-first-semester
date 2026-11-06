@@ -1804,9 +1804,35 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
                 break;
 
             case 'parse_cv':
-                // CV text extraction requires a PDF parsing library (e.g. smalot/pdfparser).
-                // Not installed in this project; return a clear error so the frontend can fall back to manual entry.
-                static_respond(['status' => 'error', 'message' => 'CV autofill is not available on this server. Please fill in the details manually.'], 501);
+                if (!isset($_FILES['cv']) || !is_array($_FILES['cv']) || empty($_FILES['cv']['tmp_name'])) {
+                    static_respond(['status' => 'error', 'message' => 'No CV file received. Please choose a file and try again.'], 400);
+                }
+                $cvFile = $_FILES['cv'];
+                if ((int) ($cvFile['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+                    static_respond(['status' => 'error', 'message' => 'The CV file could not be uploaded. Please try again.'], 400);
+                }
+                require_once __DIR__ . '/../src/Services/CvParserService.php';
+                $parser = new CvParserService();
+                try {
+                    $parsed = $parser->parseFile(
+                        $cvFile['tmp_name'],
+                        $cvFile['name'] ?? null,
+                        $cvFile['type'] ?? null
+                    );
+                } catch (Exception $e) {
+                    static_respond(['status' => 'error', 'message' => $e->getMessage()], 422);
+                }
+                static_respond([
+                    'status' => 'success',
+                    'parsed' => [
+                        'first_name'  => (string) ($parsed['first_name']  ?? ''),
+                        'middle_name' => (string) ($parsed['middle_name'] ?? ''),
+                        'last_name'   => (string) ($parsed['last_name']   ?? ''),
+                        'email'       => (string) ($parsed['email']       ?? ''),
+                        'contact'     => (string) ($parsed['contact']     ?? ''),
+                    ],
+                    'missing' => $parsed['missing'] ?? [],
+                ]);
                 break;
 
             case 'position_add':
