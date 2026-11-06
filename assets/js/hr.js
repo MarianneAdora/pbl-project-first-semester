@@ -1042,6 +1042,7 @@ document.addEventListener('DOMContentLoaded', () => {
        Invitation email still not sent. */
     async function sendInvitation(formData) {
         formData.delete('note'); // no notes column yet
+        formData.set('action', 'add'); // tells static-data.php what to do (without it: "Unknown action.")
         const res = await fetch('../hr/static-data.php', { method: 'POST', body: formData, credentials: 'same-origin' });
         let data;
         try { data = await res.json(); }

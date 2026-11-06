@@ -1777,6 +1777,8 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
     }
 
     $action = (string) ($input['action'] ?? '');
+    // The Add Applicant form is a plain form post: when it arrives without an action, it means "add"
+    if ($action === '' && isset($input['first_name'], $input['last_name'], $input['email'], $input['position_id'])) $action = 'add';
     // profile / password actions: our own pages send this header, a form on another website cannot
     if (in_array($action, ['profile_save', 'password_change', 'password_status', 'password_cancel'], true)
         && ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') !== 'XMLHttpRequest') {
@@ -1800,13 +1802,66 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
                     ],
                     isset($_FILES['cv']) && is_array($_FILES['cv']) ? $_FILES['cv'] : null
                 );
+                // Send the screening invitation: make the applicant's personal link (secure token in the database)
+                // and email it. If anything fails, the applicant is taken out again so nothing is half-saved.
+                try {
+                    require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
+                    require_once __DIR__ . '/../src/Services/EmailService.php';
+                    $invited = repo_add_applicant(
+                        (string) $extra['applicant']['first_name'],
+                        (string) $extra['applicant']['middle_name'],
+                        (string) $extra['applicant']['last_name'],
+                        (string) $extra['applicant']['email'],
+                        (string) $extra['applicant']['contact']
+                    );
+                    $mailer = new EmailService();
+                    if (!$mailer->sendInviteEmail($invited['email'], $extra['applicant']['first_name'], $invited['secure_token'])) {
+                        throw new RuntimeException('The invitation email could not be sent. ' . $mailer->getLastError() . ' The applicant was not added.');
+                    }
+                } catch (Throwable $mailErr) {
+                    $newId = (int) $extra['applicant']['id'];
+                    static_store_update(function (array &$store) use ($newId) {
+                        $store['applicants'] = array_values(array_filter($store['applicants'], fn($a) => (int) $a['id'] !== $newId));
+                        return null;
+                    });
+                    error_log('add applicant invite failed: ' . $mailErr->getMessage());
+                    $msg = $mailErr instanceof InvalidArgumentException || $mailErr instanceof RuntimeException || $mailErr instanceof DuplicateApplicantException
+                        ? $mailErr->getMessage()
+                        : 'The invitation could not be sent (' . $mailErr->getMessage() . '). The applicant was not added.';
+                    static_respond(['status' => 'error', 'message' => $msg], 422);
+                }
                 static_log('Added An Applicant', (string) $extra['applicant']['name']);
                 break;
 
             case 'parse_cv':
-                // CV text extraction requires a PDF parsing library (e.g. smalot/pdfparser).
-                // Not installed in this project; return a clear error so the frontend can fall back to manual entry.
-                static_respond(['status' => 'error', 'message' => 'CV autofill is not available on this server. Please fill in the details manually.'], 501);
+                // Reads name / email / contact from the uploaded CV (PDF text via smalot/pdfparser, DOCX via zip, + Gemini)
+                // and sends them back so the form can fill itself. The CV is only read here, it is not saved.
+                $cvFile = $_FILES['cv'] ?? null;
+                if (!is_array($cvFile) || (int) ($cvFile['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+                    static_respond(['status' => 'error', 'message' => 'The CV could not be uploaded. Please choose the file again.'], 400);
+                }
+                if ((int) ($cvFile['size'] ?? 0) > 5 * 1024 * 1024) {
+                    static_respond(['status' => 'error', 'message' => 'The CV is too big (5 MB at most).'], 413);
+                }
+                $cvExt = strtolower(pathinfo((string) ($cvFile['name'] ?? ''), PATHINFO_EXTENSION));
+                if (!in_array($cvExt, ['pdf', 'doc', 'docx'], true)) {
+                    static_respond(['status' => 'error', 'message' => 'Please upload a PDF, DOC or DOCX file.'], 415);
+                }
+                try {
+                    require_once __DIR__ . '/../src/Services/CvParserService.php';
+                    $cvParsed = (new CvParserService())->parseFile((string) $cvFile['tmp_name'], (string) $cvFile['name']);
+                } catch (Throwable $e) {
+                    error_log('parse_cv failed: ' . $e->getMessage());
+                    static_respond(['status' => 'error', 'message' => 'Could not read that CV. Try a text-based PDF, or fill in the details manually.'], 422);
+                }
+                $cvMissing = (array) ($cvParsed['missing'] ?? []);
+                if ($cvMissing) {
+                    $cvLabels = ['name' => 'full name', 'email' => 'email address', 'contact' => 'contact number'];
+                    $cvList   = implode(', ', array_map(fn($k) => $cvLabels[$k] ?? $k, $cvMissing));
+                    static_respond(['status' => 'invalid', 'message' => 'This CV has no ' . $cvList . '. Please upload a CV that includes it.', 'missing' => $cvMissing], 422);
+                }
+                unset($cvParsed['raw_text']);
+                static_respond(['status' => 'success', 'parsed' => $cvParsed]);
                 break;
 
             case 'position_add':
