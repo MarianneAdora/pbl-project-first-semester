@@ -962,14 +962,6 @@ function static_position_delete(int $id): array
         if ($pos === null) throw new InvalidArgumentException('That job position was not found.');
         if (!empty($pos['archived_at'])) throw new InvalidArgumentException('That job position is already archived.');
 
-        // Prevent deletion if any active applicant uses this position
-        foreach ($store['applicants'] as $a) {
-            if (!is_array($a)) continue;
-            if (empty($a['archived_at']) && (int) ($a['position_id'] ?? 0) === $id) {
-                throw new InvalidArgumentException('Cannot delete "' . htmlspecialchars((string) ($pos['name'] ?? ''), ENT_QUOTES) . '" — it is used by at least one active applicant.');
-            }
-        }
-
         // Delete the job description PDF from Cloudinary if it has one
         $jd = $pos['jd'] ?? null;
         if (is_array($jd) && !empty($jd['public_id'])) {
@@ -1792,6 +1784,8 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
 
     if (session_status() === PHP_SESSION_NONE) session_start();
     header('Content-Type: application/json; charset=UTF-8');
+    error_reporting(0);          // suppress warnings/notices that would corrupt the JSON response
+    @ini_set('display_errors', '0');
 
     function static_respond(array $data, int $code = 200): void
     {

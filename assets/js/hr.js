@@ -1272,7 +1272,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch('static-data.php', { method: 'POST', body, credentials: 'same-origin' });
             let data;
             try { data = await res.json(); } catch (err) { throw new Error('The server did not answer correctly. Please try again.'); }
-            if (data.status !== 'success') throw new Error(data.message || 'Could not delete the position.');
+            // Treat "already archived" as success: a previous click deleted it but the UI didn't update
+            const alreadyArchived = data.status !== 'success' && /already archived/i.test(data.message || '');
+            if (data.status !== 'success' && !alreadyArchived) throw new Error(data.message || 'Could not delete the position.');
             const li = document.getElementById('pd-opt-' + id);
             if (li) li.remove();
             HR.toast('Job position "' + name + '" deleted.', { duration: 4000 });

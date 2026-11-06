@@ -2190,6 +2190,24 @@
                 }
             ],
             "admin_seen_at": "2026-11-03 15:00:31"
+        },
+        {
+            "at": "2026-11-06 09:45:39",
+            "activity": "Job Position Deleted",
+            "details": "Customer Service Representative",
+            "by": "HR"
+        },
+        {
+            "at": "2026-11-06 09:45:49",
+            "activity": "Job Position Deleted",
+            "details": "Technical Support Representative",
+            "by": "HR"
+        },
+        {
+            "at": "2026-11-06 09:57:00",
+            "activity": "Job Position Deleted",
+            "details": "Back Office Associate",
+            "by": "HR"
         }
     ],
     "questions": [
@@ -2468,21 +2486,21 @@
             "name": "Customer Service Representative",
             "jd": null,
             "created": "2026-08-03 09:00",
-            "archived_at": null
+            "archived_at": "2026-11-06 09:45:39"
         },
         {
             "id": 2,
             "name": "Technical Support Representative",
             "jd": null,
             "created": "2026-08-03 09:00",
-            "archived_at": null
+            "archived_at": "2026-11-06 09:45:49"
         },
         {
             "id": 3,
             "name": "Back Office Associate",
             "jd": null,
             "created": "2026-08-03 09:00",
-            "archived_at": null
+            "archived_at": "2026-11-06 09:57:00"
         }
     ]
 }
