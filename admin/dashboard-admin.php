@@ -15,19 +15,23 @@ date_default_timezone_set('Asia/Manila');
 
 require_once __DIR__ . '/../src/Repositories/AdminRepository.php';
 require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
-require_once __DIR__ . '/static-admin.php';
 
-// Every number on this page comes from static-admin.php (the one place for the admin sample data).
-// BACKEND: when the database is ready, only static-admin.php changes.
-$overview = static_admin_overview();             // the three summary boxes
-$stats    = static_admin_question_stats();       // Questionnaires Statistics: every question + the answer most applicants chose
-$all_log  = static_activity();                   // everything HR and the Admin did, newest first
-$recent_view = static_admin_recent_activity(10);   // Recent Activities: the latest 10; a line is hidden 3 days after the Admin first saw it
-$recent   = $recent_view['rows'];
-$pending  = (int) $recent_view['pending'];       // HR password changes waiting for the Admin's approval
-$failure  = static_admin_failure_rates(5);       // Question-Level Failure Rate
-$risk     = static_admin_risk_flags();           // Risk Flag Breakdown by Factor
-$volume   = static_admin_volume();               // Applicant Volume Over Time
+// Every number on this page is queried live from the database.
+$overview = repo_admin_overview();             // the three summary boxes
+$stats    = repo_admin_question_stats();       // Questionnaires Statistics: every question + the answer most applicants chose
+$recent   = repo_recent_activity(null, 10);    // Recent Activities: the latest 10, newest first
+
+// Total activity count (for the share bar on the summary box).
+$all_log  = repo_recent_activity(null, 1000);
+$logTotal = count($all_log);
+
+// HR password-change requests awaiting approval. No password_requests table exists yet in the
+// database, so this is 0 until the DB-backed password-request feature is connected.
+$pending  = 0;
+
+$failure  = repo_admin_failure_rates(5);       // Question-Level Failure Rate
+$risk     = repo_admin_risk_flags();           // Risk Flag Breakdown by Factor
+$volume   = repo_admin_volume();               // Applicant Volume Over Time
 
 // Share of something, used by the little bar on each summary box
 function share(int $part, int $total): int
@@ -36,7 +40,7 @@ function share(int $part, int $total): int
 }
 
 $hr_pct  = share((int) $overview['hr_active'], (int) $overview['hr_total']);
-$log_pct = share((int) $overview['activities_week'], count($all_log));
+$log_pct = share((int) $overview['activities_week'], $logTotal);
 
 $hr_note  = 'out of ' . (int) $overview['hr_total'] . ' HR account' . ($overview['hr_total'] === 1 ? '' : 's');
 $q_note   = 'in ' . (int) $overview['sections'] . ' section' . ($overview['sections'] === 1 ? '' : 's');
@@ -48,12 +52,10 @@ $stats_sub = $q_count . ' question' . ($q_count === 1 ? '' : 's') . ' · ' . (
         ? 'from ' . (int) $stats['submissions'] . ' submitted questionnaire' . ($stats['submissions'] === 1 ? '' : 's')
         : 'no applicant has submitted the questionnaire yet'
 );
-$log_total = (int) $recent_view['total'];
-$log_count = $log_total > 10 ? 'Latest 10 of ' . $log_total : $log_total . ' in total';
+$log_count = $logTotal > 10 ? 'Latest 10 of ' . $logTotal : $logTotal . ' in total';
 
-// The profile chip next to the greeting (name + picture saved in Settings; see hr/static-data.php)
-$profile      = static_profile_for_page('../hr/data/avatars/');
-$display_name = $profile['name'];
+// Admin name from the session (set at login from the users table).
+$display_name = $_SESSION['user_name'] ?? 'Admin';
 $greeting     = 'Hello, ' . $display_name . '!';
 ?>
 <!DOCTYPE html>
@@ -417,7 +419,10 @@ $greeting     = 'Hello, ' . $display_name . '!';
 
     <!-- Pass PHP Variables to JavaScript -->
     <script>
-        window.ADMIN_NOTIFY = <?php echo json_encode(static_admin_notify(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+        window.ADMIN_NOTIFY = <?php
+            try { echo json_encode(repo_admin_notify(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); }
+            catch (Throwable $e) { echo json_encode(['activity' => [], 'expiring' => 0, 'days' => 7]); }
+        ?>;
         window.ADMIN_DASH = <?php echo json_encode(['stats' => $stats, 'activity' => $recent, 'volume' => $volume, 'pending' => $pending], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
     </script>
     <!-- Shared admin behaviour first, then this page's script -->

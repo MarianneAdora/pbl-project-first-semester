@@ -2195,19 +2195,22 @@
             "at": "2026-11-06 09:45:39",
             "activity": "Job Position Deleted",
             "details": "Customer Service Representative",
-            "by": "HR"
+            "by": "HR",
+            "admin_seen_at": "2026-11-06 09:58:28"
         },
         {
             "at": "2026-11-06 09:45:49",
             "activity": "Job Position Deleted",
             "details": "Technical Support Representative",
-            "by": "HR"
+            "by": "HR",
+            "admin_seen_at": "2026-11-06 09:58:28"
         },
         {
             "at": "2026-11-06 09:57:00",
             "activity": "Job Position Deleted",
             "details": "Back Office Associate",
-            "by": "HR"
+            "by": "HR",
+            "admin_seen_at": "2026-11-06 09:58:28"
         }
     ],
     "questions": [

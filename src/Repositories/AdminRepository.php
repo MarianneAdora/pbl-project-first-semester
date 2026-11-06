@@ -418,6 +418,172 @@ function repo_admin_question_stats(?PDO $pdo = null): array
     return ['submissions' => $total, 'sections' => $sections, 'questions' => $out];
 }
 
+// ---------------------------------------------------------------------------
+// DASHBOARD INSIGHT CARDS (live from the database)
+// ---------------------------------------------------------------------------
+
+// Active knock-out questions: share of applicants who did not pass each one (highest first).
+// BACKEND: per knock-out question, COUNT(responses that fail passing answer) / COUNT(responses answered).
+function repo_admin_failure_rates(int $limit = 5, ?PDO $pdo = null): array
+{
+    $pdo = $pdo ?: db();
+
+    $questions = $pdo->query(
+        'SELECT question_id, section, question_text, passing_answer, question_type' .
+        ' FROM question_config WHERE deleted_at IS NULL AND is_active = TRUE AND is_knockout = TRUE' .
+        ' ORDER BY section_no, question_id'
+    )->fetchAll();
+
+    $subs = $pdo->query("SELECT answers_json FROM response WHERE submitted_at IS NOT NULL")->fetchAll();
+    $totalSubs = count($subs);
+
+    $rows = [];
+    foreach ($questions as $q) {
+        $pass = $q['passing_answer'];
+        if (is_string($pass)) $pass = json_decode($pass, true);
+        if (!is_array($pass)) $pass = [];
+        $passAnswer = (string) ($pass['answer'] ?? 'Yes');
+
+        $type = (string) $q['question_type'];
+        $key = 'q' . (int) $q['question_id'];
+
+        $judged = 0;
+        $failed = 0;
+
+        foreach ($subs as $s) {
+            $answers = $s['answers_json'];
+            if (is_string($answers)) $answers = json_decode($answers, true);
+            if (!is_array($answers) || !array_key_exists($key, $answers)) continue;
+            $v = $answers[$key];
+            if ($v === null || $v === '' || $v === false) continue;
+            $judged++;
+
+            $label = is_bool($v) ? ($v ? 'Yes' : 'No') : (string) $v;
+            if ($label !== $passAnswer) $failed++;
+        }
+
+        $rows[] = [
+            'id'     => 'q' . (int) $q['question_id'],
+            'label'  => 'Q' . (int) $q['question_id'] . ': ' . (string) $q['question_text'],
+            'failed' => $failed,
+            'judged' => $judged,
+            'rate'   => $judged > 0 ? round($failed / $judged * 100, 1) : 0,
+        ];
+    }
+
+    usort($rows, fn($a, $b) => [$b['rate'], $b['failed']] <=> [$a['rate'], $a['failed']]);
+
+    return [
+        'submissions' => $totalSubs,
+        'knockouts'   => count($questions),
+        'rows'        => array_slice($rows, 0, $limit),
+    ];
+}
+
+// Risk Flag Breakdown by Factor: share of screenings where each factor group raised a flag.
+// Reads risk_flags_json from the score table (factors[].label + factors[].points).
+function repo_admin_risk_flags(?PDO $pdo = null): array
+{
+    $pdo = $pdo ?: db();
+
+    $groups = [
+        'otp'    => ['label' => 'OTP retries',      'color' => '#f5a623'],
+        'fast'   => ['label' => 'Fast completion',  'color' => '#3b82f6'],
+        'device' => ['label' => 'Duplicate device', 'color' => '#a855f7'],
+        'video'  => ['label' => 'Duplicate video',  'color' => '#14b8a6'],
+    ];
+
+    $groupOf = function (string $factor): ?string {
+        if (stripos($factor, 'OTP') !== false)                return 'otp';
+        if (stripos($factor, 'Questionnaire speed') === 0)    return 'fast';
+        if (stripos($factor, 'Same device') === 0)            return 'device';
+        if (stripos($factor, 'Video matches') === 0)          return 'video';
+        return null;
+    };
+
+    $rows = $pdo->query("SELECT risk_flags_json FROM score")->fetchAll();
+
+    $count = array_fill_keys(array_keys($groups), 0);
+    $total = 0;
+
+    foreach ($rows as $r) {
+        $flags = $r['risk_flags_json'];
+        if (is_string($flags)) $flags = json_decode($flags, true);
+        if (!is_array($flags)) continue;
+
+        $total++;
+        $hit = [];
+        foreach ((array) ($flags['factors'] ?? []) as $f) {
+            $g = $groupOf((string) ($f['label'] ?? ''));
+            if ($g !== null && !isset($hit[$g]) && (int) ($f['points'] ?? 0) > 0) {
+                $hit[$g] = true;
+                $count[$g]++;
+            }
+        }
+    }
+
+    $out = [];
+    foreach ($groups as $key => $g) {
+        $out[] = [
+            'key'    => $key,
+            'label'  => $g['label'],
+            'color'  => $g['color'],
+            'count'  => $count[$key],
+            'share'  => $total > 0 ? round($count[$key] / $total * 100, 1) : 0,
+            'sample' => false,
+        ];
+    }
+    usort($out, fn($a, $b) => $b['count'] <=> $a['count']);
+
+    return ['evaluations' => $total, 'total' => $total, 'rows' => $out, 'has_sample' => false];
+}
+
+// Applicant Volume Over Time: applications received per week / per month from the applicant table.
+function repo_admin_volume(?PDO $pdo = null): array
+{
+    $pdo = $pdo ?: db();
+
+    $rows = $pdo->query("SELECT created_at FROM applicant WHERE deleted_at IS NULL")->fetchAll();
+
+    $days = [];
+    foreach ($rows as $r) {
+        $days[] = substr((string) $r['created_at'], 0, 10);
+    }
+
+    $countBetween = function (DateTimeImmutable $from, DateTimeImmutable $to) use ($days): int {
+        $f = $from->format('Y-m-d');
+        $t = $to->format('Y-m-d');
+        return count(array_filter($days, fn($d) => $d >= $f && $d < $t));
+    };
+
+    $now = new DateTimeImmutable('today');
+    $monday = $now->modify('monday this week');
+
+    $week = ['labels' => [], 'ranges' => [], 'values' => [], 'sample' => []];
+    for ($i = 5; $i >= 0; $i--) {
+        $start = $monday->modify('-' . $i . ' weeks');
+        $end   = $start->modify('+7 days');
+        $last  = $end->modify('-1 day');
+        $week['labels'][] = 'W' . (6 - $i);
+        $week['ranges'][] = $start->format('M j') . ' to ' . ($start->format('M') === $last->format('M') ? $last->format('j') : $last->format('M j'));
+        $week['values'][] = $countBetween($start, $end);
+        $week['sample'][] = false;
+    }
+
+    $first = $now->modify('first day of this month');
+    $month = ['labels' => [], 'ranges' => [], 'values' => [], 'sample' => []];
+    for ($i = 5; $i >= 0; $i--) {
+        $start = $first->modify('-' . $i . ' months');
+        $month['labels'][] = $start->format('M');
+        $month['ranges'][] = $start->format('F Y');
+        $end = $start->modify('+1 month');
+        $month['values'][] = $countBetween($start, $end);
+        $month['sample'][] = false;
+    }
+
+    return ['week' => $week, 'month' => $month];
+}
+
 
 
 
