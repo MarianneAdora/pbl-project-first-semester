@@ -2482,28 +2482,5 @@
             "decided_by": "Admin",
             "reason": ""
         }
-    ],
-    "job_positions": [
-        {
-            "id": 1,
-            "name": "Customer Service Representative",
-            "jd": null,
-            "created": "2026-08-03 09:00",
-            "archived_at": "2026-11-06 09:45:39"
-        },
-        {
-            "id": 2,
-            "name": "Technical Support Representative",
-            "jd": null,
-            "created": "2026-08-03 09:00",
-            "archived_at": "2026-11-06 09:45:49"
-        },
-        {
-            "id": 3,
-            "name": "Back Office Associate",
-            "jd": null,
-            "created": "2026-08-03 09:00",
-            "archived_at": "2026-11-06 09:57:00"
-        }
     ]
 }

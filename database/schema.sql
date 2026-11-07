@@ -179,6 +179,23 @@ CREATE TABLE score (
 );
 
 -- ------------------------------------------------------------
+-- JOB POSITIONS
+-- One row per job position; each position has its own job
+-- description PDF stored in Cloudinary (jd_url). HR adds
+-- positions via the "+ Add job position" control in Add Applicant.
+-- ------------------------------------------------------------
+CREATE TABLE job_positions (
+    id            SERIAL PRIMARY KEY,
+    name          VARCHAR(255) NOT NULL,
+    jd_url        VARCHAR(1024),                 -- Cloudinary secure_url
+    jd_public_id  VARCHAR(255),                  -- Cloudinary public_id (for deletion)
+    created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    archived_at   TIMESTAMP
+);
+
+CREATE INDEX idx_job_positions_archived_at ON job_positions(archived_at);
+
+-- ------------------------------------------------------------
 -- INDEXES
 -- ------------------------------------------------------------
 CREATE UNIQUE INDEX uq_applicant_email_normalized ON applicant(email_normalized);

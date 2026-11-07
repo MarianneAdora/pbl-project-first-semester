@@ -58,7 +58,7 @@ const STATIC_JOB_DESCRIPTION_URL = 'https://www.w3.org/WAI/ER/tests/xhtml/testfi
 function static_job_description_url(?array $applicant): string
 {
     if ($applicant && !empty($applicant['position_id'])) {
-        $url = static_position_jd_url(static_position_find((int) $applicant['position_id']), '../hr/data/');   // applicant/ -> hr/data/
+        $url = static_position_jd_url(static_position_find((int) $applicant['position_id']));
         if ($url !== '') return $url;
     }
     return STATIC_JOB_DESCRIPTION_URL;

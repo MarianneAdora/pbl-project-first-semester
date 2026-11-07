@@ -30,6 +30,8 @@
      static_dashboard_insights()  ->  three queries, see the BACKEND notes above that function
    ========================================================================== */
 
+require_once __DIR__ . '/../src/Helpers/db.php';
+
 /* ==========================================================================
    HOW IT WORKS NOW (store layer, added at the bottom of this file)
    The list below (static_seed_applicants) is only the STARTING data. The first time any page
@@ -790,64 +792,55 @@ function static_save_cv(int $id, ?array $upload): ?array
    Add Applicant has a "Job Position" list; its last entry is "+ Add job position", where HR types a new one
    (and uploads that position's job description PDF). Every position has its OWN job description, so the
    applicant is shown the PDF of the position they were added under (applicant/questionnaire.php, question 1).
-   Stored in the store under "job_positions"; the PDFs are kept in data/jd/ (next to data/cv).
-     id, name, jd = { name, size, file } or null (no PDF uploaded yet), created, archived_at
+   Stored in the database table job_positions; the PDFs are kept in Cloudinary (jd_url column).
+     id, name, jd_url, jd_public_id, created_at, archived_at
    An applicant keeps position_id + position (the name when they were added).
-   DATABASE (later): job_positions (id, name, jd_url, created_at, archived_at); the PDF goes to Cloudinary and
-   jd_url is saved instead of a file name.
    ========================================================================== */
-const STATIC_JD_DIR   = __DIR__ . '/data/jd';
 const STATIC_JD_BYTES = 5 * 1024 * 1024;                   // 5 MB at most, like the CV
 
-// The positions the project starts with. Their PDFs are the sample files data/jd/jd-1.pdf ... jd-3.pdf
-function static_seed_positions(): array
-{
-    $seed = [
-        [1, 'Customer Service Representative'],
-        [2, 'Technical Support Representative'],
-        [3, 'Back Office Associate']
-    ];
-    $out = [];
-    foreach ($seed as [$id, $name]) {
-        $file = 'jd-' . $id . '.pdf';
-        $path = STATIC_JD_DIR . '/' . $file;
-        $out[] = [
-            'id'          => $id,
-            'name'        => $name,
-            'jd'          => is_file($path) ? ['name' => $name . ' - Job Description.pdf', 'size' => (int) @filesize($path), 'file' => $file] : null,
-            'created'     => '2026-08-03 09:00',
-            'archived_at' => null
-        ];
-    }
-    return $out;
-}
-
-// Active positions in the order they were created (a store without positions gets the starting ones, once)
+// Active positions in the order they were created. BACKEND: SELECT id, name, jd_url FROM job_positions WHERE archived_at IS NULL ORDER BY id
 function static_positions(): array
 {
-    $store = static_store_read();
-    if (!isset($store['job_positions']) || !is_array($store['job_positions'])) {
-        $store = static_store_update(function (array &$store) {
-            if (!isset($store['job_positions']) || !is_array($store['job_positions'])) $store['job_positions'] = static_seed_positions();
-            return $store;
-        });
-    }
+    $pdo = db();
+    $stmt = $pdo->query("SELECT id, name, jd_url, jd_public_id, created_at, archived_at FROM job_positions WHERE archived_at IS NULL ORDER BY id");
     $out = [];
-    foreach ($store['job_positions'] as $p) {
-        if (!is_array($p) || !empty($p['archived_at'])) continue;
-        $out[] = $p;
+    while ($row = $stmt->fetch()) {
+        $out[] = [
+            'id'          => (int) $row['id'],
+            'name'        => (string) $row['name'],
+            'jd'          => !empty($row['jd_url']) ? [
+                'name'       => '',
+                'size'       => 0,
+                'url'        => (string) $row['jd_url'],
+                'public_id'  => (string) ($row['jd_public_id'] ?? '')
+            ] : null,
+            'created'     => (string) $row['created_at'],
+            'archived_at' => empty($row['archived_at']) ? null : (string) $row['archived_at']
+        ];
     }
-    usort($out, fn($a, $b) => (int) $a['id'] <=> (int) $b['id']);
     return $out;
 }
 
 function static_position_find(int $id): ?array
 {
     if ($id <= 0) return null;
-    foreach (static_positions() as $p) {
-        if ((int) $p['id'] === $id) return $p;
-    }
-    return null;
+    $pdo = db();
+    $stmt = $pdo->prepare("SELECT id, name, jd_url, jd_public_id, created_at, archived_at FROM job_positions WHERE id = :id AND archived_at IS NULL LIMIT 1");
+    $stmt->execute([':id' => $id]);
+    $row = $stmt->fetch();
+    if (!$row) return null;
+    return [
+        'id'          => (int) $row['id'],
+        'name'        => (string) $row['name'],
+        'jd'          => !empty($row['jd_url']) ? [
+            'name'       => '',
+            'size'       => 0,
+            'url'        => (string) $row['jd_url'],
+            'public_id'  => (string) ($row['jd_public_id'] ?? '')
+        ] : null,
+        'created'     => (string) $row['created_at'],
+        'archived_at' => empty($row['archived_at']) ? null : (string) $row['archived_at']
+    ];
 }
 
 // What the page / JavaScript gets for a position (never a server path)
@@ -856,24 +849,22 @@ function static_position_public(array $p): array
     return [
         'id'      => (int) $p['id'],
         'name'    => (string) $p['name'],
-        'has_jd'  => !empty($p['jd']['url'] ?? $p['jd']['file']),
+        'has_jd'  => !empty($p['jd']['url']),
         'jd_name' => !empty($p['jd']['name']) ? (string) $p['jd']['name'] : '',
         'jd_url'  => !empty($p['jd']['url']) ? (string) $p['jd']['url'] : ''
     ];
 }
 
 // The address of a position's job description PDF, or '' when it has none.
-// Returns the Cloudinary URL when the position has one (new positions uploaded via
-// "+ Add job position"); falls back to the local data/jd/ file for seed positions.
-// $base = how the calling page reaches hr/data/  (applicant pages: '../hr/data/', HR pages: 'data/').
-function static_position_jd_url(?array $position, string $base): string
+// Returns the Cloudinary URL from the job_positions table, or '' when none is set.
+// The JD URL is always the Cloudinary secure_url stored in the job_positions table.
+function static_position_jd_url(?array $position): string
 {
     if ($position && !empty($position['jd']['url'])) return (string) $position['jd']['url'];
-    $file = $position['jd']['file'] ?? '';
-    if (!is_string($file) || !preg_match('/^[A-Za-z0-9._\-]+\.pdf$/', $file)) return '';
-    $path = STATIC_JD_DIR . '/' . $file;
-    if (!is_file($path)) return '';
-    return $base . 'jd/' . rawurlencode($file) . '?v=' . (int) @filemtime($path);
+
+
+    return '';
+
 }
 
 // "+ Add job position": creates a position, and keeps its job description PDF (optional here; without it the
@@ -901,49 +892,57 @@ function static_position_add(string $name, ?array $jdUpload = null): array
         if ($head !== '%PDF-')                                             throw new InvalidArgumentException('That file is not a valid PDF.');
     }
 
-    static_positions();                                                   // makes sure the starting positions exist before a new id is chosen
+    // Check for duplicate active name in the database
+    $pdo = db();
+    $stmt = $pdo->prepare("SELECT id FROM job_positions WHERE archived_at IS NULL AND LOWER(name) = LOWER(:name) LIMIT 1");
+    $stmt->execute([':name' => $name]);
+    if ($stmt->fetch()) {
+        throw new InvalidArgumentException('This job position already exists. Choose it from the list.');
+    }
 
-    $saved = static_store_update(function (array &$store) use ($name, $hasUpload, $jdUpload) {
-        $list  = isset($store['job_positions']) && is_array($store['job_positions']) ? $store['job_positions'] : static_seed_positions();
-
-        $max = 0;
-        foreach ($list as $p) {
-            if (!is_array($p)) continue;
-            $max = max($max, (int) ($p['id'] ?? 0));
-            if (empty($p['archived_at']) && strcasecmp((string) ($p['name'] ?? ''), $name) === 0) {
-                throw new InvalidArgumentException('This job position already exists. Choose it from the list.');
-            }
+    $jdUrl   = null;
+    $jdPubId = null;
+    $jdName  = '';
+    if ($hasUpload) {
+        try {
+            require_once __DIR__ . '/../src/Services/CloudinaryService.php';
+            $cloud = new CloudinaryService();
+            $uploaded = $cloud->uploadJobDescription(
+                (string) $jdUpload['tmp_name'],
+                0,  // position id not known yet; Cloudinary filename uses it, but we use unique_filename=false anyway
+                'ebsmi-job-position-pdfs',
+                (string) ($jdUpload['name'] ?? '')
+            );
+            $jdUrl   = $uploaded['url'];
+            $jdPubId = $uploaded['public_id'] ?? '';
+            $jdName  = $uploaded['name'];
+        } catch (Throwable $e) {
+            error_log('Job Description Cloudinary upload error: ' . $e->getMessage());
+            throw new InvalidArgumentException('The job description could not be uploaded. Please try again.');
         }
-        $id = $max + 1;
+    }
 
-        $jd = null;
-        if ($hasUpload) {
-            try {
-                require_once __DIR__ . '/../src/Services/CloudinaryService.php';
-                $cloud = new CloudinaryService();
-                $uploaded = $cloud->uploadJobDescription(
-                    (string) $jdUpload['tmp_name'],
-                    $id,
-                    'ebsmi-job-position-pdfs',
-                    (string) ($jdUpload['name'] ?? '')
-                );
-                $jd = [
-                    'name'       => $uploaded['name'],
-                    'size'       => (int) $jdUpload['size'],
-                    'url'        => $uploaded['url'],
-                    'public_id'  => $uploaded['public_id'] ?? '',
-                ];
-            } catch (Throwable $e) {
-                error_log('Job Description Cloudinary upload error: ' . $e->getMessage());
-                throw new InvalidArgumentException('The job description could not be uploaded. Please try again.');
-            }
-        }
+    $stmt = $pdo->prepare("INSERT INTO job_positions (name, jd_url, jd_public_id, created_at, archived_at) VALUES (:name, :jd_url, :jd_public_id, :created_at, NULL) RETURNING id, name, jd_url, jd_public_id, created_at, archived_at");
+    $stmt->execute([
+        ':name'         => $name,
+        ':jd_url'       => $jdUrl,
+        ':jd_public_id' => $jdPubId,
+        ':created_at'   => static_now()->format('Y-m-d H:i:s')
+    ]);
+    $row = $stmt->fetch();
 
-        $position = ['id' => $id, 'name' => $name, 'jd' => $jd, 'created' => static_now()->format('Y-m-d H:i'), 'archived_at' => null];
-        $list[] = $position;
-        $store['job_positions'] = $list;
-        return $position;
-    });
+    $saved = [
+        'id'          => (int) $row['id'],
+        'name'        => (string) $row['name'],
+        'jd'          => !empty($row['jd_url']) ? [
+            'name'       => $jdName,
+            'size'       => (int) ($jdUpload['size'] ?? 0),
+            'url'        => (string) $row['jd_url'],
+            'public_id'  => (string) ($row['jd_public_id'] ?? '')
+        ] : null,
+        'created'     => (string) $row['created_at'],
+        'archived_at' => empty($row['archived_at']) ? null : (string) $row['archived_at']
+    ];
     return static_position_public($saved);
 }
 
@@ -951,34 +950,45 @@ function static_position_add(string $name, ?array $jdUpload = null): array
 // Returns the archived position. Throws InvalidArgumentException if not found or in use.
 function static_position_delete(int $id): array
 {
-    $saved = static_store_update(function (array &$store) use ($id) {
-        $list = isset($store['job_positions']) && is_array($store['job_positions']) ? $store['job_positions'] : [];
+    $pdo = db();
 
-        $pos = null;
-        $posIdx = null;
-        foreach ($list as $i => $p) {
-            if (is_array($p) && (int) ($p['id'] ?? 0) === $id) { $pos = $p; $posIdx = $i; break; }
+    $stmt = $pdo->prepare("SELECT id, name, jd_public_id, archived_at FROM job_positions WHERE id = :id LIMIT 1");
+    $stmt->execute([':id' => $id]);
+    $pos = $stmt->fetch();
+    if (!$pos) throw new InvalidArgumentException('That job position was not found.');
+    if (!empty($pos['archived_at'])) throw new InvalidArgumentException('That job position is already archived.');
+
+    // Delete the job description PDF from Cloudinary if it has one
+    if (!empty($pos['jd_public_id'])) {
+        try {
+            require_once __DIR__ . '/../src/Services/CloudinaryService.php';
+            $cloud = new CloudinaryService();
+            $cloud->deleteResource((string) $pos['jd_public_id'], 'auto', 'default');
+        } catch (Throwable $e) {
+            error_log('Job Description Cloudinary delete error: ' . $e->getMessage());
+            // continue archiving even if Cloudinary delete fails
         }
-        if ($pos === null) throw new InvalidArgumentException('That job position was not found.');
-        if (!empty($pos['archived_at'])) throw new InvalidArgumentException('That job position is already archived.');
+    }
 
-        // Delete the job description PDF from Cloudinary if it has one
-        $jd = $pos['jd'] ?? null;
-        if (is_array($jd) && !empty($jd['public_id'])) {
-            try {
-                require_once __DIR__ . '/../src/Services/CloudinaryService.php';
-                $cloud = new CloudinaryService();
-                $cloud->deleteResource((string) $jd['public_id'], 'auto', 'default');
-            } catch (Throwable $e) {
-                error_log('Job Description Cloudinary delete error: ' . $e->getMessage());
-                // continue archiving even if Cloudinary delete fails
-            }
-        }
+    $stmt = $pdo->prepare("UPDATE job_positions SET archived_at = :archived_at WHERE id = :id RETURNING id, name, jd_url, jd_public_id, created_at, archived_at");
+    $stmt->execute([
+        ':archived_at' => static_now()->format('Y-m-d H:i:s'),
+        ':id'          => $id
+    ]);
+    $row = $stmt->fetch();
 
-        $list[$posIdx]['archived_at'] = static_now()->format('Y-m-d H:i:s');
-        $store['job_positions'] = $list;
-        return $pos;
-    });
+    $saved = [
+        'id'          => (int) $row['id'],
+        'name'        => (string) $row['name'],
+        'jd'          => !empty($row['jd_url']) ? [
+            'name'       => '',
+            'size'       => 0,
+            'url'        => (string) $row['jd_url'],
+            'public_id'  => (string) ($row['jd_public_id'] ?? '')
+        ] : null,
+        'created'     => (string) $row['created_at'],
+        'archived_at' => empty($row['archived_at']) ? null : (string) $row['archived_at']
+    ];
     return static_position_public($saved);
 }
 
