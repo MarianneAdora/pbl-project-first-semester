@@ -369,13 +369,23 @@ function static_store_write(array $store): bool
     return true;
 }
 
-// Call the change callback with the store, but the store is now always in the database.
-// Old callers that used static_store_update for profile/settings are migrated to direct DB writes below.
-function static_store_update(callable $change)
+// Read the store from the JSON file (or return default empty store)
+function static_store_read(): array
 {
-    throw new RuntimeException('static_store_update is no longer supported — use direct DB queries or repo_* functions instead.');
+    $file = STATIC_STORE_FILE;
+    if (!file_exists($file)) {
+        return ['applicants' => [], 'hr_accounts' => [], 'positions' => [], 'submissions' => [], 'evaluations' => [], 'activity' => []];
+    }
+    $json = file_get_contents($file);
+    $store = json_decode($json, true);
+    if ($store === null) {
+        return ['applicants' => [], 'hr_accounts' => [], 'positions' => [], 'submissions' => [], 'evaluations' => [], 'activity' => []];
+    }
+    return $store + ['applicants' => [], 'hr_accounts' => [], 'positions' => [], 'submissions' => [], 'evaluations' => [], 'activity' => []];
 }
 
+// ---------------------------------------------------------------------------
+// ACTIVITY LOG:
 // ---------------------------------------------------------------------------
 // ACTIVITY LOG: what HR and the Admin did (kept in the store under "activity")
 //   Admin Dashboard > Recent Activities lists every line HR writes here, and the Admin's sidebar
@@ -1758,6 +1768,7 @@ function static_profile_decide_request(int $id, string $decision, string $reason
 // (HR pages: 'data/avatars/'   Admin pages: '../hr/data/avatars/').
 function static_profile_for_page(string $avatarBase): array
 {
+    $store = static_store_read();
     $me = static_profile_me();
     $role  = (string) ($_SESSION['user_role'] ?? '');
 
