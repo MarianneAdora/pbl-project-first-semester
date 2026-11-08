@@ -61,61 +61,53 @@ require_once __DIR__ . '/../src/Helpers/db.php';
 // ---------------------------------------------------------------------------
 function static_accounts(): array
 {
-    $accounts = [
-        'hr@expertise.com' => [
+    $pdo = db();
+    $accounts = [];
+
+    // HR accounts from users table
+    $stmt = $pdo->query("SELECT name, email, password_hash FROM users WHERE role = 'hr' AND deleted_at IS NULL");
+    while ($row = $stmt->fetch()) {
+        $email = strtolower(trim((string) $row['email']));
+        if ($email === '') continue;
+        $accounts[$email] = [
+            'hash'     => (string) $row['password_hash'],
+            'role'     => 'hr',
+            'name'     => (string) $row['name'],
+            'redirect' => 'hr/dashboard-hr.php'
+        ];
+    }
+
+    // Admin account from users table
+    $stmt = $pdo->query("SELECT name, email, password_hash FROM users WHERE role = 'admin' AND deleted_at IS NULL LIMIT 1");
+    $admin = $stmt->fetch();
+    if ($admin) {
+        $adminEmail = strtolower(trim((string) $admin['email']));
+        if ($adminEmail !== '') {
+            $accounts[$adminEmail] = [
+                'hash'     => (string) $admin['password_hash'],
+                'role'     => 'admin',
+                'name'     => (string) $admin['name'],
+                'redirect' => 'admin/dashboard-admin.php'
+            ];
+        }
+    }
+
+    // Fall back to default accounts if the DB has none
+    if (empty($accounts)) {
+        $accounts['hr@expertise.com'] = [
             'password' => 'hr123',
             'role'     => 'hr',
-            'name'     => 'HR',                       // shown in "Hello, ...!"
+            'name'     => 'HR',
             'redirect' => 'hr/dashboard-hr.php'
-        ],
-        'admin@expertise.com' => [
+        ];
+        $accounts['admin@expertise.com'] = [
             'password' => 'admin123',
             'role'     => 'admin',
             'name'     => 'Admin',
             'redirect' => 'admin/dashboard-admin.php'
-        ]
-    ];
-
-    // Once the Admin has created / changed an HR account (admin/hr-list.php), the HR logins come from the
-    // store instead: only Active accounts that are not in the Archive can log in, and a password the
-    // Admin typed is kept as a hash ('hash'), checked with password_verify() in index.php.
-    // BACKEND: SELECT name, email, password_hash FROM users WHERE role = 'hr' AND status = 'Active'
-    if (is_file(STATIC_STORE_FILE)) {
-        $store = json_decode((string) @file_get_contents(STATIC_STORE_FILE), true);
-
-        // The Admin's own profile (admin/settingsadmin.php, saved in hr/static-data.php): a changed name, email or
-        // password is kept in the store as "admin_account", and the login has to follow it. This runs BEFORE the HR
-        // accounts below, so an email the Admin gave up can be used by an HR account.
-        // BACKEND: SELECT name, email, password_hash FROM users WHERE role = 'admin'
-        if (is_array($store) && isset($store['admin_account']) && is_array($store['admin_account'])) {
-            $adm   = $store['admin_account'];
-            $entry = $accounts['admin@expertise.com'];
-            unset($accounts['admin@expertise.com']);
-            if (trim((string) ($adm['name'] ?? '')) !== '') $entry['name'] = trim((string) $adm['name']);
-            if (!empty($adm['hash'])) {
-                $entry['hash'] = (string) $adm['hash'];
-                unset($entry['password']);
-            }
-            $adminEmail = strtolower(trim((string) ($adm['email'] ?? '')));
-            $accounts[$adminEmail !== '' ? $adminEmail : 'admin@expertise.com'] = $entry;
-        }
-
-        if (is_array($store) && isset($store['hr_accounts']) && is_array($store['hr_accounts'])) {
-            unset($accounts['hr@expertise.com']);
-            foreach ($store['hr_accounts'] as $a) {
-                if (!is_array($a) || !empty($a['archived_at']) || ($a['status'] ?? 'Active') !== 'Active') continue;
-                $email = strtolower((string) ($a['email'] ?? ''));
-                if ($email === '' || isset($accounts[$email])) continue;
-                $accounts[$email] = [
-                    'password' => isset($a['password']) ? (string) $a['password'] : null,
-                    'hash'     => isset($a['hash']) ? (string) $a['hash'] : null,
-                    'role'     => 'hr',
-                    'name'     => (string) ($a['name'] ?? 'HR'),
-                    'redirect' => 'hr/dashboard-hr.php'
-                ];
-            }
-        }
+        ];
     }
+
     return $accounts;
 }
 
@@ -371,133 +363,27 @@ function static_now(): DateTimeImmutable
     return new DateTimeImmutable('now', new DateTimeZone('Asia/Manila'));
 }
 
+// No-op: the store is now always in the database.
 function static_store_write(array $store): bool
 {
-    $dir = dirname(STATIC_STORE_FILE);
-    if (!is_dir($dir)) @mkdir($dir, 0775, true);
-    $json = json_encode($store, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    if (file_put_contents(STATIC_STORE_FILE, $json, LOCK_EX) === false) {
-        throw new RuntimeException('Could not write to static store file: ' . STATIC_STORE_FILE);
-    }
     return true;
 }
 
-// Reads the whole store. First run (or a broken file): starts from the seed list.
-function static_store_read(): array
-{
-    $store = null;
-    if (is_file(STATIC_STORE_FILE)) {
-        $store = json_decode((string) @file_get_contents(STATIC_STORE_FILE), true);
-    }
-    if (!is_array($store) || !isset($store['applicants']) || !is_array($store['applicants'])) {
-        $store = ['applicants' => array_map(fn($a) => $a + ['archived_at' => null], static_seed_applicants())];
-        static_store_migrate($store);
-        static_store_write($store);
-    } elseif (static_store_migrate($store)) {
-        static_store_write($store);                 // an older store file got its new timeline fields: save them once
-    }
-    if (!isset($store['applicants']) || !is_array($store['applicants'])) {
-        $store['applicants'] = [];
-    }
-    return $store;
-}
-
-// ---------------------------------------------------------------------------
-// Timeline fields for the dashboard analytics (invited_at / submitted_at / passed_at, and sample interview
-// answers). Fills ONLY what is missing, so it is safe to run on every read: it returns true when it changed
-// something (the caller then saves the store once). Real data is never overwritten.
-// DATABASE (later): these are plain columns, so this whole function is deleted.
-// ---------------------------------------------------------------------------
-function static_store_migrate(array &$store): bool
-{
-    $changed = false;
-    $zone    = new DateTimeZone('Asia/Manila');
-    $fmt     = 'Y-m-d H:i';
-
-    // sample "invite -> submission" hours for the seed applicants who completed (any other id gets a spread value)
-    $seedHours = [103 => 9, 104 => 30, 106 => 18, 108 => 26, 109 => 40, 111 => 52, 114 => 21, 116 => 34,
-                  119 => 46, 121 => 60, 124 => 38, 126 => 15, 129 => 78, 131 => 100, 135 => 140];
-
-    foreach ($store['applicants'] as &$a) {
-        $id      = (int) $a['id'];
-        $status  = (string) ($a['status'] ?? 'Pending');
-        $updated = (string) ($a['updated'] ?? '');
-        if ($updated === '') continue;
-        $upd = new DateTimeImmutable($updated, $zone);
-
-        if (empty($a['invited_at'])) {
-            if ($status === 'Completed') {
-                $hours = $seedHours[$id] ?? (8 + ($id * 7) % 90);
-                $a['invited_at'] = $upd->modify('-' . $hours . ' hours')->format($fmt);
-            } elseif ($status === 'In Progress') {
-                $a['invited_at'] = $upd->modify('-' . (10 + $id % 30) . ' hours')->format($fmt);
-            } else {
-                $a['invited_at'] = $updated;
-            }
-            $changed = true;
-        }
-        if ($status === 'Completed' && empty($a['submitted_at'])) {
-            $a['submitted_at'] = $updated;
-            $changed = true;
-        }
-        if ($status === 'Completed' && ($a['result'] ?? null) === 'Passed' && empty($a['passed_at'])) {
-            $a['passed_at'] = $a['submitted_at'];
-            $changed = true;
-        }
-    }
-    unset($a);
-
-    // Sample interview answers for some of the seed applicants who passed (so Scheduling Turnaround Time has
-    // something to show on a fresh install). The others stay unanswered: HR can still try the confirm flow on them.
-    if (empty($store['timeline_seeded'])) {
-        $sampleHours = [103 => 20, 106 => 46, 111 => 71, 114 => 28, 121 => 52, 129 => 26, 135 => 63];
-        $slots       = ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00'];
-        if (!isset($store['interviews']) || !is_array($store['interviews'])) $store['interviews'] = [];
-        foreach ($store['applicants'] as $a) {
-            $id = (int) $a['id'];
-            if (!isset($sampleHours[$id]) || isset($store['interviews'][$id])) continue;
-            if (($a['status'] ?? '') !== 'Completed' || ($a['result'] ?? null) !== 'Passed' || empty($a['passed_at'])) continue;
-
-            $answered = (new DateTimeImmutable($a['passed_at'], $zone))->modify('+' . $sampleHours[$id] . ' hours');
-            $day = $answered->modify('+3 days');
-            while ((int) $day->format('N') >= 6) $day = $day->modify('+1 day');
-            $time = $slots[$id % count($slots)];
-            $store['interviews'][$id] = [
-                'status'         => 'confirmed',
-                'preferred_date' => $day->format('Y-m-d'),
-                'preferred_time' => $time,
-                'type'           => STATIC_INTERVIEW_TYPE,
-                'date'           => $day->format('Y-m-d'),
-                'time'           => $time,
-                'source'         => 'sample',
-                'updated'        => $answered->format($fmt),
-                'answered_at'    => $answered->format($fmt)
-            ];
-        }
-        $store['timeline_seeded'] = true;
-        $changed = true;
-    }
-    return $changed;
-}
-
-// Read, change, write (one place so every change is saved the same way)
+// Call the change callback with the store, but the store is now always in the database.
+// Old callers that used static_store_update for profile/settings are migrated to direct DB writes below.
 function static_store_update(callable $change)
 {
-    $store  = static_store_read();
-    $result = $change($store);
-    static_store_write($store);
-    return $result;
-}
-
-function static_next_id(array $store): int
-{
-    $max = 100;
-    foreach ($store['applicants'] as $a) $max = max($max, (int) $a['id']);
-    return $max + 1;
+    throw new RuntimeException('static_store_update is no longer supported — use direct DB queries or repo_* functions instead.');
 }
 
 // ---------------------------------------------------------------------------
 // ACTIVITY LOG: what HR and the Admin did (kept in the store under "activity")
+//   Admin Dashboard > Recent Activities lists every line HR writes here, and the Admin's sidebar
+//   Dashboard badge counts the ones the Admin has not seen yet (see static_admin_notify()).
+//   HR Dashboard > the notification bell lists HR's own lines (static_hr_feed()).
+//   Only real work is logged: applicants (add / delete / restore / delete forever / status) and
+//   interview schedules. Preferences (HR Settings) are NOT logged.
+//   These four helpers used to sit in admin/static-admin.php; the Admin side now uses them from here.
 //   Admin Dashboard > Recent Activities lists every line HR writes here, and the Admin's sidebar
 //   Dashboard badge counts the ones the Admin has not seen yet (see static_admin_notify()).
 //   HR Dashboard > the notification bell lists HR's own lines (static_hr_feed()).
@@ -542,43 +428,30 @@ if (!function_exists('static_log_into')) {
 }
 
 // Newest first (two lines with the same time keep the order they were written, newest on top)
-if (!function_exists('static_activity')) {
-    function static_activity(): array
-    {
-        $store = static_store_read();
-        $list  = isset($store['activity']) && is_array($store['activity']) ? $store['activity'] : static_seed_activity();
-        $order = [];
-        foreach (array_values($list) as $i => $row) $order[] = [$row, $i];
-        usort($order, fn($a, $b) => strcmp((string) $b[0]['at'], (string) $a[0]['at']) ?: ($b[1] <=> $a[1]));
-        return array_map(fn($pair) => $pair[0], $order);
-    }
+function static_activity(): array
+{
+    try { return repo_recent_activity(null, STATIC_ACTIVITY_SHOW_DAYS * 30); }
+    catch (Throwable $e) { return []; }
 }
+
 
 // Reads, adds one line, saves. Used by the HR endpoints once a change has worked.
 // A problem while writing the log line never undoes or blocks the change HR just made.
 function static_log(string $activity, string $details = '-', ?string $by = null): void
 {
-    try {
-        static_store_update(function (array &$store) use ($activity, $details, $by) {
-            static_log_into($store, $activity, $details, $by);
-        });
-    } catch (Throwable $e) {
-        // ignored on purpose
-    }
+    try { repo_log_activity($activity, $details, $by); } catch (Throwable $e) { /* ignored on purpose */ }
 }
 
-// The id of the signed-in HR account (0 when it cannot be told). The log lines about one person's profile / password
-// carry that person's id as 'owner' (see hr/static-data.php), and only that person sees them in the bell.
+// The id of the signed-in HR account (0 when it cannot be told).
 function static_hr_session_id(): int
 {
     $email = strtolower(trim((string) ($_SESSION['user_email'] ?? '')));
     if ($email === '' || ($_SESSION['user_role'] ?? '') !== 'hr') return 0;
-    $store = static_store_read();
-    $list  = isset($store['hr_accounts']) && is_array($store['hr_accounts']) ? $store['hr_accounts'] : [['id' => 1, 'email' => 'hr@expertise.com']];
-    foreach ($list as $a) {
-        if (is_array($a) && strcasecmp((string) ($a['email'] ?? ''), $email) === 0) return (int) ($a['id'] ?? 0);
-    }
-    return 0;
+    $pdo = db();
+    $stmt = $pdo->prepare("SELECT user_id AS id FROM users WHERE email = :email AND role = 'hr' AND deleted_at IS NULL LIMIT 1");
+    $stmt->execute([':email' => $email]);
+    $row = $stmt->fetch();
+    return (int) ($row['id'] ?? 0);
 }
 
 // What HR did, newest first: the list behind the bell on the HR Dashboard (the Admin's own lines are left out).
@@ -586,19 +459,18 @@ function static_hr_session_id(): int
 // password request (that one Admin line is shown to HR, worded for HR).
 function static_hr_feed(int $limit = 30): array
 {
-    $mine = static_hr_session_id();
     $out  = [];
-    foreach (static_activity() as $row) {
-        $by   = (string) ($row['by'] ?? '');
-        $item = ['at' => (string) $row['at'], 'activity' => (string) $row['activity'], 'details' => (string) $row['details'], 'by' => $by];
+    $rows = repo_recent_activity(null, STATIC_ACTIVITY_SHOW_DAYS * 30);
+    $mine = static_hr_session_id();
+    foreach ($rows as $row) {
+        $by   = (string) ($row['actor'] ?? '');
+        $item = ['at' => (string) $row['created_at'], 'activity' => (string) $row['activity'], 'details' => (string) $row['details'], 'by' => $by];
 
         // a profile / password line belongs to one HR account: nobody else sees it
         if (isset($row['owner']) && (int) $row['owner'] !== $mine) continue;
 
-        if (($row['kind'] ?? '') === 'pw_result') {
-            $item['details'] = $item['activity'] === 'Password Change Approved'
-                ? 'The Admin approved your new password. Use it the next time you log in.'
-                : 'The Admin rejected your password change. Your current password stays.' . (!empty($row['reason']) ? ' Reason: ' . (string) $row['reason'] : '');
+        if (($row['activity'] ?? '') === 'Password Change Approved') {
+            $item['details'] = 'The Admin approved your new password. Use it the next time you log in.';
         } elseif (strcasecmp($by, 'Admin') === 0) {
             continue;
         }
@@ -635,14 +507,52 @@ function static_names_label(array $names): string
 // ---------------------------------------------------------------------------
 // READ
 // ---------------------------------------------------------------------------
-// Active applicants (NOT archived), same shape as the original sample list
+// Active applicants (NOT archived). BACKEND: SELECT from applicant table LEFT JOIN job_positions for position name
 function static_applicants(): array
 {
+    $pdo = db();
+    $rows = $pdo->query("
+        SELECT a.applicant_id AS id, a.name, a.first_name, a.middle_name, a.last_name,
+               a.email, a.phone_number AS contact, a.position_id,
+               p.name AS position,
+               a.status, a.result,
+               a.created_at AS updated,
+               a.invited_at, a.submitted_at, a.passed_at,
+               a.cv_file_url, a.cv_hash
+        FROM applicant a
+        LEFT JOIN job_positions p ON p.id = a.position_id AND p.archived_at IS NULL
+        WHERE a.deleted_at IS NULL
+        ORDER BY a.applicant_id ASC
+    ")->fetchAll();
+
     $out = [];
-    foreach (static_store_read()['applicants'] as $a) {
-        if (!empty($a['archived_at'])) continue;
-        unset($a['archived_at']);
-        $out[] = $a;
+    foreach ($rows as $r) {
+        $applicant = [
+            'id'          => (int) $r['id'],
+            'name'        => (string) $r['name'],
+            'first_name'  => (string) $r['first_name'],
+            'middle_name' => (string) ($r['middle_name'] ?? ''),
+            'last_name'   => (string) $r['last_name'],
+            'email'       => (string) $r['email'],
+            'contact'     => (string) ($r['contact'] ?? ''),
+            'position_id' => (int) ($r['position_id'] ?? 0),
+            'position'    => (string) ($r['position'] ?? ''),
+            'status'      => (string) $r['status'],
+            'result'      => $r['result'] ? (string) $r['result'] : null,
+            'updated'     => (string) $r['updated'],
+            'invited_at'  => $r['invited_at'] ? (string) $r['invited_at'] : null,
+            'submitted_at'=> $r['submitted_at'] ? (string) $r['submitted_at'] : null,
+            'passed_at'   => $r['passed_at'] ? (string) $r['passed_at'] : null,
+        ];
+        if (!empty($r['cv_file_url'])) {
+            $applicant['cv'] = [
+                'name'  => '',
+                'size'  => 0,
+                'file'  => basename((string) $r['cv_file_url']),
+                'url'   => (string) $r['cv_file_url'],
+            ];
+        }
+        $out[] = $applicant;
     }
     return $out;
 }
@@ -654,17 +564,55 @@ function static_archived_applicants(): array
 {
     static_purge_expired();
     $now = static_now();
+    $pdo = db();
+    $rows = $pdo->query("
+        SELECT a.applicant_id AS id, a.name, a.first_name, a.middle_name, a.last_name,
+               a.email, a.phone_number AS contact, a.position_id,
+               p.name AS position,
+               a.status, a.result,
+               a.created_at AS updated,
+               a.invited_at, a.submitted_at, a.passed_at,
+               a.deleted_at AS deleted,
+               a.cv_file_url, a.cv_hash
+        FROM applicant a
+        LEFT JOIN job_positions p ON p.id = a.position_id AND p.archived_at IS NULL
+        WHERE a.deleted_at IS NOT NULL AND a.verified_at IS NOT NULL
+        ORDER BY a.deleted_at DESC
+    ")->fetchAll();
+
     $out = [];
-    foreach (static_store_read()['applicants'] as $a) {
-        if (empty($a['archived_at'])) continue;
-        $deletedAt = new DateTimeImmutable($a['archived_at'], new DateTimeZone('Asia/Manila'));
+    foreach ($rows as $r) {
+        $deletedAt = new DateTimeImmutable((string) $r['deleted'], new DateTimeZone('Asia/Manila'));
         $passed    = (int) $deletedAt->diff($now)->format('%a');
-        $a['deleted']   = $a['archived_at'];
-        $a['days_left'] = max(0, STATIC_ARCHIVE_DAYS - $passed);
-        unset($a['archived_at']);
-        $out[] = $a;
+        $applicant = [
+            'id'          => (int) $r['id'],
+            'name'        => (string) $r['name'],
+            'first_name'  => (string) $r['first_name'],
+            'middle_name' => (string) ($r['middle_name'] ?? ''),
+            'last_name'   => (string) $r['last_name'],
+            'email'       => (string) $r['email'],
+            'contact'     => (string) ($r['contact'] ?? ''),
+            'position_id' => (int) ($r['position_id'] ?? 0),
+            'position'    => (string) ($r['position'] ?? ''),
+            'status'      => (string) $r['status'],
+            'result'      => $r['result'] ? (string) $r['result'] : null,
+            'updated'     => (string) $r['updated'],
+            'invited_at'  => $r['invited_at'] ? (string) $r['invited_at'] : null,
+            'submitted_at'=> $r['submitted_at'] ? (string) $r['submitted_at'] : null,
+            'passed_at'   => $r['passed_at'] ? (string) $r['passed_at'] : null,
+            'deleted'     => (string) $r['deleted'],
+            'days_left'   => max(0, STATIC_ARCHIVE_DAYS - $passed),
+        ];
+        if (!empty($r['cv_file_url'])) {
+            $applicant['cv'] = [
+                'name'  => '',
+                'size'  => 0,
+                'file'  => basename((string) $r['cv_file_url']),
+                'url'   => (string) $r['cv_file_url'],
+            ];
+        }
+        $out[] = $applicant;
     }
-    usort($out, fn($x, $y) => strcmp($y['deleted'], $x['deleted']));
     return $out;
 }
 
@@ -729,62 +677,104 @@ function static_add_applicant(array $in, ?array $cvUpload = null): array
     $position = static_position_find((int) ($in['position_id'] ?? 0));
     if ($position === null)                           throw new InvalidArgumentException('Please choose a job position.');
 
-    return static_store_update(function (array &$store) use ($first, $middle, $last, $name, $email, $contact, $position, $cvUpload) {
-        foreach ($store['applicants'] as $a) {
-            if (strcasecmp($a['email'], $email) === 0) {
-                throw new InvalidArgumentException(
-                    empty($a['archived_at'])
-                        ? 'An applicant with this email already exists.'
-                        : 'An applicant with this email is in the Archive. Restore them instead.'
-                );
+    $pdo = db();
+
+    // Check for duplicate email (active or archived)
+    $stmt = $pdo->prepare("SELECT applicant_id, deleted_at FROM applicant WHERE email_normalized = :en LIMIT 1");
+    $stmt->execute([':en' => strtolower(trim($email))]);
+    $dup = $stmt->fetch();
+    if ($dup) {
+        throw new InvalidArgumentException(
+            empty($dup['deleted_at'])
+                ? 'An applicant with this email already exists.'
+                : 'An applicant with this email is in the Archive. Restore them instead.'
+        );
+    }
+
+    // Upload CV to Cloudinary if provided
+    $cvFileUrl = null;
+    $cvHash = null;
+    if ($cvUpload) {
+        try {
+            require_once __DIR__ . '/../src/Services/CloudinaryService.php';
+            $cloud = new CloudinaryService();
+            $tmpFile = tempnam(sys_get_temp_dir(), 'cv_');
+            if (!@move_uploaded_file($cvUpload['tmp_name'], $tmpFile)) {
+                throw new InvalidArgumentException('The CV file could not be uploaded. Please try again.');
             }
+            $uploaded = $cloud->uploadCV(
+                $tmpFile,
+                0,  // applicant id not known yet
+                'ebsmi-shortlist-applicant-cvs',
+                (string) ($cvUpload['name'] ?? '')
+            );
+            $cvFileUrl = $uploaded['url'];
+            $cvHash = hash_file('sha256', $tmpFile);
+            @unlink($tmpFile);
+        } catch (InvalidArgumentException $e) {
+            throw $e;
+        } catch (Throwable $e) {
+            error_log('CV Cloudinary upload error: ' . $e->getMessage());
+            throw new InvalidArgumentException('The CV could not be uploaded. Please try again.');
         }
-        $applicant = [
-            'id'          => static_next_id($store),
-            'name'        => $name,
-            'first_name'  => $first,
-            'middle_name' => $middle,
-            'last_name'   => $last,
-            'email'       => $email,
-            'contact'     => $contact,
-            // the position decides which job description PDF the applicant is shown in the questionnaire
-            'position_id' => (int) $position['id'],
-            'position'    => (string) $position['name'],
-            'status'      => 'Pending',
-            'result'      => null,
-            'updated'     => static_now()->format('Y-m-d H:i'),
-            // timeline for the dashboard analytics (filled in as the applicant moves along)
-            'invited_at'   => static_now()->format('Y-m-d H:i'),
-            'submitted_at' => null,
-            'passed_at'    => null
+    }
+
+    $now = static_now()->format('Y-m-d H:i:s');
+    $stmt = $pdo->prepare("
+        INSERT INTO applicant (name, first_name, middle_name, last_name,
+                               email, email_normalized, phone_number, position_id,
+                               cv_file_url, cv_hash, status, result,
+                               invited_at, created_at)
+        VALUES (:name, :fn, :mn, :ln, :email, :en, :phone, :pid,
+                :cvurl, :cvhash, 'pending', NULL,
+                :invited, NOW())
+        RETURNING applicant_id, name, first_name, middle_name, last_name, email, phone_number,
+                  position_id, status, result, created_at, invited_at, cv_file_url, cv_hash
+    ");
+    $stmt->execute([
+        ':name'  => $name,
+        ':fn'    => $first,
+        ':mn'    => $middle,
+        ':ln'    => $last,
+        ':email' => $email,
+        ':en'    => strtolower(trim($email)),
+        ':phone' => $contact,
+        ':pid'   => (int) $position['id'],
+        ':cvurl' => $cvFileUrl,
+        ':cvhash'=> $cvHash,
+        ':invited'=> $now
+    ]);
+    $row = $stmt->fetch();
+
+    // Log activity
+    try { repo_log_activity('Added An Applicant', $name); } catch (Throwable $e) {}
+
+    $applicant = [
+        'id'          => (int) $row['applicant_id'],
+        'name'        => (string) $row['name'],
+        'first_name'  => (string) $row['first_name'],
+        'middle_name' => (string) ($row['middle_name'] ?? ''),
+        'last_name'   => (string) $row['last_name'],
+        'email'       => (string) $row['email'],
+        'contact'     => (string) ($row['phone_number'] ?? ''),
+        'position_id' => (int) ($row['position_id'] ?? 0),
+        'position'    => (string) $position['name'],
+        'status'      => (string) $row['status'],
+        'result'      => $row['result'] ? (string) $row['result'] : null,
+        'updated'     => (string) $row['created_at'],
+        'invited_at'  => $row['invited_at'] ? (string) $row['invited_at'] : null,
+        'submitted_at'=> null,
+        'passed_at'   => null,
+    ];
+    if (!empty($row['cv_file_url'])) {
+        $applicant['cv'] = [
+            'name'  => '',
+            'size'  => 0,
+            'file'  => basename((string) $row['cv_file_url']),
+            'url'   => (string) $row['cv_file_url'],
         ];
-        // the CV file (shown on the Applicant Details page). A problem with the file never stops the applicant from being added.
-        $cv = static_save_cv((int) $applicant['id'], $cvUpload);
-        if ($cv) $applicant['cv'] = $cv;
-
-        $store['applicants'][] = $applicant + ['archived_at' => null];
-        return $applicant;
-    });
-}
-
-// Keeps an uploaded CV in data/cv/ (PDF, DOC, DOCX, 5 MB at most). Returns ['name','size','file'] or null.
-// DATABASE / CLOUDINARY (later): upload the file there and save the url instead of a file name.
-function static_save_cv(int $id, ?array $upload): ?array
-{
-    if (!$upload || ($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) return null;
-    if (empty($upload['tmp_name']) || !is_uploaded_file($upload['tmp_name']))    return null;
-
-    $ext = strtolower(pathinfo((string) ($upload['name'] ?? ''), PATHINFO_EXTENSION));
-    if (!in_array($ext, ['pdf', 'doc', 'docx'], true))     return null;
-    if ((int) $upload['size'] <= 0 || (int) $upload['size'] > 5 * 1024 * 1024) return null;
-
-    $dir = __DIR__ . '/data/cv';
-    if (!is_dir($dir) && !@mkdir($dir, 0775, true)) return null;
-
-    $file = $id . '.' . $ext;
-    if (!@move_uploaded_file($upload['tmp_name'], $dir . '/' . $file)) return null;
-
-    return ['name' => basename((string) $upload['name']), 'size' => (int) $upload['size'], 'file' => $file];
+    }
+    return $applicant;
 }
 
 /* ==========================================================================
@@ -1022,43 +1012,62 @@ function static_interview_time12(?string $time24): string
     return $d ? $d->format('h:i A') : '';
 }
 
-// The applicant record that goes with an email address (active applicants only), or null
-function static_applicant_by_email(string $email): ?array
-{
-    $email = strtolower(trim($email));
-    if ($email === '') return null;
-    foreach (static_applicants() as $a) {
-        if (strtolower($a['email']) === $email) return $a;
-    }
-    return null;
-}
-
+// Gets the interview row for an applicant (or null when there is none yet).
 function static_interview_get(int $applicantId): ?array
 {
-    $row = static_store_read()['interviews'][$applicantId] ?? null;
-    return is_array($row) ? $row : null;
+    $pdo = db();
+    $stmt = $pdo->prepare("SELECT status, preferred_date, preferred_time, date, time, type, source, updated_at AS updated FROM interviews WHERE applicant_id = :aid LIMIT 1");
+    $stmt->execute([':aid' => $applicantId]);
+    $row = $stmt->fetch();
+    if (!$row) return null;
+    return [
+        'status'         => (string) $row['status'],
+        'preferred_date' => (string) $row['preferred_date'],
+        'preferred_time' => (string) $row['preferred_time'],
+        'type'           => (string) $row['type'],
+        'date'           => $row['date'] ? (string) $row['date'] : null,
+        'time'           => $row['time'] ? (string) $row['time'] : null,
+        'source'         => (string) $row['source'],
+        'updated'        => (string) $row['updated'],
+    ];
 }
 
 // The applicant picked a date and time (status: awaiting). Replaces an older request.
 function static_interview_request(int $applicantId, string $date, string $time24, string $source = 'applicant'): array
 {
-    return static_store_update(function (array &$store) use ($applicantId, $date, $time24, $source) {
-        if (!isset($store['interviews']) || !is_array($store['interviews'])) $store['interviews'] = [];
-        $store['interviews'][$applicantId] = [
-            'status'         => 'awaiting',
-            'preferred_date' => $date,
-            'preferred_time' => $time24,
-            'type'           => STATIC_INTERVIEW_TYPE,
-            'date'           => null,
-            'time'           => null,
-            'source'         => $source,
-            'updated'        => static_now()->format('Y-m-d H:i')
-        ];
-        return $store['interviews'][$applicantId];
-    });
+    $pdo = db();
+    $now = static_now()->format('Y-m-d H:i:s');
+    $stmt = $pdo->prepare("
+        INSERT INTO interviews (applicant_id, status, preferred_date, preferred_time, type, source, updated_at)
+        VALUES (:aid, 'awaiting', :date, :time, 'On Site Interview', :source, :updated)
+        ON CONFLICT (applicant_id) DO UPDATE SET
+            status = 'awaiting',
+            preferred_date = :date,
+            preferred_time = :time,
+            source = :source,
+            updated_at = :updated
+        RETURNING status, preferred_date, preferred_time, type, date, time, source, updated_at AS updated
+    ");
+    $stmt->execute([
+        ':aid'     => $applicantId,
+        ':date'    => $date,
+        ':time'    => $time24,
+        ':source'  => $source,
+        ':updated' => $now,
+    ]);
+    $row = $stmt->fetch();
+    return [
+        'status'         => (string) $row['status'],
+        'preferred_date' => (string) $row['preferred_date'],
+        'preferred_time' => (string) $row['preferred_time'],
+        'type'           => (string) $row['type'],
+        'date'           => $row['date'] ? (string) $row['date'] : null,
+        'time'           => $row['time'] ? (string) $row['time'] : null,
+        'source'         => (string) $row['source'],
+        'updated'        => (string) $row['updated'],
+    ];
 }
 
-// The same row in the shape application-status.php already uses ($_SESSION['interview'])
 function static_interview_session_shape(array $row): array
 {
     $shape = [
@@ -1081,27 +1090,8 @@ function static_set_status(int $id, string $status, ?string $result = null): boo
     if (!in_array($status, $valid, true)) return false;
     if ($status !== 'Completed' || !in_array($result, ['Passed', 'Rejected'], true)) $result = null;
 
-    return static_store_update(function (array &$store) use ($id, $status, $result) {
-        foreach ($store['applicants'] as &$a) {
-            if ((int) $a['id'] !== $id) continue;
-            $now     = static_now()->format('Y-m-d H:i');
-            $wasDone = strtolower((string) ($a['status'] ?? '')) === 'completed';
-            $a['status']  = $status;
-            $a['result']  = $result;
-            $a['updated'] = $now;
-            // timeline for the dashboard analytics
-            if (empty($a['invited_at'])) $a['invited_at'] = $now;
-            if ($status === 'Completed') {
-                if (!$wasDone || empty($a['submitted_at'])) $a['submitted_at'] = $now;
-                $a['passed_at'] = $result === 'Passed' ? (!empty($a['passed_at']) && $wasDone ? $a['passed_at'] : $now) : null;
-            } else {
-                $a['submitted_at'] = null;       // moved back: the screening is not submitted any more
-                $a['passed_at']    = null;
-            }
-            return true;
-        }
-        return false;
-    });
+    require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
+    return repo_applicant_set_status((int) $id, $status, $result);
 }
 
 // Screening List "Delete": moves applicants to the Archive. Returns how many were moved.
@@ -1110,65 +1100,66 @@ function static_set_status(int $id, string $status, ?string $result = null): boo
 function static_archive(array $ids, array $at = []): int
 {
     $ids = array_map('intval', $ids);
-    return static_store_update(function (array &$store) use ($ids, $at) {
-        $n = 0;
-        $zone = new DateTimeZone('Asia/Manila');
-        $now  = static_now()->format('Y-m-d H:i:s');
-        foreach ($store['applicants'] as &$a) {
-            if (in_array((int) $a['id'], $ids, true) && empty($a['archived_at'])) {
-                $ms = $at[(int) $a['id']] ?? null;
-                $a['archived_at'] = is_numeric($ms) && $ms > 0
-                    ? (new DateTimeImmutable('@' . intdiv((int) $ms, 1000)))->setTimezone($zone)->format('Y-m-d H:i:s')
-                    : $now;
-                $n++;
-            }
+    if (empty($ids)) return 0;
+    $pdo = db();
+    $zone = new DateTimeZone('Asia/Manila');
+    $now  = static_now()->format('Y-m-d H:i:s');
+    $n = 0;
+    foreach ($ids as $id) {
+        $deletedAt = $now;
+        if (!empty($at[$id]) && is_numeric($at[$id]) && $at[$id] > 0) {
+            $deletedAt = (new DateTimeImmutable('@' . intdiv((int) $at[$id], 1000)))->setTimezone($zone)->format('Y-m-d H:i:s');
         }
-        return $n;
-    });
+        $stmt = $pdo->prepare("UPDATE applicant SET deleted_at = :da WHERE applicant_id = :id AND deleted_at IS NULL");
+        $stmt->execute([':da' => $deletedAt, ':id' => $id]);
+        if ($stmt->rowCount() > 0) {
+            try { repo_log_activity('Archived Applicant', 'ID #' . $id); } catch (Throwable $e) {}
+            $n++;
+        }
+    }
+    return $n;
 }
 
 // Archive "Restore": back to the Screening List with their old status and result
 function static_restore(array $ids): int
 {
     $ids = array_map('intval', $ids);
-    return static_store_update(function (array &$store) use ($ids) {
-        $n = 0;
-        foreach ($store['applicants'] as &$a) {
-            if (in_array((int) $a['id'], $ids, true) && !empty($a['archived_at'])) {
-                $a['archived_at'] = null;
-                $n++;
-            }
+    if (empty($ids)) return 0;
+    $pdo = db();
+    $n = 0;
+    foreach ($ids as $id) {
+        $stmt = $pdo->prepare("UPDATE applicant SET deleted_at = NULL WHERE applicant_id = :id AND deleted_at IS NOT NULL");
+        $stmt->execute([':id' => $id]);
+        if ($stmt->rowCount() > 0) {
+            try { repo_log_activity('Restored Applicant', 'ID #' . $id); } catch (Throwable $e) {}
+            $n++;
         }
-        return $n;
-    });
+    }
+    return $n;
 }
 
 // Archive "Delete forever": only archived applicants can be removed for good
 function static_purge(array $ids): int
 {
     $ids = array_map('intval', $ids);
-    return static_store_update(function (array &$store) use ($ids) {
-        $before = count($store['applicants']);
-        $store['applicants'] = array_values(array_filter(
-            $store['applicants'],
-            fn($a) => !(in_array((int) $a['id'], $ids, true) && !empty($a['archived_at']))
-        ));
-        return $before - count($store['applicants']);
-    });
+    if (empty($ids)) return 0;
+    $pdo = db();
+    $ph = implode(',', array_fill(0, count($ids), '?'));
+    $stmt = $pdo->prepare("DELETE FROM applicant WHERE applicant_id IN ($ph) AND deleted_at IS NOT NULL");
+    $stmt->execute($ids);
+    $n = $stmt->rowCount();
+    try { repo_log_activity('Purged Applicants', count($n > 0 ? $ids : []) . ' permanently deleted'); } catch (Throwable $e) {}
+    return (int) $n;
 }
 
 // Archived applicants older than STATIC_ARCHIVE_DAYS are removed automatically
 function static_purge_expired(): int
 {
     $limit = static_now()->modify('-' . STATIC_ARCHIVE_DAYS . ' days')->format('Y-m-d H:i:s');
-    return static_store_update(function (array &$store) use ($limit) {
-        $before = count($store['applicants']);
-        $store['applicants'] = array_values(array_filter(
-            $store['applicants'],
-            fn($a) => empty($a['archived_at']) || $a['archived_at'] > $limit
-        ));
-        return $before - count($store['applicants']);
-    });
+    $pdo = db();
+    $stmt = $pdo->prepare("DELETE FROM applicant WHERE deleted_at IS NOT NULL AND deleted_at < :limit");
+    $stmt->execute([':limit' => $limit]);
+    return (int) $stmt->rowCount();
 }
 
 
@@ -1207,20 +1198,30 @@ class StaticProfileError extends InvalidArgumentException
    Each one only exists "if missing", so whichever file loads first wins and nothing is defined twice.
    ========================================================================== */
 if (!function_exists('static_seed_hr_accounts')) {
-    // The ONE HR account the project starts with (the same one index.php lets in)
     function static_seed_hr_accounts(): array
     {
-        return [
-            ['id' => 1, 'name' => 'HR', 'email' => 'hr@expertise.com', 'password' => 'hr123', 'role' => 'HR Staff', 'status' => 'Active', 'created' => '2026-08-03 09:00', 'archived_at' => null]
-        ];
+        $pdo = db();
+        $stmt = $pdo->query("SELECT user_id AS id, name, email, role, deleted_at, created_at FROM users WHERE role = 'hr' ORDER BY user_id");
+        $out = [];
+        while ($row = $stmt->fetch()) {
+            $out[] = [
+                'id'          => (int) $row['id'],
+                'name'        => (string) $row['name'],
+                'email'       => (string) $row['email'],
+                'role'        => 'HR Staff',
+                'status'      => empty($row['deleted_at']) ? 'Active' : 'Inactive',
+                'created'     => $row['created_at'] ? date('Y-m-d H:i', strtotime((string) $row['created_at'])) : '',
+                'archived_at' => $row['deleted_at'] ? (string) $row['deleted_at'] : null,
+            ];
+        }
+        return $out;
     }
 }
 
 if (!function_exists('static_hr_accounts')) {
     function static_hr_accounts(): array
     {
-        $store = static_store_read();
-        return isset($store['hr_accounts']) && is_array($store['hr_accounts']) ? $store['hr_accounts'] : static_seed_hr_accounts();
+        return static_seed_hr_accounts();
     }
 }
 
@@ -1228,56 +1229,77 @@ if (!function_exists('static_hr_accounts')) {
    WHO IS SIGNED IN
    ========================================================================== */
 
-// Every HR account row of the store (the seed one until the store has its own list)
-function static_profile_hr_list(array $store): array
+// Every HR account row from the users table
+function static_profile_hr_list(): array
 {
-    return isset($store['hr_accounts']) && is_array($store['hr_accounts']) ? $store['hr_accounts'] : static_seed_hr_accounts();
+    $pdo = db();
+    $stmt = $pdo->query("SELECT user_id AS id, name, email, role, deleted_at FROM users WHERE role = 'hr' ORDER BY user_id");
+    $out = [];
+    while ($row = $stmt->fetch()) {
+        $out[] = [
+            'id'         => (int) $row['id'],
+            'name'       => (string) $row['name'],
+            'email'      => (string) $row['email'],
+            'role'       => 'HR Staff',
+            'status'     => empty($row['deleted_at']) ? 'Active' : 'Inactive',
+            'archived_at' => empty($row['deleted_at']) ? null : (string) $row['deleted_at'],
+        ];
+    }
+    return $out;
 }
 
-// The Admin's profile: what was saved under "admin_account", otherwise the starting values
-function static_profile_admin(array $store): array
+// The Admin's profile: from the users table
+function static_profile_admin(): array
 {
-    $a     = isset($store['admin_account']) && is_array($store['admin_account']) ? $store['admin_account'] : [];
-    $name  = trim((string) ($a['name'] ?? ''));
-    $email = strtolower(trim((string) ($a['email'] ?? '')));
+    require_once __DIR__ . '/../src/Helpers/db.php';
+    $pdo = db();
+    $stmt = $pdo->prepare("SELECT name, email, avatar_url FROM users WHERE role = 'admin' AND deleted_at IS NULL LIMIT 1");
+    $stmt->execute();
+    $a = $stmt->fetch();
+    if (!$a) {
+        return ['name' => 'Admin', 'email' => STATIC_ADMIN_EMAIL, 'avatar' => null];
+    }
     return [
-        'name'   => $name !== '' ? $name : 'Admin',
-        'email'  => $email !== '' ? $email : STATIC_ADMIN_EMAIL,
-        'avatar' => !empty($a['avatar']) ? (string) $a['avatar'] : null,
-        'hash'   => !empty($a['hash']) ? (string) $a['hash'] : null
+        'name'   => (string) ($a['name'] ?? 'Admin'),
+        'email'  => strtolower(trim((string) ($a['email'] ?? STATIC_ADMIN_EMAIL))),
+        'avatar' => !empty($a['avatar_url']) ? (string) $a['avatar_url'] : null
     ];
 }
 
 // The Admin's email right now (used to keep an HR account from taking it)
 function static_profile_admin_email(): string
 {
-    return static_profile_admin(static_store_read())['email'];
+    return static_profile_admin()['email'];
 }
 
 // The signed-in person: ['role', 'id', 'name', 'email', 'avatar'], or null (not signed in / the account is gone).
 // HR is found by the email the session holds (it is updated when HR changes the email).
-function static_profile_me(array $store): ?array
+function static_profile_me(): ?array
 {
+    require_once __DIR__ . '/../src/Helpers/db.php';
     $role = (string) ($_SESSION['user_role'] ?? '');
 
     if ($role === 'admin') {
-        $a = static_profile_admin($store);
+        $a = static_profile_admin();
         return ['role' => 'admin', 'id' => 0, 'name' => $a['name'], 'email' => $a['email'], 'avatar' => $a['avatar']];
     }
 
     if ($role === 'hr') {
+        $pdo = db();
         $email = strtolower(trim((string) ($_SESSION['user_email'] ?? '')));
         if ($email === '') return null;
-        foreach (static_profile_hr_list($store) as $a) {
-            if (!is_array($a) || !empty($a['archived_at'])) continue;
-            if (strcasecmp((string) ($a['email'] ?? ''), $email) !== 0) continue;
-            return [
-                'role'   => 'hr',
-                'id'     => (int) ($a['id'] ?? 0),
-                'name'   => (string) ($a['name'] ?? 'HR'),
-                'email'  => strtolower((string) $a['email']),
-                'avatar' => !empty($a['avatar']) ? (string) $a['avatar'] : null
-            ];
+        $stmt = $pdo->prepare("SELECT user_id AS id, name, email, avatar_url, deleted_at FROM users WHERE role = 'hr' AND deleted_at IS NULL");
+        $stmt->execute();
+        while ($row = $stmt->fetch()) {
+            if (strcasecmp((string) ($row['email'] ?? ''), $email) === 0) {
+                return [
+                    'role'   => 'hr',
+                    'id'     => (int) ($row['id'] ?? 0),
+                    'name'   => (string) ($row['name'] ?? 'HR'),
+                    'email'  => strtolower((string) $row['email']),
+                    'avatar' => !empty($row['avatar_url']) ? (string) $row['avatar_url'] : null
+                ];
+            }
         }
     }
     return null;
@@ -1430,110 +1452,80 @@ function static_profile_log(array &$store, string $activity, string $details, st
    HR changes are written to the activity log, so the Admin sees them under Recent Activities.
    Returns ['name', 'email', 'avatar', 'changes' => [['field', 'from', 'to'], ...]]
    ========================================================================== */
+// HR changes name / email / avatar; returns updated profile
 function static_profile_save(array $in, ?array $upload): array
 {
-    $newFile = null;        // a picture this request saved (removed again if the change fails)
-    $oldFile = null;        // the picture that was replaced (removed once the change is stored)
+    require_once __DIR__ . '/../src/Helpers/db.php';
+    $me = static_profile_me();
+    if ($me === null || $me['role'] !== 'hr') throw new StaticProfileError('Your account could not be found. Please log in again.');
 
-    try {
-        $result = static_store_update(function (array &$store) use ($in, $upload, &$newFile, &$oldFile) {
-            $me = static_profile_me($store);
-            if ($me === null) throw new StaticProfileError('Your account could not be found. Please log in again.');
+    $name  = static_profile_check_name((string) ($in['name'] ?? ''));
+    $email = static_profile_check_email((string) ($in['email'] ?? ''));
 
-            $name  = static_profile_check_name((string) ($in['name'] ?? ''));
-            $email = static_profile_check_email((string) ($in['email'] ?? ''));
-            if (static_profile_email_taken($store, $email, $me['role'] === 'hr' ? $me['id'] : null, $me['role'] === 'admin')) {
-                throw new StaticProfileError('That email is already used by another account.', 'email');
+    // check email not taken by another HR or Admin
+    $pdo = db();
+    $stmt = $pdo->prepare("SELECT user_id FROM users WHERE LOWER(email) = :email AND user_id != :myid AND deleted_at IS NULL");
+    $stmt->execute([':email' => strtolower($email), ':myid' => $me['id']]);
+    if ($stmt->fetch()) throw new StaticProfileError('This email is already in use by another account.');
+
+    $avatarUrl = $me['avatar'] ?? null;
+
+    // handle avatar upload
+    if ($upload && !empty($upload['tmp_name']) && is_uploaded_file($upload['tmp_name'])) {
+        try {
+            require_once __DIR__ . '/../src/Services/CloudinaryService.php';
+            $cloud = new CloudinaryService();
+            $tmpFile = tempnam(sys_get_temp_dir(), 'avatar_');
+            if (!@move_uploaded_file($upload['tmp_name'], $tmpFile)) {
+                throw new StaticProfileError('Avatar upload failed.');
             }
+            $uploaded = $cloud->uploadAvatar(
+                $tmpFile,
+                $me['id'],
+                'ebsmi-user-profiles',
+                (string) ($upload['name'] ?? '')
+            );
+            $avatarUrl = $uploaded['url'];
+            @unlink($tmpFile);
 
-            // the picture: a new file, or "remove", or no change
-            $avatar = $me['avatar'];
-            if ($upload && (int) ($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
-                $newFile = static_profile_store_avatar($upload, $me['role'] === 'hr' ? 'hr-' . $me['id'] : 'admin');
-                $oldFile = $me['avatar'];
-                $avatar  = $newFile;
-            } elseif (!empty($in['avatar_remove']) && $me['avatar'] !== null) {
-                $oldFile = $me['avatar'];
-                $avatar  = null;
-            }
-
-            // what changed (this is what the Admin reads)
-            $changes = [];
-            if ($name !== $me['name'])     $changes[] = ['field' => 'Name',  'from' => $me['name'],  'to' => $name];
-            if ($email !== $me['email'])   $changes[] = ['field' => 'Email', 'from' => $me['email'], 'to' => $email];
-            if ($avatar !== $me['avatar']) $changes[] = ['field' => 'Profile picture', 'from' => $me['avatar'] !== null ? 'Photo' : 'None', 'to' => $avatar !== null ? 'New photo' : 'Removed'];
-
-            if ($me['role'] === 'hr') {
-                $list = static_profile_hr_list($store);
-                $pos  = null;
-                foreach ($list as $i => $a) {
-                    if (is_array($a) && (int) ($a['id'] ?? 0) === $me['id']) { $pos = $i; break; }
-                }
-                if ($pos === null) throw new StaticProfileError('Your account could not be found. Please log in again.');
-                $list[$pos]['name']   = $name;
-                $list[$pos]['email']  = $email;
-                $list[$pos]['avatar'] = $avatar;
-                $store['hr_accounts'] = $list;
-
-                // Keep the Admin's HR list (users table) in sync with profile changes made in Settings.
+            // delete old avatar from Cloudinary if it had a public_id
+            $stmt = $pdo->prepare("SELECT avatar_public_id FROM users WHERE user_id = :id");
+            $stmt->execute([':id' => $me['id']]);
+            $old = $stmt->fetch();
+            if ($old && !empty($old['avatar_public_id'])) {
                 try {
-                    require_once __DIR__ . '/../src/Helpers/db.php';
-                    $pdo = db();
-                    $uid = (int) ($_SESSION['user_id'] ?? 0);
-                    if ($uid > 0) {
-                        $st = $pdo->prepare("UPDATE users SET name = :n, email = :e WHERE user_id = :id AND role = 'hr' AND deleted_at IS NULL");
-                        $st->execute([':n' => $name, ':e' => $email, ':id' => $uid]);
-                    } else {
-                        $st = $pdo->prepare("UPDATE users SET name = :n, email = :e WHERE email = :old AND role = 'hr' AND deleted_at IS NULL");
-                        $st->execute([':n' => $name, ':e' => $email, ':old' => $me['email']]);
-                    }
-                } catch (Throwable $e) {
-                    // best-effort sync; static store remains the source for Settings
-                }
-
-                if ($changes) {
-                    $parts = [];
-                    foreach ($changes as $c) {
-                        $parts[] = $c['field'] === 'Profile picture'
-                            ? ($avatar === null ? 'Profile picture removed' : 'Profile picture changed')
-                            : $c['field'] . ': ' . $c['from'] . ' → ' . $c['to'];
-                    }
-                    $title = 'Profile Updated';
-                    if (count($changes) === 1) {
-                        $title = $changes[0]['field'] === 'Profile picture' ? 'Profile Picture Changed' : $changes[0]['field'] . ' Changed';
-                    }
-                    static_profile_log($store, $title, implode(' · ', $parts), 'HR', ['kind' => 'profile', 'owner' => $me['id'], 'changes' => $changes]);
-                }
-            } else {
-                $adm = isset($store['admin_account']) && is_array($store['admin_account']) ? $store['admin_account'] : [];
-                $adm['name']   = $name;
-                $adm['email']  = $email;
-                $adm['avatar'] = $avatar;
-                $store['admin_account'] = $adm;
+                    $cloud->deleteResource((string) $old['avatar_public_id'], 'image', 'upload');
+                } catch (Throwable $e) { /* ignore */ }
             }
-
-            return [
-                'name' => $name,
-                'email' => $email,
-                'avatar' => $avatar,
-                'avatarUrl' => static_profile_avatar_url($avatar, $me['role'] === 'hr' ? 'data/avatars/' : '../hr/data/avatars/'),
-                'changes' => $changes
-            ];
-        });
-    } catch (Throwable $e) {
-        static_profile_delete_avatar($newFile);         // the change failed: do not leave the new picture behind
-        throw $e;
+        } catch (StaticProfileError $e) {
+            throw $e;
+        } catch (Throwable $e) {
+            throw new StaticProfileError('Avatar upload failed.');
+        }
     }
 
-    if ($oldFile !== null && $oldFile !== $result['avatar']) static_profile_delete_avatar($oldFile);
-    return $result;
+    // update the database
+    $stmt = $pdo->prepare("UPDATE users SET name = :name, email = :email, email_normalized = :en, avatar_url = :avatar_url WHERE user_id = :id");
+    $stmt->execute([
+        ':name' => $name,
+        ':email' => $email,
+        ':en' => strtolower(trim($email)),
+        ':avatar_url' => $avatarUrl,
+        ':id' => $me['id']
+    ]);
+
+    try { repo_log_activity('Updated HR Profile', $name . ' (' . $email . ')'); } catch (Throwable $e) {}
+
+    return [
+        'id'     => $me['id'],
+        'role'   => 'hr',
+        'name'   => $name,
+        'email'  => strtolower(trim($email)),
+        'avatar' => $avatarUrl
+    ];
 }
 
-/* ==========================================================================
-   PASSWORD
-   ========================================================================== */
-
-// Is $given the password of this signed-in person right now? (same two checks as index.php)
+// Internal: check the old password the HR typed matches their stored hash
 function static_profile_current_password_ok(array $me, string $given): bool
 {
     if ($given === '') return false;
@@ -1609,73 +1601,91 @@ function static_profile_latest_request(array $store, int $accountId): ?array
    Returns ['mode' => 'applied' | 'pending', 'request' => the request or null] */
 function static_profile_change_password(string $current, string $new): array
 {
-    return static_store_update(function (array &$store) use ($current, $new) {
-        $me = static_profile_me($store);
-        if ($me === null) throw new StaticProfileError('Your account could not be found. Please log in again.');
+    require_once __DIR__ . '/../src/Helpers/db.php';
+    $me = static_profile_me();
+    if ($me === null) throw new StaticProfileError('Your account could not be found. Please log in again.');
 
-        if ($current === '') throw new StaticProfileError('Enter your current password.', 'pwCurrent');
-        if (!static_profile_current_password_ok($me, $current)) {
-            throw new StaticProfileError('The current password is not correct.', 'pwCurrent');
-        }
-        static_profile_check_new_password($new, $current);
+    if ($current === '') throw new StaticProfileError('Enter your current password.', 'pwCurrent');
+    if (!static_profile_current_password_ok($me, $current)) {
+        throw new StaticProfileError('The current password is not correct.', 'pwCurrent');
+    }
+    static_profile_check_new_password($new, $current);
 
-        if ($me['role'] === 'admin') {
-            $adm = isset($store['admin_account']) && is_array($store['admin_account']) ? $store['admin_account'] : [];
-            $adm['hash'] = password_hash($new, PASSWORD_DEFAULT);
-            unset($adm['password']);
-            $store['admin_account'] = $adm;
-            return ['mode' => 'applied', 'request' => null];
-        }
+    $pdo = db();
 
-        // HR: one request at a time
-        $reqs = static_profile_requests($store);
-        foreach ($reqs as $r) {
-            if ((int) ($r['account_id'] ?? 0) === $me['id'] && ($r['status'] ?? '') === 'pending') {
-                throw new StaticProfileError('You already have a password change waiting for the Admin to approve.');
-            }
-        }
+    if ($me['role'] === 'admin') {
+        $stmt = $pdo->prepare("UPDATE users SET password_hash = :hash WHERE user_id = :id");
+        $stmt->execute([':hash' => password_hash($new, PASSWORD_DEFAULT), ':id' => $me['id']]);
+        try { repo_log_activity('Changed Admin Password', $me['name']); } catch (Throwable $e) {}
+        return ['mode' => 'applied', 'request' => null];
+    }
 
-        $req = [
-            'id'           => static_profile_next_request_id($reqs),
-            'account_id'   => $me['id'],
+    // HR: one request at a time
+    $stmt = $pdo->prepare("SELECT request_id FROM password_requests WHERE account_id = :aid AND status = 'pending' LIMIT 1");
+    $stmt->execute([':aid' => $me['id']]);
+    if ($stmt->fetch()) {
+        throw new StaticProfileError('You already have a password change waiting for the Admin to approve.');
+    }
+
+    $now = static_now()->format('Y-m-d H:i:s');
+    $stmt = $pdo->prepare("
+        INSERT INTO password_requests (account_id, current_hash, new_password, status, requested_at, decided_at, decided_by, reason)
+        VALUES (:aid, :current_hash, :new_password, 'pending', :requested_at, NULL, NULL, NULL)
+        RETURNING request_id, account_id, current_hash, new_password, status, decision, reason, requested_at, decided_at, decided_by
+    ");
+    $stmt->execute([
+        ':aid'          => $me['id'],
+        ':current_hash' => $me['hash'] ?? '',
+        ':new_password' => $new,
+        ':requested_at' => $now
+    ]);
+    $row = $stmt->fetch();
+
+    try { repo_log_activity('Password Change Requested', $me['name'] . ' (HR)', 'HR'); } catch (Throwable $e) {}
+
+    return [
+        'mode' => 'pending',
+        'request' => static_profile_request_public([
+            'id'           => (int) $row['request_id'],
+            'account_id'   => (int) $row['account_id'],
             'name'         => $me['name'],
             'email'        => $me['email'],
-            'hash'         => password_hash($new, PASSWORD_DEFAULT),
-            'plain'        => $new,                                         // SAMPLE ONLY: so the Admin can see it in Edit HR after approving; removed when answered
-            'status'       => 'pending',
-            'requested_at' => static_now()->format('Y-m-d H:i:s'),
+            'status'       => (string) $row['status'],
+            'requested_at' => (string) $row['requested_at'],
             'decided_at'   => null,
-            'decided_by'   => null,
             'reason'       => ''
-        ];
-        $reqs[] = $req;
-        $store['password_requests'] = array_slice($reqs, -100);
-
-        static_profile_log($store, 'Password Change Requested', $me['name'] . ' (HR)', 'HR', ['kind' => 'pw_request', 'ref' => $req['id'], 'owner' => $me['id']]);
-        return ['mode' => 'pending', 'request' => static_profile_request_public($req)];
-    });
+        ])
+    ];
 }
 
 // HR takes back the request that is still pending
 function static_profile_cancel_request(): array
 {
-    return static_store_update(function (array &$store) {
-        $me = static_profile_me($store);
-        if ($me === null || $me['role'] !== 'hr') throw new StaticProfileError('Your account could not be found. Please log in again.');
+    require_once __DIR__ . '/../src/Helpers/db.php';
+    $me = static_profile_me();
+    if ($me === null || $me['role'] !== 'hr') throw new StaticProfileError('Your account could not be found. Please log in again.');
 
-        $reqs = static_profile_requests($store);
-        foreach ($reqs as $i => $r) {
-            if ((int) ($r['account_id'] ?? 0) === $me['id'] && ($r['status'] ?? '') === 'pending') {
-                $reqs[$i]['status']     = 'cancelled';
-                $reqs[$i]['decided_at'] = static_now()->format('Y-m-d H:i:s');
-                $reqs[$i]['decided_by'] = 'HR';
-                unset($reqs[$i]['hash'], $reqs[$i]['plain']);
-                $store['password_requests'] = $reqs;
-                return static_profile_request_public($reqs[$i]);
-            }
-        }
-        throw new StaticProfileError('There is no password change waiting for approval.');
-    });
+    $pdo = db();
+    $stmt = $pdo->prepare("
+        UPDATE password_requests SET status = 'cancelled', decided_at = NOW(), decided_by = 'HR'
+        WHERE account_id = :aid AND status = 'pending'
+        RETURNING request_id, account_id, status, requested_at, decided_at, decided_by
+    ");
+    $stmt->execute([':aid' => $me['id']]);
+    $row = $stmt->fetch();
+
+    if (!$row) throw new StaticProfileError('There is no password change waiting for approval.');
+
+    return static_profile_request_public([
+        'id'           => (int) $row['request_id'],
+        'account_id'   => (int) $row['account_id'],
+        'name'         => $me['name'],
+        'email'        => $me['email'],
+        'status'       => (string) $row['status'],
+        'requested_at' => (string) $row['requested_at'],
+        'decided_at'   => (string) $row['decided_at'],
+        'reason'       => ''
+    ]);
 }
 
 // The Admin answers a request. $decision = 'approve' | 'reject'.  Called from admin/static-admin.php (Admin only).
@@ -1687,54 +1697,57 @@ function static_profile_decide_request(int $id, string $decision, string $reason
     $reason = trim($reason);
     if (mb_strlen($reason) > 200) throw new InvalidArgumentException('The reason is too long (200 characters at most).');
 
-    return static_store_update(function (array &$store) use ($id, $decision, $reason) {
-        $reqs = static_profile_requests($store);
-        $pos  = null;
-        foreach ($reqs as $i => $r) {
-            if ((int) ($r['id'] ?? 0) === $id) { $pos = $i; break; }
-        }
-        if ($pos === null) throw new InvalidArgumentException('That request was not found.');
+    require_once __DIR__ . '/../src/Helpers/db.php';
+    $pdo = db();
 
-        $r = $reqs[$pos];
-        if (($r['status'] ?? '') !== 'pending') {
-            throw new InvalidArgumentException(($r['status'] ?? '') === 'cancelled'
-                ? 'HR took this request back, so there is nothing to answer.'
-                : 'This request was already ' . (string) $r['status'] . '.');
-        }
+    $stmt = $pdo->prepare("SELECT * FROM password_requests WHERE request_id = :id LIMIT 1");
+    $stmt->execute([':id' => $id]);
+    $r = $stmt->fetch();
+    if (!$r) throw new InvalidArgumentException('That request was not found.');
+    if ((string) $r['status'] !== 'pending') {
+        throw new InvalidArgumentException((string) $r['status'] === 'cancelled'
+            ? 'HR took this request back, so there is nothing to answer.'
+            : 'This request was already ' . (string) $r['status'] . '.');
+    }
 
-        if ($decision === 'approve') {
-            if (empty($r['hash'])) throw new InvalidArgumentException('This request has no new password. Ask HR to send it again.');
-            $list = static_profile_hr_list($store);
-            $at   = null;
-            foreach ($list as $i => $a) {
-                if (is_array($a) && (int) ($a['id'] ?? 0) === (int) $r['account_id'] && empty($a['archived_at'])) { $at = $i; break; }
-            }
-            if ($at === null) throw new InvalidArgumentException('That HR account no longer exists, so its password cannot be changed.');
-            $list[$at]['hash'] = (string) $r['hash'];
-            if (!empty($r['plain'])) $list[$at]['password_plain'] = (string) $r['plain'];
-            else                     unset($list[$at]['password_plain']);      // never show an old password that is no longer right
-            unset($list[$at]['password']);                     // the old plain-text sample password is gone for good
-            $store['hr_accounts'] = $list;
-        }
+    if ($decision === 'approve') {
+        if (empty($r['new_password'])) throw new InvalidArgumentException('This request has no new password. Ask HR to send it again.');
+        $stmt = $pdo->prepare("UPDATE users SET password_hash = :hash WHERE user_id = :aid AND role = 'hr' AND deleted_at IS NULL");
+        $stmt->execute([':hash' => password_hash((string) $r['new_password'], PASSWORD_DEFAULT), ':aid' => (int) $r['account_id']]);
+        if ($stmt->rowCount() === 0) throw new InvalidArgumentException('That HR account no longer exists, so its password cannot be changed.');
+    }
 
-        $reqs[$pos]['status']     = $decision === 'approve' ? 'approved' : 'rejected';
-        $reqs[$pos]['decided_at'] = static_now()->format('Y-m-d H:i:s');
-        $reqs[$pos]['decided_by'] = 'Admin';
-        $reqs[$pos]['reason']     = $decision === 'reject' ? $reason : '';
-        unset($reqs[$pos]['hash'], $reqs[$pos]['plain']);
-        $store['password_requests'] = $reqs;
+    $now = static_now()->format('Y-m-d H:i:s');
+    $stmt = $pdo->prepare("
+        UPDATE password_requests SET status = :status, decided_at = :decided_at, decided_by = 'Admin', reason = :reason
+        WHERE request_id = :id
+    ");
+    $stmt->execute([
+        ':status'   => $decision === 'approve' ? 'approved' : 'rejected',
+        ':decided_at' => $now,
+        ':reason'   => $decision === 'reject' ? $reason : '',
+        ':id'       => $id
+    ]);
 
-        $extra = ['kind' => 'pw_result', 'ref' => $id, 'owner' => (int) $r['account_id']];
-        if ($decision === 'reject' && $reason !== '') $extra['reason'] = $reason;
-        static_profile_log(
-            $store,
+    try {
+        repo_log_activity(
             $decision === 'approve' ? 'Password Change Approved' : 'Password Change Rejected',
             (string) $r['name'] . ' (HR)',
             'Admin',
-            $extra
+            ['kind' => 'pw_result', 'ref' => $id, 'owner' => (int) $r['account_id']]
         );
-        return static_profile_request_public($reqs[$pos]);
-    });
+    } catch (Throwable $e) {}
+
+    return static_profile_request_public([
+        'id'           => (int) $r['request_id'],
+        'account_id'   => (int) $r['account_id'],
+        'name'         => (string) $r['name'],
+        'email'        => (string) $r['email'],
+        'status'       => $decision === 'approve' ? 'approved' : 'rejected',
+        'requested_at' => (string) $r['requested_at'],
+        'decided_at'   => $now,
+        'reason'       => $decision === 'reject' ? $reason : ''
+    ]);
 }
 
 /* ==========================================================================
@@ -1745,8 +1758,7 @@ function static_profile_decide_request(int $id, string $decision, string $reason
 // (HR pages: 'data/avatars/'   Admin pages: '../hr/data/avatars/').
 function static_profile_for_page(string $avatarBase): array
 {
-    $store = static_store_read();
-    $me    = static_profile_me($store);
+    $me = static_profile_me();
     $role  = (string) ($_SESSION['user_role'] ?? '');
 
     $name  = $me !== null ? $me['name']  : trim((string) ($_SESSION['user_name'] ?? ''));
@@ -1985,12 +1997,11 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
                 break;
 
             case 'password_status':
-                $pstore = static_store_read();
-                $pme    = static_profile_me($pstore);
+                $pme    = static_profile_me();
                 static_respond([
                     'status'  => 'success',
                     'message' => '',
-                    'request' => ($pme !== null && $pme['role'] === 'hr') ? static_profile_latest_request($pstore, $pme['id']) : null
+                    'request' => ($pme !== null && $pme['role'] === 'hr') ? static_profile_latest_request($pme['id']) : null
                 ]);
                 break;
 

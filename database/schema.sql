@@ -13,7 +13,9 @@ CREATE TABLE users (
     email           VARCHAR(255) NOT NULL UNIQUE,
     password_hash   VARCHAR(255) NOT NULL,
     deleted_at      TIMESTAMP,
-    created_at      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    avatar_url      VARCHAR(512),                -- Cloudinary secure_url for the HR staff avatar
+    avatar_public_id VARCHAR(255)             -- Cloudinary public_id for removal
 );
 
 -- ------------------------------------------------------------
@@ -25,6 +27,7 @@ CREATE TABLE applicant (
     reference_code          VARCHAR(50)  NOT NULL UNIQUE,
     secure_token            VARCHAR(64)  NOT NULL UNIQUE,
     encoded_by_user_id      INT REFERENCES users(user_id),
+    position_id             INT REFERENCES job_positions(id),          -- the job position this applicant was added under
     name                    VARCHAR(255) NOT NULL,   -- full name = first + middle + last (kept for the rest of the app)
     first_name              VARCHAR(100) NOT NULL,
     middle_name             VARCHAR(100) NOT NULL DEFAULT '',
@@ -221,5 +224,27 @@ CREATE INDEX idx_schedule_final_date       ON schedule(final_date);
 CREATE INDEX idx_score_risk_score          ON score(risk_score);
 
 CREATE TABLE activity_log (log_id SERIAL PRIMARY KEY, actor VARCHAR(20) NOT NULL, activity VARCHAR(100) NOT NULL, details TEXT NOT NULL DEFAULT '-', created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+
+COMMIT;
+
+-- ------------------------------------------------------------
+-- PASSWORD CHANGE REQUESTS
+-- HR requests to change their password; the Admin reviews and decides.
+-- ------------------------------------------------------------
+BEGIN;
+
+CREATE TABLE password_requests (
+    request_id     SERIAL PRIMARY KEY,
+    account_id     INT         NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    current_hash   VARCHAR(255) NOT NULL,
+    new_password   VARCHAR(255) NOT NULL,
+    status         VARCHAR(20)  NOT NULL DEFAULT 'pending'
+                   CHECK (status IN ('pending', 'approved', 'rejected')),
+    decision       VARCHAR(20),
+    reason         VARCHAR(500),
+    created_at     TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    reviewed_at    TIMESTAMP,
+    reviewed_by    INT REFERENCES users(user_id)
+);
 
 COMMIT;
