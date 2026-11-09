@@ -11,7 +11,7 @@ function repo_applicants_active(?PDO $pdo = null): array
     $pdo = $pdo ?: db();
     $rows = $pdo->query(
         "SELECT applicant_id, name, email, phone_number, status, result, created_at" .
-        " FROM applicant WHERE deleted_at IS NULL AND verified_at IS NOT NULL ORDER BY applicant_id ASC"
+        " FROM applicant WHERE deleted_at IS NULL ORDER BY applicant_id ASC"
     )->fetchAll();
     return array_map('applicant_to_display', $rows);
 }
@@ -31,9 +31,12 @@ function repo_generate_reference_code(PDO $pdo): string
 
 // ---------------------------------------------------------------------------
 // "One CV, one name" + "applicant joins the system only after OTP"
-//   applicant.verified_at IS NULL      -> invitation only (hidden from every HR list/count)
+//   applicant.verified_at IS NULL      -> invitation only (shown in Screening List as "Pending")
 //   applicant.verified_at IS NOT NULL  -> real applicant (set by repo_mark_verified on OTP success)
-// Every HR-facing read below filters on verified_at IS NOT NULL.
+// repo_applicants_active() no longer filters on verified_at, so invitations
+// appear in the Screening List with status "Pending" until the applicant verifies.
+// Other HR-facing reads (dashboard stats, recent applicants, archive) still
+// filter on verified_at IS NOT NULL unless noted otherwise.
 // ---------------------------------------------------------------------------
 
 /** How long an unverified invitation (and its email link) stays usable. */
@@ -244,7 +247,7 @@ function repo_find_applicant(int $id, ?PDO $pdo = null): ?array
     $pdo = $pdo ?: db();
     $st = $pdo->prepare(
         "SELECT applicant_id, name, email, phone_number, status, result, reference_code, secure_token, cv_file_url, created_at" .
-        " FROM applicant WHERE applicant_id = :id AND deleted_at IS NULL AND verified_at IS NOT NULL LIMIT 1"
+        " FROM applicant WHERE applicant_id = :id AND deleted_at IS NULL LIMIT 1"
     );
     $st->execute([':id' => $id]);
     $row = $st->fetch();
