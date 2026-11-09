@@ -328,10 +328,10 @@ function static_run_evaluation(): array
     // This helper now delegates to the DB instead of the static JSON store.
     $applicantId = (int) ($_SESSION['applicant_id'] ?? 0);
     if ($applicantId <= 0) {
-        $email = strtolower(trim((string) ($_SESSION['applicant_email'] ?? '')));
-        if ($email !== '') {
+        $token = trim((string) ($_SESSION['applicant_token'] ?? ''));
+        if ($token !== '') {
             require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
-            $found = repo_find_applicant_by_email($email);
+            $found = repo_find_applicant_by_token($token);
             if (is_array($found)) $applicantId = (int) ($found['id'] ?? 0);
         }
     }

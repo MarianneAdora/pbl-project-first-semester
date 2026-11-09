@@ -34,7 +34,7 @@ CREATE TABLE applicant (
     last_name               VARCHAR(100) NOT NULL,
     name_normalized         VARCHAR(255) NOT NULL,   -- lowercase, no dots/commas, single spaces -> one person, one applicant
     email                   VARCHAR(255) NOT NULL,
-    email_normalized        VARCHAR(255) NOT NULL,   -- lowercase; gmail dots/+tags removed -> one email, one applicant
+    email_normalized        VARCHAR(255) NOT NULL,   -- lowercase; Gmail dots/+tags removed for consistent matching
     phone_number            VARCHAR(20),
     cv_file_url             VARCHAR(512),
     cv_hash                 CHAR(64),                -- SHA-256 of the CV file -> one CV, one applicant
@@ -201,7 +201,6 @@ CREATE INDEX idx_job_positions_archived_at ON job_positions(archived_at);
 -- ------------------------------------------------------------
 -- INDEXES
 -- ------------------------------------------------------------
-CREATE UNIQUE INDEX uq_applicant_email_normalized ON applicant(email_normalized);
 CREATE UNIQUE INDEX uq_applicant_name_normalized  ON applicant(name_normalized);
 CREATE UNIQUE INDEX uq_applicant_cv_hash          ON applicant(cv_hash) WHERE cv_hash IS NOT NULL;
 CREATE INDEX idx_applicant_unverified      ON applicant(created_at) WHERE verified_at IS NULL;

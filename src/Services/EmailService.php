@@ -22,7 +22,7 @@ class EmailService {
         $path = $this->templatePath($file);
         $html = is_file($path) ? file_get_contents($path) : false;
         if ($html === false || $html === '') {
-            die("Error: email template '{$file}' not found in includes/emails/.");
+            throw new RuntimeException("Email template '{$file}' could not be loaded.");
         }
         // Swap relative logo paths to the Cloudinary URL so the logo displays in email clients.
         $html = str_replace(
@@ -37,13 +37,23 @@ class EmailService {
     // Cloudinary logo URL used in sent emails (relative paths don't work in email clients).
     private const LOGO_URL = 'https://res.cloudinary.com/y0s0brvb/image/upload/v1792922174/expertise.png';
 
-    private function brevoSend(array $data, bool $echoError = true): bool
+    private function brevoApiKey(): string
     {
-        $env = parse_ini_file(__DIR__ . '/../../.env');
-        $apiKey = $env['BREVO_API_KEY'] ?? '';
-        if (empty($apiKey)) {
-            die("Error: BREVO_API_KEY is missing from your .env file.");
+        $envPath = __DIR__ . '/../../.env';
+        $env = is_file($envPath) ? @parse_ini_file($envPath, false, INI_SCANNER_RAW) : false;
+        $apiKey = is_array($env) ? trim((string) ($env['BREVO_API_KEY'] ?? '')) : '';
+        if ($apiKey === '' || $apiKey === 'your_brevo_api_key_here') {
+            error_log('Email delivery unavailable: BREVO_API_KEY is missing or unreadable.');
+            return '';
         }
+        return $apiKey;
+    }
+
+    private function brevoSend(array $data): bool
+    {
+        $apiKey = $this->brevoApiKey();
+        if ($apiKey === '') return false;
+
         $url = "https://api.brevo.com/v3/smtp/email";
         $context = stream_context_create([
             'http' => [
@@ -53,54 +63,40 @@ class EmailService {
                           . "accept: application/json\r\n",
                 'content' => json_encode($data),
                 'timeout' => 15,
-            ],
-            'ssl' => [
-                'verify_peer' => false,
-                'verify_peer_name' => false,
+                'ignore_errors' => true,
             ],
         ]);
         $response = @file_get_contents($url, false, $context);
         if ($response === false) {
-            if ($echoError) echo "<strong>Brevo API Error:</strong> Request failed.<br>";
+            $error = error_get_last();
+            error_log('Brevo email request failed: ' . ($error['message'] ?? 'network request failed.'));
             return false;
         }
-        // Check HTTP response code from $http_response_header superglobal
-        $httpCode = 201;
+        $httpCode = 0;
         foreach ($http_response_header ?? [] as $header) {
             if (stripos($header, 'HTTP/') === 0) {
                 preg_match('/HTTP\/[\d.]+ (\d+)/', $header, $m);
                 if (!empty($m[1])) $httpCode = (int) $m[1];
-                break;
             }
         }
         if ($httpCode === 201) return true;
-        if ($echoError) echo "<strong>Brevo API Error:</strong> " . $response . "<br>";
+        error_log('Brevo email request was rejected with HTTP status ' . $httpCode . '.');
         return false;
     }
     public function sendTestEmail($toEmail) {
-        // 1. Manually load the .env file just for this test
-        $env = parse_ini_file(__DIR__ . '/../../.env');
-        $apiKey = $env['BREVO_API_KEY'] ?? '';
-
-        if (empty($apiKey)) {
-            die("Error: BREVO_API_KEY is missing from your .env file.");
-        }
-
-        // 2. Prepare the email data
         $data = [
             "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@gmail.com"],
             "to" => [["email" => $toEmail, "name" => "Test Applicant"]],
             "subject" => "Testing Brevo Integration",
             "htmlContent" => "<h1>It works!</h1><p>Your PHP code successfully connected to Brevo.</p>"
         ];
-
-        // 3. Send to Brevo
-        $success = $this->brevoSend($data, false);
+        $success = $this->brevoSend($data);
         if ($success) {
             echo "SUCCESS! Check your inbox.";
         } else {
             echo "FAILED. Check Brevo API key and network.";
         }
+        return $success;
     }
 
     public function sendOtpEmail($toEmail, $toName, $otpCode) {
@@ -117,16 +113,22 @@ class EmailService {
             "htmlContent" => $htmlContent
         ];
 
-        return $this->brevoSend($data, false);
+        return $this->brevoSend($data);
     }
 
     public function sendInviteEmail($toEmail, $toName, $secureToken) {
         // $toName may be the full name — the template wants the first name only.
         $firstName = trim(explode(' ', trim((string) $toName))[0] ?? (string) $toName);
         if ($firstName === '') $firstName = (string) $toName;
-        // 1. Build the personal link using the secure token
-        // NOTE: Change 'localhost' to your real domain when you deploy
-        $link = "http://localhost/pbl-project-first-semester/applicant/opening.php?token=" . $secureToken;
+        $appUrl = defined('APP_URL') ? (string) APP_URL : (string) getenv('APP_URL');
+        if ($appUrl === '') {
+            $https  = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+            $host   = (string) ($_SERVER['HTTP_HOST'] ?? 'localhost');
+            $script = (string) ($_SERVER['SCRIPT_NAME'] ?? '/hr/data.php');
+            $root   = rtrim(str_replace('\\', '/', dirname(dirname($script))), '/');
+            $appUrl = ($https ? 'https://' : 'http://') . $host . $root;
+        }
+        $link = rtrim($appUrl, '/') . '/applicant/opening.php?token=' . rawurlencode((string) $secureToken);
 
         // 2. Load the HTML template from project root
         $htmlContent = $this->loadTemplate('shortlist-email.html');
@@ -144,7 +146,7 @@ class EmailService {
             "htmlContent" => $htmlContent
         ];
 
-        return $this->brevoSend($data, false);
+        return $this->brevoSend($data);
     }
 
     public function sendScheduleApprovedEmail($toEmail, $firstName, $date, $time, $type, $location, $link) {
@@ -164,7 +166,7 @@ class EmailService {
             "htmlContent" => $htmlContent
         ];
 
-        return $this->brevoSend($data, true);
+        return $this->brevoSend($data);
     }
 
     public function sendScheduleRescheduledEmail($toEmail, $firstName, $date, $time, $type, $location, $link) {
@@ -184,7 +186,7 @@ class EmailService {
             "htmlContent" => $htmlContent
         ];
 
-        return $this->brevoSend($data, true);
+        return $this->brevoSend($data);
     }
 
     public function sendHrCredentialsEmail($toEmail, $toName, $password) {
@@ -203,22 +205,18 @@ class EmailService {
             "htmlContent" => $htmlContent
         ];
 
-        return $this->brevoSend($data, false);
+        return $this->brevoSend($data);
     }
 
     public function sendEmail(string $toEmail, string $subject, string $html, string $toName = ''): bool
     {
-        $env = parse_ini_file(__DIR__ . '/../../.env');
-        $apiKey = $env['BREVO_API_KEY'] ?? '';
-        if (empty($apiKey)) return false;
-
         $data = [
             'sender'      => ['name' => 'Expertise BPO', 'email' => 'ebsmi.screening@gmail.com'],
             'to'          => [['email' => $toEmail, 'name' => $toName !== '' ? $toName : $toEmail]],
             'subject'     => $subject,
             'htmlContent' => $html,
         ];
-        return $this->brevoSend($data, false);
+        return $this->brevoSend($data);
     }
     public function sendScreeningRejectedEmail($toEmail, $firstName) {
         $htmlContent = $this->loadTemplate('screening-rejected-email.html');
@@ -232,8 +230,7 @@ class EmailService {
             "htmlContent" => $htmlContent
         ];
 
-        return $this->brevoSend($data, true);
+        return $this->brevoSend($data);
     }
 }
-
 

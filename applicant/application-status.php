@@ -86,9 +86,16 @@ if ($outcome === 'failed' && empty($_SESSION['rejection_email_sent'])) {
     $fullName  = (string) ($_SESSION['applicant_name'] ?? '');
     $firstName = trim(explode(' ', trim($fullName))[0] ?? $fullName);
     if ($toEmail !== '' && $firstName !== '') {
-        $emailService = new EmailService();
-        $emailService->sendScreeningRejectedEmail($toEmail, $firstName);
-        $_SESSION['rejection_email_sent'] = true;
+        try {
+            $sent = (new EmailService())->sendScreeningRejectedEmail($toEmail, $firstName);
+            if ($sent) {
+                $_SESSION['rejection_email_sent'] = true;
+            } else {
+                error_log('Screening rejection email was not accepted by the mail provider.');
+            }
+        } catch (Throwable $e) {
+            error_log('Screening rejection email failed: ' . $e->getMessage());
+        }
     }
 }
 

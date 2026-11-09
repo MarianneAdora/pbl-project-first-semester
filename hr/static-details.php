@@ -812,7 +812,7 @@ function details_send_email(array $email, int $applicantId, string $kind): bool
         require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
         $app  = repo_find_applicant($applicantId);
         $name = is_array($app) ? (string) ($app['name'] ?? ('#' . $applicantId)) : ('#' . $applicantId);
-        repo_log_activity('Email Sent', $name . ' · ' . $kind, null);
+        repo_log_activity($sent ? 'Email Sent' : 'Email Failed', $name . ' · ' . $kind, null);
     } catch (Throwable $e) {
         error_log('details_send_email activity log error: ' . $e->getMessage());
     }
@@ -895,5 +895,4 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
         details_respond(['status' => 'error', 'message' => 'Something went wrong while saving. Please try again.'], 500);
     }
 }
-
 

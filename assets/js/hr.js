@@ -738,6 +738,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const CV_TYPES = ['pdf', 'doc', 'docx'];
     let sending = false;
     let lastApplicant = null;
+    let lastInviteSent = false;
     // A CV is only accepted after the server confirmed it shows a full name, contact number and email address.
     let cvVerified = false;
     let cvCheckId = 0;   // lets a newer file cancel the check of an older one
@@ -1012,7 +1013,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await sendInvitation(new FormData(form));
             lastApplicant = data.applicant;
             // No red badge here: the applicant only appears in the Screening List after they verify the OTP.
-            openSentModal(data.applicant);
+            lastInviteSent = data.email_sent === true;
+            openSentModal(data.applicant, lastInviteSent);
         } catch (err) {
             HR.toast(err.message || 'Something went wrong. Please try again.', { error: true, duration: 8000 });
         } finally {
@@ -1020,36 +1022,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    /* ---------- sending (front end only) ----------
-       There is no server yet, so this just waits a moment and pretends the email was sent.
-       BACKEND: replace the body with a real request, for example:
-
-           const res = await fetch('add-applicants.php', { method: 'POST', body: formData });
-           const data = await res.json();                 // { status: 'success', applicant: { id, name, email, contact } }
-           if (data.status !== 'success') throw new Error(data.message);
-           return data;
-
-       The email itself is designed in shortlist-email.html. When the server sends it, it replaces:
-           {{FIRST_NAME}}  first word of the applicant's name
-           {{LINK}}        the applicant's personal link:  .../applicant/opening.php?token=...
-           {{YEAR}}        current year
-       and, before redirecting from that link to opening.php, sets the session values
-       listed at the top of opening.php (applicant_name, applicant_email). */
-    /* Real request: saves the applicant through add-applicants.php (it is the endpoint too),
-       so the Screening List, Dashboard cards and Recent Applicants all show the new person.
-       The CV file (if chosen) is uploaded flat to ebsmi-shortlist-applicant-cvs as cv-{id}-{filename}
-       (PDFs = previewable image type) and its URL is saved as cv_file_url.
-       Invitation email still not sent. */
+    /* Saving creates the applicant and sends the invitation email. If delivery fails, the
+       applicant remains saved and the result dialog offers a safe retry for that same invite. */
     async function sendInvitation(formData) {
+        formData.set('action', 'add');
         formData.delete('note'); // no notes column yet
         const res = await fetch('../hr/data.php', { method: 'POST', body: formData, credentials: 'same-origin' });
         let data;
         try { data = await res.json(); }
         catch (e) { throw new Error('The server did not answer correctly. Please try again.'); }
         if (data.status === 'invalid' || (data.status === 'duplicate' && data.field === 'cv')) { rejectCv(data.message || 'This CV was not accepted.'); throw new Error(data.message || 'This CV was not accepted.'); }
-        if (data.status === 'duplicate' && (data.field === 'email' || data.field === 'name')) {
-            if (data.field === 'email') setError('email', data.message, true);
-            else ['first_name', 'last_name'].forEach(n => setError(n, n === 'last_name' ? data.message : ' ', true));
+        if (data.status === 'duplicate' && data.field === 'name') {
+            ['first_name', 'last_name'].forEach(n => setError(n, n === 'last_name' ? data.message : ' ', true));
         }
         if (data.status !== 'success') throw new Error(data.message || 'Something went wrong. Please try again.');
         return data;
@@ -1078,9 +1062,17 @@ document.addEventListener('DOMContentLoaded', () => {
         cancelBtn.disabled = state;
     }
 
-    /* ---------- "Invitation Sent" modal -> success panel ---------- */
-    function openSentModal(applicant) {
+    /* ---------- Invitation result modal -> success panel ---------- */
+    function openSentModal(applicant, emailSent) {
         document.getElementById('sentEmail').textContent = applicant.email;
+        document.getElementById('sentTitle').textContent = emailSent ? 'Invitation Sent Successfully' : 'Applicant Saved';
+        document.getElementById('sentLead').textContent = emailSent
+            ? 'The screening invitation has been sent to:'
+            : 'The applicant was saved, but the invitation email could not be sent to:';
+        document.getElementById('sentNote').textContent = emailSent
+            ? 'The applicant can access the screening through the link provided in the email.'
+            : 'Retry sending the invitation. The applicant will appear in the Screening List after email verification.';
+        document.getElementById('retryInviteBtn').hidden = emailSent;
         sentModal.classList.add('active');
         document.getElementById('sentDone').focus();
     }
@@ -1094,6 +1086,11 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('detPosition').textContent = lastApplicant.position || '-';
         document.getElementById('detEmail').textContent = lastApplicant.email;
         document.getElementById('detContact').textContent = lastApplicant.contact;
+        document.getElementById('successTitle').textContent = lastInviteSent ? 'Invitation Sent' : 'Applicant Saved';
+        document.getElementById('successLead').textContent = lastInviteSent
+            ? 'The invitation has been sent. The applicant will appear in the Screening List once they verify their email with the one-time code.'
+            : 'The applicant was saved, but the invitation email has not been sent yet. Retry sending it below.';
+        document.getElementById('retryInviteSuccess').hidden = lastInviteSent;
 
         formCard.hidden = true;
         successCard.hidden = false;
@@ -1104,6 +1101,33 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('sentDone').addEventListener('click', finishSent);
     document.getElementById('sentClose').addEventListener('click', finishSent);
     sentModal.addEventListener('click', (e) => { if (e.target === sentModal) finishSent(); });
+    async function retryApplicantInvitation(button) {
+        if (!lastApplicant || button.disabled) return;
+        button.disabled = true;
+        button.textContent = 'SENDING...';
+        try {
+            const res = await fetch('data.php', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'invite_resend', id: Number(lastApplicant.id) })
+            });
+            let data;
+            try { data = await res.json(); }
+            catch (err) { throw new Error('The server did not answer correctly. Please try again.'); }
+            if (data.status !== 'success') throw new Error(data.message || 'The invitation could not be sent.');
+            if (data.email_sent !== true) throw new Error('The applicant was saved, but the invitation email could not be sent. Please try again later.');
+            lastInviteSent = true;
+            openSentModal(lastApplicant, true);
+        } catch (err) {
+            HR.toast(err.message || 'The invitation could not be sent. Please try again.', { error: true, duration: 8000 });
+        } finally {
+            button.disabled = false;
+            button.textContent = 'RETRY EMAIL';
+        }
+    }
+    document.getElementById('retryInviteBtn').addEventListener('click', (e) => retryApplicantInvitation(e.currentTarget));
+    document.getElementById('retryInviteSuccess').addEventListener('click', (e) => retryApplicantInvitation(e.currentTarget));
 
     document.getElementById('addAnother').addEventListener('click', () => {
         form.reset();

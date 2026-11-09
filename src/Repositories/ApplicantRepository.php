@@ -30,7 +30,7 @@ function repo_generate_reference_code(PDO $pdo): string
 }
 
 // ---------------------------------------------------------------------------
-// "One CV, one email" + "applicant joins the system only after OTP"
+// "One CV, one name" + "applicant joins the system only after OTP"
 //   applicant.verified_at IS NULL      -> invitation only (hidden from every HR list/count)
 //   applicant.verified_at IS NOT NULL  -> real applicant (set by repo_mark_verified on OTP success)
 // Every HR-facing read below filters on verified_at IS NOT NULL.
@@ -39,7 +39,7 @@ function repo_generate_reference_code(PDO $pdo): string
 /** How long an unverified invitation (and its email link) stays usable. */
 const INVITE_LIFETIME_DAYS = 7;
 
-/** Raised when the email or CV already belongs to another applicant. $field is 'email' or 'cv'. */
+/** Raised when a name or CV already belongs to another applicant. $field is 'name' or 'cv'. */
 class DuplicateApplicantException extends InvalidArgumentException
 {
     public string $field;
@@ -51,7 +51,7 @@ class DuplicateApplicantException extends InvalidArgumentException
 }
 
 /**
- * Canonical form of an email, used for the uniqueness rule.
+ * Canonical form of an email, used to compare addresses consistently.
  * Lowercase + trim; for Gmail also ignores dots and "+tag", so
  * Juan.Cruz+test@gmail.com and juancruz@gmail.com count as the SAME address.
  */
@@ -96,27 +96,13 @@ function repo_cv_hash(string $filePath): ?string
 }
 
 /**
- * Throws DuplicateApplicantException when the email or CV already belongs to a
+ * Throws DuplicateApplicantException when the name or CV already belongs to a
  * VERIFIED applicant (active or archived). Unverified invitations never block:
- * repo_add_applicant replaces them.
+ * repo_add_applicant replaces matching names or CVs.
  */
-function repo_assert_not_duplicate(string $email, ?string $cvHash, ?PDO $pdo = null, string $fullName = ''): void
+function repo_assert_not_duplicate(?string $cvHash, ?PDO $pdo = null, string $fullName = ''): void
 {
     $pdo = $pdo ?: db();
-
-    $st = $pdo->prepare(
-        "SELECT deleted_at FROM applicant WHERE email_normalized = :e AND verified_at IS NOT NULL LIMIT 1"
-    );
-    $st->execute([':e' => repo_normalize_email($email)]);
-    $row = $st->fetch();
-    if ($row) {
-        throw new DuplicateApplicantException(
-            'This email address already belongs to an applicant'
-            . (!empty($row['deleted_at']) ? ' (currently in the Archive: restore them instead of adding again).' : '.')
-            . ' Each email can only be used once.',
-            'email'
-        );
-    }
 
     $nameKey = repo_normalize_name($fullName);
     if ($nameKey !== '') {
@@ -180,9 +166,8 @@ function repo_mark_verified(int $id, ?PDO $pdo = null): bool
  *
  * Rules (checked here and enforced again by the unique indexes):
  *   - one person -> one applicant (same full name; case, spaces, dots and commas ignored)
- *   - one email  -> one applicant (Gmail dots/+tags ignored)
  *   - one CV     -> one applicant (SHA-256 of the file)
- * An older UNVERIFIED invitation with the same email or CV is replaced, so HR can
+ * An older UNVERIFIED invitation with the same name or CV is replaced, so HR can
  * fix a typo or resend an invite that never arrived. Call inside a transaction.
  */
 function repo_add_applicant(string $first, string $middle, string $last, string $email, string $phone, ?PDO $pdo = null, ?string $cvUrl = null, ?string $cvHash = null): array
@@ -203,17 +188,17 @@ function repo_add_applicant(string $first, string $middle, string $last, string 
     if ($phone === '') throw new InvalidArgumentException('Please enter the contact number.');
 
     repo_purge_stale_invitations($pdo);
-    repo_assert_not_duplicate($email, $cvHash, $pdo, $name);
+    repo_assert_not_duplicate($cvHash, $pdo, $name);
 
-    // Replace any older unverified invitation for this email / CV.
+    // Replace any older unverified invitation for this name / CV.
     $norm = repo_normalize_email($email);
     $nameKey = repo_normalize_name($name);
     if ($cvHash !== null && $cvHash !== '') {
-        $st = $pdo->prepare("DELETE FROM applicant WHERE verified_at IS NULL AND (email_normalized = :e OR name_normalized = :n OR cv_hash = :h)");
-        $st->execute([':e' => $norm, ':n' => $nameKey, ':h' => $cvHash]);
+        $st = $pdo->prepare("DELETE FROM applicant WHERE verified_at IS NULL AND (name_normalized = :n OR cv_hash = :h)");
+        $st->execute([':n' => $nameKey, ':h' => $cvHash]);
     } else {
-        $st = $pdo->prepare("DELETE FROM applicant WHERE verified_at IS NULL AND (email_normalized = :e OR name_normalized = :n)");
-        $st->execute([':e' => $norm, ':n' => $nameKey]);
+        $st = $pdo->prepare("DELETE FROM applicant WHERE verified_at IS NULL AND name_normalized = :n");
+        $st->execute([':n' => $nameKey]);
     }
 
     $ref = repo_generate_reference_code($pdo);
@@ -245,7 +230,7 @@ function repo_add_applicant(string $first, string $middle, string $last, string 
             if (stripos($msg, 'name_normalized') !== false) {
                 throw new DuplicateApplicantException('An applicant named "' . $name . '" already exists. Each applicant can only be added once.', 'name');
             }
-            throw new DuplicateApplicantException('This email address already belongs to an applicant. Each email can only be used once.', 'email');
+            throw $e;
         }
         throw $e;
     }
@@ -300,8 +285,8 @@ function repo_find_applicant_by_token(string $token, ?PDO $pdo = null): ?array
 }
 
 /**
- * Find an applicant by email address.
- * Only non-deleted rows.
+ * Find an applicant by email address only when the address identifies
+ * exactly one active, verified applicant.
  */
 function repo_find_applicant_by_email(string $email, ?PDO $pdo = null): ?array
 {
@@ -310,11 +295,12 @@ function repo_find_applicant_by_email(string $email, ?PDO $pdo = null): ?array
     if ($email === '') return null;
     $st = $pdo->prepare(
         "SELECT applicant_id, name, email, phone_number, status, result, reference_code, secure_token, cv_file_url, created_at" .
-        " FROM applicant WHERE email_normalized = :e AND deleted_at IS NULL AND verified_at IS NOT NULL LIMIT 1"
+        " FROM applicant WHERE email_normalized = :e AND deleted_at IS NULL AND verified_at IS NOT NULL LIMIT 2"
     );
     $st->execute([':e' => $email]);
-    $row = $st->fetch();
-    if (!$row) return null;
+    $rows = $st->fetchAll();
+    if (count($rows) !== 1) return null;
+    $row = $rows[0];
     $d = applicant_to_display($row);
     $d['reference_code'] = (string) ($row['reference_code'] ?? '');
     $d['secure_token'] = (string) ($row['secure_token'] ?? '');
@@ -513,5 +499,3 @@ function repo_applicants_recent(?PDO $pdo = null, int $limit = 10): array
     }
     return $out;
 }
-
-

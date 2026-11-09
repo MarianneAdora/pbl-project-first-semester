@@ -393,8 +393,8 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
     $input  = is_array($json) ? $json : $_POST;
     $action = (string) ($input['action'] ?? '');
 
-    $email = strtolower(trim((string) ($_SESSION['applicant_email'] ?? '')));
-    $me = $email !== '' ? repo_find_applicant_by_email($email) : null;
+    $applicantId = (int) ($_SESSION['applicant_id'] ?? 0);
+    $me = $applicantId > 0 ? repo_find_applicant($applicantId) : null;
 
     try {
         switch ($action) {

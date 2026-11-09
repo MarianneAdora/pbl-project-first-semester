@@ -22,4 +22,9 @@ The shared connection helper `db()` in `src/Helpers/db.php` reads these values.
 The legacy `getDbConnection()` in `src/Helpers/functions.php` now delegates to
 `db()`, so there is only one source of truth.
 
+When upgrading an existing database, run
+`database/migrations/20261109_allow_shared_applicant_emails.sql` once to remove
+the previous unique applicant-email index. New databases use the updated
+`database/schema.sql`.
+
 Other secrets (Brevo, Cloudinary, Gemini, Sentry) are also configured in `.env`.

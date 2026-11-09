@@ -157,12 +157,13 @@ $positions = static_positions();
                 <path class="bc-tick" d="M24 41l11 11 21-23"/>
             </svg>
             <h3 id="sentTitle">Invitation Sent Successfully</h3>
-            <p class="invite-lead">The screening invitation has been sent to:</p>
+            <p class="invite-lead" id="sentLead">The screening invitation has been sent to:</p>
             <div class="email-chip">
                 <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
                 <span id="sentEmail">applicant@email.com</span>
             </div>
-            <p class="invite-note">The applicant can access the screening through the link provided in the email.</p>
+            <p class="invite-note" id="sentNote">The applicant can access the screening through the link provided in the email.</p>
+            <button class="btn-outline" id="retryInviteBtn" type="button" hidden>RETRY EMAIL</button>
             <button class="btn-primary btn-done" id="sentDone" type="button">DONE</button>
         </div>
     </div>
@@ -316,7 +317,7 @@ $positions = static_positions();
                                 <svg class="pd-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
                             </button>
                             <ul class="pd-menu" id="positionMenu" role="listbox" tabindex="-1" aria-labelledby="positionLabel">
-<?php foreach ($positions as $p): $hasJd = !empty($p['jd']['file']); ?>
+<?php foreach ($positions as $p): $hasJd = !empty($p['jd']['url']); ?>
                                 <li class="pd-opt" role="option" id="pd-opt-<?php echo (int) $p['id']; ?>" data-value="<?php echo (int) $p['id']; ?>" aria-selected="false">
                                     <span class="pd-name"><?php echo htmlspecialchars((string) $p['name'], ENT_QUOTES, 'UTF-8'); ?></span>
                                     <span class="pd-tag<?php echo $hasJd ? ' has' : ''; ?>"><?php echo $hasJd ? 'PDF' : 'No PDF'; ?></span>
@@ -389,8 +390,9 @@ $positions = static_positions();
                 <circle class="bc-circle" cx="40" cy="40" r="36"/>
                 <path class="bc-tick" d="M24 41l11 11 21-23"/>
             </svg>
-            <h2>Invitation Sent</h2>
-            <p class="success-lead">The invitation has been sent. The applicant will appear in the Screening List once they verify their email with the one-time code.</p>
+            <h2 id="successTitle">Invitation Sent</h2>
+            <p class="success-lead" id="successLead">The invitation has been sent. The applicant will appear in the Screening List once they verify their email with the one-time code.</p>
+            <button type="button" class="btn-outline" id="retryInviteSuccess" hidden>RETRY EMAIL</button>
 
             <div class="details-box">
                 <h4>Applicant Details</h4>

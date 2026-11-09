@@ -49,7 +49,7 @@ require_once __DIR__ . '/../src/Helpers/db.php';
      static_purge($ids)             Archive "Delete forever"
 
    THIS FILE IS ALSO THE ENDPOINT the JavaScript calls (see the bottom of the file): a POST to
-   data.php with  action = add | archive | restore | purge | status  changes the store and
+   data.php with  action = add | invite_resend | archive | restore | purge | status  changes the store and
    answers with JSON. So everything static lives in this ONE file.
    data/static-store.json is only the saved data (created automatically, not code).
    To reset the sample data: delete data/static-store.json.
@@ -674,6 +674,8 @@ function static_compose_name(string $first, string $middle, string $last): strin
 // The full name is still saved as 'name' (every other page reads that), and the parts are kept too.
 function static_add_applicant(array $in, ?array $cvUpload = null): array
 {
+    require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
+
     $first   = static_check_name_part((string) ($in['first_name']  ?? ''), 'first name',  true);
     $middle  = static_check_name_part((string) ($in['middle_name'] ?? ''), 'middle name', false, 1);   // optional; an initial (A.) is fine
     $last    = static_check_name_part((string) ($in['last_name']   ?? ''), 'last name',   true);
@@ -689,27 +691,46 @@ function static_add_applicant(array $in, ?array $cvUpload = null): array
 
     $pdo = db();
 
-    // Check for duplicate email (active or archived)
-    $stmt = $pdo->prepare("SELECT applicant_id, deleted_at FROM applicant WHERE email_normalized = :en LIMIT 1");
-    $stmt->execute([':en' => strtolower(trim($email))]);
-    $dup = $stmt->fetch();
-    if ($dup) {
+    $emailNormalized = repo_normalize_email($email);
+    $nameNormalized = repo_normalize_name($name);
+    $stmt = $pdo->prepare("
+        SELECT name_normalized, deleted_at
+        FROM applicant
+        WHERE name_normalized = :name
+        LIMIT 1
+    ");
+    $stmt->execute([':name' => $nameNormalized]);
+    $duplicate = $stmt->fetch();
+    if ($duplicate) {
         throw new InvalidArgumentException(
-            empty($dup['deleted_at'])
-                ? 'An applicant with this email already exists.'
-                : 'An applicant with this email is in the Archive. Restore them instead.'
+            empty($duplicate['deleted_at'])
+                ? 'An applicant with this name already exists.'
+                : 'An applicant with this name is in the Archive. Restore them instead.'
         );
     }
 
     // Upload CV to Cloudinary if provided
     $cvFileUrl = null;
     $cvHash = null;
-    if ($cvUpload) {
+    if ($cvUpload && (int) ($cvUpload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+        $tmpPath = (string) ($cvUpload['tmp_name'] ?? '');
+        if ($tmpPath === '' || !is_uploaded_file($tmpPath)) {
+            throw new InvalidArgumentException('The CV file could not be uploaded. Please try again.');
+        }
+        $cvHash = repo_cv_hash($tmpPath);
+        if ($cvHash !== null) {
+            $cvCheck = $pdo->prepare("SELECT 1 FROM applicant WHERE cv_hash = :hash LIMIT 1");
+            $cvCheck->execute([':hash' => $cvHash]);
+            if ($cvCheck->fetch()) {
+                throw new InvalidArgumentException('This CV was already uploaded for another applicant.');
+            }
+        }
+
         try {
             require_once __DIR__ . '/../src/Services/CloudinaryService.php';
             $cloud = new CloudinaryService();
             $tmpFile = tempnam(sys_get_temp_dir(), 'cv_');
-            if (!@move_uploaded_file($cvUpload['tmp_name'], $tmpFile)) {
+            if (!@move_uploaded_file($tmpPath, $tmpFile)) {
                 throw new InvalidArgumentException('The CV file could not be uploaded. Please try again.');
             }
             $uploaded = $cloud->uploadCV(
@@ -719,7 +740,6 @@ function static_add_applicant(array $in, ?array $cvUpload = null): array
                 (string) ($cvUpload['name'] ?? '')
             );
             $cvFileUrl = $uploaded['url'];
-            $cvHash = hash_file('sha256', $tmpFile);
             @unlink($tmpFile);
         } catch (InvalidArgumentException $e) {
             throw $e;
@@ -730,24 +750,37 @@ function static_add_applicant(array $in, ?array $cvUpload = null): array
     }
 
     $now = static_now()->format('Y-m-d H:i:s');
+    $referenceCode = repo_generate_reference_code($pdo);
+    do {
+        $secureToken = bin2hex(random_bytes(32));
+        $tokenCheck = $pdo->prepare("SELECT 1 FROM applicant WHERE secure_token = :token LIMIT 1");
+        $tokenCheck->execute([':token' => $secureToken]);
+    } while ($tokenCheck->fetch());
+    $encodedBy = isset($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : null;
     $stmt = $pdo->prepare("
-        INSERT INTO applicant (name, first_name, middle_name, last_name,
+        INSERT INTO applicant (reference_code, secure_token, encoded_by_user_id, name,
+                               first_name, middle_name, last_name, name_normalized,
                                email, email_normalized, phone_number, position_id,
                                cv_file_url, cv_hash, status, result,
                                invited_at, created_at)
-        VALUES (:name, :fn, :mn, :ln, :email, :en, :phone, :pid,
+        VALUES (:ref, :token, :encoded_by, :name, :fn, :mn, :ln, :name_normalized,
+                :email, :en, :phone, :pid,
                 :cvurl, :cvhash, 'pending', NULL,
                 :invited, NOW())
         RETURNING applicant_id, name, first_name, middle_name, last_name, email, phone_number,
                   position_id, status, result, created_at, invited_at, cv_file_url, cv_hash
     ");
     $stmt->execute([
+        ':ref'   => $referenceCode,
+        ':token' => $secureToken,
+        ':encoded_by' => $encodedBy,
         ':name'  => $name,
         ':fn'    => $first,
         ':mn'    => $middle,
         ':ln'    => $last,
+        ':name_normalized' => $nameNormalized,
         ':email' => $email,
-        ':en'    => strtolower(trim($email)),
+        ':en'    => $emailNormalized,
         ':phone' => $contact,
         ':pid'   => (int) $position['id'],
         ':cvurl' => $cvFileUrl,
@@ -784,7 +817,42 @@ function static_add_applicant(array $in, ?array $cvUpload = null): array
             'url'   => (string) $row['cv_file_url'],
         ];
     }
-    return $applicant;
+    return [
+        'applicant'   => $applicant,
+        'email_sent'  => static_send_applicant_invitation($email, $name, $secureToken),
+    ];
+}
+
+function static_send_applicant_invitation(string $email, string $name, string $secureToken): bool
+{
+    try {
+        require_once __DIR__ . '/../src/Services/EmailService.php';
+        return (new EmailService())->sendInviteEmail($email, $name, $secureToken);
+    } catch (Throwable $e) {
+        error_log('Applicant invitation email failed: ' . $e->getMessage());
+        return false;
+    }
+}
+
+function static_resend_applicant_invitation(int $applicantId): bool
+{
+    if ($applicantId <= 0) throw new InvalidArgumentException('Invalid applicant.');
+
+    $stmt = db()->prepare(
+        "SELECT name, email, secure_token FROM applicant
+         WHERE applicant_id = :id AND deleted_at IS NULL AND verified_at IS NULL"
+    );
+    $stmt->execute([':id' => $applicantId]);
+    $applicant = $stmt->fetch();
+    if (!$applicant) {
+        throw new InvalidArgumentException('This applicant is no longer waiting for email verification.');
+    }
+
+    return static_send_applicant_invitation(
+        (string) $applicant['email'],
+        (string) $applicant['name'],
+        (string) $applicant['secure_token']
+    );
 }
 
 /* ==========================================================================
@@ -1897,7 +1965,7 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
 
         switch ($action) {
             case 'add':
-                $extra['applicant'] = static_add_applicant(
+                $added = static_add_applicant(
                     [
                         'first_name'  => (string) ($input['first_name']  ?? ''),
                         'middle_name' => (string) ($input['middle_name'] ?? ''),
@@ -1908,7 +1976,13 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
                     ],
                     isset($_FILES['cv']) && is_array($_FILES['cv']) ? $_FILES['cv'] : null
                 );
+                $extra['applicant'] = $added['applicant'];
+                $extra['email_sent'] = $added['email_sent'];
                 static_log('Added An Applicant', (string) $extra['applicant']['name']);
+                break;
+
+            case 'invite_resend':
+                $extra['email_sent'] = static_resend_applicant_invitation((int) ($input['id'] ?? 0));
                 break;
 
             case 'parse_cv':
