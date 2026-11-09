@@ -11,8 +11,8 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {
     exit();
 }
 
-// Keeps the browser copy of the Archive in step with static-data.php
-require_once __DIR__ . '/static-data.php';
+// Keeps the browser copy of the Archive in step with data.php
+require_once __DIR__ . '/data.php';
 
 // The Job Position list (each position has its own job description PDF). BACKEND: SELECT id, name FROM job_positions
 $positions = static_positions();
@@ -180,7 +180,7 @@ $positions = static_positions();
 
         <?php
         // Profile card: the name + picture saved in Settings (clicking it opens Settings)
-        require_once __DIR__ . '/static-data.php';
+        require_once __DIR__ . '/data.php';
         $sbp_name = trim((string) ($_SESSION['user_name'] ?? 'HR'));
         $sbp_role = 'HR Staff';
         try {

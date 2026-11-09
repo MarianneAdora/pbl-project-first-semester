@@ -128,7 +128,7 @@ foreach ($archived_rows as $a) {
 
         <?php
         // Profile card: the name + picture saved in Settings (clicking it opens Settings)
-        require_once __DIR__ . '/static-data.php';
+        require_once __DIR__ . '/data.php';
         $sbp_name = trim((string) ($_SESSION['user_name'] ?? 'HR'));
         $sbp_role = 'HR Staff';
         try {

@@ -2,12 +2,12 @@
 /* ==========================================================================
    STATIC ADMIN DATA: everything the Admin side needs, in ONE file.
    Location: admin/static-admin.php  (next to the admin pages)
-   Temporary, like hr/static-data.php. It is deleted when the database is connected.
+   Temporary, like hr/data.php. It is deleted when the database is connected.
 
    Who takes from this file
      admin/dashboard-admin.php static_admin_overview()   the three summary boxes
                              static_admin_question_stats()  Questionnaires Statistics (every question + its most chosen answer)
-                             static_activity()         Recent Activities (from hr/static-data.php)
+                             static_activity()         Recent Activities (from hr/data.php)
      admin/question-list.php   static_admin_payload()    view / add / edit / delete the questionnaires
      admin/hr-list.php         static_admin_payload()    add / edit / deactivate / delete HR accounts
      admin/archive-admin.php    static_admin_payload()    deleted questions + HR accounts (30 days, then gone)
@@ -25,7 +25,7 @@
                   account_add | account_update | account_archive | account_restore | account_purge | account_password | notify |
                   password_decide
    changes the store and answers with JSON (the fresh lists, so the page can redraw itself).
-   password_decide = the Admin approves / rejects an HR password change (hr/static-data.php holds the rule).
+   password_decide = the Admin approves / rejects an HR password change (hr/data.php holds the rule).
    Questions can be KNOCK-OUT questions (question.knockout + question.pass_answer, and pass_follow for a Yes/No + list):
    an applicant whose answer does not match the passing answer fails the screening (applicant/static-evaluation.php)
    and HR sees why in the applicant's Questionnaires tab. The rule itself lives in applicant/static-applicant.php.
@@ -42,16 +42,16 @@
      static_admin_overview()     ->  three COUNT(*) queries
    ========================================================================== */
 
-require_once __DIR__ . '/../hr/static-data.php';               // store functions (static_store_read, etc.)
+require_once __DIR__ . '/../hr/data.php';               // store functions (static_store_read, etc.)
 require_once __DIR__ . '/../applicant/applicant-helpers.php';   // applicant helpers (DB-backed)
 
 /* ==========================================================================
-   SAFETY NET: the admin pages need these functions from hr/static-data.php.
+   SAFETY NET: the admin pages need these functions from hr/data.php.
    If that file does not have them (an older copy), the versions below are used instead.
-   When hr/static-data.php has them, NOTHING here runs (each one only exists "if missing").
+   When hr/data.php has them, NOTHING here runs (each one only exists "if missing").
    ========================================================================== */
 if (!function_exists('static_store_read') || !function_exists('static_store_write') || !function_exists('static_now')) {
-    exit('hr/static-data.php is missing its store functions (static_store_read / static_store_write / static_now). Restore your own copy of hr/static-data.php.');
+    exit('hr/data.php is missing its store functions (static_store_read / static_store_write / static_now). Restore your own copy of hr/data.php.');
 }
 
 if (!function_exists('static_seed_hr_accounts')) {
@@ -73,7 +73,7 @@ if (!function_exists('static_hr_accounts')) {
 }
 
 /* The activity log helpers (static_seed_activity, static_actor, static_log_into, static_activity) now live in
-   hr/static-data.php, because HR writes to the same log: everything HR does shows here on the Admin side under
+   hr/data.php, because HR writes to the same log: everything HR does shows here on the Admin side under
    Recent Activities. The Admin's own change functions below still call static_log_into() exactly as before. */
 
 if (!defined('STATIC_ARCHIVE_DAYS')) define('STATIC_ARCHIVE_DAYS', 30);
@@ -1323,7 +1323,7 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
                 break;
 
             case 'password_decide':     // Recent Activities pop-up: approve or reject an HR password change
-                // like hr/static-data.php: only our own pages can send this header, a form on another site cannot
+                // like hr/data.php: only our own pages can send this header, a form on another site cannot
                 if (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') !== 'XMLHttpRequest') static_admin_respond(['status' => 'error', 'message' => 'Invalid request.'], 400);
                 $decision = (string) ($input['decision'] ?? '');
                 $result   = static_profile_decide_request((int) ($input['id'] ?? 0), $decision, (string) ($input['reason'] ?? ''));

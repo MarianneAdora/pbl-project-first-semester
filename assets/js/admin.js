@@ -80,7 +80,7 @@ window.ADMIN = (function () {
         return ok;
     }
 
-    // The name and picture are saved on the server now (hr/static-data.php) and the page prints them, so there is
+    // The name and picture are saved on the server now (hr/data.php) and the page prints them, so there is
     // nothing to override from this browser any more. (An old 'admin_profile' key in localStorage is simply ignored.)
     function applyProfile() { /* kept so the calls below keep working */ }
 
@@ -3297,7 +3297,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let photoUrl = '';             // preview address of the new picture
 
     const escHtml = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    // "Anna Marie Reyes" -> "AR", "HR" -> "HR", "Admin" -> "AD" (the same rule as static-data.php)
+    // "Anna Marie Reyes" -> "AR", "HR" -> "HR", "Admin" -> "AD" (the same rule as data.php)
     function initialsOf(name) {
         const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
         if (!parts.length) return '?';
@@ -3376,7 +3376,7 @@ document.addEventListener('DOMContentLoaded', () => {
         refreshButtons();
     });
 
-    /* ---------- requests to static-data.php ----------
+    /* ---------- requests to data.php ----------
        Resolves with the answer; rejects with an Error (message is safe to show, .field = the field it belongs to). */
     async function postProfile(body) {
         const isForm = body instanceof FormData;
@@ -3405,7 +3405,7 @@ document.addEventListener('DOMContentLoaded', () => {
         cancelBtn.disabled = state;
     }
 
-    // Saves the profile on the server first (name, email, picture; static-data.php). Only when that worked are the
+    // Saves the profile on the server first (name, email, picture; data.php). Only when that worked are the
     // look settings kept in this browser, so a refused email never leaves a half-saved page.
     async function persist(state) {
         const form = new FormData();
@@ -3582,7 +3582,7 @@ document.addEventListener('DOMContentLoaded', () => {
     pwConfirm.addEventListener('input', () => setError(pwField('pwConfirm'), pwConfirm.value === pwNew.value ? '' : 'The passwords do not match.'));
     pwCurrent.addEventListener('input', () => setError(pwField('pwCurrent'), ''));
 
-    // The server checks the current password (static-data.php). Admin: the new password is saved at once.
+    // The server checks the current password (data.php). Admin: the new password is saved at once.
     // HR: the change is sent to the Admin and only works after the Admin approves it.
     pwForm.addEventListener('submit', async (e) => {
         e.preventDefault();

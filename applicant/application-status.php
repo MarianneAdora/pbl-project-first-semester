@@ -105,7 +105,7 @@ $minDate  = $today->modify('+1 day');
 $maxDate  = $today->modify('+60 days');
 
 // CONNECTED TO HR: the applicant record (found by the verified email) and the shared interview row that
-// HR's Interview Schedule tab reads and answers (hr/static-data.php -> static_interview_*).
+// HR's Interview Schedule tab reads and answers (hr/data.php -> static_interview_*).
 $applicantRow = repo_find_applicant((int) ($_SESSION['applicant_id'] ?? 0));
 $storedIv = null;
 if ($applicantRow) {

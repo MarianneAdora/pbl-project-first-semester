@@ -16,7 +16,7 @@ date_default_timezone_set('Asia/Manila');
 // Login/dashboard data now comes from the database (applicant table).
 require_once __DIR__ . '/../src/Helpers/db.php';
 require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
-require_once __DIR__ . '/static-data.php';
+require_once __DIR__ . '/data.php';
 
 // Summary cards + Passed/Rejected chart are LIVE from the applicant table.
 try {

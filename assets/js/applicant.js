@@ -708,7 +708,7 @@ if (document.documentElement.getAttribute('data-page') === 'questionnaire') {
    validation and the progress pings come from screening-store.js (both loaded before this file).
 
    The questions are NOT written here: they come from window.SCREENING.questions, which
-   questionnaire.php prints from static-data.php (later: the database). To change a question,
+   questionnaire.php prints from data.php (later: the database). To change a question,
    its type or its choices, change the data, not this file.
 
    Question types:  yesno | yesno_select (Yes/No + a follow-up list) | scale (circles) | date (calendar) | text | consent
@@ -777,7 +777,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function questionText(el, q) {
         var parts = String(q.text).split('{link}');
         if (parts.length === 2 && q.link && q.link.url) {
-            // the link text and address come from the data (static-data.php), they are not written here
+            // the link text and address come from the data (data.php), they are not written here
             var a = h('a', 'q__link');
             a.href = q.link.url;
             a.target = '_blank';
@@ -1513,7 +1513,7 @@ if (document.documentElement.getAttribute('data-page') === 'upload-video') {
      - record one with the camera, right here: it stops by itself at 10 seconds
 
    The rules (seconds, MB, formats) are NOT written here: they come from window.SCREENING.video,
-   printed by upload-video.php from static-data.php (later: the database / settings).
+   printed by upload-video.php from data.php (later: the database / settings).
 
    BACKEND: the real upload is already written (realUpload below). It sends the video to
    api/upload-file.php (Cloudinary) as the form field "video" and expects JSON back:

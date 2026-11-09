@@ -1,7 +1,7 @@
 <?php
 /* ==========================================================================
    STATIC DETAILS DATA: everything the "Applicant Details" page (hr/details.php) needs.
-   Temporary, like hr/static-data.php and applicant/static-applicant.php. It is deleted when the
+   Temporary, like hr/data.php and applicant/static-applicant.php. It is deleted when the
    database is connected.
 
    What is REAL here (read from the same store the rest of the project uses)
@@ -28,7 +28,7 @@
    DATABASE (later)
      details_submission()        ->  SELECT ... FROM responses WHERE applicant_id = ?
      details_find_evaluation()   ->  SELECT ... FROM evaluations WHERE applicant_id = ?
-     interviews                  ->  static_interview_*() in static-data.php become queries
+     interviews                  ->  static_interview_*() in data.php become queries
      details_send_email()        ->  src/Services/EmailService.php (SendGrid)
      the endpoint                ->  api/*.php answering the same two POST actions
    To reset the sample interviews / emails: delete hr/data/static-store.json (resets everything).
@@ -565,7 +565,7 @@ function details_evaluation(array $a, ?array $submission): ?array
 }
 
 // ---------------------------------------------------------------------------
-// Interview schedule. The rows live in the shared store (static_interview_* in static-data.php):
+// Interview schedule. The rows live in the shared store (static_interview_* in data.php):
 // the APPLICANT sends the preferred date + time (applicant/application-status.php), HR answers here.
 //   awaiting     the applicant's preferred schedule, waiting for HR
 //   confirmed    HR said "Available"; the applicant was emailed

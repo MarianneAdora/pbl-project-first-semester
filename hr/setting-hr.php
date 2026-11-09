@@ -13,11 +13,11 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {
 
 // HR settings page; archive sync is loaded from the database below.
 require_once __DIR__ . '/../src/Helpers/db.php';
-require_once __DIR__ . '/static-data.php';
+require_once __DIR__ . '/data.php';
 
 // Starting values for the account fields: the saved profile of whoever is logged in (name, email, picture),
 // and the newest password-change request (it waits for the Admin's approval).
-// Settings > Account saves back through static-data.php.
+// Settings > Account saves back through data.php.
 $profile            = static_profile_for_page('data/avatars/');
 $account_name       = $profile['name'];
 $account_email      = $profile['email'];
@@ -388,7 +388,7 @@ $account_avatar_url = $profile['avatar_url'];
     <script>window.HR_ACCOUNT = <?php echo json_encode([
         'name' => $account_name, 'email' => $account_email,
         'avatar' => $account_avatar, 'avatarUrl' => $account_avatar_url, 'avatarBase' => $profile['avatar_base'],
-        'initials' => $profile['initials'], 'role' => 'hr', 'endpoint' => 'static-data.php',
+        'initials' => $profile['initials'], 'role' => 'hr', 'endpoint' => 'data.php',
         'request' => $profile['request']
     ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;</script>
     <script src="../assets/js/hr.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/hr.js'); ?>"></script>

@@ -4213,7 +4213,7 @@ html:where([data-page="settingsadmin"])[data-theme="dark"] .set-input input::pla
 html:where([data-page="settingsadmin"])[data-theme="dark"] .tile-face { background: var(--surface-2); }
 
 /* ==========================================================================
-   Profile (added with hr/static-data.php)
+   Profile (added with hr/data.php)
    - the round picture + the profile chip next to "Hello, ...!" on the Dashboard
    - the picture block in Settings > Account
    - the Recent Activities line for an HR password change + the approve / reject pop-up

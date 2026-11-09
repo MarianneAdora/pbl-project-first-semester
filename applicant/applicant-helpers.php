@@ -2,7 +2,7 @@
 /* ==========================================================================
    STATIC APPLICANT DATA: everything the applicant side needs, in ONE file.
    Location: applicant/static-applicant.php  (next to the applicant pages)
-   Temporary, like hr/static-data.php (which it uses for the applicant list). It is deleted
+   Temporary, like hr/data.php (which it uses for the applicant list). It is deleted
    when the database is connected.
 
    Who takes from this file
@@ -52,7 +52,7 @@ require_once __DIR__ . '/../src/Repositories/ResponseRepository.php';
 const STATIC_JOB_DESCRIPTION_URL = 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
 
 // Every job position has its OWN job description PDF (HR adds it with the position in Add Applicant; see
-// "JOB POSITIONS" in hr/static-data.php). The applicant is shown the PDF of the position they were added under.
+// "JOB POSITIONS" in hr/data.php). The applicant is shown the PDF of the position they were added under.
 // A position without a PDF (or an applicant without a position) falls back to the placeholder above.
 // DATABASE (later): SELECT p.jd_url FROM applicants a JOIN job_positions p ON p.id = a.position_id WHERE a.id = ?
 function static_job_description_url(?array $applicant): string

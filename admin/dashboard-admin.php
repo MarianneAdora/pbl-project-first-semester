@@ -15,7 +15,7 @@ date_default_timezone_set('Asia/Manila');
 
 require_once __DIR__ . '/../src/Repositories/AdminRepository.php';
 require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
-require_once __DIR__ . '/../hr/static-data.php';
+require_once __DIR__ . '/../hr/data.php';
 
 // Every number on this page is queried live from the database.
 $overview = repo_admin_overview();             // the three summary boxes

@@ -16,10 +16,10 @@ date_default_timezone_set('Asia/Manila');
 // Sidebar badges: new HR activity + archived questions/accounts expiring soon.
 require_once __DIR__ . '/../src/Helpers/db.php';
 require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
-require_once __DIR__ . '/../hr/static-data.php';
+require_once __DIR__ . '/../hr/data.php';
 
 // Starting values for the account fields: the saved profile of whoever is logged in (name, email, picture).
-// Settings > Account saves back to it through hr/static-data.php.
+// Settings > Account saves back to it through hr/data.php.
 $profile            = static_profile_for_page('../hr/data/avatars/');
 $account_name       = $profile['name'];
 $account_email      = $profile['email'];
@@ -369,7 +369,7 @@ $account_avatar_url = $profile['avatar_url'];
         window.ADMIN_ACCOUNT = <?php echo json_encode([
             'name' => $account_name, 'email' => $account_email,
             'avatar' => $account_avatar, 'avatarUrl' => $account_avatar_url, 'avatarBase' => $profile['avatar_base'],
-            'initials' => $profile['initials'], 'role' => 'admin', 'endpoint' => '../hr/static-data.php'
+            'initials' => $profile['initials'], 'role' => 'admin', 'endpoint' => '../hr/data.php'
         ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
 
     </script>

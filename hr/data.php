@@ -49,7 +49,7 @@ require_once __DIR__ . '/../src/Helpers/db.php';
      static_purge($ids)             Archive "Delete forever"
 
    THIS FILE IS ALSO THE ENDPOINT the JavaScript calls (see the bottom of the file): a POST to
-   static-data.php with  action = add | archive | restore | purge | status  changes the store and
+   data.php with  action = add | archive | restore | purge | status  changes the store and
    answers with JSON. So everything static lives in this ONE file.
    data/static-store.json is only the saved data (created automatically, not code).
    To reset the sample data: delete data/static-store.json.
@@ -1290,8 +1290,20 @@ function static_profile_me(): ?array
     $role = (string) ($_SESSION['user_role'] ?? '');
 
     if ($role === 'admin') {
-        $a = static_profile_admin();
-        return ['role' => 'admin', 'id' => 0, 'name' => $a['name'], 'email' => $a['email'], 'avatar' => $a['avatar']];
+        $userId = (int) ($_SESSION['user_id'] ?? 0);
+        if ($userId <= 0) return null;
+        $pdo = db();
+        $stmt = $pdo->prepare("SELECT user_id AS id, name, email, avatar_url FROM users WHERE user_id = :id AND role = 'admin' AND deleted_at IS NULL");
+        $stmt->execute([':id' => $userId]);
+        $row = $stmt->fetch();
+        if (!$row) return null;
+        return [
+            'role'   => 'admin',
+            'id'     => (int) $row['id'],
+            'name'   => (string) $row['name'],
+            'email'  => strtolower(trim((string) $row['email'])),
+            'avatar' => !empty($row['avatar_url']) ? (string) $row['avatar_url'] : null
+        ];
     }
 
     if ($role === 'hr') {
@@ -1462,12 +1474,12 @@ function static_profile_log(array &$store, string $activity, string $details, st
    HR changes are written to the activity log, so the Admin sees them under Recent Activities.
    Returns ['name', 'email', 'avatar', 'changes' => [['field', 'from', 'to'], ...]]
    ========================================================================== */
-// HR changes name / email / avatar; returns updated profile
+// The signed-in Admin or HR user can change their name, email and avatar.
 function static_profile_save(array $in, ?array $upload): array
 {
     require_once __DIR__ . '/../src/Helpers/db.php';
     $me = static_profile_me();
-    if ($me === null || $me['role'] !== 'hr') throw new StaticProfileError('Your account could not be found. Please log in again.');
+    if ($me === null || !in_array($me['role'], ['admin', 'hr'], true)) throw new StaticProfileError('Your account could not be found. Please log in again.');
 
     $name  = static_profile_check_name((string) ($in['name'] ?? ''));
     $email = static_profile_check_email((string) ($in['email'] ?? ''));
@@ -1479,6 +1491,9 @@ function static_profile_save(array $in, ?array $upload): array
     if ($stmt->fetch()) throw new StaticProfileError('This email is already in use by another account.');
 
     $avatarUrl = $me['avatar'] ?? null;
+    $avatarPublicId = null;
+    $oldAvatarPublicId = null;
+    $cloud = null;
 
     // handle avatar upload
     if ($upload && !empty($upload['tmp_name']) && is_uploaded_file($upload['tmp_name'])) {
@@ -1486,27 +1501,33 @@ function static_profile_save(array $in, ?array $upload): array
             require_once __DIR__ . '/../src/Services/CloudinaryService.php';
             $cloud = new CloudinaryService();
             $tmpFile = tempnam(sys_get_temp_dir(), 'avatar_');
-            if (!@move_uploaded_file($upload['tmp_name'], $tmpFile)) {
-                throw new StaticProfileError('Avatar upload failed.');
+            if ($tmpFile === false) {
+                throw new StaticProfileError('Avatar upload failed.', 'avatar');
             }
-            $uploaded = $cloud->uploadAvatar(
-                $tmpFile,
-                $me['id'],
-                'ebsmi-user-profiles',
-                (string) ($upload['name'] ?? '')
-            );
+            if (!@move_uploaded_file($upload['tmp_name'], $tmpFile)) {
+                @unlink($tmpFile);
+                throw new StaticProfileError('Avatar upload failed.', 'avatar');
+            }
+            try {
+                $uploaded = $cloud->uploadAvatar(
+                    $tmpFile,
+                    $me['role'] === 'admin' ? 0 : $me['id'],
+                    'ebsmi-user-profiles',
+                    (string) ($upload['name'] ?? '')
+                );
+            } finally {
+                @unlink($tmpFile);
+            }
+            if (empty($uploaded['url']) || empty($uploaded['public_id'])) {
+                throw new StaticProfileError('Avatar upload failed.', 'avatar');
+            }
             $avatarUrl = $uploaded['url'];
-            @unlink($tmpFile);
+            $avatarPublicId = $uploaded['public_id'];
 
-            // delete old avatar from Cloudinary if it had a public_id
             $stmt = $pdo->prepare("SELECT avatar_public_id FROM users WHERE user_id = :id");
             $stmt->execute([':id' => $me['id']]);
             $old = $stmt->fetch();
-            if ($old && !empty($old['avatar_public_id'])) {
-                try {
-                    $cloud->deleteResource((string) $old['avatar_public_id'], 'image', 'upload');
-                } catch (Throwable $e) { /* ignore */ }
-            }
+            $oldAvatarPublicId = $old['avatar_public_id'] ?? null;
         } catch (StaticProfileError $e) {
             throw $e;
         } catch (Throwable $e) {
@@ -1515,23 +1536,39 @@ function static_profile_save(array $in, ?array $upload): array
     }
 
     // update the database
-    $stmt = $pdo->prepare("UPDATE users SET name = :name, email = :email, email_normalized = :en, avatar_url = :avatar_url WHERE user_id = :id");
+    $stmt = $pdo->prepare("UPDATE users SET name = :name, email = :email, avatar_url = :avatar_url, avatar_public_id = COALESCE(:avatar_public_id, avatar_public_id) WHERE user_id = :id");
     $stmt->execute([
         ':name' => $name,
         ':email' => $email,
-        ':en' => strtolower(trim($email)),
         ':avatar_url' => $avatarUrl,
+        ':avatar_public_id' => $avatarPublicId,
         ':id' => $me['id']
     ]);
 
-    try { repo_log_activity('Updated HR Profile', $name . ' (' . $email . ')'); } catch (Throwable $e) {}
+    $changes = [];
+    if ($name !== $me['name']) $changes[] = ['field' => 'name', 'from' => $me['name'], 'to' => $name];
+    if (strtolower(trim($email)) !== $me['email']) $changes[] = ['field' => 'email', 'from' => $me['email'], 'to' => strtolower(trim($email))];
+    if ($avatarUrl !== ($me['avatar'] ?? null)) $changes[] = ['field' => 'avatar', 'from' => $me['avatar'] ?? null, 'to' => $avatarUrl];
+
+    if ($cloud && $oldAvatarPublicId && $oldAvatarPublicId !== $avatarPublicId) {
+        try {
+            $cloud->deleteResource((string) $oldAvatarPublicId, 'image', 'private');
+        } catch (Throwable $e) {
+            error_log('Could not delete previous HR avatar from Cloudinary: ' . $e->getMessage());
+        }
+    }
+
+    $roleLabel = $me['role'] === 'admin' ? 'Admin' : 'HR';
+    try { repo_log_activity('Updated ' . $roleLabel . ' Profile', $name . ' (' . $email . ')'); } catch (Throwable $e) {}
 
     return [
-        'id'     => $me['id'],
-        'role'   => 'hr',
-        'name'   => $name,
-        'email'  => strtolower(trim($email)),
-        'avatar' => $avatarUrl
+        'id'        => $me['id'],
+        'role'      => $me['role'],
+        'name'      => $name,
+        'email'     => strtolower(trim($email)),
+        'avatar'    => $avatarUrl,
+        'avatarUrl' => $avatarUrl,
+        'changes'   => $changes
     ];
 }
 
@@ -1791,7 +1828,7 @@ function static_profile_for_page(string $avatarBase): array
 }
 
 /* ==========================================================================
-   ENDPOINT: the JavaScript posts here  ( fetch('static-data.php', {method:'POST', ...}) )
+   ENDPOINT: the JavaScript posts here  ( fetch('data.php', {method:'POST', ...}) )
    It only runs when this file is opened DIRECTLY; when a page does require_once on it,
    nothing below happens.
 
@@ -1981,7 +2018,6 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
                 // the greeting and the login keep following the new name / email
                 $_SESSION['user_name']  = $res['name'];
                 $_SESSION['user_email'] = $res['email'];
-                $apath = $res['avatar'] !== null ? STATIC_AVATAR_DIR . '/' . $res['avatar'] : '';
                 static_respond([
                     'status'  => 'success',
                     'message' => 'Profile saved.',
@@ -1989,8 +2025,7 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
                         'name'     => $res['name'],
                         'email'    => $res['email'],
                         'avatar'   => $res['avatar'],
-                        'avatarUrl'=> $res['avatarUrl'] ?? '',
-                        'avatar_v' => $apath !== '' && is_file($apath) ? (int) @filemtime($apath) : 0,
+                        'avatarUrl'=> $res['avatarUrl'],
                         'initials' => static_profile_initials($res['name'])
                     ],
                     'changes' => $res['changes']
@@ -2037,6 +2072,7 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
     } catch (InvalidArgumentException $e) {
         static_respond(['status' => 'error', 'message' => $e->getMessage()], 422);
     } catch (Throwable $e) {
+        error_log('HR data request failed: ' . $e->getMessage());
         static_respond(['status' => 'error', 'message' => 'Something went wrong while saving. Please try again.'], 500);
     }
 }

@@ -7244,7 +7244,7 @@ html[data-motion="off"] .spinner {              /* a loading spinner still has t
 }
 
 /* ==========================================================================
-   Profile (added with hr/static-data.php)
+   Profile (added with hr/data.php)
    - the round picture + the profile chip next to "Hello, ...!" on the Dashboard
    - the picture block in Settings > Account
    - the status box for HR's own password change request
