@@ -46,6 +46,29 @@ require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
 require_once __DIR__ . '/../src/Repositories/ResponseRepository.php';
 
 // ---------------------------------------------------------------------------
+// Look up an applicant by email. Used by the questionnaire page to attach the right
+// job description PDF to question 1's {link}. Returns null when the email is unknown
+// (e.g. testing via ?email= with no matching record).
+// ---------------------------------------------------------------------------
+function static_applicant_by_email(string $email): ?array
+{
+    $pdo = db();
+    $st = $pdo->prepare(
+        "SELECT applicant_id, name, email, phone_number, status, result, reference_code, secure_token, cv_file_url, created_at" .
+        " FROM applicant WHERE email_normalized = :e AND deleted_at IS NULL LIMIT 1"
+    );
+    $st->execute([':e' => repo_normalize_email($email)]);
+    $row = $st->fetch();
+    if (!$row) return null;
+    $d = applicant_to_display($row);
+    $d['reference_code'] = (string) ($row['reference_code'] ?? '');
+    $d['secure_token'] = (string) ($row['secure_token'] ?? '');
+    $d['cv_file_url'] = $row['cv_file_url'] ?? null;
+    $d['created_at'] = (string) ($row['created_at'] ?? '');
+    return $d;
+}
+
+// ---------------------------------------------------------------------------
 // The job description link in question 1.
 // PLACEHOLDER: a sample PDF. Replace the url with the company's real job description.
 // ---------------------------------------------------------------------------

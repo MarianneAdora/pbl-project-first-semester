@@ -298,7 +298,7 @@ function repo_find_applicant_by_email(string $email, ?PDO $pdo = null): ?array
     if ($email === '') return null;
     $st = $pdo->prepare(
         "SELECT applicant_id, name, email, phone_number, status, result, reference_code, secure_token, cv_file_url, created_at" .
-        " FROM applicant WHERE email_normalized = :e AND deleted_at IS NULL AND verified_at IS NOT NULL LIMIT 2"
+        " FROM applicant WHERE email_normalized = :e AND deleted_at IS NULL LIMIT 2"
     );
     $st->execute([':e' => $email]);
     $rows = $st->fetchAll();

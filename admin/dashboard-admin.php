@@ -157,9 +157,17 @@ $greeting     = 'Hello, ' . $display_name . '!';
 
         <?php
         // Profile card: the name + picture saved in Settings (clicking it opens Settings)
-        $sbp_name = $display_name;
-        $sbp_role = (string) ($profile['role_label'] ?? 'Administrator');
-        $sbp_html = static_profile_avatar_html($display_name, (string) ($profile['avatar_url'] ?? ''));
+        require_once __DIR__ . '/../hr/data.php';
+        $sbp_name = trim((string) ($_SESSION['user_name'] ?? 'Administrator'));
+        $sbp_role = 'Administrator';
+        try {
+            $sbp = static_profile_for_page('../hr/data/avatars/');
+            if (trim((string) ($sbp['name'] ?? '')) !== '') $sbp_name = (string) $sbp['name'];
+            $sbp_role = (string) ($sbp['role_label'] ?? 'Administrator');
+            $sbp_html = static_profile_avatar_html($sbp_name, (string) ($sbp['avatar_url'] ?? ''));
+        } catch (Throwable $e) {
+            $sbp_html = static_profile_avatar_html($sbp_name, '');
+        }
         ?>
         <a class="profile-chip sidebar-profile reveal" id="profileChip" href="settings-admin.php" style="--i:1" title="<?php echo htmlspecialchars($sbp_name . ' - open your profile in Settings', ENT_QUOTES, 'UTF-8'); ?>" aria-label="<?php echo htmlspecialchars($sbp_name . ', ' . $sbp_role . '. Open your profile in Settings', ENT_QUOTES, 'UTF-8'); ?>">
             <?php echo $sbp_html; ?>
