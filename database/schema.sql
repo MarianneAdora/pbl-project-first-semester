@@ -11,12 +11,34 @@ CREATE TABLE users (
     role            VARCHAR(20)  NOT NULL CHECK (role IN ('hr', 'admin')),
     name            VARCHAR(255) NOT NULL,
     email           VARCHAR(255) NOT NULL UNIQUE,
+    email_normalized VARCHAR(255) NOT NULL DEFAULT '',  -- lowercase email, used for lookups
     password_hash   VARCHAR(255) NOT NULL,
     deleted_at      TIMESTAMP,
     created_at      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     avatar_url      VARCHAR(512),                -- Cloudinary secure_url for the HR staff avatar
     avatar_public_id VARCHAR(255)             -- Cloudinary public_id for removal
 );
+
+-- Migration for existing databases: add email_normalized if missing
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_normalized VARCHAR(255) NOT NULL DEFAULT '';
+UPDATE users SET email_normalized = LOWER(email) WHERE email_normalized = '' OR email_normalized IS NULL;
+
+-- ------------------------------------------------------------
+-- JOB POSITIONS
+-- One row per job position; each position has its own job
+-- description PDF stored in Cloudinary (jd_url). HR adds
+-- positions via the "+ Add job position" control in Add Applicant.
+-- ------------------------------------------------------------
+CREATE TABLE job_positions (
+    id            SERIAL PRIMARY KEY,
+    name          VARCHAR(100) NOT NULL,
+    jd_url        VARCHAR(512),                  -- Cloudinary secure_url
+    jd_public_id  VARCHAR(255),                  -- Cloudinary public_id (for deletion)
+    created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    archived_at   TIMESTAMP
+);
+
+CREATE INDEX idx_job_positions_archived_at ON job_positions(archived_at);
 
 -- ------------------------------------------------------------
 -- APPLICANT
@@ -34,7 +56,7 @@ CREATE TABLE applicant (
     last_name               VARCHAR(100) NOT NULL,
     name_normalized         VARCHAR(255) NOT NULL,   -- lowercase, no dots/commas, single spaces -> one person, one applicant
     email                   VARCHAR(255) NOT NULL,
-    email_normalized        VARCHAR(255) NOT NULL,   -- lowercase; gmail dots/+tags removed -> one email, one applicant
+    email_normalized        VARCHAR(255) NOT NULL,   -- lowercase; Gmail dots/+tags removed for consistent matching
     phone_number            VARCHAR(20),
     cv_file_url             VARCHAR(512),
     cv_hash                 CHAR(64),                -- SHA-256 of the CV file -> one CV, one applicant
@@ -182,27 +204,10 @@ CREATE TABLE score (
 );
 
 -- ------------------------------------------------------------
--- JOB POSITIONS
--- One row per job position; each position has its own job
--- description PDF stored in Cloudinary (jd_url). HR adds
--- positions via the "+ Add job position" control in Add Applicant.
--- ------------------------------------------------------------
-CREATE TABLE job_positions (
-    id            SERIAL PRIMARY KEY,
-    name          VARCHAR(255) NOT NULL,
-    jd_url        VARCHAR(1024),                 -- Cloudinary secure_url
-    jd_public_id  VARCHAR(255),                  -- Cloudinary public_id (for deletion)
-    created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    archived_at   TIMESTAMP
-);
-
-CREATE INDEX idx_job_positions_archived_at ON job_positions(archived_at);
-
--- ------------------------------------------------------------
 -- INDEXES
 -- ------------------------------------------------------------
-CREATE UNIQUE INDEX uq_applicant_email_normalized ON applicant(email_normalized);
 CREATE UNIQUE INDEX uq_applicant_name_normalized  ON applicant(name_normalized);
+CREATE UNIQUE INDEX uq_applicant_email_normalized ON applicant(email_normalized);
 CREATE UNIQUE INDEX uq_applicant_cv_hash          ON applicant(cv_hash) WHERE cv_hash IS NOT NULL;
 CREATE INDEX idx_applicant_unverified      ON applicant(created_at) WHERE verified_at IS NULL;
 CREATE INDEX idx_applicant_status          ON applicant(status);

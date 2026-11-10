@@ -1489,11 +1489,24 @@ function static_profile_save(array $in, ?array $upload): array
             if (!@move_uploaded_file($upload['tmp_name'], $tmpFile)) {
                 throw new StaticProfileError('Avatar upload failed.');
             }
+
+            // Validate it is a real image (JPG/PNG/WEBP) and derive its MIME type,
+            // exactly like static_profile_store_avatar() does, so Cloudinary always
+            // receives an image with a confirmed content type.
+            $info  = @getimagesize($tmpFile);
+            $types = [IMAGETYPE_JPEG => 'jpg', IMAGETYPE_PNG => 'png', IMAGETYPE_WEBP => 'webp'];
+            if (!$info || !isset($types[$info[2]])) {
+                @unlink($tmpFile);
+                throw new StaticProfileError('Choose a JPG, PNG or WEBP picture.', 'avatar');
+            }
+            $mimeType = $info[2] === IMAGETYPE_JPEG ? 'image/jpeg' : ($info[2] === IMAGETYPE_PNG ? 'image/png' : 'image/webp');
+
             $uploaded = $cloud->uploadAvatar(
                 $tmpFile,
                 $me['id'],
                 'ebsmi-user-profiles',
-                (string) ($upload['name'] ?? '')
+                (string) ($upload['name'] ?? ''),
+                $mimeType   // confirmed MIME type instead of relying on mime_content_type()
             );
             $avatarUrl = $uploaded['url'];
             @unlink($tmpFile);
