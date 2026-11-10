@@ -44,6 +44,7 @@ $interview     = $access['interview'] ? details_interview_view(details_interview
 $cv            = details_cv($applicant);
 $video         = ($access['video'] && $submission) ? ($submission['video'] ?? null) : null;
 $personal      = details_personal($applicant, $submission);
+$position      = details_position($applicant['position_id'] ?? null);   // name + job description PDF of the applied position
 
 $tabs = [
     'overview'       => 'Overview',
@@ -318,6 +319,26 @@ $pageData = [
                                 <div class="file-meta">
                                     <strong>No CV file on record</strong>
                                     <span>This applicant was added without an uploaded CV.</span>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
+                        <h3 class="panel-title spaced">Job Position</h3>
+                        <?php if ($position['name'] !== 'Not set' && $position['jd_url'] !== ''): ?>
+                            <div class="file-card">
+                                <svg class="file-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                                <div class="file-meta">
+                                    <strong title="<?php echo $h($position['name']); ?>"><?php echo $h($position['name']); ?></strong>
+                                    <span>Job description (PDF)</span>
+                                </div>
+                                <a class="btn-outline" href="jd-proxy.php?id=<?php echo (int) $applicant['id']; ?>" target="_blank" rel="noopener">VIEW</a>
+                            </div>
+                        <?php else: ?>
+                            <div class="file-card is-empty">
+                                <svg class="file-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                                <div class="file-meta">
+                                    <strong title="<?php echo $h($position['name']); ?>"><?php echo $h($position['name'] . ($position['archived'] ? ' (archived)' : '')); ?></strong>
+                                    <span><?php echo $position['name'] === 'Not set' ? 'This applicant has no job position on record.' : 'No job description PDF for this position.'; ?></span>
                                 </div>
                             </div>
                         <?php endif; ?>

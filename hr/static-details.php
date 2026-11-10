@@ -84,22 +84,37 @@ function details_first_name(string $name): string
     return $parts[0] ?? $name;
 }
 
-// The position name shown on the Overview tab. Looks up the job_positions table
-// by the applicant's position_id (saved by Add Applicant). Returns 'Not set'
-// when the applicant has no position or the position is archived/missing.
-function details_position_name(?int $positionId): string
+// The job position of an applicant (saved by Add Applicant as applicant.position_id).
+// Returns ['name' => ..., 'jd_url' => ..., 'archived' => bool]. The name is still shown when HR later
+// deleted (archived) the position, so the Overview never loses what the applicant applied for. Only a
+// position that is still active keeps its job description PDF (the PDF is removed when it is archived).
+function details_position(?int $positionId): array
 {
-    if (!$positionId) return 'Not set';
+    $none = ['name' => 'Not set', 'jd_url' => '', 'archived' => false];
+    if (!$positionId) return $none;
     try {
         $pdo = db();
-        $st = $pdo->prepare("SELECT name FROM job_positions WHERE id = :id AND archived_at IS NULL LIMIT 1");
+        $st = $pdo->prepare("SELECT name, jd_url, archived_at FROM job_positions WHERE id = :id LIMIT 1");
         $st->execute([':id' => $positionId]);
-        $name = (string) ($st->fetchColumn() ?: '');
-        return $name !== '' ? $name : 'Not set';
+        $row = $st->fetch();
+        if (!$row || trim((string) $row['name']) === '') return $none;
+        $archived = !empty($row['archived_at']);
+        return [
+            'name'     => (string) $row['name'],
+            'jd_url'   => $archived ? '' : trim((string) ($row['jd_url'] ?? '')),
+            'archived' => $archived
+        ];
     } catch (Throwable $e) {
         error_log('details position lookup error: ' . $e->getMessage());
-        return 'Not set';
+        return $none;
     }
+}
+
+// The position name shown on the Overview tab ("Not set" only when the applicant has no position at all).
+function details_position_name(?int $positionId): string
+{
+    $pos = details_position($positionId);
+    return $pos['name'];
 }
 
 function details_find_applicant(int $id): ?array
@@ -913,5 +928,3 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
         details_respond(['status' => 'error', 'message' => 'Something went wrong while saving. Please try again.'], 500);
     }
 }
-
-
