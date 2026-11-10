@@ -17,6 +17,9 @@ require_once __DIR__ . '/../src/Repositories/AdminRepository.php';
 require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
 require_once __DIR__ . '/../hr/static-data.php';
 
+// Profile data for the sidebar picture (clicking it opens Settings)
+$profile = static_profile_for_page('../hr/data/avatars/');
+
 // Every number on this page is queried live from the database.
 $overview = repo_admin_overview();             // the three summary boxes
 $stats    = repo_admin_question_stats();       // Questionnaires Statistics: every question + the answer most applicants chose
