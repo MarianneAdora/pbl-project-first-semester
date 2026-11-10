@@ -1467,15 +1467,21 @@ function static_profile_save(array $in, ?array $upload): array
 {
     require_once __DIR__ . '/../src/Helpers/db.php';
     $me = static_profile_me();
-    if ($me === null || $me['role'] !== 'hr') throw new StaticProfileError('Your account could not be found. Please log in again.');
+    if ($me === null || !in_array($me['role'], ['hr', 'admin'], true)) throw new StaticProfileError('Your account could not be found. Please log in again.');
 
     $name  = static_profile_check_name((string) ($in['name'] ?? ''));
     $email = static_profile_check_email((string) ($in['email'] ?? ''));
 
     // check email not taken by another HR or Admin
     $pdo = db();
-    $stmt = $pdo->prepare("SELECT user_id FROM users WHERE LOWER(email) = :email AND user_id != :myid AND deleted_at IS NULL");
-    $stmt->execute([':email' => strtolower($email), ':myid' => $me['id']]);
+    if ($me['role'] === 'admin') {
+        // Admin id is synthetic (0); exclude the admin's own row by role instead
+        $stmt = $pdo->prepare("SELECT user_id FROM users WHERE LOWER(email) = :email AND role != 'admin' AND deleted_at IS NULL");
+        $stmt->execute([':email' => strtolower($email)]);
+    } else {
+        $stmt = $pdo->prepare("SELECT user_id FROM users WHERE LOWER(email) = :email AND user_id != :myid AND deleted_at IS NULL");
+        $stmt->execute([':email' => strtolower($email), ':myid' => $me['id']]);
+    }
     if ($stmt->fetch()) throw new StaticProfileError('This email is already in use by another account.');
 
     $avatarUrl = $me['avatar'] ?? null;
@@ -1512,8 +1518,13 @@ function static_profile_save(array $in, ?array $upload): array
             @unlink($tmpFile);
 
             // delete old avatar from Cloudinary if it had a public_id
-            $stmt = $pdo->prepare("SELECT avatar_public_id FROM users WHERE user_id = :id");
-            $stmt->execute([':id' => $me['id']]);
+            if ($me['role'] === 'admin') {
+                $stmt = $pdo->prepare("SELECT avatar_public_id FROM users WHERE role = 'admin' AND deleted_at IS NULL");
+                $stmt->execute();
+            } else {
+                $stmt = $pdo->prepare("SELECT avatar_public_id FROM users WHERE user_id = :id");
+                $stmt->execute([':id' => $me['id']]);
+            }
             $old = $stmt->fetch();
             if ($old && !empty($old['avatar_public_id'])) {
                 try {
@@ -1528,20 +1539,31 @@ function static_profile_save(array $in, ?array $upload): array
     }
 
     // update the database
-    $stmt = $pdo->prepare("UPDATE users SET name = :name, email = :email, email_normalized = :en, avatar_url = :avatar_url WHERE user_id = :id");
-    $stmt->execute([
-        ':name' => $name,
-        ':email' => $email,
-        ':en' => strtolower(trim($email)),
-        ':avatar_url' => $avatarUrl,
-        ':id' => $me['id']
-    ]);
+    if ($me['role'] === 'admin') {
+        // Admin id is 0 (synthetic); update by role instead
+        $stmt = $pdo->prepare("UPDATE users SET name = :name, email = :email, email_normalized = :en, avatar_url = :avatar_url WHERE role = 'admin' AND deleted_at IS NULL");
+        $stmt->execute([
+            ':name' => $name,
+            ':email' => $email,
+            ':en' => strtolower(trim($email)),
+            ':avatar_url' => $avatarUrl,
+        ]);
+    } else {
+        $stmt = $pdo->prepare("UPDATE users SET name = :name, email = :email, email_normalized = :en, avatar_url = :avatar_url WHERE user_id = :id");
+        $stmt->execute([
+            ':name' => $name,
+            ':email' => $email,
+            ':en' => strtolower(trim($email)),
+            ':avatar_url' => $avatarUrl,
+            ':id' => $me['id']
+        ]);
+    }
 
-    try { repo_log_activity('Updated HR Profile', $name . ' (' . $email . ')'); } catch (Throwable $e) {}
+    try { repo_log_activity('Updated ' . ucfirst($me['role']) . ' Profile', $name . ' (' . $email . ')'); } catch (Throwable $e) {}
 
     return [
         'id'     => $me['id'],
-        'role'   => 'hr',
+        'role'   => $me['role'],
         'name'   => $name,
         'email'  => strtolower(trim($email)),
         'avatar' => $avatarUrl
