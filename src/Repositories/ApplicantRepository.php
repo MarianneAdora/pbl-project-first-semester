@@ -309,7 +309,7 @@ function repo_find_applicant_by_email(string $email, ?PDO $pdo = null): ?array
     $email = repo_normalize_email($email);
     if ($email === '') return null;
     $st = $pdo->prepare(
-        "SELECT applicant_id, name, email, phone_number, status, result, reference_code, secure_token, cv_file_url, created_at" .
+        "SELECT applicant_id, name, email, phone_number, status, result, reference_code, secure_token, cv_file_url, position_id, created_at" .
         " FROM applicant WHERE email_normalized = :e AND deleted_at IS NULL AND verified_at IS NOT NULL LIMIT 1"
     );
     $st->execute([':e' => $email]);
@@ -321,7 +321,21 @@ function repo_find_applicant_by_email(string $email, ?PDO $pdo = null): ?array
     $d['cv_file_url'] = $row['cv_file_url'] ?? null;
     $d['updated'] = $row['created_at'] ? date('Y-m-d H:i', strtotime((string) $row['created_at'])) : '';
     $d['created_at'] = (string) ($row['created_at'] ?? '');
+    $d['position_id'] = isset($row['position_id']) ? (int) $row['position_id'] : null;
     return $d;
+}
+
+/**
+ * The job description PDF (Cloudinary URL) of the position this applicant was added under.
+ * Returns '' when the applicant has no position, the position is archived, or it has no PDF.
+ */
+function repo_applicant_jd_url(int $positionId, ?PDO $pdo = null): string
+{
+    if ($positionId <= 0) return '';
+    $pdo = $pdo ?: db();
+    $st = $pdo->prepare("SELECT jd_url FROM job_positions WHERE id = :id AND archived_at IS NULL LIMIT 1");
+    $st->execute([':id' => $positionId]);
+    return trim((string) ($st->fetchColumn() ?: ''));
 }
 
 /**
@@ -513,5 +527,3 @@ function repo_applicants_recent(?PDO $pdo = null, int $limit = 10): array
     }
     return $out;
 }
-
-
