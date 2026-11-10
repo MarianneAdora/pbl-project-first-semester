@@ -42,7 +42,8 @@ class EmailService {
         $env = parse_ini_file(__DIR__ . '/../../.env');
         $apiKey = $env['BREVO_API_KEY'] ?? '';
         if (empty($apiKey)) {
-            die("Error: BREVO_API_KEY is missing from your .env file.");
+            error_log('Brevo: BREVO_API_KEY is missing from your .env file.');
+            return false;
         }
         $url = "https://api.brevo.com/v3/smtp/email";
         $context = stream_context_create([
@@ -61,6 +62,8 @@ class EmailService {
         ]);
         $response = @file_get_contents($url, false, $context);
         if ($response === false) {
+            $err = error_get_last();
+            error_log('Brevo request failed: ' . ($err['message'] ?? 'unknown error'));
             if ($echoError) echo "<strong>Brevo API Error:</strong> Request failed.<br>";
             return false;
         }
@@ -74,6 +77,7 @@ class EmailService {
             }
         }
         if ($httpCode === 201) return true;
+        error_log("Brevo API error (HTTP $httpCode): " . $response);
         if ($echoError) echo "<strong>Brevo API Error:</strong> " . $response . "<br>";
         return false;
     }
@@ -235,5 +239,3 @@ class EmailService {
         return $this->brevoSend($data, true);
     }
 }
-
-
