@@ -258,7 +258,7 @@ function repo_find_applicant(int $id, ?PDO $pdo = null): ?array
 {
     $pdo = $pdo ?: db();
     $st = $pdo->prepare(
-        "SELECT applicant_id, name, email, phone_number, status, result, reference_code, secure_token, cv_file_url, created_at" .
+        "SELECT applicant_id, name, email, phone_number, status, result, reference_code, secure_token, cv_file_url, position_id, created_at" .
         " FROM applicant WHERE applicant_id = :id AND deleted_at IS NULL AND verified_at IS NOT NULL LIMIT 1"
     );
     $st->execute([':id' => $id]);
@@ -268,6 +268,7 @@ function repo_find_applicant(int $id, ?PDO $pdo = null): ?array
     $d['reference_code'] = (string) ($row['reference_code'] ?? '');
     $d['secure_token'] = (string) ($row['secure_token'] ?? '');
     $d['cv_file_url'] = $row['cv_file_url'] ?? null;
+    $d['position_id'] = isset($row['position_id']) ? (int) $row['position_id'] : null;
     $d['updated'] = $row['created_at'] ? date('Y-m-d H:i', strtotime((string) $row['created_at'])) : '';
     $d['created_at'] = (string) ($row['created_at'] ?? '');
     return $d;

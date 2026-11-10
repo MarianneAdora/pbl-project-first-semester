@@ -84,6 +84,24 @@ function details_first_name(string $name): string
     return $parts[0] ?? $name;
 }
 
+// The position name shown on the Overview tab. Looks up the job_positions table
+// by the applicant's position_id (saved by Add Applicant). Returns 'Not set'
+// when the applicant has no position or the position is archived/missing.
+function details_position_name(?int $positionId): string
+{
+    if (!$positionId) return 'Not set';
+    try {
+        $pdo = db();
+        $st = $pdo->prepare("SELECT name FROM job_positions WHERE id = :id AND archived_at IS NULL LIMIT 1");
+        $st->execute([':id' => $positionId]);
+        $name = (string) ($st->fetchColumn() ?: '');
+        return $name !== '' ? $name : 'Not set';
+    } catch (Throwable $e) {
+        error_log('details position lookup error: ' . $e->getMessage());
+        return 'Not set';
+    }
+}
+
 function details_find_applicant(int $id): ?array
 {
     // Database first: the Screening List now shows real DB ids (not the 101-135 seed ids).
@@ -377,7 +395,7 @@ function details_personal(array $a, ?array $submission): array
 
     return [
         ['label' => 'Full Name',                 'value' => $a['name']],
-        ['label' => 'Job Position',              'value' => !empty($a['position']) ? $a['position'] : 'Not set'],
+        ['label' => 'Job Position',              'value' => details_position_name($a['position_id'] ?? null)],
         ['label' => 'Email Address',             'value' => $a['email']],
         ['label' => 'Contact Number',            'value' => $a['contact']],
         ['label' => 'Earliest Start Date',       'value' => !empty($answers['q6']) ? details_date_label((string) $answers['q6']) : 'Not given yet'],
