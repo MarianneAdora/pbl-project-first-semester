@@ -94,11 +94,34 @@ class CvParserService {
     private function verifyName($name, $text) {
         $name = trim((string) $name);
         if ($name === '') return '';
-        foreach (preg_split('/\s+/', $name) as $word) {
-            $word = trim($word, " .,'-");
-            if (mb_strlen($word) >= 2 && mb_stripos($text, $word) === false) return '';
+        $words = array_values(array_filter(preg_split('/\s+/', $name), fn($w) => trim($w, " .,'-") !== ''));
+
+        // 1) Every real word (2+ letters) must appear in the CV, otherwise Gemini invented the name.
+        foreach ($words as $word) {
+            $w = trim($word, " .,'-");
+            if (mb_strlen($w) >= 2 && mb_stripos($text, $w) === false) return '';
         }
-        return $name;
+
+        // 2) A lone initial ("B.") is a middle name. It was never checked before, so Gemini could invent one
+        //    (it was even primed with "B." in the prompt). Keep an initial only if the CV really prints it
+        //    right next to a neighbouring name word, e.g. "Lourdes B." or "B. Castillo".
+        $kept = [];
+        foreach ($words as $i => $word) {
+            $w = trim($word, " .,'-");
+            if (mb_strlen($w) !== 1) { $kept[] = $word; continue; }
+            $L    = preg_quote($w, '/');
+            $prev = $i > 0 ? trim($words[$i - 1], " .,'-") : '';
+            $next = $i < count($words) - 1 ? trim($words[$i + 1], " .,'-") : '';
+            $ok = false;
+            if ($prev !== '' && mb_strlen($prev) >= 2) {
+                $ok = (bool) preg_match('/' . preg_quote($prev, '/') . '[\s.,]+' . $L . '(?![\p{L}])/iu', $text);
+            }
+            if (!$ok && $next !== '' && mb_strlen($next) >= 2) {
+                $ok = (bool) preg_match('/(?<![\p{L}])' . $L . '\.?[\s,]+' . preg_quote($next, '/') . '/iu', $text);
+            }
+            if ($ok) $kept[] = $word;   // else: drop the invented initial, keep the rest of the name
+        }
+        return trim(implode(' ', $kept));
     }
 
     /** Pull raw text out of PDF (pdfparser) or plain-text files. */
@@ -158,7 +181,7 @@ class CvParserService {
         $prompt = "You extract contact details from a CV/resume.\n"
             . "Return ONLY a JSON object with exactly these keys: 'name', 'email', 'contact'.\n"
             . "Rules:\n"
-            . "- 'name': the applicant's full name exactly as written at the top of the CV, keeping any middle initial such as \"B.\" (person's name, not a company). Empty string if unsure.\n"
+            . "- 'name': the applicant's full name exactly as written at the top of the CV, keeping a middle initial ONLY if one is actually printed in the name; if the name has no initial, do not add one (person's name, not a company). Empty string if unsure.\n"
             . "- 'email': the applicant's email address. Empty string if none.\n"
             . "- 'contact': the applicant's phone/mobile number, digits with optional leading +, spaces or dashes (e.g. +63 912 345 6789). Empty string if none.\n"
             . "- Never invent values. Use \"\" for anything you cannot find.\n\n"

@@ -730,25 +730,41 @@ function static_add_applicant(array $in, ?array $cvUpload = null): array
         }
     }
 
-    $now = static_now()->format('Y-m-d H:i:s');
+    require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
+    require_once __DIR__ . '/../src/Services/EmailService.php';
+
+    // reference_code, secure_token and name_normalized are NOT NULL in the schema.
+    $now       = static_now()->format('Y-m-d H:i:s');
+    $refCode   = repo_generate_reference_code($pdo);
+    $token     = bin2hex(random_bytes(32));
+    $emailNorm = repo_normalize_email($email);
+    $nameNorm  = repo_normalize_name($name);
+    $encodedBy = (session_status() === PHP_SESSION_ACTIVE && isset($_SESSION['user_id'])) ? (int) $_SESSION['user_id'] : null;
+
     $stmt = $pdo->prepare("
-        INSERT INTO applicant (name, first_name, middle_name, last_name,
+        INSERT INTO applicant (reference_code, secure_token, encoded_by_user_id,
+                               name, first_name, middle_name, last_name, name_normalized,
                                email, email_normalized, phone_number, position_id,
                                cv_file_url, cv_hash, status, result,
                                invited_at, created_at)
-        VALUES (:name, :fn, :mn, :ln, :email, :en, :phone, :pid,
+        VALUES (:ref, :tok, :enc, :name, :fn, :mn, :ln, :nn,
+                :email, :en, :phone, :pid,
                 :cvurl, :cvhash, 'pending', NULL,
                 :invited, NOW())
         RETURNING applicant_id, name, first_name, middle_name, last_name, email, phone_number,
                   position_id, status, result, created_at, invited_at, cv_file_url, cv_hash
     ");
     $stmt->execute([
+        ':ref'   => $refCode,
+        ':tok'   => $token,
+        ':enc'   => $encodedBy,
         ':name'  => $name,
         ':fn'    => $first,
         ':mn'    => $middle,
         ':ln'    => $last,
+        ':nn'    => $nameNorm,
         ':email' => $email,
-        ':en'    => strtolower(trim($email)),
+        ':en'    => $emailNorm,
         ':phone' => $contact,
         ':pid'   => (int) $position['id'],
         ':cvurl' => $cvFileUrl,
@@ -756,6 +772,23 @@ function static_add_applicant(array $in, ?array $cvUpload = null): array
         ':invited'=> $now
     ]);
     $row = $stmt->fetch();
+
+    // Send the screening invitation (personal link with the secure token).
+    // If it cannot be sent, remove the row again so HR can simply retry with the same email.
+    $sent = false;
+    try {
+        $sent = (new EmailService())->sendInviteEmail($email, $name, $token);
+    } catch (Throwable $e) {
+        error_log('Invitation email error: ' . $e->getMessage());
+    }
+    if (!$sent) {
+        try {
+            $pdo->prepare('DELETE FROM applicant WHERE applicant_id = :id')->execute([':id' => (int) $row['applicant_id']]);
+        } catch (Throwable $e) {
+            error_log('Could not roll back applicant after email failure: ' . $e->getMessage());
+        }
+        throw new InvalidArgumentException('The invitation email could not be sent. Please check the email address and try again. (Details are in the PHP error log.)');
+    }
 
     // Log activity
     try { repo_log_activity('Added An Applicant', $name); } catch (Throwable $e) {}

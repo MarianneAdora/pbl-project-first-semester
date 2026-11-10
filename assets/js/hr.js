@@ -886,6 +886,7 @@ document.addEventListener('DOMContentLoaded', () => {
         cvVerified = false;
         cvCheckId++;
         cvParsing = false;
+        clearParsedFields();                       // never keep the previous CV's details
         if (!fileInput.files[0]) { setError('cv', ''); setAutofill(''); return; }
         setError('cv', '');
         // 1) quick browser checks: type, size, empty (cv() skips the "verified" test while checking)
@@ -907,7 +908,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setError('cv', message, shake !== false);
     }
 
-    fileRemove.addEventListener('click', () => { clearFile(); setError('cv', ''); setAutofill(''); });
+    fileRemove.addEventListener('click', () => { clearFile(); clearParsedFields(); setError('cv', ''); setAutofill(''); });
 
     /* ---------- CV autofill: Gemini reads the CV, fills name / email / contact ---------- */
     const cvAutofill = document.getElementById('cvAutofill');
@@ -920,11 +921,32 @@ document.addEventListener('DOMContentLoaded', () => {
         cvAutofill.classList.toggle('is-loading', message === 'Checking CV…');
     }
 
+    // The CV is the source of these five fields. Whenever the CV changes (new file, file removed, picker
+    // cancelled) the details of the previous CV are wiped, so nothing from an earlier applicant can stay
+    // on screen next to a different file. No page refresh needed.
+    function clearParsedFields() {
+        ['first_name', 'middle_name', 'last_name', 'email', 'contact'].forEach(name => {
+            const input = form.elements[name];
+            if (!input) return;
+            input.value = '';
+            touched.delete(name);
+            setError(name, '');
+            const f = fieldOf(name);
+            if (f) f.classList.remove('autofilled');
+        });
+    }
+
     function fillField(name, value) {
         value = (value || '').trim();
-        if (!value) return false;
         const input = form.elements[name];
         if (!input) return false;
+        if (!value) {
+            // The CV has nothing for this field (e.g. no middle name): clear whatever the previous CV left behind.
+            input.value = '';
+            touched.delete(name);
+            setError(name, '');
+            return false;
+        }
         input.value = value;
         touched.add(name);
         validateField(name, false);
@@ -1032,6 +1054,7 @@ document.addEventListener('DOMContentLoaded', () => {
        Invitation email still not sent. */
     async function sendInvitation(formData) {
         formData.delete('note'); // no notes column yet
+        formData.set('action', 'add'); // static-data.php routes on this; without it the server answers "Unknown action."
         const res = await fetch('../hr/static-data.php', { method: 'POST', body: formData, credentials: 'same-origin' });
         let data;
         try { data = await res.json(); }
