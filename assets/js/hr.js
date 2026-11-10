@@ -761,19 +761,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Each rule returns the error text (or '' when the value is fine). The messages say WHAT is wrong.
-    // First / middle / last name: letters, spaces, apostrophes, periods and hyphens. Middle name may be empty.
-    function namePart(v, label, required) {
-        const t = v.trim();
-        if (!t) return required ? 'Please enter the ' + label + '.' : '';
-        if (/\d/.test(t)) return 'The ' + label + ' cannot contain numbers.';
-        if (!/^[\p{L}\p{M}'.\- ]+$/u.test(t)) return 'Use letters only (spaces, apostrophes, periods and hyphens are fine).';
-        if (t.replace(/[^\p{L}]/gu, '').length < 2) return 'The ' + label + ' is too short (at least 2 letters).';
-        if (t.length > 100) return 'The ' + label + ' is too long (100 characters maximum).';
-        return '';
-    }
     const rules = {
         first_name(v)  { return namePart(v, 'first name', true, 2); },
-        middle_name(v) { return namePart(v, 'middle name', false, 1); },      // optional: empty is fine, an initial (A.) is fine
+        middle_name(v) { return namePart(v, 'middle name', false, 0); },      // optional: empty is fine; one or two initials (B. / J.D.) are fine, no minimum length
         last_name(v)   { return namePart(v, 'last name', true, 2); },
         position(v) {
             if (!v || v === '__add__') return 'Please choose a job position.';

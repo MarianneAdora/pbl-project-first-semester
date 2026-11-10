@@ -158,7 +158,7 @@ class CvParserService {
         $prompt = "You extract contact details from a CV/resume.\n"
             . "Return ONLY a JSON object with exactly these keys: 'name', 'email', 'contact'.\n"
             . "Rules:\n"
-            . "- 'name': the applicant's full name (person's name, not a company). Empty string if unsure.\n"
+            . "- 'name': the applicant's full name exactly as written at the top of the CV, keeping any middle initial such as \"B.\" (person's name, not a company). Empty string if unsure.\n"
             . "- 'email': the applicant's email address. Empty string if none.\n"
             . "- 'contact': the applicant's phone/mobile number, digits with optional leading +, spaces or dashes (e.g. +63 912 345 6789). Empty string if none.\n"
             . "- Never invent values. Use \"\" for anything you cannot find.\n\n"
@@ -201,7 +201,12 @@ class CvParserService {
 
     /**
      * Best-guess split of a full name into first / middle / last (HR can correct it in the form).
-     * "Reyes, Maria Angelica" -> last Reyes; otherwise the last word is the last name
+     *
+     * The middle name is ONLY a lone initial ("B." in "Maria Lourdes B. Castillo").
+     * A CV without an initial has no middle name: every given name goes into the first name
+     * ("Maria Angelica Reyes" -> first "Maria Angelica", middle "", last "Reyes").
+     *
+     * "Castillo, Maria Lourdes B." -> last Castillo; otherwise the last word is the last name
      * (kept together with a trailing Jr/Sr/II/III or a particle such as "dela", "de", "van").
      * @return array{first:string,middle:string,last:string}
      */
@@ -211,9 +216,9 @@ class CvParserService {
 
         if (strpos($fullName, ',') !== false) {
             [$last, $rest] = array_map('trim', explode(',', $fullName, 2));
-            $w = $rest === '' ? [] : preg_split('/\s+/u', $rest);
-            $first = $w ? array_shift($w) : '';
-            return ['first' => $first, 'middle' => implode(' ', $w), 'last' => $last];
+            $given = $rest === '' ? [] : preg_split('/\s+/u', $rest);
+            [$first, $middle] = $this->splitGivenNames($given);
+            return ['first' => $first, 'middle' => $middle, 'last' => $last];
         }
 
         $w = preg_split('/\s+/u', $fullName);
@@ -225,8 +230,31 @@ class CvParserService {
         if (count($w) > 1 && in_array(strtolower($last[0]), $suffixes, true)) array_unshift($last, array_pop($w));
         while (count($w) > 1 && in_array(strtolower(end($w)), $particles, true)) array_unshift($last, array_pop($w));
 
-        $first = array_shift($w);
-        return ['first' => $first, 'middle' => implode(' ', $w), 'last' => implode(' ', $last)];
+        // $w now holds the given names: a trailing initial is the middle name, the rest is the first name
+        [$first, $middle] = $this->splitGivenNames($w);
+        return ['first' => $first, 'middle' => $middle, 'last' => implode(' ', $last)];
+    }
+
+    /** Given names -> [first, middle]. Middle is only a trailing initial; otherwise everything is the first name. */
+    private function splitGivenNames(array $given): array {
+        $given = array_values(array_filter($given, fn($g) => $g !== ''));
+        if (!$given) return ['', ''];
+        if (count($given) >= 2 && $this->isInitial((string) end($given))) {
+            $initial = array_pop($given);
+            return [implode(' ', $given), $this->formatInitial($initial)];
+        }
+        return [implode(' ', $given), ''];
+    }
+
+    /** "B", "B.", "j.d." -> true. A whole word such as "Ma." or "Lourdes" -> false. */
+    private function isInitial(string $word): bool {
+        return (bool) preg_match('/^\p{L}\.?$/u', $word) || (bool) preg_match('/^(?:\p{L}\.){2,}$/u', $word);
+    }
+
+    /** "b" -> "B.", "B." -> "B.", "j.d." -> "J.D." */
+    private function formatInitial(string $word): string {
+        $word = mb_strtoupper($word);
+        return preg_match('/^\p{L}$/u', $word) ? $word . '.' : $word;
     }
 
     /** Normalize a person's name: title-case with initials/suffixes preserved correctly. */

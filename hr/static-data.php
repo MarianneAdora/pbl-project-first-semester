@@ -658,6 +658,7 @@ function static_check_name_part(string $value, string $label, bool $required, in
     }
     if (preg_match('/\d/', $value))                         throw new InvalidArgumentException('The ' . $label . ' cannot contain numbers.');
     if (!preg_match('/^[\p{L}\p{M}\'.\- ]+$/u', $value))    throw new InvalidArgumentException('The ' . $label . ' can only use letters (spaces, apostrophes, periods and hyphens are fine).');
+    if (!$required && $minLetters === 0 && !preg_match('/\p{L}/u', $value)) return '';   // only dots/dashes is not an initial: leave the middle name empty, no error
     if (preg_match_all('/\p{L}/u', $value) < $minLetters)   throw new InvalidArgumentException('The ' . $label . ' is too short (at least ' . $minLetters . ' letter' . ($minLetters === 1 ? '' : 's') . ').');
     if (mb_strlen($value) > 50)                             throw new InvalidArgumentException('The ' . $label . ' is too long (50 characters at most).');
     return $value;
@@ -675,7 +676,7 @@ function static_compose_name(string $first, string $middle, string $last): strin
 function static_add_applicant(array $in, ?array $cvUpload = null): array
 {
     $first   = static_check_name_part((string) ($in['first_name']  ?? ''), 'first name',  true);
-    $middle  = static_check_name_part((string) ($in['middle_name'] ?? ''), 'middle name', false, 1);   // optional; an initial (A.) is fine
+    $middle  = static_check_name_part((string) ($in['middle_name'] ?? ''), 'middle name', false, 0);   // optional; one or two initials (B. / J.D.) are fine, no minimum length
     $last    = static_check_name_part((string) ($in['last_name']   ?? ''), 'last name',   true);
     $name    = static_compose_name($first, $middle, $last);
     $email   = trim((string) ($in['email'] ?? ''));
