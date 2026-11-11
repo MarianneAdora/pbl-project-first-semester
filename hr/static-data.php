@@ -1643,10 +1643,21 @@ function static_profile_save(array $in, ?array $upload): array
     ];
 }
 
-// Internal: check the old password the HR typed matches their stored hash
+// Internal: check the old password the HR typed matches their stored hash (the same hash the login uses)
 function static_profile_current_password_ok(array $me, string $given): bool
 {
     if ($given === '') return false;
+    if (($me['role'] ?? '') === 'hr' && !empty($me['id'])) {
+        try {
+            require_once __DIR__ . '/../src/Helpers/db.php';
+            $st = db()->prepare("SELECT password_hash FROM users WHERE user_id = :id AND deleted_at IS NULL");
+            $st->execute([':id' => (int) $me['id']]);
+            $hash = (string) ($st->fetchColumn() ?: '');
+            if ($hash !== '') return password_verify($given, $hash);
+        } catch (Throwable $e) {
+            error_log('Current password check (DB) failed: ' . $e->getMessage());
+        }
+    }
     $acc = static_accounts()[$me['email']] ?? null;
     if (!is_array($acc)) return false;
     if (!empty($acc['hash']))    return password_verify($given, (string) $acc['hash']);
@@ -1667,11 +1678,39 @@ function static_profile_check_new_password(string $new, string $current): void
 
 /* ---------- the requests (HR password changes waiting for the Admin) ---------- */
 
-function static_profile_requests(array $store): array
+// One database row -> the request shape the pages use. The table has no "cancelled" status (its CHECK allows
+// pending / approved / rejected), so a request HR took back is stored as rejected + decision "cancelled".
+function static_profile_request_row(array $r): array
 {
-    return isset($store['password_requests']) && is_array($store['password_requests'])
-        ? array_values(array_filter($store['password_requests'], 'is_array'))
-        : [];
+    $status = (string) ($r['status'] ?? 'pending');
+    if ($status === 'rejected' && (string) ($r['decision'] ?? '') === 'cancelled') $status = 'cancelled';
+    return [
+        'id'           => (int) ($r['request_id'] ?? 0),
+        'account_id'   => (int) ($r['account_id'] ?? 0),
+        'name'         => (string) ($r['name'] ?? ''),
+        'email'        => (string) ($r['email'] ?? ''),
+        'status'       => $status,
+        'requested_at' => (string) ($r['created_at'] ?? ''),
+        'decided_at'   => !empty($r['reviewed_at']) ? (string) $r['reviewed_at'] : null,
+        'reason'       => (string) ($r['reason'] ?? '')
+    ];
+}
+
+// All requests, oldest first. $store is kept only so older callers still work (requests now live in the database).
+function static_profile_requests(array $store = []): array
+{
+    require_once __DIR__ . '/../src/Helpers/db.php';
+    try {
+        $rows = db()->query("
+            SELECT r.request_id, r.account_id, r.status, r.decision, r.reason, r.created_at, r.reviewed_at, u.name, u.email
+            FROM password_requests r JOIN users u ON u.user_id = r.account_id
+            ORDER BY r.request_id
+        ")->fetchAll();
+    } catch (Throwable $e) {
+        error_log('Password requests read failed: ' . $e->getMessage());
+        return [];
+    }
+    return array_map('static_profile_request_row', $rows);
 }
 
 function static_profile_next_request_id(array $reqs): int
@@ -1704,12 +1743,13 @@ function static_profile_requests_by_id(array $store): array
     return $out;
 }
 
-// The newest request of one HR account (null when HR never asked)
-function static_profile_latest_request(array $store, int $accountId): ?array
+// The newest request of one HR account (null when HR never asked). Callable as ($store, $id) or ($id).
+function static_profile_latest_request($storeOrId, ?int $accountId = null): ?array
 {
+    $id = is_array($storeOrId) ? (int) $accountId : (int) $storeOrId;
     $found = null;
-    foreach (static_profile_requests($store) as $r) {
-        if ((int) ($r['account_id'] ?? 0) === $accountId) $found = $r;        // later ones are newer
+    foreach (static_profile_requests() as $r) {
+        if ((int) $r['account_id'] === $id) $found = $r;        // later ones are newer
     }
     return $found !== null ? static_profile_request_public($found) : null;
 }
@@ -1745,35 +1785,29 @@ function static_profile_change_password(string $current, string $new): array
         throw new StaticProfileError('You already have a password change waiting for the Admin to approve.');
     }
 
-    $now = static_now()->format('Y-m-d H:i:s');
+    // current_hash = what the account has now; new_password = the HASH of the new one (never the plain text)
+    $h = $pdo->prepare('SELECT password_hash FROM users WHERE user_id = :id');
+    $h->execute([':id' => $me['id']]);
+    $currentHash = (string) ($h->fetchColumn() ?: '');
+
     $stmt = $pdo->prepare("
-        INSERT INTO password_requests (account_id, current_hash, new_password, status, requested_at, decided_at, decided_by, reason)
-        VALUES (:aid, :current_hash, :new_password, 'pending', :requested_at, NULL, NULL, NULL)
-        RETURNING request_id, account_id, current_hash, new_password, status, decision, reason, requested_at, decided_at, decided_by
+        INSERT INTO password_requests (account_id, current_hash, new_password, status, created_at)
+        VALUES (:aid, :current_hash, :new_password, 'pending', :created_at)
+        RETURNING request_id, account_id, status, decision, reason, created_at, reviewed_at
     ");
     $stmt->execute([
         ':aid'          => $me['id'],
-        ':current_hash' => $me['hash'] ?? '',
-        ':new_password' => $new,
-        ':requested_at' => $now
+        ':current_hash' => $currentHash,
+        ':new_password' => password_hash($new, PASSWORD_DEFAULT),
+        ':created_at'   => static_now()->format('Y-m-d H:i:s')
     ]);
     $row = $stmt->fetch();
+    $row['name']  = $me['name'];
+    $row['email'] = $me['email'];
 
     try { repo_log_activity('Password Change Requested', $me['name'] . ' (HR)', 'HR'); } catch (Throwable $e) {}
 
-    return [
-        'mode' => 'pending',
-        'request' => static_profile_request_public([
-            'id'           => (int) $row['request_id'],
-            'account_id'   => (int) $row['account_id'],
-            'name'         => $me['name'],
-            'email'        => $me['email'],
-            'status'       => (string) $row['status'],
-            'requested_at' => (string) $row['requested_at'],
-            'decided_at'   => null,
-            'reason'       => ''
-        ])
-    ];
+    return ['mode' => 'pending', 'request' => static_profile_request_public(static_profile_request_row($row))];
 }
 
 // HR takes back the request that is still pending
@@ -1785,25 +1819,18 @@ function static_profile_cancel_request(): array
 
     $pdo = db();
     $stmt = $pdo->prepare("
-        UPDATE password_requests SET status = 'cancelled', decided_at = NOW(), decided_by = 'HR'
+        UPDATE password_requests SET status = 'rejected', decision = 'cancelled', reviewed_at = :now
         WHERE account_id = :aid AND status = 'pending'
-        RETURNING request_id, account_id, status, requested_at, decided_at, decided_by
+        RETURNING request_id, account_id, status, decision, reason, created_at, reviewed_at
     ");
-    $stmt->execute([':aid' => $me['id']]);
+    $stmt->execute([':aid' => $me['id'], ':now' => static_now()->format('Y-m-d H:i:s')]);
     $row = $stmt->fetch();
 
     if (!$row) throw new StaticProfileError('There is no password change waiting for approval.');
 
-    return static_profile_request_public([
-        'id'           => (int) $row['request_id'],
-        'account_id'   => (int) $row['account_id'],
-        'name'         => $me['name'],
-        'email'        => $me['email'],
-        'status'       => (string) $row['status'],
-        'requested_at' => (string) $row['requested_at'],
-        'decided_at'   => (string) $row['decided_at'],
-        'reason'       => ''
-    ]);
+    $row['name']  = $me['name'];
+    $row['email'] = $me['email'];
+    return static_profile_request_public(static_profile_request_row($row));
 }
 
 // The Admin answers a request. $decision = 'approve' | 'reject'.  Called from admin/static-admin.php (Admin only).
@@ -1818,41 +1845,48 @@ function static_profile_decide_request(int $id, string $decision, string $reason
     require_once __DIR__ . '/../src/Helpers/db.php';
     $pdo = db();
 
-    $stmt = $pdo->prepare("SELECT * FROM password_requests WHERE request_id = :id LIMIT 1");
+    $stmt = $pdo->prepare("
+        SELECT r.*, u.name, u.email FROM password_requests r JOIN users u ON u.user_id = r.account_id
+        WHERE r.request_id = :id LIMIT 1
+    ");
     $stmt->execute([':id' => $id]);
     $r = $stmt->fetch();
     if (!$r) throw new InvalidArgumentException('That request was not found.');
     if ((string) $r['status'] !== 'pending') {
-        throw new InvalidArgumentException((string) $r['status'] === 'cancelled'
+        throw new InvalidArgumentException((string) ($r['decision'] ?? '') === 'cancelled'
             ? 'HR took this request back, so there is nothing to answer.'
             : 'This request was already ' . (string) $r['status'] . '.');
     }
 
     if ($decision === 'approve') {
-        if (empty($r['new_password'])) throw new InvalidArgumentException('This request has no new password. Ask HR to send it again.');
+        $stored = (string) ($r['new_password'] ?? '');
+        if ($stored === '') throw new InvalidArgumentException('This request has no new password. Ask HR to send it again.');
+        // new_password already holds a hash; anything else is hashed now
+        $hash = preg_match('/^\$(2y|2a|2b|argon2)/', $stored) ? $stored : password_hash($stored, PASSWORD_DEFAULT);
         $stmt = $pdo->prepare("UPDATE users SET password_hash = :hash WHERE user_id = :aid AND role = 'hr' AND deleted_at IS NULL");
-        $stmt->execute([':hash' => password_hash((string) $r['new_password'], PASSWORD_DEFAULT), ':aid' => (int) $r['account_id']]);
+        $stmt->execute([':hash' => $hash, ':aid' => (int) $r['account_id']]);
         if ($stmt->rowCount() === 0) throw new InvalidArgumentException('That HR account no longer exists, so its password cannot be changed.');
     }
 
-    $now = static_now()->format('Y-m-d H:i:s');
+    $now    = static_now()->format('Y-m-d H:i:s');
+    $status = $decision === 'approve' ? 'approved' : 'rejected';
     $stmt = $pdo->prepare("
-        UPDATE password_requests SET status = :status, decided_at = :decided_at, decided_by = 'Admin', reason = :reason
+        UPDATE password_requests SET status = :status, decision = :decision, reviewed_at = :reviewed_at, reason = :reason
         WHERE request_id = :id
     ");
     $stmt->execute([
-        ':status'   => $decision === 'approve' ? 'approved' : 'rejected',
-        ':decided_at' => $now,
-        ':reason'   => $decision === 'reject' ? $reason : '',
-        ':id'       => $id
+        ':status'      => $status,
+        ':decision'    => $decision === 'approve' ? 'approved' : 'rejected',
+        ':reviewed_at' => $now,
+        ':reason'      => $decision === 'reject' ? $reason : '',
+        ':id'          => $id
     ]);
 
     try {
         repo_log_activity(
             $decision === 'approve' ? 'Password Change Approved' : 'Password Change Rejected',
             (string) $r['name'] . ' (HR)',
-            'Admin',
-            ['kind' => 'pw_result', 'ref' => $id, 'owner' => (int) $r['account_id']]
+            'Admin'
         );
     } catch (Throwable $e) {}
 
@@ -1861,8 +1895,8 @@ function static_profile_decide_request(int $id, string $decision, string $reason
         'account_id'   => (int) $r['account_id'],
         'name'         => (string) $r['name'],
         'email'        => (string) $r['email'],
-        'status'       => $decision === 'approve' ? 'approved' : 'rejected',
-        'requested_at' => (string) $r['requested_at'],
+        'status'       => $status,
+        'requested_at' => (string) $r['created_at'],
         'decided_at'   => $now,
         'reason'       => $decision === 'reject' ? $reason : ''
     ]);
