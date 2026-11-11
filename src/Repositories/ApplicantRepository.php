@@ -334,9 +334,72 @@ function repo_applicant_jd_url(int $positionId, ?PDO $pdo = null): string
 {
     if ($positionId <= 0) return '';
     $pdo = $pdo ?: db();
-    $st = $pdo->prepare("SELECT jd_url FROM job_positions WHERE id = :id AND archived_at IS NULL LIMIT 1");
-    $st->execute([':id' => $positionId]);
-    return trim((string) ($st->fetchColumn() ?: ''));
+    $read = function () use ($pdo, $positionId): string {
+        $st = $pdo->prepare("SELECT jd_url FROM job_positions WHERE id = :id AND archived_at IS NULL LIMIT 1");
+        $st->execute([':id' => $positionId]);
+        return trim((string) ($st->fetchColumn() ?: ''));
+    };
+    $url = $read();
+    if ($url === '') {                                  // not linked yet: look in the Cloudinary folder
+        try { if (repo_sync_position_jds($pdo) > 0) $url = $read(); } catch (Throwable $e) {}
+    }
+    return $url;
+}
+
+/** "Data Analyst Job Position" / "data-analyst-job-position_ab12cd.pdf" / "jd-5-Data-Analyst" -> "dataanalyst" */
+function repo_jd_key(string $s): string
+{
+    $s = strtolower(trim($s));
+    $s = preg_replace('/\.pdf$/', '', $s);
+    $s = preg_replace('/^jd-\d+-/', '', $s);
+    $s = preg_replace('/[^a-z0-9]+/', ' ', $s);
+    $s = preg_replace('/\b(job|position|description|descriptions|jd|pdf|for|the)\b/', ' ', $s);
+    return preg_replace('/\s+/', '', $s);
+}
+
+/**
+ * Makes Cloudinary the source of truth for "has a PDF": every active position that has no stored PDF
+ * is matched against the PDFs in the ebsmi-job-position-pdfs folder (by file name) and, when one is found,
+ * its Cloudinary URL + public_id are saved on the position. Returns how many positions were linked.
+ * Only runs when some position lacks a PDF, and at most once a minute per session.
+ */
+function repo_sync_position_jds(?PDO $pdo = null, bool $force = false): int
+{
+    $pdo = $pdo ?: db();
+    $rows = $pdo->query("SELECT id, name FROM job_positions WHERE archived_at IS NULL AND (jd_url IS NULL OR jd_url = '') ORDER BY id")->fetchAll();
+    if (!$rows) return 0;
+
+    if (!$force && session_status() === PHP_SESSION_ACTIVE) {
+        if (isset($_SESSION['jd_sync_at']) && time() - (int) $_SESSION['jd_sync_at'] < 60) return 0;
+        $_SESSION['jd_sync_at'] = time();
+    }
+
+    require_once __DIR__ . '/../Services/CloudinaryService.php';
+    $assets = (new CloudinaryService())->listJobDescriptions('ebsmi-job-position-pdfs');
+    if (!$assets) return 0;                             // unreachable or nothing there: change nothing
+
+    $linked = 0;
+    $taken  = [];
+    $upd = $pdo->prepare("UPDATE job_positions SET jd_url = :u, jd_public_id = :p WHERE id = :id AND (jd_url IS NULL OR jd_url = '')");
+    foreach ($rows as $row) {
+        $key = repo_jd_key((string) $row['name']);
+        if (strlen($key) < 3) continue;
+        $best = null; $bestScore = 0; $tie = false;
+        foreach ($assets as $i => $a) {
+            if (isset($taken[$i])) continue;
+            $ak = repo_jd_key($a['name'] !== '' ? $a['name'] : $a['public_id']);
+            if ($ak === '') continue;
+            $score = $ak === $key ? 3 : (strpos($ak, $key) === 0 ? 2 : (strpos($ak, $key) !== false ? 1 : 0));
+            if ($score === 0) continue;
+            if ($score > $bestScore)      { $best = $i; $bestScore = $score; $tie = false; }
+            elseif ($score === $bestScore) { $tie = true; }
+        }
+        if ($best === null || $tie) continue;           // no match, or ambiguous: leave it as "No PDF"
+        $upd->execute([':u' => $assets[$best]['url'], ':p' => $assets[$best]['public_id'], ':id' => (int) $row['id']]);
+        $taken[$best] = true;
+        $linked += $upd->rowCount();
+    }
+    return $linked;
 }
 
 /**

@@ -231,6 +231,60 @@ class CloudinaryService {
         }
     }
 
+    /**
+     * Lists the job description PDFs that really exist in the Cloudinary folder (Search API).
+     * Works for both "dynamic folders" (asset_folder) and the older fixed folders.
+     * Returns a list of ['public_id', 'url', 'name'], or NULL when Cloudinary could not be reached
+     * (so callers never mistake "could not check" for "no PDFs").
+     */
+    public function listJobDescriptions(string $folder = 'ebsmi-job-position-pdfs'): ?array
+    {
+        $folder = trim($folder, '/');
+        $expressions = [
+            'asset_folder="' . $folder . '"',
+            'folder="' . $folder . '"',
+            'public_id:' . $folder . '/*',
+        ];
+        $url  = "https://api.cloudinary.com/v1_1/{$this->cloudName}/resources/search";
+        $auth = base64_encode($this->apiKey . ':' . $this->apiSecret);
+        $reached = false;
+
+        foreach ($expressions as $expr) {
+            $context = stream_context_create([
+                'http' => [
+                    'method'        => 'POST',
+                    'header'        => "Content-Type: application/json\r\nAuthorization: Basic $auth\r\n",
+                    'content'       => json_encode(['expression' => $expr, 'max_results' => 100]),
+                    'timeout'       => 30,
+                    'ignore_errors' => true,
+                ],
+                'ssl' => ['verify_peer' => false, 'verify_peer_name' => false],
+            ]);
+            $response = @file_get_contents($url, false, $context);
+            if ($response === false) continue;
+            $data = json_decode($response, true);
+            if (!is_array($data) || isset($data['error'])) {
+                error_log('Cloudinary search (' . $expr . '): ' . $response);
+                continue;
+            }
+            $reached = true;
+
+            $out = [];
+            foreach (($data['resources'] ?? []) as $r) {
+                $format = strtolower((string) ($r['format'] ?? ''));
+                $link   = (string) ($r['secure_url'] ?? '');
+                if ($link === '') continue;
+                if ($format !== 'pdf' && !preg_match('/\.pdf($|\?)/i', $link)) continue;   // job descriptions are PDFs
+                $name = (string) ($r['display_name'] ?? '');
+                if ($name === '') $name = (string) ($r['filename'] ?? '');
+                if ($name === '') $name = basename((string) ($r['public_id'] ?? ''));
+                $out[] = ['public_id' => (string) ($r['public_id'] ?? ''), 'url' => $link, 'name' => $name];
+            }
+            if ($out) return $out;      // first expression that finds the folder's PDFs wins
+        }
+        return $reached ? [] : null;
+    }
+
     /** Deletes a resource from Cloudinary by public_id (used for job description PDFs). */
     public function deleteResource(string $publicId, string $resourceType = 'auto', string $type = 'default'): array
     {
@@ -392,4 +446,3 @@ class CloudinaryService {
         }
     }
 }
-

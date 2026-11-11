@@ -836,6 +836,13 @@ const STATIC_JD_BYTES = 5 * 1024 * 1024;                   // 5 MB at most, like
 function static_positions(): array
 {
     $pdo = db();
+    // Cloudinary is the source of truth: link PDFs that exist in the folder but are not saved on a position yet.
+    try {
+        require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
+        repo_sync_position_jds($pdo);
+    } catch (Throwable $e) {
+        error_log('Job description sync error: ' . $e->getMessage());
+    }
     $stmt = $pdo->query("SELECT id, name, jd_url, jd_public_id, created_at, archived_at FROM job_positions WHERE archived_at IS NULL ORDER BY id");
     $out = [];
     while ($row = $stmt->fetch()) {
