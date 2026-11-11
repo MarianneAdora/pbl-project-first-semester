@@ -1,57 +1,21 @@
 <?php
-/* ==========================================================================
-   STATIC ADMIN DATA: everything the Admin side needs, in ONE file.
-   Location: admin/static-admin.php  (next to the admin pages)
-   Temporary, like hr/static-data.php. It is deleted when the database is connected.
+/*
+ * Admin question validation/normalization helpers. The current question and
+ * account workflows use PostgreSQL through api/admin-action.php; this file is
+ * also included by that API. A legacy direct JSON endpoint is retained below
+ * for compatibility and is not the endpoint used by the current admin UI.
+ */
 
-   Who takes from this file
-     admin/dashboard-admin.php static_admin_overview()   the three summary boxes
-                             static_admin_question_stats()  Questionnaires Statistics (every question + its most chosen answer)
-                             static_activity()         Recent Activities (from hr/static-data.php)
-     admin/question-list.php   static_admin_payload()    view / add / edit / delete the questionnaires
-     admin/hr-list.php         static_admin_payload()    add / edit / deactivate / delete HR accounts
-     admin/archive-admin.php    static_admin_payload()    deleted questions + HR accounts (30 days, then gone)
-
-   Where the data lives (hr/data/static-store.json, the same "table file" the HR side uses)
-     questions     the questionnaire. THE APPLICANT PAGE READS THE SAME LIST (static_questionnaire() in
-                   applicant/static-applicant.php), so what the Admin saves is what applicants answer.
-                   Until the Admin changes something, the starting list in static-applicant.php is used.
-     hr_accounts   the HR logins (the login page reads them through static_accounts())
-     activity      what HR and the Admin did (every change function writes its own line)
-     submissions   the answers applicants sent (already written by the applicant pages)
-
-   THIS FILE IS ALSO THE ENDPOINT the admin JavaScript calls (see the bottom): a POST to static-admin.php
-   with  action = question_add | question_update | question_archive | question_restore | question_purge |
-                  account_add | account_update | account_archive | account_restore | account_purge | account_password | notify |
-                  password_decide
-   changes the store and answers with JSON (the fresh lists, so the page can redraw itself).
-   password_decide = the Admin approves / rejects an HR password change (hr/static-data.php holds the rule).
-   Questions can be KNOCK-OUT questions (question.knockout + question.pass_answer, and pass_follow for a Yes/No + list):
-   an applicant whose answer does not match the passing answer fails the screening (applicant/static-evaluation.php)
-   and HR sees why in the applicant's Questionnaires tab. The rule itself lives in applicant/static-applicant.php.
-   Questions have a status (Active / Inactive) and a created date. An Inactive question stays in the Admin
-   list but the applicants do not see it. HR accounts have a role ("HR Staff") and a status.
-   When the Admin ticks "Send login credentials via email", a line is written to the store's "outbox".
-   To reset the sample data: delete hr/data/static-store.json.
-   To go live: delete this file; the backend answers the same POST requests.
-
-   When the database is ready, replace each function with a query:
-     static_admin_questions()    ->  SELECT * FROM questions ORDER BY section_no, position
-     static_admin_accounts()     ->  SELECT id, name, email, status, created_at FROM users WHERE role = 'hr'
-     static_admin_question_stats() -> per question: COUNT(*) of each answer value, top = the largest count
-     static_admin_overview()     ->  three COUNT(*) queries
-   ========================================================================== */
-
-require_once __DIR__ . '/../hr/static-data.php';               // store functions (static_store_read, etc.)
+require_once __DIR__ . '/../hr/hr-data.php';               // store functions (application_state_read, etc.)
 require_once __DIR__ . '/../applicant/applicant-helpers.php';   // applicant helpers (DB-backed)
 
 /* ==========================================================================
-   SAFETY NET: the admin pages need these functions from hr/static-data.php.
+   SAFETY NET: the admin pages need these functions from hr/hr-data.php.
    If that file does not have them (an older copy), the versions below are used instead.
-   When hr/static-data.php has them, NOTHING here runs (each one only exists "if missing").
+   When hr/hr-data.php has them, NOTHING here runs (each one only exists "if missing").
    ========================================================================== */
-if (!function_exists('static_store_read') || !function_exists('static_store_write') || !function_exists('static_now')) {
-    exit('hr/static-data.php is missing its store functions (static_store_read / static_store_write / static_now). Restore your own copy of hr/static-data.php.');
+if (!function_exists('application_state_read') || !function_exists('application_state_write') || !function_exists('static_now')) {
+    exit('hr/hr-data.php is missing its store functions (application_state_read / application_state_write / static_now). Restore your own copy of hr/hr-data.php.');
 }
 
 if (!function_exists('static_seed_hr_accounts')) {
@@ -67,13 +31,13 @@ if (!function_exists('static_seed_hr_accounts')) {
 if (!function_exists('static_hr_accounts')) {
     function static_hr_accounts(): array
     {
-        $store = static_store_read();
+        $store = application_state_read();
         return isset($store['hr_accounts']) && is_array($store['hr_accounts']) ? $store['hr_accounts'] : static_seed_hr_accounts();
     }
 }
 
 /* The activity log helpers (static_seed_activity, static_actor, static_log_into, static_activity) now live in
-   hr/static-data.php, because HR writes to the same log: everything HR does shows here on the Admin side under
+   hr/hr-data.php, because HR writes to the same log: everything HR does shows here on the Admin side under
    Recent Activities. The Admin's own change functions below still call static_log_into() exactly as before. */
 
 if (!defined('STATIC_ARCHIVE_DAYS')) define('STATIC_ARCHIVE_DAYS', 30);
@@ -126,7 +90,7 @@ function static_admin_all_questions(array $store): array
 function static_admin_questions(): array
 {
     $out = [];
-    foreach (static_admin_all_questions(static_store_read()) as $q) {
+    foreach (static_admin_all_questions(application_state_read()) as $q) {
         if (!empty($q['archived_at'])) continue;
         unset($q['archived_at']);
         $out[] = $q;
@@ -476,7 +440,7 @@ function static_admin_public_account(array $a): array
     return $a;
 }
 
-// "Sends" the login-credentials email by writing it to the outbox of the store (like hr/static-details.php does).
+// "Sends" the login-credentials email by writing it to the outbox of the store (like hr/applicant-details-data.php does).
 // The password is NOT written there; it was typed by the Admin and only passes through this request.
 // BACKEND: call src/Services/EmailService.php here and put the password in the email.
 function static_admin_credentials_mail(array &$store, string $name, string $email, bool $isNew): void
@@ -685,14 +649,14 @@ function static_admin_purge_account(int $id): bool
 function static_admin_purge_expired(): void
 {
     $limit = static_now()->modify('-' . STATIC_ARCHIVE_DAYS . ' days')->format('Y-m-d H:i:s');
-    $store = static_store_read();
+    $store = application_state_read();
     $changed = false;
     foreach (['questions', 'hr_accounts'] as $key) {
         if (!isset($store[$key]) || !is_array($store[$key])) continue;
         $kept = array_values(array_filter($store[$key], fn($row) => empty($row['archived_at']) || $row['archived_at'] > $limit));
         if (count($kept) !== count($store[$key])) { $store[$key] = $kept; $changed = true; }
     }
-    if ($changed) static_store_write($store);
+    if ($changed) application_state_write($store);
 }
 
 // Adds 'deleted' (when) and 'days_left' to an archived row
@@ -709,7 +673,7 @@ function static_admin_archive_row(array $row, DateTimeImmutable $now): array
 function static_admin_archive(): array
 {
     static_admin_purge_expired();
-    $store = static_store_read();
+    $store = application_state_read();
     $now   = static_now();
 
     $questions = [];
@@ -779,7 +743,7 @@ if (!defined('STATIC_ACTIVITY_SHOW_DAYS')) define('STATIC_ACTIVITY_SHOW_DAYS', 3
 // Every such line also gets 'req' = the live request (status, who, when), so the line shows what happened to it.
 function static_admin_recent_activity(int $limit = 10): array
 {
-    $store   = static_store_read();
+    $store   = application_state_read();
     $reqs    = static_profile_requests_by_id($store);
     // The Admin decides with the passwords in front of him: the HR's current one and the new one asked for.
     // Only while the request is pending, and only on this Admin page (HR's own status never carries them).
@@ -822,7 +786,7 @@ function static_admin_recent_activity(int $limit = 10): array
 
     if ($changed) {
         $store['activity'] = $log;
-        static_store_write($store);
+        application_state_write($store);
     }
     return ['rows' => $rows, 'total' => $total, 'pending' => $pending];
 }
@@ -856,7 +820,7 @@ function static_admin_sample_history(): array
 // favourable-answer % of everything the applicants submitted.
 function static_admin_chart(int $months = 6): array
 {
-    $store = static_store_read();
+    $store = application_state_read();
 
     // sections that have scored questions (Yes/No + rating), taken from the CURRENT questionnaire,
     // so a section the Admin adds shows up here by itself
@@ -945,7 +909,7 @@ function static_admin_question_plain(array $q): string
 // BACKEND: SELECT answer, COUNT(*) FROM responses WHERE question_id = ? GROUP BY answer ORDER BY COUNT(*) DESC
 function static_admin_question_stats(): array
 {
-    $store = static_store_read();
+    $store = application_state_read();
     $subs  = array_values(array_filter((array) ($store['submissions'] ?? []), 'is_array'));
     $total = count($subs);
 
@@ -1064,7 +1028,7 @@ function static_admin_question_stats(): array
 // Active knock-out questions, the share of applicants who did not pass each one (highest first)
 function static_admin_failure_rates(int $limit = 5): array
 {
-    $store = static_store_read();
+    $store = application_state_read();
     $subs  = array_values(array_filter((array) ($store['submissions'] ?? []), 'is_array'));
     $rows  = [];
     $knock = 0;
@@ -1112,7 +1076,7 @@ function static_admin_risk_flags(): array
         return null;
     };
 
-    $store = static_store_read();
+    $store = application_state_read();
     $evals = array_values(array_filter((array) ($store['evaluations'] ?? []), 'is_array'));
     $count = array_fill_keys(array_keys($groups), 0);
 
@@ -1152,7 +1116,7 @@ function static_admin_risk_flags(): array
 // Applications received: the last 6 weeks (Monday to Sunday) and the last 6 months, oldest first
 function static_admin_volume(): array
 {
-    $store = static_store_read();
+    $store = application_state_read();
     $days  = [];
     foreach ((array) ($store['applicants'] ?? []) as $a) {
         $when = (string) ($a['invited_at'] ?? $a['updated'] ?? '');
@@ -1229,7 +1193,8 @@ function static_admin_notify(): array
 }
 
 /* ==========================================================================
-   ENDPOINT: the admin JavaScript posts here  ( fetch('static-admin.php', {method:'POST', ...}) )
+   LEGACY ENDPOINT: direct clients may post here. The current admin UI posts to
+   ../api/admin-action.php instead.
    It only runs when this file is opened DIRECTLY; when a page does require_once on it, nothing below happens.
 
    Request (JSON body):  { action: '...', ...fields }
@@ -1323,7 +1288,7 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
                 break;
 
             case 'password_decide':     // Recent Activities pop-up: approve or reject an HR password change
-                // like hr/static-data.php: only our own pages can send this header, a form on another site cannot
+                // like hr/hr-data.php: only our own pages can send this header, a form on another site cannot
                 if (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') !== 'XMLHttpRequest') static_admin_respond(['status' => 'error', 'message' => 'Invalid request.'], 400);
                 $decision = (string) ($input['decision'] ?? '');
                 $result   = static_profile_decide_request((int) ($input['id'] ?? 0), $decision, (string) ($input['reason'] ?? ''));

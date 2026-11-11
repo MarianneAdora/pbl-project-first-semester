@@ -1,61 +1,19 @@
 <?php
-/* ==========================================================================
-   STATIC DATA: the ONE place for every piece of sample data in the project.
-   Everything here is temporary and is deleted when the database is connected.
-
-   Who takes from this file
-     index.php                static_accounts()        the HR / Admin login accounts
-     hr/screening-list.php     static_applicants()      the applicants, with status + result
-     hr/archive.php           static_applicants()      same list (the page shows the archived ones)
-     hr/dashboard-hr.php       static_applicants()      the cards, the Passed/Rejected chart and
-                              static_stats()           Recent Applicants are all worked out
-                              static_completed_ids()   from this one list
-                              static_recent()
-                              static_dashboard_insights()   Funnel Drop-Off, Time-to-Complete
-                                                       Distribution and Scheduling Turnaround Time
-
-   Because every page reads the SAME list, they always agree: when an applicant is deleted
-   (moved to the Archive) or deleted for good, the Screening List, the dashboard numbers, the
-   chart and Recent Applicants all drop them (see applyData() in assets/js/dashboardhr.js).
-
-   To change the sample data, change it HERE and every page follows.
-
-   When the database is ready (backend), replace each function with a query:
-     static_accounts()         ->  SELECT ... FROM users            (and use password_verify)
-     static_applicants()       ->  SELECT id, name, email, contact, status, result, updated_at AS updated
-                                   FROM applicants WHERE archived_at IS NULL
-     static_stats()            ->  SELECT status, result, COUNT(*) ... GROUP BY ...
-     static_completed_ids()    ->  SELECT id FROM applicants WHERE status = 'Completed'
-     static_recent()           ->  ORDER BY updated_at DESC LIMIT 10
-     static_dashboard_insights()  ->  three queries, see the BACKEND notes above that function
-   ========================================================================== */
+/*
+ * Shared HR/admin account, applicant, position, profile, and activity helpers.
+ * The application uses PostgreSQL for its live records. The JSON state file and
+ * static_-prefixed function names are retained for legacy compatibility.
+ * This file also handles HR-side AJAX actions when requested directly.
+ */
 
 require_once __DIR__ . '/../src/Helpers/db.php';
 require_once __DIR__ . '/../src/Repositories/ActivityRepository.php';
 
-/* ==========================================================================
-   HOW IT WORKS NOW (store layer, added at the bottom of this file)
-   The list below (static_seed_applicants) is only the STARTING data. The first time any page
-   asks for applicants, it is copied into  data/static-store.json  and from then on every page
-   reads and writes THAT file, exactly like a table in a database:
-
-     static_applicants()            active applicants (Screening List, Dashboard)
-     static_archived_applicants()   archived applicants + "Deleted on" + days left (Archive page)
-     static_add_applicant()         Add Applicant           -> Pending (first / middle / last name + job position)
-     static_positions()             Job positions for the Add Applicant list (each has its own job description PDF)
-     static_position_add()          "+ Add job position"   -> new position (+ its job description PDF)
-     static_set_status()            status / result change  -> Pending / In Progress / Completed
-     static_archive($ids)           Screening List "Delete" -> moves to the Archive
-     static_restore($ids)           Archive "Restore"       -> back to the Screening List
-     static_purge($ids)             Archive "Delete forever"
-
-   THIS FILE IS ALSO THE ENDPOINT the JavaScript calls (see the bottom of the file): a POST to
-   static-data.php with  action = add | archive | restore | purge | status  changes the store and
-   answers with JSON. So everything static lives in this ONE file.
-   data/static-store.json is only the saved data (created automatically, not code).
-   To reset the sample data: delete data/static-store.json.
-   To go live: delete this file + data/, and the backend answers the same POST requests.
-   ========================================================================== */
+/*
+ * The legacy application-state.json reader remains below for compatibility.
+ * Writes through application_state_write() are intentionally disabled; live
+ * applicant, account, and position changes are stored in PostgreSQL.
+ */
 
 // ---------------------------------------------------------------------------
 // Login accounts (index.php). Passwords are plain text only because this is sample data.
@@ -356,7 +314,7 @@ function static_dashboard_insights(array $applicants, array $interviews = []): a
    STORE LAYER: makes the static list behave like a real table.
    Everything below is the part that is replaced by the database later.
    ========================================================================== */
-const STATIC_STORE_FILE   = __DIR__ . '/data/static-store.json';
+const APPLICATION_STATE_FILE   = __DIR__ . '/data/application-state.json';
 const STATIC_ARCHIVE_DAYS = 30;                 // days an archived applicant stays before it is gone for good
 
 function static_now(): DateTimeImmutable
@@ -365,15 +323,15 @@ function static_now(): DateTimeImmutable
 }
 
 // No-op: the store is now always in the database.
-function static_store_write(array $store): bool
+function application_state_write(array $store): bool
 {
     return true;
 }
 
 // Read the store from the JSON file (or return default empty store)
-function static_store_read(): array
+function application_state_read(): array
 {
-    $file = STATIC_STORE_FILE;
+    $file = APPLICATION_STATE_FILE;
     if (!file_exists($file)) {
         return ['applicants' => [], 'hr_accounts' => [], 'positions' => [], 'submissions' => [], 'evaluations' => [], 'activity' => []];
     }
@@ -394,13 +352,13 @@ function static_store_read(): array
 //   HR Dashboard > the notification bell lists HR's own lines (static_hr_feed()).
 //   Only real work is logged: applicants (add / delete / restore / delete forever / status) and
 //   interview schedules. Preferences (HR Settings) are NOT logged.
-//   These four helpers used to sit in admin/static-admin.php; the Admin side now uses them from here.
+//   These four helpers used to sit in admin/question-admin.php; the Admin side now uses them from here.
 //   Admin Dashboard > Recent Activities lists every line HR writes here, and the Admin's sidebar
 //   Dashboard badge counts the ones the Admin has not seen yet (see static_admin_notify()).
 //   HR Dashboard > the notification bell lists HR's own lines (static_hr_feed()).
 //   Only real work is logged: applicants (add / delete / restore / delete forever / status) and
 //   interview schedules. Preferences (HR Settings) are NOT logged.
-//   These four helpers used to sit in admin/static-admin.php; the Admin side now uses them from here.
+//   These four helpers used to sit in admin/question-admin.php; the Admin side now uses them from here.
 //   BACKEND: activity_log (id, actor_role, activity, details, created_at); static_log() = one INSERT.
 // ---------------------------------------------------------------------------
 if (!function_exists('static_seed_activity')) {
@@ -497,7 +455,7 @@ function static_applicant_names(array $ids, ?bool $archived = null): array
 {
     $ids = array_map('intval', $ids);
     $out = [];
-    foreach (static_store_read()['applicants'] as $a) {
+    foreach (application_state_read()['applicants'] as $a) {
         if (!in_array((int) $a['id'], $ids, true)) continue;
         $isArchived = !empty($a['archived_at']);
         if ($archived !== null && $archived !== $isArchived) continue;
@@ -1066,7 +1024,7 @@ function static_position_delete(int $id): array
 // ---------------------------------------------------------------------------
 // INTERVIEWS (the table "interviews", one row per applicant). Shared by BOTH sides:
 //   the APPLICANT sends a preferred date + time   applicant/application-status.php  -> static_interview_request()
-//   HR confirms it or sends another one           hr/details.php (Interview Schedule)  -> hr/static-details.php
+//   HR confirms it or sends another one           hr/details.php (Interview Schedule)  -> hr/applicant-details-data.php
 //   status: awaiting     waiting for HR                     (the applicant page calls it "pending")
 //           confirmed    HR said "Available"
 //           rescheduled  HR sent a new date + time          (the applicant page calls it "suggested")
@@ -1249,7 +1207,7 @@ function static_purge_expired(): int
    Profile   Name, email and picture of the signed-in Admin / HR (Settings). HR changes also write a line to the
              activity log, so the Admin sees them under Recent Activities.
    Password  Admin: changed at once. HR: becomes a REQUEST (hash only) that the Admin approves or rejects by clicking
-             the line in Recent Activities (admin/static-admin.php, action password_decide). HR sees the answer in
+             the line in Recent Activities (admin/question-admin.php, action password_decide). HR sees the answer in
              Settings and in the bell.
    Store     hr_accounts[].avatar | admin_account {name,email,hash,avatar} | password_requests[] | activity lines with
              kind / owner / ref. Pictures are kept in data/avatars/.
@@ -1275,7 +1233,7 @@ class StaticProfileError extends InvalidArgumentException
 }
 
 /* ==========================================================================
-   SAFETY NET: the same two helpers admin/static-admin.php has, so the HR pages can use them too.
+   SAFETY NET: the same two helpers admin/question-admin.php has, so the HR pages can use them too.
    Each one only exists "if missing", so whichever file loads first wins and nothing is defined twice.
    ========================================================================== */
 if (!function_exists('static_seed_hr_accounts')) {
@@ -1831,7 +1789,7 @@ function static_profile_cancel_request(): array
     return static_profile_request_public(static_profile_request_row($row));
 }
 
-// The Admin answers a request. $decision = 'approve' | 'reject'.  Called from admin/static-admin.php (Admin only).
+// The Admin answers a request. $decision = 'approve' | 'reject'.  Called from admin/question-admin.php (Admin only).
 // Approve: the HR account gets the new password. Reject: nothing changes (an optional reason is kept for HR).
 // Either way a line is written to the activity log; HR sees it in the bell and in Settings.
 function static_profile_decide_request(int $id, string $decision, string $reason = ''): array
@@ -1908,7 +1866,7 @@ function static_profile_decide_request(int $id, string $decision, string $reason
 // (HR pages: 'data/avatars/'   Admin pages: '../hr/data/avatars/').
 function static_profile_for_page(string $avatarBase): array
 {
-    $store = static_store_read();
+    $store = application_state_read();
     $me = static_profile_me();
     $role  = (string) ($_SESSION['user_role'] ?? '');
 
@@ -1931,7 +1889,7 @@ function static_profile_for_page(string $avatarBase): array
 }
 
 /* ==========================================================================
-   ENDPOINT: the JavaScript posts here  ( fetch('static-data.php', {method:'POST', ...}) )
+   ENDPOINT: the JavaScript posts here  ( fetch('hr-data.php', {method:'POST', ...}) )
    It only runs when this file is opened DIRECTLY; when a page does require_once on it,
    nothing below happens.
 
@@ -2182,7 +2140,7 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
     } catch (InvalidArgumentException $e) {
         static_respond(['status' => 'error', 'message' => $e->getMessage()], 422);
     } catch (Throwable $e) {
-        error_log('static-data.php action failed: ' . get_class($e) . ': ' . $e->getMessage() . ' @ ' . basename($e->getFile()) . ':' . $e->getLine());
+        error_log('hr-data.php action failed: ' . get_class($e) . ': ' . $e->getMessage() . ' @ ' . basename($e->getFile()) . ':' . $e->getLine());
         static_respond(['status' => 'error', 'message' => 'Something went wrong while saving. Please try again.'], 500);
     }
 }

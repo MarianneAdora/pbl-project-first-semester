@@ -15,7 +15,7 @@ header('Pragma: no-cache');
    APPLICANT DETAILS (opened from the Screening List "VIEW" button and the Dashboard rows)
    URL:  details.php?id=103          (&tab=overview | questionnaires | video | interview | evaluation)
 
-   Every piece of data comes from hr/static-details.php (which reads the same store as the
+   Every piece of data comes from hr/applicant-details-data.php (which reads the same store as the
    rest of the project: the applicant, their REAL screening answers and video, their CV).
    When the database is ready, only that file changes; this page does not.
 
@@ -27,7 +27,7 @@ header('Pragma: no-cache');
                            Passed and Failed applicants, and also one held for HR review.
    A closed tab is still shown, locked, so HR can see what will open later.
    ========================================================================== */
-require_once __DIR__ . '/static-details.php';
+require_once __DIR__ . '/applicant-details-data.php';
 
 $id        = (int) ($_GET['id'] ?? 0);
 $applicant = details_find_applicant($id);          // active applicants only
@@ -87,7 +87,7 @@ $pageData = [
     'id'        => $id,
     'name'      => $applicant['name'],
     'email'     => $applicant['email'],
-    'endpoint'  => 'static-details.php',
+    'endpoint'  => 'applicant-details-data.php',
     'today'     => (new DateTimeImmutable('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d'),
     'slots'     => details_time_slots(),
     'tab'       => $tab,

@@ -10,7 +10,7 @@
 /* ==========================================================================
    Admin common behaviour: shared by every admin page (same feel as the HR pages).
    Part 1: window.ADMIN helpers (settings, notifications, toast, confirm box, row menu, pager,
-           requests to static-admin.php, the row-flies-to-the-Archive animation)
+           requests to question-admin.php, the row-flies-to-the-Archive animation)
    Part 2: entrance animation, sidebar (collapsed state is remembered), logout confirmation
            + the stripe sweep-in
    Load this file BEFORE the page's own script.
@@ -80,7 +80,7 @@ window.ADMIN = (function () {
         return ok;
     }
 
-    // The name and picture are saved on the server now (hr/static-data.php) and the page prints them, so there is
+    // The name and picture are saved on the server now (hr/hr-data.php) and the page prints them, so there is
     // nothing to override from this browser any more. (An old 'admin_profile' key in localStorage is simply ignored.)
     function applyProfile() { /* kept so the calls below keep working */ }
 
@@ -97,7 +97,7 @@ window.ADMIN = (function () {
         else if (mq.addListener) mq.addListener(onScheme);
     }
 
-    /* ---- Requests to static-admin.php ------------------------------------------------------
+    /* ---- Requests to the admin action API ----------------------------------------------------
        Resolves with the answer ({ status, message, result, data }); rejects with a message that is safe to show.
        BACKEND: point SERVER_API at the real PHP; the same request / answer shape is used. */
     const SERVER_API = '../api/admin-action.php';
@@ -601,7 +601,7 @@ window.ADMIN = (function () {
     }
 
     /* ---- Live update: the badges follow what HR does, without reloading the page -----------------
-       Every POLL_MS the page asks static-admin.php (action 'notify') for the fresh numbers and repaints
+       Every POLL_MS the page asks the admin action API (action 'notify') for the fresh numbers and repaints
        the badges. The "seen" rule is the same: the Dashboard badge counts HR activities newer than the
        last time the Admin opened the Dashboard, so opening (or clicking) the Dashboard clears it.
        Paused while the tab is hidden; one extra check as soon as the tab is visible again.
@@ -1614,7 +1614,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function showBanner(message) { banner.textContent = message; banner.classList.add('show'); }
     function hideBanner() { banner.classList.remove('show'); }
 
-    /* ---------- what is sent to static-admin.php (same keys the question functions there read) ---------- */
+    /* ---------- what is sent to the admin action API (same keys the question helpers read) ---------- */
     function collect() {
         const type = typeDD.getValue();
         const picked = sectionByNo(sectionDD.getValue());
@@ -3374,7 +3374,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let photoUrl = '';             // preview address of the new picture
 
     const escHtml = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    // "Anna Marie Reyes" -> "AR", "HR" -> "HR", "Admin" -> "AD" (the same rule as static-data.php)
+    // "Anna Marie Reyes" -> "AR", "HR" -> "HR", "Admin" -> "AD" (the same rule as hr-data.php)
     function initialsOf(name) {
         const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
         if (!parts.length) return '?';
@@ -3453,7 +3453,7 @@ document.addEventListener('DOMContentLoaded', () => {
         refreshButtons();
     });
 
-    /* ---------- requests to static-data.php ----------
+    /* ---------- requests to hr-data.php ----------
        Resolves with the answer; rejects with an Error (message is safe to show, .field = the field it belongs to). */
     async function postProfile(body) {
         const isForm = body instanceof FormData;
@@ -3482,7 +3482,7 @@ document.addEventListener('DOMContentLoaded', () => {
         cancelBtn.disabled = state;
     }
 
-    // Saves the profile on the server first (name, email, picture; static-data.php). Only when that worked are the
+    // Saves the profile on the server first (name, email, picture; hr-data.php). Only when that worked are the
     // look settings kept in this browser, so a refused email never leaves a half-saved page.
     async function persist(state) {
         const form = new FormData();
@@ -3659,7 +3659,7 @@ document.addEventListener('DOMContentLoaded', () => {
     pwConfirm.addEventListener('input', () => setError(pwField('pwConfirm'), pwConfirm.value === pwNew.value ? '' : 'The passwords do not match.'));
     pwCurrent.addEventListener('input', () => setError(pwField('pwCurrent'), ''));
 
-    // The server checks the current password (static-data.php). Admin: the new password is saved at once.
+    // The server checks the current password (hr-data.php). Admin: the new password is saved at once.
     // HR: the change is sent to the Admin and only works after the Admin approves it.
     pwForm.addEventListener('submit', async (e) => {
         e.preventDefault();

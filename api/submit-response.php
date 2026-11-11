@@ -48,11 +48,11 @@ try {
         }
 
         // Mark as submitted IMMEDIATELY after the DB save succeeds, before the
-        // static-store sync (which can throw). This ensures the applicant is
+        // application-state sync (which can throw). This ensures the applicant is
         // redirected to application-status.php even if the sync fails.
         $_SESSION['screening_submitted'] = true;
 
-// Submission is DB-authoritative; static-store sync removed.
+// Submission is DB-authoritative; application-state sync removed.
 
         // Trigger risk scoring asynchronously (best-effort; submission already saved).
         try {

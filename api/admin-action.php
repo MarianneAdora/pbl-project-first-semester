@@ -1,6 +1,6 @@
 <?php
 // api/admin-action.php — DB-backed AJAX endpoint for admin archive/restore/purge actions.
-// Replaces static-admin.php for: account_archive, account_restore, account_purge,
+// Replaces question-admin.php for: account_archive, account_restore, account_purge,
 //                                 question_archive, question_restore, question_purge, password_decide, notify
 
 session_start();
@@ -10,7 +10,7 @@ date_default_timezone_set('Asia/Manila');
 require_once __DIR__ . '/../src/Repositories/AdminRepository.php';
 require_once __DIR__ . '/../src/Services/EmailService.php';
 require_once __DIR__ . '/../src/Helpers/db.php';
-require_once __DIR__ . '/../hr/static-data.php';
+require_once __DIR__ . '/../hr/hr-data.php';
 
 function admin_respond(array $data, int $code = 200): void
 {
@@ -154,7 +154,7 @@ try {
             break;
 
         case 'question_add':
-            require_once __DIR__ . '/../admin/static-admin.php';
+            require_once __DIR__ . '/../admin/question-admin.php';
 
             $qIn = (array) ($input['question'] ?? []);
 
@@ -245,7 +245,7 @@ try {
 
 
         case 'question_update':
-            require_once __DIR__ . '/../admin/static-admin.php';
+            require_once __DIR__ . '/../admin/question-admin.php';
 
             $id = (int) ltrim((string) ($input['id'] ?? ''), 'q');
             $qIn = (array) ($input['question'] ?? []);

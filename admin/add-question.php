@@ -15,7 +15,7 @@ date_default_timezone_set('Asia/Manila');
 
 require_once __DIR__ . '/../src/Repositories/AdminRepository.php';
 require_once __DIR__ . '/../src/Helpers/db.php';
-require_once __DIR__ . '/static-admin.php';
+require_once __DIR__ . '/question-admin.php';
 
 $question_types = [
     'yesno'        => 'Yes / No',
@@ -165,7 +165,7 @@ function q_dropdown(string $id, string $labelId, array $options, string $selecte
 
         <?php
         // Profile card: the name + picture saved in Settings (clicking it opens Settings)
-        require_once __DIR__ . '/../hr/static-data.php';
+        require_once __DIR__ . '/../hr/hr-data.php';
         $sbp_name = trim((string) ($_SESSION['user_name'] ?? 'Administrator'));
         $sbp_role = 'Administrator';
         try {

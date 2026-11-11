@@ -138,7 +138,7 @@ window.HR = (function () {
         return ok;
     }
 
-    // The name and picture are saved on the server now (hr/static-data.php) and the page prints them, so there is
+    // The name and picture are saved on the server now (hr/hr-data.php) and the page prints them, so there is
     // nothing to override from this browser any more. (An old 'hr_profile' key in localStorage is simply ignored.)
     function applyProfile() { /* kept so the calls below keep working */ }
 
@@ -166,7 +166,7 @@ window.HR = (function () {
     }
     syncArchiveFromServer();
 
-    // One request to static-data.php. Rejects with a message that is safe to show.
+    // One request to hr-data.php. Rejects with a message that is safe to show.
     function serverRequest(action, ids, opts) {
         const body = { action: action, ids: (ids || []).map(Number) };
         if (opts && opts.at) body.at = opts.at;
@@ -963,7 +963,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const fd = new FormData();
             fd.append('action', 'parse_cv');
             fd.append('cv', file, file.name);
-            const res = await fetch('../hr/static-data.php', { method: 'POST', body: fd, credentials: 'same-origin' });
+            const res = await fetch('../hr/hr-data.php', { method: 'POST', body: fd, credentials: 'same-origin' });
             let data;
             try { data = await res.json(); }
             catch (e) { throw new Error('The server did not answer correctly. Please try the file again.'); }
@@ -1057,8 +1057,8 @@ document.addEventListener('DOMContentLoaded', () => {
        Invitation email still not sent. */
     async function sendInvitation(formData) {
         formData.delete('note'); // no notes column yet
-        formData.set('action', 'add'); // static-data.php routes on this; without it the server answers "Unknown action."
-        const res = await fetch('../hr/static-data.php', { method: 'POST', body: formData, credentials: 'same-origin' });
+        formData.set('action', 'add'); // hr-data.php routes on this; without it the server answers "Unknown action."
+        const res = await fetch('../hr/hr-data.php', { method: 'POST', body: formData, credentials: 'same-origin' });
         let data;
         try { data = await res.json(); }
         catch (e) { throw new Error('The server did not answer correctly. Please try again.'); }
@@ -1140,7 +1140,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* ---------- Job position list + "+ Add job position" ----------
        The last entry of the list opens a small pop-up: HR types the new position and (optionally) attaches that
-       position's job description PDF. It is saved through static-data.php (action position_add), added to the
+       position's job description PDF. It is saved through hr-data.php (action position_add), added to the
        list and selected. Each position has its own job description: the applicant sees the PDF of the position
        they were added under (applicant/questionnaire.php). */
     const positionModal = document.getElementById('positionModal');
@@ -1285,7 +1285,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const body = new FormData();
             body.append('action', 'position_delete');
             body.append('id', id);
-            const res = await fetch('static-data.php', { method: 'POST', body, credentials: 'same-origin' });
+            const res = await fetch('hr-data.php', { method: 'POST', body, credentials: 'same-origin' });
             let data;
             try { data = await res.json(); } catch (err) { throw new Error('The server did not answer correctly. Please try again.'); }
             // Treat "already archived" as success: a previous click deleted it but the UI didn't update
@@ -1437,7 +1437,7 @@ document.addEventListener('DOMContentLoaded', () => {
             body.append('name', positionName.value.trim().replace(/\s+/g, ' '));
             if (positionJd.files[0]) body.append('jd', positionJd.files[0]);
 
-            const res = await fetch('static-data.php', { method: 'POST', body, credentials: 'same-origin' });
+            const res = await fetch('hr-data.php', { method: 'POST', body, credentials: 'same-origin' });
             let data;
             try { data = await res.json(); } catch (err) { throw new Error('The server did not answer correctly. Please try again.'); }
             if (data.status !== 'success') throw new Error(data.message || 'Something went wrong. Please try again.');
@@ -2802,7 +2802,7 @@ document.addEventListener('DOMContentLoaded', () => {
    screenings that nobody has opened yet. The number on the bell counts the lines that are new since
    the bell was last opened. Opening it marks them as read (they stay highlighted while it is open).
    Settings > Notifications (the master switch) hides the number; Settings changes are never listed.
-   Data: window.HR_ACTIVITY, printed by dashboard-hr.php (and refreshed through static-data.php, action 'activity').
+   Data: window.HR_ACTIVITY, printed by dashboard-hr.php (and refreshed through hr-data.php, action 'activity').
    The "last read" time is kept in this browser for now; with the database it becomes a column on the user.
    ========================================================================== */
 document.addEventListener('DOMContentLoaded', () => {
@@ -2985,7 +2985,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Latest lines from the server (the page may be old: restored from the cache, or the tab was in the background)
     function refreshFeed() {
-        fetch('static-data.php', {
+        fetch('hr-data.php', {
             method: 'POST',
             credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
@@ -3036,7 +3036,7 @@ if (document.documentElement.getAttribute('data-page') === 'details') {
    Applicant Details (hr/details.php)
    Load AFTER hr-common.js (it uses HR.toast). The page prints  window.DETAILS  before this file:
      id, name, email      the applicant
-     endpoint             hr/static-details.php now, the backend later (same two POST actions)
+     endpoint             hr/applicant-details-data.php now, the backend later (same two POST actions)
      today, maxDate, slots  for the "Adjust Schedule" form (weekdays only, same slots as the applicant's picker)
      tab, locked          the open tab, and the message for every locked tab
      interview            the schedule (null when the tab is not open for this applicant)
@@ -3276,7 +3276,7 @@ if (document.documentElement.getAttribute('data-page') === 'details') {
         tick: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>'
     };
 
-    /* ---------- talking to the server (hr/static-details.php now, the backend later) ---------- */
+    /* ---------- talking to the server (hr/applicant-details-data.php now, the backend later) ---------- */
     function post(payload) {
         return fetch(D.endpoint, {
             method: 'POST',
@@ -4842,7 +4842,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let photoUrl = '';             // preview address of the new picture
 
     const escHtml = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    // "Anna Marie Reyes" -> "AR", "HR" -> "HR", "Admin" -> "AD" (the same rule as static-data.php)
+    // "Anna Marie Reyes" -> "AR", "HR" -> "HR", "Admin" -> "AD" (the same rule as hr-data.php)
     function initialsOf(name) {
         const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
         if (!parts.length) return '?';
@@ -4921,7 +4921,7 @@ document.addEventListener('DOMContentLoaded', () => {
         refreshButtons();
     });
 
-    /* ---------- requests to static-data.php ----------
+    /* ---------- requests to hr-data.php ----------
        Resolves with the answer; rejects with an Error (message is safe to show, .field = the field it belongs to). */
     async function postProfile(body) {
         const isForm = body instanceof FormData;
@@ -4950,7 +4950,7 @@ document.addEventListener('DOMContentLoaded', () => {
         cancelBtn.disabled = state;
     }
 
-    // Saves the profile on the server first (name, email, picture; static-data.php). Only when that worked are the
+    // Saves the profile on the server first (name, email, picture; hr-data.php). Only when that worked are the
     // look settings kept in this browser, so a refused email never leaves a half-saved page.
     async function persist(state) {
         const form = new FormData();
@@ -5223,7 +5223,7 @@ document.addEventListener('DOMContentLoaded', () => {
     pwConfirm.addEventListener('input', () => setError(pwField('pwConfirm'), pwConfirm.value === pwNew.value ? '' : 'The passwords do not match.'));
     pwCurrent.addEventListener('input', () => setError(pwField('pwCurrent'), ''));
 
-    // The server checks the current password (static-data.php). Admin: the new password is saved at once.
+    // The server checks the current password (hr-data.php). Admin: the new password is saved at once.
     // HR: the change is sent to the Admin and only works after the Admin approves it.
     pwForm.addEventListener('submit', async (e) => {
         e.preventDefault();

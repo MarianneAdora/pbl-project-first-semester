@@ -109,7 +109,7 @@ PROMPT;
     }
 
     /**
-     * Rule-based fallback — mirrors the logic in static-details.php details_evaluation().
+     * Rule-based fallback — mirrors the logic in applicant-details-data.php details_evaluation().
      */
     private function fallbackNarrative(array $applicant, array $result): array
     {

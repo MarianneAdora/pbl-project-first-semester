@@ -1,38 +1,10 @@
 <?php
-/* ==========================================================================
-   STATIC DETAILS DATA: everything the "Applicant Details" page (hr/details.php) needs.
-   Temporary, like hr/static-data.php and applicant/static-applicant.php. It is deleted when the
-   database is connected.
-
-   What is REAL here (read from the same store the rest of the project uses)
-     the applicant                  static_applicants()            name, email, contact, status, result
-     the questionnaire answers      store "submissions"            written by applicant/static-applicant.php
-     the questions themselves       static_questionnaire()         so the summary always uses the real wording
-     the video information          store "submissions" > video    name, size, seconds, source (+ url when uploaded)
-     the AI evaluation              store "evaluations"            the RISK SCORING RUBRIC of applicant/static-evaluation.php:
-                                                                   points per factor, band, outcome (passed / failed / review)
-     the interview schedule         store "interviews"             the date + time the applicant picked
-                                                                   (applicant/application-status.php), HR's answer goes back there
-     the CV                         the "cv" record of the applicant (saved by Add Applicant)
-     the emails that were sent      store "outbox"
-
-   What is SAMPLE (shown with a small "Sample" note on the page)
-     answers / video / evaluation of the 35 seed applicants (they never went through the real screening).
-     Their evaluation is made by running the REAL rubric (static_evaluate) on their sample answers.
-     Their interview request is made the first time HR opens a Passed seed applicant.
-
-   Who takes from this file
-     hr/details.php              every details_*() function
-     assets/js/details.js        POSTs to this file (the endpoint at the bottom)
-
-   DATABASE (later)
-     details_submission()        ->  SELECT ... FROM responses WHERE applicant_id = ?
-     details_find_evaluation()   ->  SELECT ... FROM evaluations WHERE applicant_id = ?
-     interviews                  ->  static_interview_*() in static-data.php become queries
-     details_send_email()        ->  src/Services/EmailService.php (SendGrid)
-     the endpoint                ->  api/*.php answering the same two POST actions
-   To reset the sample interviews / emails: delete hr/data/static-store.json (resets everything).
-   ========================================================================== */
+/*
+ * Helpers and AJAX endpoint for the HR applicant-details page. Real applicant
+ * submissions are read from PostgreSQL; seeded applicants may use generated
+ * sample details for display and testing. Interview actions and CV access are
+ * handled by this endpoint.
+ */
 
 require_once __DIR__ . '/../applicant/applicant-helpers.php';   // knock-out rules (DB-backed)
 
@@ -598,7 +570,7 @@ function details_evaluation(array $a, ?array $submission): ?array
 }
 
 // ---------------------------------------------------------------------------
-// Interview schedule. The rows live in the shared store (static_interview_* in static-data.php):
+// Interview schedule. The rows live in the shared store (static_interview_* in hr-data.php):
 // the APPLICANT sends the preferred date + time (applicant/application-status.php), HR answers here.
 //   awaiting     the applicant's preferred schedule, waiting for HR
 //   confirmed    HR said "Available"; the applicant was emailed
@@ -713,7 +685,7 @@ function details_status_url(): string
     if (defined('APP_URL') && APP_URL !== '') return rtrim((string) APP_URL, '/') . '/applicant/application-status.php';
     $https  = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
     $host   = (string) ($_SERVER['HTTP_HOST'] ?? 'localhost');
-    $script = (string) ($_SERVER['SCRIPT_NAME'] ?? '/hr/static-details.php');
+    $script = (string) ($_SERVER['SCRIPT_NAME'] ?? '/hr/applicant-details-data.php');
     $root   = rtrim(str_replace('\\', '/', dirname(dirname($script))), '/');      // hr/ -> the project folder
     return ($https ? 'https://' : 'http://') . $host . $root . '/applicant/application-status.php';
 }
@@ -857,7 +829,7 @@ function details_send_email(array $email, int $applicantId, string $kind): bool
 /* ==========================================================================
    ENDPOINT (only when this file is opened directly, never when it is included)
 
-   GET   static-details.php?file=cv&id=101      the applicant's CV (only for a signed-in HR / Admin)
+   GET   applicant-details-data.php?file=cv&id=101      the applicant's CV (only for a signed-in HR / Admin)
    POST  JSON body, one of
          { action: 'interview_approve',    id }                    "Available"
          { action: 'interview_reschedule', id, date, time }        "Not available" / "Re-schedule"

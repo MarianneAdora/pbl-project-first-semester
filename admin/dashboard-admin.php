@@ -15,7 +15,7 @@ date_default_timezone_set('Asia/Manila');
 
 require_once __DIR__ . '/../src/Repositories/AdminRepository.php';
 require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
-require_once __DIR__ . '/../hr/static-data.php';
+require_once __DIR__ . '/../hr/hr-data.php';
 
 // Profile data for the sidebar picture (clicking it opens Settings)
 $profile = static_profile_for_page('../hr/data/avatars/');

@@ -8,7 +8,7 @@ $emailService = new EmailService();
 $toEmail   = 'ebsmi.screening@gmail.com';
 $firstName = 'Clark';
 
-// Sample interview details (same shape as hr/static-details.php uses)
+// Sample interview details (same shape as hr/applicant-details-data.php uses)
 $date     = 'Monday, October 20, 2026';
 $time     = '10:00 AM';
 $type     = 'Face-to-face';
