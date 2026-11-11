@@ -441,6 +441,7 @@ window.ADMIN = (function () {
     function markActivitySeen() {
         const newest = (notify.activity || []).reduce((a, b) => (b > a ? b : a), readSeen());
         try { localStorage.setItem(SEEN_KEY, newest); } catch (err) { /* storage unavailable */ }
+        try { window.HRREQ && window.HRREQ.markAdminRead(); } catch (err) { /* storage unavailable */ }
         refreshBadges();
     }
 
