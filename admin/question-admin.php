@@ -330,7 +330,7 @@ function static_admin_add_question(array $in): array
         $store['questions'] = $all;
 
         if ($renamed) static_log_into($store, 'Section Renamed', 'Sec ' . $renamed['no'] . ' · ' . $renamed['from'] . ' → ' . $renamed['to'], 'Admin');
-        static_log_into($store, 'Questionnaires Added', static_admin_question_label($q), 'Admin');
+        static_log_into($store, 'Questionnaires Added', static_admin_question_label($q) . ' · ' . mb_substr(trim($q['text']), 0, 110), 'Admin');
         return $q;
     });
 }
@@ -366,7 +366,7 @@ function static_admin_update_question(string $id, array $in): array
         $store['questions'] = $all;
 
         if ($renamed) static_log_into($store, 'Section Renamed', 'Sec ' . $renamed['no'] . ' · ' . $renamed['from'] . ' → ' . $renamed['to'], 'Admin');
-        static_log_into($store, 'Questionnaires Edited', static_admin_question_label($new), 'Admin');
+        static_log_into($store, 'Questionnaires Edited', static_admin_question_label($new) . ' · ' . mb_substr(trim($new['text']), 0, 110), 'Admin');
         return $new;
     });
 }
@@ -385,7 +385,7 @@ function static_admin_archive_question(string $id): bool
                 $label = static_admin_question_label($q);
                 unset($q);
                 $store['questions'] = $all;
-                static_log_into($store, 'Questionnaires Deleted', $label, 'Admin');
+                static_log_into($store, 'Questionnaires Deleted', $label . ' · removed from the questionnaire', 'Admin');
                 return true;
             }
         }
@@ -403,7 +403,7 @@ function static_admin_restore_question(string $id): bool
                 $label = static_admin_question_label($q);
                 unset($q);
                 $store['questions'] = $all;
-                static_log_into($store, 'Questionnaires Restored', $label, 'Admin');
+                static_log_into($store, 'Questionnaires Restored', $label . ' · back on the questionnaire', 'Admin');
                 return true;
             }
         }
@@ -423,7 +423,7 @@ function static_admin_purge_question(string $id): bool
         }
         if ($label === '') return false;
         $store['questions'] = $keep;
-        static_log_into($store, 'Questionnaires Deleted Forever', $label, 'Admin');
+        static_log_into($store, 'Questionnaires Deleted Forever', $label . ' · removed for good', 'Admin');
         return true;
     });
 }
@@ -547,7 +547,7 @@ function static_admin_add_account(array $in): array
         $emailed = !empty($in['send_email']);
         if ($emailed) static_admin_credentials_mail($store, $name, $email, true);
 
-        static_log_into($store, 'HR Account Added', $name . ' (HR)', 'Admin');
+        static_log_into($store, 'HR Account Added', $name . ' (HR) · ' . $email, 'Admin');
         return static_admin_public_account($account) + ['emailed' => $emailed];
     });
 }
@@ -580,9 +580,9 @@ function static_admin_update_account(int $id, array $in): array
         if ($emailed) static_admin_credentials_mail($store, $name, $email, false);
 
         if ($status !== $before) {
-            static_log_into($store, $status === 'Inactive' ? 'HR Account Deactivated' : 'HR Account Activated', $name . ' (HR)', 'Admin');
+            static_log_into($store, $status === 'Inactive' ? 'HR Account Deactivated' : 'HR Account Activated', $name . ' (HR) · ' . $email, 'Admin');
         } else {
-            static_log_into($store, 'HR Account Edited', $name . ' (HR)', 'Admin');
+            static_log_into($store, 'HR Account Edited', $name . ' (HR) · ' . $email, 'Admin');
         }
         return static_admin_public_account($list[$pos]) + ['emailed' => $emailed];
     });
@@ -595,7 +595,7 @@ function static_admin_archive_account(int $id): bool
         foreach ($list as &$a) {
             if ((int) $a['id'] === $id && empty($a['archived_at'])) {
                 $a['archived_at'] = static_now()->format('Y-m-d H:i:s');
-                $label = $a['name'] . ' (HR)';
+                $label = $a['name'] . ' (HR) · ' . $a['email'];
                 unset($a);
                 $store['hr_accounts'] = $list;
                 static_log_into($store, 'HR Account Deleted', $label, 'Admin');
@@ -613,7 +613,7 @@ function static_admin_restore_account(int $id): bool
         foreach ($list as &$a) {
             if ((int) $a['id'] === $id && !empty($a['archived_at'])) {
                 $a['archived_at'] = null;
-                $label = $a['name'] . ' (HR)';
+                $label = $a['name'] . ' (HR) · ' . $a['email'];
                 unset($a);
                 $store['hr_accounts'] = $list;
                 static_log_into($store, 'HR Account Restored', $label, 'Admin');

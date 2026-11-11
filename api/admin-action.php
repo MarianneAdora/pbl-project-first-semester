@@ -56,7 +56,7 @@ try {
             $ins = $pdo->prepare("INSERT INTO users (name, email, password_hash, role, created_at) VALUES (:n, :e, :p, 'hr', NOW()) RETURNING user_id");
             $ins->execute([':n' => $name, ':e' => $email, ':p' => $hash]);
             $newId = (int) $ins->fetchColumn();
-            repo_log_activity('HR Account Added', $name . ' (HR)');
+            repo_log_activity('HR Account Added', $name . ' (HR) · ' . $email);
 
             $emailed = false;
             if ($sendMail) {
@@ -99,7 +99,7 @@ try {
                 $upd->execute([':n' => $name, ':e' => $email, ':id' => $id]);
             }
             if (!$upd->rowCount()) admin_respond(['status' => 'error', 'message' => 'Account not found or already deleted.'], 404);
-            repo_log_activity('HR Account Edited', $name . ' (HR)');
+            repo_log_activity('HR Account Edited', $name . ' (HR) · ' . $email);
 
             $emailed = false;
             if ($sendMail && $password !== '') {
@@ -133,23 +133,23 @@ try {
 
         case 'account_archive':
             $aid = (int) ($input['id'] ?? 0);
-            $ast = db()->prepare("SELECT name FROM users WHERE user_id = :id"); $ast->execute([':id' => $aid]); $aname = (string) $ast->fetchColumn();
+            $ast = db()->prepare("SELECT name, email FROM users WHERE user_id = :id"); $ast->execute([':id' => $aid]); $ar = $ast->fetch(); $aname = (string) ($ar['name'] ?? ''); $aemail = (string) ($ar['email'] ?? '');
             if (!repo_account_archive($aid)) admin_respond(['status' => 'error', 'message' => $missing], 404);
-            repo_log_activity('HR Account Deleted', $aname . ' (HR)');
+            repo_log_activity('HR Account Deleted', $aname . ' (HR) · ' . $aemail);
             $message = 'HR account moved to the Archive.';
             break;
         case 'account_restore':
             $aid = (int) ($input['id'] ?? 0);
-            $ast = db()->prepare("SELECT name FROM users WHERE user_id = :id"); $ast->execute([':id' => $aid]); $aname = (string) $ast->fetchColumn();
+            $ast = db()->prepare("SELECT name, email FROM users WHERE user_id = :id"); $ast->execute([':id' => $aid]); $ar = $ast->fetch(); $aname = (string) ($ar['name'] ?? ''); $aemail = (string) ($ar['email'] ?? '');
             if (!repo_account_restore($aid)) admin_respond(['status' => 'error', 'message' => $missing], 404);
-            repo_log_activity('HR Account Restored', $aname . ' (HR)');
+            repo_log_activity('HR Account Restored', $aname . ' (HR) · ' . $aemail);
             $message = 'HR account restored.';
             break;
         case 'account_purge':
             $aid = (int) ($input['id'] ?? 0);
-            $ast = db()->prepare("SELECT name FROM users WHERE user_id = :id"); $ast->execute([':id' => $aid]); $aname = (string) $ast->fetchColumn();
+            $ast = db()->prepare("SELECT name, email FROM users WHERE user_id = :id"); $ast->execute([':id' => $aid]); $ar = $ast->fetch(); $aname = (string) ($ar['name'] ?? ''); $aemail = (string) ($ar['email'] ?? '');
             if (!repo_account_purge($aid)) admin_respond(['status' => 'error', 'message' => $missing], 404);
-            repo_log_activity('HR Account Deleted Forever', $aname . ' (HR)');
+            repo_log_activity('HR Account Deleted Forever', $aname . ' (HR) · ' . $aemail);
             $message = 'HR account deleted forever.';
             break;
 
@@ -233,7 +233,7 @@ try {
             $cleaned['id'] = 'q' . $newId;
 
             if ($renamed) repo_log_activity('Section Renamed', 'Sec ' . $renamed['no'] . ' · ' . $renamed['from'] . ' → ' . $renamed['to']);
-            repo_log_activity('Questionnaires Added', 'Q' . $newId . ' · ' . $cleaned['section']);
+            repo_log_activity('Questionnaires Added', 'Q' . $newId . ' · ' . $cleaned['section'] . ' · ' . mb_substr(trim($cleaned['text']), 0, 110));
 
             admin_respond([
                 'status'  => 'success',
@@ -346,7 +346,7 @@ try {
             ]);
 
             if ($renamed) repo_log_activity('Section Renamed', 'Sec ' . $renamed['no'] . ' · ' . $renamed['from'] . ' → ' . $renamed['to']);
-            repo_log_activity('Questionnaires Edited', 'Q' . $id . ' · ' . $new['section']);
+            repo_log_activity('Questionnaires Edited', 'Q' . $id . ' · ' . $new['section'] . ' · ' . mb_substr(trim($new['text']), 0, 110));
 
             admin_respond([
                 'status'  => 'success',
@@ -375,6 +375,11 @@ try {
             }
 
             $pdo = db();
+            $secName = '';
+            $sn = $pdo->prepare("SELECT section FROM question_config WHERE section_no = :s AND deleted_at IS NULL LIMIT 1");
+            $sn->execute([':s' => $sectionNo]);
+            $secName = (string) ($sn->fetchColumn() ?? '');
+
             $pdo->beginTransaction();
             try {
                 $sectionQuestions = $pdo->prepare(
@@ -405,7 +410,14 @@ try {
                 throw $e;
             }
 
-            repo_log_activity('Questions Reordered', 'Sec ' . $sectionNo);
+            $orderedLabels = [];
+            foreach ($ids as $position => $questionId) {
+                $orderedLabels[] = 'Q' . $questionId . ($position + 1 === count($ids) ? '' : ' → ');
+            }
+            repo_log_activity(
+                'Questions Reordered',
+                'Sec ' . $sectionNo . ($secName !== '' ? ' · ' . $secName : '') . ' · ' . count($ids) . ' questions: ' . implode('', $orderedLabels)
+            );
             admin_respond([
                 'status' => 'success',
                 'message' => 'Question order saved.',
@@ -418,21 +430,21 @@ try {
             $id = (int) ltrim((string) ($input['id'] ?? ''), 'q');
             $qst = db()->prepare("SELECT section FROM question_config WHERE question_id = :id"); $qst->execute([':id' => $id]); $qsec = (string) $qst->fetchColumn();
             if (!repo_question_archive($id)) admin_respond(['status' => 'error', 'message' => $missing], 404);
-            repo_log_activity('Questionnaires Deleted', 'Q' . $id . ' · ' . $qsec);
+            repo_log_activity('Questionnaires Deleted', 'Q' . $id . ' · ' . $qsec . ' · removed from the questionnaire');
             $message = 'Question moved to the Archive.';
             break;
         case 'question_restore':
             $id = (int) ltrim((string) ($input['id'] ?? ''), 'q');
             $qst = db()->prepare("SELECT section FROM question_config WHERE question_id = :id"); $qst->execute([':id' => $id]); $qsec = (string) $qst->fetchColumn();
             if (!repo_question_restore($id)) admin_respond(['status' => 'error', 'message' => $missing], 404);
-            repo_log_activity('Questionnaires Restored', 'Q' . $id . ' · ' . $qsec);
+            repo_log_activity('Questionnaires Restored', 'Q' . $id . ' · ' . $qsec . ' · back on the questionnaire');
             $message = 'Question restored.';
             break;
         case 'question_purge':
             $id = (int) ltrim((string) ($input['id'] ?? ''), 'q');
             $qst = db()->prepare("SELECT section FROM question_config WHERE question_id = :id"); $qst->execute([':id' => $id]); $qsec = (string) $qst->fetchColumn();
             if (!repo_question_purge($id)) admin_respond(['status' => 'error', 'message' => $missing], 404);
-            repo_log_activity('Questionnaires Deleted Forever', 'Q' . $id . ' · ' . $qsec);
+            repo_log_activity('Questionnaires Deleted Forever', 'Q' . $id . ' · ' . $qsec . ' · removed for good');
             $message = 'Question deleted forever.';
             break;
 

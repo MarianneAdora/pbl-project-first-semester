@@ -2762,6 +2762,8 @@ html:where([data-page="dashboardadmin"])[data-theme="dark"] .vol-chart { --vc: #
 :where(html[data-page="dashboardadmin"]) .activity-card .table-responsive::-webkit-scrollbar-thumb { background: var(--edge); border-radius: 6px; }
 
 :where(html[data-page="dashboardadmin"]) .activity-card .data-table td { white-space: nowrap; text-overflow: ellipsis; padding-top: 9px; padding-bottom: 9px; }
+/* Details column is now wider and wraps so longer descriptions (e.g. question order chains) stay readable */
+:where(html[data-page="dashboardadmin"]) .activity-card .data-table td:nth-child(3) { white-space: normal; text-overflow: clip; }
 :where(html[data-page="dashboardadmin"]) .activity-card .data-table th { position: sticky; top: 0; z-index: 2; }
 :where(html[data-page="dashboardadmin"]) .activity-card .data-table tbody tr { cursor: default; }
 :where(html[data-page="dashboardadmin"]) .activity-card .data-table td:first-child { padding-left: 20px; }

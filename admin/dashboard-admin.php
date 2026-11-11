@@ -33,7 +33,7 @@ foreach ($requests as $request) {
     $recent[] = [
         'at'       => $request['requested_at'] ? date('Y-m-d H:i:s', strtotime($request['requested_at'])) : '',
         'activity' => 'Password Change Requested',
-        'details'  => $request['name'] . ' (HR)',
+        'details'  => $request['name'] . ' (HR) · ' . $request['email'],
         'by'       => 'HR',
         'kind'     => 'pw_request',
         'req'      => $request
@@ -406,14 +406,13 @@ $greeting     = 'Hello, ' . $display_name . '!';
                         <span class="pending-chip" id="pendingChip" hidden></span>
                     </div>
                     <span class="activity-count"><?php echo htmlspecialchars($log_count, ENT_QUOTES, 'UTF-8'); ?></span>
-                    <button type="button" class="mark-read-btn" id="markAllRead" hidden>Mark all as read</button>
                 </div>
                 <div class="table-responsive">
                     <table class="data-table activity-table">
                         <colgroup>
-                            <col style="width: 22%">
-                            <col style="width: 35%">
-                            <col style="width: 27%">
+                            <col style="width: 18%">
+                            <col style="width: 28%">
+                            <col style="width: 38%">
                             <col style="width: 16%">
                         </colgroup>
                         <thead>

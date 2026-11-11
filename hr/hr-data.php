@@ -1144,6 +1144,13 @@ function static_archive(array $ids, array $at = []): int
     $zone = new DateTimeZone('Asia/Manila');
     $now  = static_now()->format('Y-m-d H:i:s');
     $n = 0;
+    $names = [];
+    if (!empty($ids)) {
+        $ph = implode(',', array_fill(0, count($ids), '?'));
+        $ns = $pdo->prepare("SELECT applicant_id, name FROM applicant WHERE applicant_id IN ($ph)");
+        $ns->execute($ids);
+        foreach ($ns->fetchAll() as $nr) $names[(int) $nr['applicant_id']] = (string) $nr['name'];
+    }
     foreach ($ids as $id) {
         $deletedAt = $now;
         if (!empty($at[$id]) && is_numeric($at[$id]) && $at[$id] > 0) {
@@ -1152,7 +1159,7 @@ function static_archive(array $ids, array $at = []): int
         $stmt = $pdo->prepare("UPDATE applicant SET deleted_at = :da WHERE applicant_id = :id AND deleted_at IS NULL");
         $stmt->execute([':da' => $deletedAt, ':id' => $id]);
         if ($stmt->rowCount() > 0) {
-            try { repo_log_activity('Archived Applicant', 'ID #' . $id); } catch (Throwable $e) {}
+            try { repo_log_activity('Archived Applicant', ($names[$id] ?? 'ID #' . $id) . ' · ID #' . $id); } catch (Throwable $e) {}
             $n++;
         }
     }
@@ -1166,11 +1173,18 @@ function static_restore(array $ids): int
     if (empty($ids)) return 0;
     $pdo = db();
     $n = 0;
+    $names = [];
+    if (!empty($ids)) {
+        $ph = implode(',', array_fill(0, count($ids), '?'));
+        $ns = $pdo->prepare("SELECT applicant_id, name FROM applicant WHERE applicant_id IN ($ph) AND deleted_at IS NOT NULL");
+        $ns->execute($ids);
+        foreach ($ns->fetchAll() as $nr) $names[(int) $nr['applicant_id']] = (string) $nr['name'];
+    }
     foreach ($ids as $id) {
         $stmt = $pdo->prepare("UPDATE applicant SET deleted_at = NULL WHERE applicant_id = :id AND deleted_at IS NOT NULL");
         $stmt->execute([':id' => $id]);
         if ($stmt->rowCount() > 0) {
-            try { repo_log_activity('Restored Applicant', 'ID #' . $id); } catch (Throwable $e) {}
+            try { repo_log_activity('Restored Applicant', ($names[$id] ?? 'ID #' . $id) . ' · ID #' . $id); } catch (Throwable $e) {}
             $n++;
         }
     }
@@ -1183,11 +1197,16 @@ function static_purge(array $ids): int
     $ids = array_map('intval', $ids);
     if (empty($ids)) return 0;
     $pdo = db();
+    $names = [];
     $ph = implode(',', array_fill(0, count($ids), '?'));
+    $ns = $pdo->prepare("SELECT applicant_id, name FROM applicant WHERE applicant_id IN ($ph) AND deleted_at IS NOT NULL");
+    $ns->execute($ids);
+    foreach ($ns->fetchAll() as $nr) $names[(int) $nr['applicant_id']] = (string) $nr['name'];
     $stmt = $pdo->prepare("DELETE FROM applicant WHERE applicant_id IN ($ph) AND deleted_at IS NOT NULL");
     $stmt->execute($ids);
     $n = $stmt->rowCount();
-    try { repo_log_activity('Purged Applicants', count($n > 0 ? $ids : []) . ' permanently deleted'); } catch (Throwable $e) {}
+    $label = static_names_label(array_values($names));
+    try { repo_log_activity('Purged Applicants', $label . ' · ' . $n . ' permanently deleted'); } catch (Throwable $e) {}
     return (int) $n;
 }
 
@@ -1730,7 +1749,7 @@ function static_profile_change_password(string $current, string $new): array
     if ($me['role'] === 'admin') {
         $stmt = $pdo->prepare("UPDATE users SET password_hash = :hash WHERE user_id = :id");
         $stmt->execute([':hash' => password_hash($new, PASSWORD_DEFAULT), ':id' => $me['id']]);
-        try { repo_log_activity('Changed Admin Password', $me['name']); } catch (Throwable $e) {}
+        try { repo_log_activity('Changed Admin Password', $me['name'] . ' (' . $me['email'] . ')'); } catch (Throwable $e) {}
         return ['mode' => 'applied', 'request' => null];
     }
 
@@ -1761,7 +1780,7 @@ function static_profile_change_password(string $current, string $new): array
     $row['name']  = $me['name'];
     $row['email'] = $me['email'];
 
-    try { repo_log_activity('Password Change Requested', $me['name'] . ' (HR)', 'HR'); } catch (Throwable $e) {}
+    try { repo_log_activity('Password Change Requested', $me['name'] . ' (HR) · ' . $me['email'], 'HR'); } catch (Throwable $e) {}
 
     return ['mode' => 'pending', 'request' => static_profile_request_public(static_profile_request_row($row))];
 }
@@ -1838,13 +1857,15 @@ function static_profile_decide_request(int $id, string $decision, string $reason
         ':id'          => $id
     ]);
 
-    try {
-        repo_log_activity(
-            $decision === 'approve' ? 'Password Change Approved' : 'Password Change Rejected',
-            (string) $r['name'] . ' (HR)',
-            'Admin'
-        );
-    } catch (Throwable $e) {}
+        $detail = (string) $r['name'] . ' (HR) · ' . (string) ($r['email'] ?? '');
+        if ($decision === 'reject' && $reason !== '') $detail .= ' · reason: ' . $reason;
+        try {
+            repo_log_activity(
+                $decision === 'approve' ? 'Password Change Approved' : 'Password Change Rejected',
+                $detail,
+                'Admin'
+            );
+        } catch (Throwable $e) {}
 
     return static_profile_request_public([
         'id'           => (int) $r['request_id'],
@@ -1969,7 +1990,7 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
                     ],
                     isset($_FILES['cv']) && is_array($_FILES['cv']) ? $_FILES['cv'] : null
                 );
-                static_log('Added An Applicant', (string) $extra['applicant']['name']);
+                static_log('Added An Applicant', (string) $extra['applicant']['name'] . ' · ' . (string) ($extra['applicant']['email'] ?? '') . ' · ' . (string) ($extra['applicant']['position'] ?? ''));
                 break;
 
             case 'parse_cv':
