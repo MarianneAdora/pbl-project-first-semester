@@ -174,9 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$locked) {      // a locked page i
                 // (Screening List, Dashboard counts, Recent Applicants all filter on verified_at).
                 try {
                     $pdo = db();
-                    if (repo_mark_verified($applicantId, $pdo)) {
-                        repo_log_activity('Added An Applicant', $applicantName !== '' ? $applicantName : $email, 'Applicant', $pdo);
-                    }
+                    repo_mark_verified($applicantId, $pdo);
                 } catch (Throwable $e) {
                     error_log('verify-otp mark verified error: ' . $e->getMessage());
                     $error = 'We could not finish verifying your account. Please try again.';

@@ -812,9 +812,6 @@ function static_add_applicant(array $in, ?array $cvUpload = null): array
         throw new InvalidArgumentException('The invitation email could not be sent. Please check the email address and try again. (Details are in the PHP error log.)');
     }
 
-    // Log activity
-    try { repo_log_activity('Added An Applicant', $name); } catch (Throwable $e) {}
-
     $applicant = [
         'id'          => (int) $row['applicant_id'],
         'name'        => (string) $row['name'],

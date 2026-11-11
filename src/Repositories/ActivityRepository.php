@@ -9,12 +9,12 @@ require_once __DIR__ . '/../Helpers/db.php';
 
 function repo_log_activity(string $activity, string $details = '-', ?string $actor = null, ?PDO $pdo = null): void
 {
+    $role = (string) ($_SESSION['user_role'] ?? '');
+    if (!in_array($role, ['hr', 'admin'], true)) return;
+    $sessionActor = $role === 'hr' ? 'HR' : 'Admin';
+    if ($actor !== null && $actor !== $sessionActor) return;
+    $actor = $sessionActor;
     $pdo = $pdo ?: db();
-    if ($actor === null) {
-        $role = (string) ($_SESSION['user_role'] ?? '');
-        $actor = $role === 'hr' ? 'HR' : ($role === 'admin' ? 'Admin' : null);
-    }
-    if ($actor === null) return;
     $details = trim($details);
     if ($details === '') $details = '-';
     try {
@@ -32,7 +32,9 @@ function repo_recent_activity(?PDO $pdo = null, int $limit = 10): array
 {
     $pdo = $pdo ?: db();
     $st = $pdo->prepare(
-        "SELECT actor, activity, details, created_at FROM activity_log ORDER BY created_at DESC, log_id DESC LIMIT :lim"
+        "SELECT actor, activity, details, created_at FROM activity_log
+         WHERE actor IN ('HR', 'Admin')
+         ORDER BY created_at DESC, log_id DESC LIMIT :lim"
     );
     $st->bindValue(':lim', $limit, PDO::PARAM_INT);
     $st->execute();
@@ -51,7 +53,10 @@ function repo_recent_activity(?PDO $pdo = null, int $limit = 10): array
 function repo_activities_week(?PDO $pdo = null): int
 {
     $pdo = $pdo ?: db();
-    $st = $pdo->query("SELECT COUNT(*) FROM activity_log WHERE created_at >= (NOW() - INTERVAL '7 days')");
+    $st = $pdo->query(
+        "SELECT COUNT(*) FROM activity_log
+         WHERE actor IN ('HR', 'Admin') AND created_at >= (NOW() - INTERVAL '7 days')"
+    );
     return (int) $st->fetchColumn();
 }
 
