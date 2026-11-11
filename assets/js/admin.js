@@ -4259,6 +4259,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // The "N new" chip counts what is still highlighted: the server's rows since the last visit (this visit only)
     // plus the HR changes nobody opened yet (those stay until the Admin opens or decides them)
     const chip = document.getElementById('newChip');
+    const markAllBtn = document.getElementById('markAllRead');
     const serverNew = data.activity.filter(r => fresh.has(r.at) && String(r.by).toLowerCase() !== 'admin').length;
     let lastUnread = 0;
     function paintChip() {
