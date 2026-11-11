@@ -4387,6 +4387,188 @@ document.addEventListener('DOMContentLoaded', () => {
     // Opening the Dashboard counts as "seen" for the server's rows. HR changes stay highlighted until opened / decided.
     ADMIN.notify.markSeen();
 
+    /* ---------- 2b. Admin notification bell (recent activities + pending password approvals) ---------- */
+    const abell = document.getElementById('notifBell');
+    const apanel = document.getElementById('notifPanel');
+    const abadge = document.getElementById('notifBadge');
+    const alist = document.getElementById('notifList');
+    const amarkAll = document.getElementById('notifMarkAll');
+    const apwWrap = document.getElementById('pwWrap');
+    const apwList = document.getElementById('pwList');
+    const apwMarkAll = document.getElementById('pwMarkAll');
+    if (abell && apanel && abadge && alist && amarkAll) {
+        const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const ICONS = {
+            add:     'M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z',
+            remove:  'M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z',
+            restore: 'M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z',
+            event:   'M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z',
+            done:    'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z',
+            dot:     'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z',
+            person:  'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z',
+            lock:    'M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0 1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z',
+            cancel:  'M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z'
+        };
+        const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const when = (at) => {
+            const m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(String(at || ''));
+            if (!m) return String(at || '');
+            let out = MONTHS[Number(m[2]) - 1] + ' ' + Number(m[3]) + ', ' + m[1];
+            if (m[4] !== undefined) {
+                const h = Number(m[4]);
+                out += ' \u00b7 ' + (h % 12 || 12) + ':' + m[5] + ' ' + (h >= 12 ? 'PM' : 'AM');
+            }
+            return out;
+        };
+        const look = (activity) => {
+            const a = String(activity).toLowerCase();
+            if (a.indexOf('password') !== -1 && a.indexOf('approved') !== -1) return { icon: ICONS.done, tone: 'tone-green' };
+            if (a.indexOf('password') !== -1 && a.indexOf('rejected') !== -1) return { icon: ICONS.cancel, tone: 'tone-red' };
+            if (a.indexOf('password') !== -1) return { icon: ICONS.lock, tone: 'tone-amber' };
+            if (a.indexOf('profile') !== -1 || a.indexOf('name changed') !== -1 || a.indexOf('email changed') !== -1) return { icon: ICONS.person, tone: 'tone-blue' };
+            if (a.indexOf('forever') !== -1) return { icon: ICONS.remove, tone: 'tone-red' };
+            if (a.indexOf('deleted') !== -1) return { icon: ICONS.remove, tone: 'tone-amber' };
+            if (a.indexOf('restored') !== -1) return { icon: ICONS.restore, tone: 'tone-blue' };
+            if (a.indexOf('added') !== -1) return { icon: ICONS.add, tone: 'tone-green' };
+            if (a.indexOf('interview') !== -1) return { icon: ICONS.event, tone: 'tone-blue' };
+            if (a.indexOf('status') !== -1) return { icon: ICONS.sync, tone: 'tone-amber' };
+            return { icon: ICONS.dot, tone: '' };
+        };
+        const svg = (d) => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + d + '"/></svg>';
+        const SEEN_KEY = 'admin_activity_seen';
+        const pwReqs = {};                          // id -> request (pending pw changes)
+        data.pw_requests.forEach(r => { pwReqs[r.id] = r; });
+        let fresh = new Set();
+        let lastCount = -1;
+
+        const readSeen = () => { try { return localStorage.getItem(SEEN_KEY) || ''; } catch (e) { return ''; }; };
+        const newestOf = (rows) => rows.reduce((a, r) => (String(r.at || '') > a ? String(r.at) : a), '');
+        const newActivity = () => data.activity.filter(r => String(r.at || '') > readSeen() && String(r.by).toLowerCase() !== 'admin');
+        const unreadPw = () => Object.values(pwReqs).filter(r => r.status === 'pending');
+
+        function paintBadge() {
+            const total = newActivity().length + unreadPw().length;
+            abadge.textContent = total > 99 ? '99+' : String(total);
+            abadge.hidden = total <= 0;
+            abell.setAttribute('aria-label', total > 0 ? 'Notifications, ' + total + ' new' : 'Notifications');
+            abell.title = total > 0 ? total + ' new notification' + (total === 1 ? '' : 's') : 'Notifications';
+            if (total > lastCount && lastCount >= 0) {
+                abell.classList.remove('ring');
+                void abell.offsetWidth;
+                abell.classList.add('ring');
+                abell.addEventListener('animationend', () => abell.classList.remove('ring'), { once: true, capture: true });
+            }
+            lastCount = total;
+        }
+
+        function paintList() {
+            const acts = newActivity();
+            let html = '';
+            acts.slice(0, 20).forEach(row => {
+                const l = look(row.activity);
+                const isNew = String(row.at || '') > readSeen();
+                html += '<li class="notif-item' + (isNew ? ' is-new' : '') + '">' +
+                    '<span class="notif-ico ' + l.tone + '">' + svg(l.icon) + '</span>' +
+                    '<span class="notif-text"><strong>' + esc(row.activity) + '</strong>' +
+                    '<span class="notif-detail">' + esc(row.details) + '</span>' +
+                    '<span class="notif-time">' + esc(when(row.at)) + '</span></span></li>';
+            });
+            if (!acts.length && Object.values(pwReqs).filter(r => r.status === 'pending').length === 0) {
+                html = '<li class="notif-empty">Nothing yet. HR activity shows up here.</li>';
+            }
+            alist.innerHTML = html;
+
+            // Password change requests
+            const pending = Object.values(pwReqs).filter(r => r.status === 'pending');
+            apwWrap.hidden = pending.length === 0;
+            let pwHtml = '';
+            pending.forEach(r => {
+                pwHtml += '<li class="pw-item">' +
+                    '<span class="notif-ico tone-amber">' + svg(ICONS.lock) + '</span>' +
+                    '<div class="pw-info"><strong>' + esc(r.name) + ' (HR)</strong><small>' + esc(r.email) + ' \u00b7 requested ' + esc(when(r.requested_at)) + '</small></div>' +
+                    '<div class="pw-actions">' +
+                    '<button type="button" class="pw-btn is-approve" data-id="' + r.id + '" title="Approve">' + esc(ICONS.done ? '\u2713' : 'Approve') + '</button>' +
+                    '<button type="button" class="pw-btn is-reject" data-id="' + r.id + '" title="Reject">' + esc('\u2716') + '</button>' +
+                    '</div></li>';
+            });
+            apwList.innerHTML = pwHtml;
+            paintBadge();
+            if (amarkAll) amarkAll.disabled = acts.length === 0 && pending.length === 0;
+            if (apwMarkAll) apwMarkAll.disabled = pending.length === 0;
+        }
+
+        function openPanel() {
+            fresh = new Set(newActivity().map(r => String(r.at) + '|' + rowActivityKey(r)));
+            apanel.hidden = false;
+            abell.setAttribute('aria-expanded', 'true');
+            markActivitySeen();
+            paintList();
+        }
+        function rowActivityKey(r) { return r.activity + '|' + r.details; }
+
+        function closePanel() {
+            if (apanel.hidden) return;
+            apanel.hidden = true;
+            fresh = new Set();
+            abell.setAttribute('aria-expanded', 'false');
+            paintBadge();
+        }
+
+        abell.addEventListener('click', (e) => { e.stopPropagation(); if (apanel.hidden) openPanel(); else closePanel(); });
+        apanel.addEventListener('click', (e) => e.stopPropagation());
+        document.addEventListener('click', closePanel);
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !apanel.hidden) { closePanel(); abell.focus(); } });
+
+        if (amarkAll) {
+            amarkAll.addEventListener('click', () => {
+                markActivitySeen();
+                paintList();
+            });
+        }
+        if (apwMarkAll) {
+            apwMarkAll.addEventListener('click', () => {
+                const pending = Object.values(pwReqs).filter(r => r.status === 'pending');
+                if (!pending.length) return;
+                apwMarkAll.disabled = true;
+                Promise.all(pending.map(r => ADMIN.request('password_decide', { id: r.id, decision: 'approve', reason: '' })))
+                    .then(res => { res.forEach(r2 => { if (r2 && r2.result) pwReqs[r2.result.id] = r2.result; }); paintList(); })
+                    .catch(() => { paintList(); apwMarkAll.disabled = false; });
+            });
+        }
+
+        // Inline approve / reject for pending password requests
+        apwList.addEventListener('click', async (e) => {
+            const btn = e.target.closest('.pw-btn');
+            if (!btn) return;
+            const id = Number(btn.dataset.id);
+            const r = pwReqs[id];
+            if (!r) return;
+            const decision = btn.classList.contains('is-approve') ? 'approve' : 'reject';
+            btn.disabled = true;
+            try {
+                const res = await ADMIN.request('password_decide', { id: id, decision: decision, reason: '' });
+                if (res && res.result) pwReqs[res.result.id] = res.result;
+                paintList();
+            } catch (err) {
+                ADMIN.toast(err.message || 'Could not ' + decision + ' the request.', { error: true, duration: 6000 });
+                paintList();
+            }
+        });
+
+        // Refresh when something changes elsewhere (another tab decided a request)
+        document.addEventListener('storage', (e) => {
+            if (e.key === SEEN_KEY || e.key === 'ebsmi_activity_extra' || e.key === 'ebsmi_change_requests') paintList();
+        });
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') paintList(); });
+        window.addEventListener('pageshow', (ev) => { if (ev.persisted) paintList(); });
+
+        paintList();
+        if (!abadge.hidden && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            abell.classList.add('ring');
+            abell.addEventListener('animationend', () => abell.classList.remove('ring'), { once: true, capture: true });
+        }
+    }
+
     /* ---------- 3. Questionnaires Statistics: one bar per question, the answer most applicants chose ---------- */
     const stats = data.stats;
     const list = document.getElementById('statsList');

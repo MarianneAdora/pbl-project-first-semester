@@ -227,10 +227,34 @@ $greeting     = 'Hello, ' . $display_name . '!';
     <!-- Main Content Panel Area -->
     <main class="main-content">
         <!-- Top Greeting Header -->
-        <header class="content-header has-profile reveal" style="--i:1">
+        <header class="content-header has-bell has-profile reveal" style="--i:1">
             <div class="header-text">
                 <h1 id="greeting" title="<?php echo htmlspecialchars($greeting, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($greeting, ENT_QUOTES, 'UTF-8'); ?></h1>
                 <p>Overview of the system activities and key information</p>
+            </div>
+            <div class="header-tools">
+                <div class="notif-wrap">
+                    <button type="button" class="notif-bell" id="notifBell" aria-haspopup="true" aria-expanded="false" aria-controls="notifPanel" aria-label="Notifications" title="Notifications">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+                        <span class="notif-count" id="notifBadge" hidden>0</span>
+                    </button>
+
+                    <div class="notif-panel" id="notifPanel" role="dialog" aria-label="Notifications" hidden>
+                        <div class="notif-head">
+                            <h3>Notifications</h3>
+                            <button type="button" class="notif-markall" id="notifMarkAll">Mark all as read</button>
+                        </div>
+                        <ul class="notif-list" id="notifList"></ul>
+                        <div class="pw-wrap" id="pwWrap" hidden>
+                            <div class="pw-head">
+                                <h3>Password changes waiting for your approval</h3>
+                                <button type="button" class="pw-markall" id="pwMarkAll">Decide all</button>
+                            </div>
+                            <ul class="pw-list" id="pwList"></ul>
+                        </div>
+                        <p class="notif-foot">HR activity — name, email, picture and password changes — also appears under Recent Activities.</p>
+                    </div>
+                </div>
             </div>
         </header>
 
@@ -437,7 +461,7 @@ $greeting     = 'Hello, ' . $display_name . '!';
             try { echo json_encode(repo_admin_notify(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); }
             catch (Throwable $e) { echo json_encode(['activity' => [], 'expiring' => 0, 'days' => 7]); }
         ?>;
-        window.ADMIN_DASH = <?php echo json_encode(['stats' => $stats, 'activity' => $recent, 'volume' => $volume, 'pending' => $pending], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
+        window.ADMIN_DASH = <?php echo json_encode(['stats' => $stats, 'activity' => $recent, 'volume' => $volume, 'pending' => $pending, 'pw_requests' => array_values(array_filter($requests, static fn(array $r): bool => $r['status'] === 'pending'))], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
     </script>
     <!-- Shared admin behaviour first, then this page's script -->
     <script src="../assets/js/admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/admin.js'); ?>"></script>
