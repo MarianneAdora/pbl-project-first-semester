@@ -972,6 +972,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 'invalid' = CV is missing a required detail; anything else = could not be read
                 throw new Error(data.message || 'Could not read that CV. Please choose a different file.');
             }
+            if (Array.isArray(data.missing) && data.missing.length) {       // belt and braces: never accept an incomplete CV
+                throw new Error(data.message || 'This CV is missing a required detail. Upload a CV that shows the full name, email address and contact number.');
+            }
             cvVerified = true;
             setError('cv', '');
             const filled = ['first_name', 'middle_name', 'last_name', 'email', 'contact'].filter(n => fillField(n, data.parsed[n]));

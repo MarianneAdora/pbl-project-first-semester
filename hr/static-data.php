@@ -689,22 +689,20 @@ function static_add_applicant(array $in, ?array $cvUpload = null): array
     if ($position === null)                           throw new InvalidArgumentException('Please choose a job position.');
 
     $pdo = db();
+    require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
+    require_once __DIR__ . '/../src/Services/EmailService.php';
 
-    // Check for duplicate email (active or archived)
-    $stmt = $pdo->prepare("SELECT applicant_id, deleted_at FROM applicant WHERE email_normalized = :en LIMIT 1");
-    $stmt->execute([':en' => strtolower(trim($email))]);
-    $dup = $stmt->fetch();
-    if ($dup) {
-        throw new InvalidArgumentException(
-            empty($dup['deleted_at'])
-                ? 'An applicant with this email already exists.'
-                : 'An applicant with this email is in the Archive. Restore them instead.'
-        );
+    // One person, one email, one CV: same rule as the rest of the app (repo_assert_not_duplicate). Only VERIFIED
+    // applicants block; an older invitation nobody verified yet is replaced below, so HR can fix a typo or resend.
+    repo_purge_stale_invitations($pdo);
+    $cvHash = null;
+    if ($cvUpload && !empty($cvUpload['tmp_name']) && is_file((string) $cvUpload['tmp_name'])) {
+        $cvHash = repo_cv_hash((string) $cvUpload['tmp_name']);
     }
+    repo_assert_not_duplicate($email, $cvHash, $pdo, $name);
 
     // Upload CV to Cloudinary if provided
     $cvFileUrl = null;
-    $cvHash = null;
     if ($cvUpload) {
         try {
             require_once __DIR__ . '/../src/Services/CloudinaryService.php';
@@ -730,16 +728,28 @@ function static_add_applicant(array $in, ?array $cvUpload = null): array
         }
     }
 
-    require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
-    require_once __DIR__ . '/../src/Services/EmailService.php';
-
     // reference_code, secure_token and name_normalized are NOT NULL in the schema.
     $now       = static_now()->format('Y-m-d H:i:s');
     $refCode   = repo_generate_reference_code($pdo);
     $token     = bin2hex(random_bytes(32));
     $emailNorm = repo_normalize_email($email);
     $nameNorm  = repo_normalize_name($name);
-    $encodedBy = (session_status() === PHP_SESSION_ACTIVE && isset($_SESSION['user_id'])) ? (int) $_SESSION['user_id'] : null;
+    // Who added the applicant: only an id that really exists in users (an old session can hold a stale one).
+    $encodedBy = null;
+    if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['user_id'])) {
+        $u = $pdo->prepare('SELECT user_id FROM users WHERE user_id = :id AND deleted_at IS NULL');
+        $u->execute([':id' => (int) $_SESSION['user_id']]);
+        $encodedBy = $u->fetchColumn() !== false ? (int) $_SESSION['user_id'] : null;
+    }
+
+    // Replace any older UNVERIFIED invitation with the same email / name / CV (same as repo_add_applicant).
+    if ($cvHash !== null && $cvHash !== '') {
+        $pdo->prepare('DELETE FROM applicant WHERE verified_at IS NULL AND (email_normalized = :e OR name_normalized = :n OR cv_hash = :h)')
+            ->execute([':e' => $emailNorm, ':n' => $nameNorm, ':h' => $cvHash]);
+    } else {
+        $pdo->prepare('DELETE FROM applicant WHERE verified_at IS NULL AND (email_normalized = :e OR name_normalized = :n)')
+            ->execute([':e' => $emailNorm, ':n' => $nameNorm]);
+    }
 
     $stmt = $pdo->prepare("
         INSERT INTO applicant (reference_code, secure_token, encoded_by_user_id,
@@ -754,6 +764,7 @@ function static_add_applicant(array $in, ?array $cvUpload = null): array
         RETURNING applicant_id, name, first_name, middle_name, last_name, email, phone_number,
                   position_id, status, result, created_at, invited_at, cv_file_url, cv_hash
     ");
+    try {
     $stmt->execute([
         ':ref'   => $refCode,
         ':tok'   => $token,
@@ -771,6 +782,16 @@ function static_add_applicant(array $in, ?array $cvUpload = null): array
         ':cvhash'=> $cvHash,
         ':invited'=> $now
     ]);
+    } catch (PDOException $e) {
+        // The unique indexes are the final guard (e.g. two HR users at the same moment).
+        if ((string) $e->getCode() === '23505') {
+            $m = $e->getMessage();
+            if (stripos($m, 'cv_hash') !== false)         throw new DuplicateApplicantException('This CV was already uploaded for another applicant. Each CV can only be used once.', 'cv');
+            if (stripos($m, 'name_normalized') !== false) throw new DuplicateApplicantException('An applicant named "' . $name . '" already exists. Each applicant can only be added once.', 'name');
+            throw new DuplicateApplicantException('This email address already belongs to an applicant. Each email can only be used once.', 'email');
+        }
+        throw $e;
+    }
     $row = $stmt->fetch();
 
     // Send the screening invitation (personal link with the secure token).
@@ -931,6 +952,17 @@ function static_position_add(string $name, ?array $jdUpload = null): array
         if ((int) $jdUpload['size'] > STATIC_JD_BYTES)                     throw new InvalidArgumentException('The job description is too big (5 MB at most).');
         $head = (string) @file_get_contents($tmp, false, null, 0, 5);      // a real PDF starts with %PDF-
         if ($head !== '%PDF-')                                             throw new InvalidArgumentException('That file is not a valid PDF.');
+
+        // It must really BE a job description, and for THIS position: a resume / CV, any other document, or
+        // the job description of a different position is refused.
+        require_once __DIR__ . '/../src/Services/CvParserService.php';
+        try {
+            $verdict = (new CvParserService())->classifyJobDescription($tmp, (string) ($jdUpload['name'] ?? ''), 'application/pdf', $name);
+        } catch (Throwable $e) {
+            error_log('Job description check error: ' . $e->getMessage());
+            throw new InvalidArgumentException('We could not read this PDF to check that it is a job description. Upload a text-based PDF (not a scan or a photo).');
+        }
+        if (!$verdict['ok']) throw new InvalidArgumentException($verdict['message']);
     }
 
     // Check for duplicate active name in the database
@@ -1969,6 +2001,11 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
                 } catch (Exception $e) {
                     static_respond(['status' => 'error', 'message' => $e->getMessage()], 422);
                 }
+                // A CV must show first name, last name, email and contact number (the middle name is optional).
+                // If any is missing the file is refused and NOTHING is sent back to fill the form.
+                if (!empty($parsed['missing'])) {
+                    static_respond(['status' => 'invalid', 'message' => $parser->describeMissing($parsed['missing']), 'missing' => $parsed['missing']], 422);
+                }
                 static_respond([
                     'status' => 'success',
                     'parsed' => [
@@ -2113,6 +2150,7 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
     } catch (InvalidArgumentException $e) {
         static_respond(['status' => 'error', 'message' => $e->getMessage()], 422);
     } catch (Throwable $e) {
+        error_log('static-data.php action failed: ' . get_class($e) . ': ' . $e->getMessage() . ' @ ' . basename($e->getFile()) . ':' . $e->getLine());
         static_respond(['status' => 'error', 'message' => 'Something went wrong while saving. Please try again.'], 500);
     }
 }

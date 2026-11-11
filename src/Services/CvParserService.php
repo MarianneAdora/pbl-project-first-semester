@@ -51,16 +51,28 @@ class CvParserService {
     }
 
     /**
-     * Which of the required details (full name, contact information, email address) are absent?
-     * @return string[] keys from: name, contact, email  (empty array = CV meets the requirements)
+     * Which of the 4 required details are absent from the CV? The middle name is optional and never required.
+     * Same rules as the form: first / last name need at least 2 letters, a valid email, a contact number.
+     * @return string[] keys from: first_name, last_name, email, contact  (empty array = CV meets the requirements)
      */
     public function missingRequired(array $parsed): array {
         $missing = [];
-        $name = trim((string) ($parsed['name'] ?? ''));
-        if ($name === '' || preg_match_all('/\p{L}/u', $name) < 2) $missing[] = 'name';
+        foreach (['first_name', 'last_name'] as $k) {
+            if (preg_match_all('/\p{L}/u', trim((string) ($parsed[$k] ?? ''))) < 2) $missing[] = $k;
+        }
         if (!filter_var((string) ($parsed['email'] ?? ''), FILTER_VALIDATE_EMAIL)) $missing[] = 'email';
         if (strlen(preg_replace('/\D/', '', (string) ($parsed['contact'] ?? ''))) < 7) $missing[] = 'contact';
         return $missing;
+    }
+
+    /** "first_name, email, contact" -> a sentence HR can read. */
+    public function describeMissing(array $missing): string {
+        $labels = ['first_name' => 'first name', 'last_name' => 'last name', 'email' => 'email address', 'contact' => 'contact number'];
+        $names = [];
+        foreach ($missing as $k) if (isset($labels[$k])) $names[] = $labels[$k];
+        if (!$names) return '';
+        $list = count($names) > 1 ? implode(', ', array_slice($names, 0, -1)) . ' and ' . end($names) : $names[0];
+        return 'This CV is missing the applicant\'s ' . $list . '. Upload a CV that shows the full name, email address and contact number.';
     }
 
     /**
@@ -122,6 +134,110 @@ class CvParserService {
             if ($ok) $kept[] = $word;   // else: drop the invented initial, keep the rest of the name
         }
         return trim(implode(' ', $kept));
+    }
+
+    /**
+     * Is this file a JOB DESCRIPTION (an employer describing a role) and not a resume/CV?
+     * Used when HR attaches a PDF to a job position. Reads the text, scores job-description wording
+     * (responsibilities, qualifications, reports to...) against resume wording (work experience, personal
+     * email + phone, "curriculum vitae"...), and asks Gemini only when that is not clear-cut.
+     * When $positionName is given, the job description must also be FOR that position (see matchesPosition).
+     * Returns ['ok' => bool, 'type' => 'job_description'|'resume'|'other'|'wrong_position', 'message' => string].
+     * Throws when no text can be read from the file.
+     */
+    public function classifyJobDescription($filePath, $originalName = null, $mimeType = null, ?string $positionName = null): array
+    {
+        $text = trim(preg_replace('/\s+/u', ' ', (string) $this->extractText($filePath, $originalName, $mimeType)));
+        if (mb_strlen($text) < 40) throw new Exception('Could not read any text from this PDF.');
+        $excerpt = mb_substr($text, 0, 6000);
+        $t    = mb_strtolower($excerpt);
+        $head = mb_substr($t, 0, 400);
+
+        $jdMarkers = ['job description', 'job summary', 'job title', 'job purpose', 'position summary', 'role overview',
+            'about the role', 'key responsibilities', 'responsibilities', 'duties', 'qualifications', 'requirements',
+            'required skills', 'preferred qualifications', 'minimum qualifications', 'reports to', 'employment type',
+            'work schedule', 'we are looking for', 'the ideal candidate', 'the successful candidate', 'applicants must',
+            'salary range', 'compensation'];
+        $cvMarkers = ['curriculum vitae', 'career objective', 'personal information', 'personal data', 'date of birth',
+            'birthdate', 'civil status', 'character reference', 'references available', 'i hereby certify',
+            'work experience', 'employment history', 'professional experience', 'educational background',
+            'seminars attended', 'trainings attended'];
+
+        $jd = 0; foreach ($jdMarkers as $m) if (mb_strpos($t, $m) !== false) $jd++;
+        $cv = 0; foreach ($cvMarkers as $m) if (mb_strpos($t, $m) !== false) $cv++;
+        if (preg_match('/curriculum vitae|r[ée]sum[ée]/u', $head))                                   $cv += 3;  // the title says so
+        if (preg_match('/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i', $excerpt))                        $cv++;     // a personal email
+        if (preg_match('/(?<!\d)(?:\+?63|0)\s?9\d{2}[\s-]?\d{3}[\s-]?\d{4}(?!\d)/', $excerpt))        $cv++;     // a mobile number
+
+        $finish = function (array $res) use ($text, $positionName): array {
+            if (!$res['ok'] || $positionName === null || trim($positionName) === '') return $res;
+            if ($this->matchesPosition($text, $positionName)) return $res;
+            return ['ok' => false, 'type' => 'wrong_position',
+                'message' => 'This job description does not seem to be for "' . trim($positionName) . '". Check the job position name, or upload the PDF of the right job description.'];
+        };
+
+        $resumeMsg = 'This file looks like a resume/CV, not a job description. Upload the job description PDF of this position.';
+        $otherMsg  = 'This file does not look like a job description. Upload the job description PDF of this position (its duties, qualifications and requirements).';
+
+        if ($jd >= 3 && $cv <= 1) return $finish(['ok' => true,  'type' => 'job_description', 'message' => '']);
+        if ($cv >= 3 && $cv > $jd) return ['ok' => false, 'type' => 'resume',          'message' => $resumeMsg];
+
+        // not clear-cut: ask Gemini; if it cannot answer, go with whichever wording scored higher
+        $type = '';
+        try {
+            $prompt = "Classify this document. Return ONLY a JSON object {\"type\": \"job_description\" | \"resume\" | \"other\"}.\n"
+                . "- job_description: an employer describing a role (duties, qualifications, requirements).\n"
+                . "- resume: a person's own CV (their name, contact details, education, work history).\n"
+                . "- other: anything else.\n\nDOCUMENT TEXT:\n" . mb_substr($text, 0, 3500);
+            $out  = (new GeminiService())->generateText($prompt);
+            $type = is_array($out) ? strtolower(trim((string) ($out['type'] ?? ''))) : '';
+        } catch (Throwable $e) {
+            error_log('Job description classification (Gemini) failed: ' . $e->getMessage());
+        }
+        if (!in_array($type, ['job_description', 'resume', 'other'], true)) {
+            $type = $jd > $cv ? 'job_description' : ($cv >= 2 ? 'resume' : 'other');
+        }
+        if ($type === 'job_description') return $finish(['ok' => true,  'type' => $type, 'message' => '']);
+        return ['ok' => false, 'type' => $type, 'message' => $type === 'resume' ? $resumeMsg : $otherMsg];
+    }
+
+    /**
+     * Is this job description FOR the given position? "Data Analyst Job Position" -> key words [data, analyst].
+     * 1) all key words in the top of the document (where the job title is)  -> yes
+     * 2) the key words together as a phrase anywhere                         -> yes
+     * 3) otherwise Gemini decides (synonyms / abbreviations: "HR Associate" = "Human Resources Associate");
+     *    if Gemini cannot answer, every key word must appear somewhere in the text.
+     */
+    private function matchesPosition(string $text, string $position): bool
+    {
+        $stop  = ['job', 'position', 'description', 'jd', 'the', 'of', 'and', 'for', 'a', 'an'];
+        $words = preg_split('/[^\p{L}\p{N}+#]+/u', mb_strtolower($position), -1, PREG_SPLIT_NO_EMPTY);
+        $tokens = array_values(array_filter($words, fn($w) => !in_array($w, $stop, true) && mb_strlen($w) >= 2));
+        $tokens = array_map(fn($w) => mb_strlen($w) > 3 ? preg_replace('/s$/u', '', $w) : $w, $tokens);   // "analysts" -> "analyst"
+        if (!$tokens) return true;                                   // nothing meaningful to compare
+
+        $t    = mb_strtolower($text);
+        $head = mb_substr($t, 0, 600);
+        $has  = fn($hay, $tok) => (bool) preg_match('/(?<![\p{L}\p{N}])' . preg_quote($tok, '/') . 's?(?![\p{L}\p{N}])/u', $hay);
+
+        $allIn = function ($hay) use ($tokens, $has) { foreach ($tokens as $k) if (!$has($hay, $k)) return false; return true; };
+        if ($allIn($head)) return true;
+        $phrase = implode('[^\p{L}\p{N}]+', array_map(fn($k) => preg_quote($k, '/'), $tokens));
+        if (preg_match('/(?<![\p{L}\p{N}])' . $phrase . 's?(?![\p{L}\p{N}])/u', $t)) return true;
+
+        try {
+            $prompt = "Is the document below the job description for the position \"" . $position . "\"?\n"
+                . "Return ONLY a JSON object {\"matches\": true} or {\"matches\": false}.\n"
+                . "Answer true only if the document describes that same role (synonyms and abbreviations count, e.g. HR = Human Resources). "
+                . "Answer false if it describes a different role.\n\nDOCUMENT TEXT:\n" . mb_substr($text, 0, 3500);
+            $out = (new GeminiService())->generateText($prompt);
+            if (is_array($out) && array_key_exists('matches', $out)) {
+                return filter_var($out['matches'], FILTER_VALIDATE_BOOLEAN);
+            }
+        } catch (Throwable $e) {
+            error_log('Job position match (Gemini) failed: ' . $e->getMessage());
+        }
+        return $allIn($t);
     }
 
     /** Pull raw text out of PDF (pdfparser) or plain-text files. */
