@@ -3409,6 +3409,27 @@ html:where([data-page="archiveadmin"],[data-page="hrlist"],[data-page="questionl
 :where(html[data-page="questionlist"]) .dropdown.is-section .opt-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 :where(html[data-page="questionlist"]) .q-table col.c-sec  { width: 110px; }
 :where(html[data-page="questionlist"]) .q-table col.c-date { width: 150px; }
+:where(html[data-page="questionlist"]) .q-table .col-num { white-space: nowrap; }
+:where(html[data-page="questionlist"]) .question-drag-handle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 28px;
+    margin: 0 5px 0 -7px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--ink-soft);
+    cursor: grab;
+    vertical-align: middle;
+}
+:where(html[data-page="questionlist"]) .question-drag-handle:active { cursor: grabbing; }
+:where(html[data-page="questionlist"]) .question-drag-handle:disabled { cursor: default; opacity: .35; }
+:where(html[data-page="questionlist"]) .question-drag-handle:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; border-radius: 4px; }
+:where(html[data-page="questionlist"]) .question-drag-handle svg { width: 16px; height: 16px; fill: currentColor; }
+:where(html[data-page="questionlist"]) .q-table tbody tr.is-dragging { opacity: .45; }
+:where(html[data-page="questionlist"]) .q-table tbody tr.drag-over td { box-shadow: inset 0 2px 0 var(--brand); }
 
 :where(html[data-page="questionlist"]) .q-table .cell-sec { color: var(--ink-soft); font-weight: 600; }
 :where(html[data-page="questionlist"]) .q-table .sec-dot {

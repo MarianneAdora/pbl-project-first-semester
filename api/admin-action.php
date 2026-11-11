@@ -207,12 +207,17 @@ try {
             $answerConfig = isset($cleaned['answer_config']) && is_array($cleaned['answer_config']) ? $cleaned['answer_config'] : null;
             $passing = isset($cleaned['passing_answer']) && is_array($cleaned['passing_answer']) ? $cleaned['passing_answer'] : null;
 
+            $order = $pdo->prepare('SELECT COALESCE(MAX(display_order), -1) + 1 FROM question_config WHERE section_no = :section_no');
+            $order->execute([':section_no' => (int) $cleaned['section_no']]);
+            $displayOrder = (int) $order->fetchColumn();
+
             $ins = $pdo->prepare(
-                "INSERT INTO question_config (section_no, section, question_text, question_type, answer_config, passing_answer, is_knockout, is_consent, is_data_protection, reminder_text, is_active, created_at) " .
-                "VALUES (:sn, :sec, :txt, :typ, :ac, :pa, :ko, :consent, FALSE, :rem, :active, :created) RETURNING question_id"
+                "INSERT INTO question_config (section_no, display_order, section, question_text, question_type, answer_config, passing_answer, is_knockout, is_consent, is_data_protection, reminder_text, is_active, created_at) " .
+                "VALUES (:sn, :order, :sec, :txt, :typ, :ac, :pa, :ko, :consent, FALSE, :rem, :active, :created) RETURNING question_id"
             );
             $ins->execute([
                 ':sn'      => (int) $cleaned['section_no'],
+                ':order'   => $displayOrder,
                 ':sec'     => (string) $cleaned['section'],
                 ':txt'     => (string) $cleaned['text'],
                 ':typ'     => (string) $cleaned['type'],
@@ -313,13 +318,21 @@ try {
             $answerConfig = isset($new['answer_config']) && is_array($new['answer_config']) ? $new['answer_config'] : null;
             $passing = isset($new['passing_answer']) && is_array($new['passing_answer']) ? $new['passing_answer'] : null;
 
+            $displayOrder = (int) ($oldRow['display_order'] ?? 0);
+            if ((int) $oldRow['section_no'] !== (int) $new['section_no']) {
+                $order = $pdo->prepare('SELECT COALESCE(MAX(display_order), -1) + 1 FROM question_config WHERE section_no = :section_no');
+                $order->execute([':section_no' => (int) $new['section_no']]);
+                $displayOrder = (int) $order->fetchColumn();
+            }
+
             $upd = $pdo->prepare(
-                "UPDATE question_config SET section_no = :sn, section = :sec, question_text = :txt, question_type = :typ, " .
+                "UPDATE question_config SET section_no = :sn, display_order = :order, section = :sec, question_text = :txt, question_type = :typ, " .
                 "answer_config = :ac, passing_answer = :pa, is_knockout = :ko, is_consent = :consent, reminder_text = :rem, is_active = :active " .
                 "WHERE question_id = :id"
             );
             $upd->execute([
                 ':sn'      => (int) $new['section_no'],
+                ':order'   => $displayOrder,
                 ':sec'     => (string) $new['section'],
                 ':txt'     => (string) $new['text'],
                 ':typ'     => (string) $new['type'],
@@ -343,6 +356,63 @@ try {
             ]);
             break;
 
+        case 'question_reorder':
+            $sectionNo = filter_var($input['section_no'] ?? null, FILTER_VALIDATE_INT);
+            $orderedIds = $input['question_ids'] ?? null;
+            if ($sectionNo === false || $sectionNo < 1 || !is_array($orderedIds) || count($orderedIds) < 2) {
+                admin_respond(['status' => 'error', 'message' => 'Invalid question order.'], 422);
+            }
+
+            $ids = [];
+            foreach ($orderedIds as $questionId) {
+                if (!is_string($questionId) || !preg_match('/^q([1-9][0-9]*)$/D', $questionId, $match)) {
+                    admin_respond(['status' => 'error', 'message' => 'Invalid question order.'], 422);
+                }
+                $ids[] = (int) $match[1];
+            }
+            if (count(array_unique($ids)) !== count($ids)) {
+                admin_respond(['status' => 'error', 'message' => 'Invalid question order.'], 422);
+            }
+
+            $pdo = db();
+            $pdo->beginTransaction();
+            try {
+                $sectionQuestions = $pdo->prepare(
+                    'SELECT question_id FROM question_config WHERE section_no = :section_no AND deleted_at IS NULL ORDER BY display_order, question_id FOR UPDATE'
+                );
+                $sectionQuestions->execute([':section_no' => $sectionNo]);
+                $currentIds = array_map('intval', $sectionQuestions->fetchAll(PDO::FETCH_COLUMN));
+                $expectedIds = $ids;
+                sort($expectedIds);
+                $actualIds = $currentIds;
+                sort($actualIds);
+                if ($expectedIds !== $actualIds) {
+                    $pdo->rollBack();
+                    admin_respond(['status' => 'error', 'message' => 'The questions in this section changed. Refresh and try again.'], 409);
+                }
+
+                $updateOrder = $pdo->prepare('UPDATE question_config SET display_order = :position WHERE question_id = :id AND section_no = :section_no AND deleted_at IS NULL');
+                foreach ($ids as $position => $questionId) {
+                    $updateOrder->execute([
+                        ':position' => $position,
+                        ':id' => $questionId,
+                        ':section_no' => $sectionNo,
+                    ]);
+                }
+                $pdo->commit();
+            } catch (Throwable $e) {
+                if ($pdo->inTransaction()) $pdo->rollBack();
+                throw $e;
+            }
+
+            repo_log_activity('Questions Reordered', 'Sec ' . $sectionNo);
+            admin_respond([
+                'status' => 'success',
+                'message' => 'Question order saved.',
+                'result' => null,
+                'data' => ['questions' => repo_admin_questions_list()],
+            ]);
+            break;
 
         case 'question_archive':
             $id = (int) ltrim((string) ($input['id'] ?? ''), 'q');

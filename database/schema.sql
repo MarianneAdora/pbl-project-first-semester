@@ -126,6 +126,7 @@ CREATE TABLE otp_request_log (
 CREATE TABLE question_config (
     question_id         SERIAL PRIMARY KEY,
     section_no          INT          NOT NULL,
+    display_order       INT          NOT NULL DEFAULT 0,
     section             VARCHAR(50)  NOT NULL,
     question_text       VARCHAR(400) NOT NULL,
     question_type       VARCHAR(20)  NOT NULL
@@ -141,6 +142,10 @@ CREATE TABLE question_config (
     deleted_at          TIMESTAMP,
     created_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX idx_question_config_section_order
+    ON question_config (section_no, display_order, question_id)
+    WHERE deleted_at IS NULL;
 
 -- ------------------------------------------------------------
 -- RESPONSE

@@ -388,7 +388,7 @@ class RiskScoringService
     {
         $st = $this->pdo->query(
             "SELECT question_id, question_text, question_type, answer_config, passing_answer, is_knockout
-             FROM question_config WHERE is_active = TRUE AND deleted_at IS NULL ORDER BY question_id"
+             FROM question_config WHERE is_active = TRUE AND deleted_at IS NULL ORDER BY section_no, display_order, question_id"
         );
         $questions = $st->fetchAll();
         $out = [];

@@ -2596,8 +2596,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let perPage = 8;                  // fitPerPage() adjusts it to the window height
     let visible = [];                 // rows on the current page
     let animateRows = false;          // the first render comes with the card entrance
-    let busy = false;                 // a delete / undo request is running
+    let busy = false;                 // a delete / undo / reorder request is running
     let flashPending = '';            // the row that glows once (the one just saved / restored)
+    let draggedQuestionId = '';
 
     function armFlash(id) {
         flashPending = String(id || '');
@@ -2853,7 +2854,59 @@ document.addEventListener('DOMContentLoaded', () => {
             tr.style.setProperty('--r', index);
         }
 
-        const tdNum = el('td', 'col-num', String(number));
+        const tdNum = el('td', 'col-num');
+        const dragHandle = el('button', 'question-drag-handle');
+        dragHandle.type = 'button';
+        dragHandle.draggable = true;
+        dragHandle.disabled = questions.filter(item => Number(item.section_no) === Number(q.section_no)).length < 2;
+        dragHandle.title = 'Drag to reorder within this section';
+        dragHandle.setAttribute('aria-label', 'Reorder question ' + number + ' within this section; use the arrow keys or drag');
+        dragHandle.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm6-10a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>';
+        tdNum.append(dragHandle, document.createTextNode(String(number)));
+        dragHandle.addEventListener('keydown', (event) => {
+            if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+            const sectionQuestions = questions.filter(item => Number(item.section_no) === Number(q.section_no));
+            const index = sectionQuestions.findIndex(item => item.id === q.id);
+            const target = sectionQuestions[index + (event.key === 'ArrowUp' ? -1 : 1)];
+            if (!target || busy) return;
+            event.preventDefault();
+            reorderQuestion(q.id, target, event.key === 'ArrowDown', true);
+        });
+
+        tr.addEventListener('dragstart', (event) => {
+            if (!event.target.closest('.question-drag-handle') || busy ||
+                questions.filter(item => Number(item.section_no) === Number(q.section_no)).length < 2) {
+                event.preventDefault();
+                return;
+            }
+            draggedQuestionId = q.id;
+            tr.classList.add('is-dragging');
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', q.id);
+        });
+        tr.addEventListener('dragover', (event) => {
+            if (!draggedQuestionId || draggedQuestionId === q.id || busy ||
+                Number(q.section_no) !== Number(questions.find(item => item.id === draggedQuestionId)?.section_no)) return;
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'move';
+            tr.classList.add('drag-over');
+        });
+        tr.addEventListener('dragleave', (event) => {
+            if (!tr.contains(event.relatedTarget)) tr.classList.remove('drag-over');
+        });
+        tr.addEventListener('drop', (event) => {
+            event.preventDefault();
+            tr.classList.remove('drag-over');
+            const draggedId = event.dataTransfer.getData('text/plain') || draggedQuestionId;
+            draggedQuestionId = '';
+            if (!draggedId || draggedId === q.id || busy) return;
+            reorderQuestion(draggedId, q, event.clientY > tr.getBoundingClientRect().top + tr.getBoundingClientRect().height / 2);
+        });
+        tr.addEventListener('dragend', () => {
+            draggedQuestionId = '';
+            tr.classList.remove('is-dragging');
+            tableBody.querySelectorAll('.drag-over').forEach(row => row.classList.remove('drag-over'));
+        });
 
         const tdSec = el('td', 'cell-sec');
         tdSec.title = 'Section ' + q.section_no + ' \u00B7 ' + q.section;
@@ -2899,6 +2952,49 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (flashPending && q.id === flashPending) tr.classList.add('row-flash');
         return tr;
+    }
+
+    async function reorderQuestion(draggedId, target, insertAfter, keepFocus = false) {
+        if (busy) return;
+        const dragged = questions.find(item => item.id === draggedId);
+        if (!dragged || Number(dragged.section_no) !== Number(target.section_no)) return;
+
+        const previousQuestions = questions;
+        const sectionNo = Number(target.section_no);
+        const orderedSection = questions.filter(item => Number(item.section_no) === sectionNo);
+        const sourceIndex = orderedSection.findIndex(item => item.id === draggedId);
+        if (sourceIndex < 0) return;
+        const [moved] = orderedSection.splice(sourceIndex, 1);
+        let targetIndex = orderedSection.findIndex(item => item.id === target.id);
+        if (targetIndex < 0) return;
+        if (insertAfter) targetIndex += 1;
+        orderedSection.splice(targetIndex, 0, moved);
+        const originalSection = questions.filter(item => Number(item.section_no) === sectionNo);
+        if (orderedSection.every((item, index) => item.id === originalSection[index].id)) return;
+
+        const firstSectionIndex = questions.findIndex(item => Number(item.section_no) === sectionNo);
+        questions = questions.filter(item => Number(item.section_no) !== sectionNo);
+        questions.splice(firstSectionIndex, 0, ...orderedSection);
+        busy = true;
+        render();
+        if (keepFocus) {
+            const movedRow = Array.from(tableBody.querySelectorAll('tr')).find(row => row.dataset.id === draggedId);
+            if (movedRow) movedRow.querySelector('.question-drag-handle').focus();
+        }
+        try {
+            const res = await ADMIN.request('question_reorder', {
+                section_no: sectionNo,
+                question_ids: orderedSection.map(item => item.id)
+            });
+            questions = res.data.questions;
+            ADMIN.toast('Question order saved.', { duration: 3000 });
+        } catch (err) {
+            questions = previousQuestions;
+            render();
+            ADMIN.toast(err.message || 'Could not save the question order.', { error: true, duration: 6000 });
+        } finally {
+            busy = false;
+        }
     }
 
     function renderShowing(total, start) {

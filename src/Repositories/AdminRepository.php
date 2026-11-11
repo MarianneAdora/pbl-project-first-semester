@@ -54,7 +54,7 @@ function repo_admin_questions_list(?PDO $pdo = null): array
     $rows = $pdo->query(
         'SELECT question_id, section_no, section, question_text, question_type,' .
         ' answer_config, passing_answer, is_knockout, is_active, created_at' .
-        ' FROM question_config WHERE deleted_at IS NULL ORDER BY section_no, question_id'
+        ' FROM question_config WHERE deleted_at IS NULL ORDER BY section_no, display_order, question_id'
     )->fetchAll();
     $out = [];
     foreach ($rows as $r) {
@@ -234,7 +234,7 @@ function db_questions_for_applicant(?PDO $pdo = null): array
     $rows = $pdo->query(
         'SELECT question_id, section_no, section, question_text, question_type, answer_config,' .
         ' passing_answer, is_knockout, is_consent, is_data_protection, reminder_text' .
-        ' FROM question_config WHERE deleted_at IS NULL AND is_active = TRUE ORDER BY section_no, question_id'
+        ' FROM question_config WHERE deleted_at IS NULL AND is_active = TRUE ORDER BY section_no, display_order, question_id'
     )->fetchAll();
 
     $out = [];
@@ -322,7 +322,7 @@ function repo_admin_questions(?PDO $pdo = null): array
     return $pdo->query(
         'SELECT question_id, section_no, section, question_text, question_type, answer_config,' .
         ' passing_answer, is_knockout, is_consent, is_data_protection, reminder_text, is_active, created_at' .
-        ' FROM question_config WHERE deleted_at IS NULL ORDER BY section_no, question_id'
+        ' FROM question_config WHERE deleted_at IS NULL ORDER BY section_no, display_order, question_id'
     )->fetchAll();
 }
 
@@ -431,7 +431,7 @@ function repo_admin_failure_rates(int $limit = 5, ?PDO $pdo = null): array
     $questions = $pdo->query(
         'SELECT question_id, section, question_text, passing_answer, question_type' .
         ' FROM question_config WHERE deleted_at IS NULL AND is_active = TRUE AND is_knockout = TRUE' .
-        ' ORDER BY section_no, question_id'
+        ' ORDER BY section_no, display_order, question_id'
     )->fetchAll();
 
     $subs = $pdo->query("SELECT answers_json FROM response WHERE submitted_at IS NOT NULL")->fetchAll();
@@ -583,7 +583,6 @@ function repo_admin_volume(?PDO $pdo = null): array
 
     return ['week' => $week, 'month' => $month];
 }
-
 
 
 

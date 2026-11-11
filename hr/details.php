@@ -317,7 +317,7 @@ $pageData = [
                                     <strong title="<?php echo $h($position['name']); ?>"><?php echo $h($position['name']); ?></strong>
                                     <span>Job description (PDF)</span>
                                 </div>
-                                <a class="btn-outline" href="jd-proxy.php?id=<?php echo (int) $applicant['id']; ?>" target="_blank" rel="noopener">VIEW</a>
+                                <a class="btn-outline" href="<?php echo $h($position['jd_url']); ?>" target="_blank" rel="noopener">VIEW</a>
                             </div>
                         <?php else: ?>
                             <div class="file-card is-empty">

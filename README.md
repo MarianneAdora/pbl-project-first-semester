@@ -23,3 +23,13 @@ The legacy `getDbConnection()` in `src/Helpers/functions.php` now delegates to
 `db()`, so there is only one source of truth.
 
 Other secrets (Brevo, Cloudinary, Gemini, Sentry) are also configured in `.env`.
+
+## Database updates
+
+When updating an existing database, run the SQL migration files in
+`database/migrations/` against the configured PostgreSQL database before
+deploying code that depends on them. For example:
+
+```powershell
+psql -h localhost -p 5432 -U postgres -d ebsmi_screening -f database/migrations/2026-11-11-question-display-order.sql
+```

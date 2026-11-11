@@ -223,7 +223,7 @@ try {
                     </colgroup>
                     <thead>
                         <tr>
-                            <th>#</th>
+                            <th>Order</th>
                             <th>Section</th>
                             <th>Title</th>
                             <th>Created Date</th>

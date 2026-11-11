@@ -40,13 +40,13 @@ INSERT INTO applicant (reference_code, secure_token, encoded_by_user_id, name, f
 -- 13 questions across 5 sections.
 -- ============================================================
 INSERT INTO question_config
-    (section_no, section, question_text, question_type, answer_config, passing_answer, is_knockout, is_consent, is_data_protection, reminder_text)
+    (section_no, display_order, section, question_text, question_type, answer_config, passing_answer, is_knockout, is_consent, is_data_protection, reminder_text)
 VALUES
 
 -- ------------------------------------------------------------
 -- Section 1: Consent & Readiness
 -- ------------------------------------------------------------
-(1, 'Consent & Readiness',
+(1, 0, 'Consent & Readiness',
     'Have you read the {link} thoroughly?',
     'yesno',
     jsonb_build_object(
@@ -59,28 +59,28 @@ VALUES
     NULL,
     false, false, false, NULL),
 
-(1, 'Consent & Readiness',
+(1, 1, 'Consent & Readiness',
     'Are you willing to work on the schedule as advertised?',
     'yesno',
     NULL,
     jsonb_build_object('answer', 'Yes'),
     true, false, false, NULL),
 
-(1, 'Consent & Readiness',
+(1, 2, 'Consent & Readiness',
     'Are you willing to work on-site in BGC, Taguig?',
     'yesno',
     NULL,
     jsonb_build_object('answer', 'Yes'),
     true, false, false, 'Please note this may affect your application.'),
 
-(1, 'Consent & Readiness',
+(1, 3, 'Consent & Readiness',
     'Are you willing to go through the assessment and interviews?',
     'yesno',
     NULL,
     jsonb_build_object('answer', 'Yes'),
     true, false, false, NULL),
 
-(1, 'Consent & Readiness',
+(1, 4, 'Consent & Readiness',
     'Rate your interest level in pursuing your application.',
     'scale',
     jsonb_build_object(
@@ -93,14 +93,14 @@ VALUES
 -- ------------------------------------------------------------
 -- Section 2: Logistics & Compliance
 -- ------------------------------------------------------------
-(2, 'Logistics & Compliance',
+(2, 0, 'Logistics & Compliance',
     'When is your earliest possible start date?',
     'date',
     jsonb_build_object('hint', 'Choose a date'),
     NULL,
     false, false, false, NULL),
 
-(2, 'Logistics & Compliance',
+(2, 1, 'Logistics & Compliance',
     'Are you currently employed? If yes, what is your notice period?',
     'yesno_select',
     jsonb_build_object(
@@ -117,7 +117,7 @@ VALUES
     NULL,
     false, false, false, NULL),
 
-(2, 'Logistics & Compliance',
+(2, 2, 'Logistics & Compliance',
     'Do you have access to a reliable internet connection and a device suitable for completing the assessment and virtual steps?',
     'yesno',
     jsonb_build_object(
@@ -126,14 +126,14 @@ VALUES
     jsonb_build_object('answer', 'Yes'),
     true, false, false, NULL),
 
-(2, 'Logistics & Compliance',
+(2, 3, 'Logistics & Compliance',
     'Are you willing to undergo a background check as part of the hiring process?',
     'yesno',
     NULL,
     jsonb_build_object('answer', 'Yes'),
     true, false, false, NULL),
 
-(2, 'Logistics & Compliance',
+(2, 4, 'Logistics & Compliance',
     'Can you provide required pre-employment documents (e.g. NBI clearance, TIN, SSS) upon request?',
     'yesno',
     NULL,
@@ -143,7 +143,7 @@ VALUES
 -- ------------------------------------------------------------
 -- Section 3: Confidentiality Acknowledgment
 -- ------------------------------------------------------------
-(3, 'Confidentiality Acknowledgment',
+(3, 0, 'Confidentiality Acknowledgment',
     'This role involves handling sensitive client information. Do you agree to comply with confidentiality and data protection requirements?',
     'yesno',
     jsonb_build_object(
@@ -155,7 +155,7 @@ VALUES
 -- ------------------------------------------------------------
 -- Section 4: Comprehension
 -- ------------------------------------------------------------
-(4, 'Comprehension',
+(4, 0, 'Comprehension',
     'In 2-3 sentences, describe what you understand this role to involve based on the job posting.',
     'text',
     jsonb_build_object(
@@ -170,7 +170,7 @@ VALUES
 -- ------------------------------------------------------------
 -- Section 5: Data Protection
 -- ------------------------------------------------------------
-(5, 'Data Protection',
+(5, 0, 'Data Protection',
     'Please read and accept the data protection statement.',
     'consent',
     jsonb_build_object(
