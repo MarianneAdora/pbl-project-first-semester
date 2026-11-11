@@ -31,6 +31,7 @@
    ========================================================================== */
 
 require_once __DIR__ . '/../src/Helpers/db.php';
+require_once __DIR__ . '/../src/Repositories/ActivityRepository.php';
 
 /* ==========================================================================
    HOW IT WORKS NOW (store layer, added at the bottom of this file)

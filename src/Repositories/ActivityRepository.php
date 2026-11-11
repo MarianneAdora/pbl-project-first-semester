@@ -23,7 +23,8 @@ function repo_log_activity(string $activity, string $details = '-', ?string $act
         );
         $st->execute([':a' => $actor, ':act' => $activity, ':d' => $details]);
     } catch (Throwable $e) {
-        // never break the calling action because of logging
+        // never break the calling action because of logging; record the error for diagnosis
+        error_log('repo_log_activity failed: ' . $e->getMessage() . ' @ ' . basename($e->getFile()) . ':' . $e->getLine());
     }
 }
 
