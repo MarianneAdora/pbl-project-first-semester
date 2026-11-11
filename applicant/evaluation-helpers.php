@@ -344,7 +344,15 @@ function static_run_evaluation(): array
     $scorer = new RiskScoringService($pdo);
     $result = $scorer->score($applicantId);
 
-    // Consistency factor (best-effort, bounded 0-3 pts)
+    // Free-text relevance and logistics consistency are scored separately.
+    $consistency = [
+        'points' => 0,
+        'reason' => 'Consistency evaluation failed; not scored.',
+        'issues' => [],
+        'logistics_points' => null,
+        'logistics_reason' => 'Logistics consistency was not evaluated.',
+        'logistics_issues' => [],
+    ];
     try {
         require_once __DIR__ . '/../src/Services/GeminiAnswerConsistencyService.php';
         require_once __DIR__ . '/applicant-helpers.php';
@@ -357,22 +365,12 @@ function static_run_evaluation(): array
         if (!empty($questions) && !empty($answers)) {
             $consService = new GeminiAnswerConsistencyService();
             $consistency = $consService->evaluate($questions, $answers);
-            $consPts = max(0, min(3, (int) ($consistency['points'] ?? 0)));
-            $issues  = is_array($consistency['issues'] ?? null) ? $consistency['issues'] : [];
-            $reason  = trim((string) ($consistency['reason'] ?? ''));
-            if ($reason === '') $reason = $consPts > 0 ? 'Inconsistent or irrelevant answers detected.' : 'No inconsistent or irrelevant answers detected.';
-            if ($issues) $reason .= ' Issues: ' . implode('; ', $issues);
-            $result['factors'][] = ['label' => 'Inconsistent or irrelevant answers', 'points' => $consPts, 'max' => 3, 'reason' => $reason];
-            $result['points'] = array_sum(array_column($result['factors'], 'points'));
-            $cfg = require __DIR__ . '/../config/risk_config.php';
-            $band = $result['points'] <= $cfg['bands']['low_max'] ? 'Low' : ($result['points'] <= $cfg['bands']['medium_max'] ? 'Medium' : 'High');
-            if (!empty($result['autoWhy'])) $band = 'High';
-            $result['band'] = $band;
-            $result['consistency'] = ['points' => $consPts, 'issues' => $issues, 'reason' => $reason];
         }
     } catch (Throwable $e) {
         error_log('static_run_evaluation consistency error: ' . $e->getMessage());
     }
+    require_once __DIR__ . '/../src/Services/GeminiAnswerConsistencyService.php';
+    $result = GeminiAnswerConsistencyService::applyToRiskResult($result, $consistency);
 
     $scorer->saveScore($applicantId, $result);
 

@@ -73,6 +73,7 @@ if ($applicantId <= 0) {
 require_once __DIR__ . '/../src/Helpers/db.php';
 require_once __DIR__ . '/../src/Services/RiskScoringService.php';
 require_once __DIR__ . '/../src/Services/GeminiRiskService.php';
+require_once __DIR__ . '/../src/Services/GeminiAnswerConsistencyService.php';
 require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
 
 try {
@@ -80,11 +81,16 @@ try {
     $scorer  = new RiskScoringService($pdo);
     $result  = $scorer->score($applicantId);
 
-    // ---- Gemini answer-consistency factor (best-effort, bounded 0-3 pts) ----
-    // Detects semantic contradictions / irrelevant answers across the WHOLE
-    // question set, so it stays flexible when admins add/change questions.
-    // Never blocks submission; falls back to 0 pts on any error.
-    $consistency = ['points' => 0, 'reason' => 'Not evaluated.', 'issues' => []];
+    // Gemini scores free-text relevance and logistics contradictions separately.
+    // On failure, keep the rule-based logistics score already calculated above.
+    $consistency = [
+        'points' => 0,
+        'reason' => 'Consistency evaluation failed; not scored.',
+        'issues' => [],
+        'logistics_points' => null,
+        'logistics_reason' => 'Logistics consistency was not evaluated.',
+        'logistics_issues' => [],
+    ];
     try {
         require_once __DIR__ . '/../applicant/applicant-helpers.php';
         $questions = static_questionnaire();
@@ -100,44 +106,13 @@ try {
         $answers = is_array($answers) ? $answers : [];
 
         if (!empty($questions) && !empty($answers)) {
-            require_once __DIR__ . '/../src/Services/GeminiAnswerConsistencyService.php';
             $consService = new GeminiAnswerConsistencyService();
             $consistency = $consService->evaluate($questions, $answers);
         }
     } catch (Throwable $e) {
         error_log('trigger-scoring consistency error: ' . $e->getMessage());
-        $consistency = ['points' => 0, 'reason' => 'Consistency evaluation failed; not scored.', 'issues' => []];
     }
-
-    $consPts = max(0, min(3, (int) ($consistency['points'] ?? 0)));
-    $issues  = is_array($consistency['issues'] ?? null) ? $consistency['issues'] : [];
-    $reason  = trim((string) ($consistency['reason'] ?? ''));
-    if ($reason === '') {
-        $reason = $consPts > 0 ? 'Inconsistent or irrelevant answers detected.' : 'No inconsistent or irrelevant answers detected.';
-    }
-    if ($issues) {
-        $reason .= ' Issues: ' . implode('; ', $issues);
-    }
-
-    $result['factors'][] = [
-        'label'  => 'Inconsistent or irrelevant answers',
-        'points' => $consPts,
-        'max'    => 3,
-        'reason' => $reason,
-    ];
-    $result['points'] = array_sum(array_column($result['factors'], 'points'));
-
-    $cfg = require __DIR__ . '/../config/risk_config.php';
-    $band = $result['points'] <= $cfg['bands']['low_max'] ? 'Low'
-          : ($result['points'] <= $cfg['bands']['medium_max'] ? 'Medium' : 'High');
-    if (!empty($result['autoWhy'])) $band = 'High';
-    $result['band'] = $band;
-
-    $result['consistency'] = [
-        'points' => $consPts,
-        'issues' => $issues,
-        'reason' => $reason,
-    ];
+    $result = GeminiAnswerConsistencyService::applyToRiskResult($result, $consistency);
 
     // Persist score + mirror outcome on applicant row FIRST, so a slow/failed
     // Gemini call can never leave the applicant stuck in "under review".

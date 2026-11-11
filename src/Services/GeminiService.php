@@ -1,11 +1,11 @@
 <?php
 class GeminiService {
     private $apiKey;
-    private $apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent";
+    private $models = ['gemini-3.8-flash', 'gemini-3.6-flash'];
 
     public function __construct() {
-        $env = parse_ini_file(__DIR__ . '/../../.env');
-        $this->apiKey = $env['GEMINI_API_KEY'] ?? '';
+        $env = @parse_ini_file(__DIR__ . '/../../.env');
+        $this->apiKey = trim((string) ($env['GEMINI_API_KEY'] ?? ''));
         if (empty($this->apiKey)) {
             throw new Exception("GEMINI_API_KEY is missing from .env");
         }
@@ -15,8 +15,6 @@ class GeminiService {
      * Sends a prompt to Gemini and returns the text response.
      */
     public function generateText($prompt) {
-        $url = $this->apiUrl . "?key=" . $this->apiKey;
-
         $data = [
             "contents" => [
                 [
@@ -31,33 +29,73 @@ class GeminiService {
             ]
         ];
 
-        $context = stream_context_create([
-            'http' => [
-                'method'  => 'POST',
-                'header'  => "Content-Type: application/json\r\n",
-                'content' => json_encode($data),
-                'timeout' => 15,
-            ],
-            'ssl' => [
-                'verify_peer'       => false,
-                'verify_peer_name'  => false,
-            ],
-        ]);
+        $response = null;
+        foreach ($this->models as $index => $model) {
+            $request = curl_init(
+                "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent"
+            );
+            if ($request === false) {
+                throw new Exception("Could not initialize the Gemini API request.");
+            }
 
-        $response = @file_get_contents($url, false, $context);
-        if ($response === false) {
-            throw new Exception("Gemini API request failed.");
+            $configured = curl_setopt_array($request, [
+                CURLOPT_POST => true,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => [
+                    'Content-Type: application/json',
+                    'x-goog-api-key: ' . $this->apiKey,
+                ],
+                CURLOPT_POSTFIELDS => json_encode($data, JSON_THROW_ON_ERROR),
+                CURLOPT_CONNECTTIMEOUT => 5,
+                CURLOPT_TIMEOUT => 15,
+                CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_SSL_VERIFYHOST => 2,
+            ]);
+            if (!$configured) {
+                curl_close($request);
+                throw new Exception("Could not configure the Gemini API request.");
+            }
+
+            $response = curl_exec($request);
+            if ($response === false) {
+                $errorNumber = curl_errno($request);
+                $error = curl_error($request);
+                curl_close($request);
+                if ($errorNumber === CURLE_OPERATION_TIMEDOUT && $index < count($this->models) - 1) {
+                    error_log("Gemini model {$model} timed out; retrying with a fallback model.");
+                    continue;
+                }
+                throw new Exception("Gemini API request failed: " . $error);
+            }
+
+            $status = (int) curl_getinfo($request, CURLINFO_HTTP_CODE);
+            curl_close($request);
+            if ($status >= 200 && $status < 300) break;
+
+            if ($status === 503 && $index < count($this->models) - 1) {
+                error_log("Gemini model {$model} is unavailable; retrying with a fallback model.");
+                continue;
+            }
+
+            $errorResponse = json_decode($response, true);
+            $message = trim((string) ($errorResponse['error']['message'] ?? ''));
+            if ($message !== '') $message = ' ' . substr($message, 0, 300);
+            throw new Exception("Gemini API returned HTTP {$status}.{$message}");
         }
 
-        $httpCode = 200; // file_get_contents doesn't expose HTTP code directly; assume success if we got content
-
-        if ($httpCode === 200) {
-            $result = json_decode($response, true);
-            // Extract the actual text from Gemini's response structure
-            $textResponse = $result['candidates'][0]['content']['parts'][0]['text'] ?? '';
-            return json_decode($textResponse, true); // Return as PHP array
-        } else {
-            throw new Exception("Gemini API Error: " . $response);
+        $result = json_decode($response, true, 512, JSON_THROW_ON_ERROR);
+        if (!is_array($result)) {
+            throw new Exception("Gemini API returned an unexpected response.");
         }
+        $textResponse = $result['candidates'][0]['content']['parts'][0]['text'] ?? null;
+        if (!is_string($textResponse) || trim($textResponse) === '') {
+            throw new Exception("Gemini API returned no generated text.");
+        }
+
+        $decoded = json_decode($textResponse, true, 512, JSON_THROW_ON_ERROR);
+        if (!is_array($decoded)) {
+            throw new Exception("Gemini API returned invalid JSON text.");
+        }
+        return $decoded;
     }
 }
