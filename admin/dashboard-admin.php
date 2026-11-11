@@ -23,15 +23,28 @@ $profile = static_profile_for_page('../hr/data/avatars/');
 // Every number on this page is queried live from the database.
 $overview = repo_admin_overview();             // the three summary boxes
 $stats    = repo_admin_question_stats();       // Questionnaires Statistics: every question + the answer most applicants chose
-$recent   = repo_recent_activity(null, 10);    // Recent Activities: the latest 10, newest first
-
-// Total activity count (for the share bar on the summary box).
+$requests = static_profile_requests();
 $all_log  = repo_recent_activity(null, 1000);
+$recent   = array_values(array_filter(
+    $all_log,
+    static fn(array $row): bool => $row['activity'] !== 'Password Change Requested'
+));
+foreach ($requests as $request) {
+    $recent[] = [
+        'at'       => $request['requested_at'] ? date('Y-m-d H:i:s', strtotime($request['requested_at'])) : '',
+        'activity' => 'Password Change Requested',
+        'details'  => $request['name'] . ' (HR)',
+        'by'       => 'HR',
+        'kind'     => 'pw_request',
+        'req'      => $request
+    ];
+}
+usort($recent, static fn(array $a, array $b): int => (strtotime($b['at']) ?: 0) <=> (strtotime($a['at']) ?: 0));
+$recent = array_slice($recent, 0, 10);
+// Total activity count (for the share bar on the summary box).
 $logTotal = count($all_log);
 
-// HR password-change requests awaiting approval. No password_requests table exists yet in the
-// database, so this is 0 until the DB-backed password-request feature is connected.
-$pending  = 0;
+$pending = count(array_filter($requests, static fn(array $request): bool => $request['status'] === 'pending'));
 
 $failure  = repo_admin_failure_rates(5);       // Question-Level Failure Rate
 $risk     = repo_admin_risk_flags();           // Risk Flag Breakdown by Factor
@@ -117,30 +130,28 @@ $greeting     = 'Hello, ' . $display_name . '!';
         </div>
     </div>
 
-    <!-- HR password change: opens when the Admin clicks a "Password Change Requested" line in Recent Activities -->
+    <!-- HR password change: opens when the Admin clicks a request in Recent Activities -->
     <div class="modal-backdrop" id="pwReqModal" role="dialog" aria-modal="true" aria-labelledby="pwReqTitle">
         <div class="modal-card req-card">
-            <h3 id="pwReqTitle">Password change request</h3>
-            <p id="pwReqLead">An HR account asked to change its password.</p>
+            <h3 id="pwReqTitle">Approval needed</h3>
+            <p class="req-lead" id="pwReqLead"></p>
+            <p class="req-email" id="pwReqEmail"></p>
+            <div class="req-status" id="pwReqStatus"></div>
 
-            <dl class="req-facts">
-                <div><dt>HR account</dt><dd id="pwReqName"></dd></div>
-                <div><dt>Email</dt><dd id="pwReqEmail"></dd></div>
-                <div><dt>Requested</dt><dd id="pwReqWhen"></dd></div>
-                <div id="pwReqCurRow"><dt>Current password</dt><dd><span class="pw-val" id="pwReqCur"></span> <button type="button" class="pw-show" data-for="pwReqCur">Show</button></dd></div>
-                <div id="pwReqNewRow"><dt>New password</dt><dd><span class="pw-val" id="pwReqNew"></span> <button type="button" class="pw-show" data-for="pwReqNew">Show</button></dd></div>
-                <div><dt>Status</dt><dd id="pwReqStatus"></dd></div>
-            </dl>
+            <section class="req-password-card" aria-label="Password change summary">
+                <h4>Password</h4>
+                <div class="req-password-row"><span>Current</span><strong>Verified</strong></div>
+                <div class="req-password-row"><span>New</span><strong>Change requested</strong></div>
+            </section>
+            <p class="req-note" id="pwReqNote">Passwords are stored securely and cannot be viewed here. If approved, the new password takes effect at the next login.</p>
 
-            <!-- only while the request is pending -->
-            <div class="req-reason" id="pwReqReasonBox">
-                <label for="pwReqReason">Reason if you reject <span>(optional, HR will read it)</span></label>
-                <textarea id="pwReqReason" maxlength="200" rows="2" placeholder="Example: please ask the Admin in person first."></textarea>
-            </div>
-            <p class="req-note" id="pwReqNote">If you approve, the new password works from the next login and the old one stops. Compare the two passwords above before you decide.</p>
+            <details class="req-reason" id="pwReqReasonBox">
+                <summary>Add a rejection reason <span>(optional)</span></summary>
+                <textarea id="pwReqReason" maxlength="200" rows="2" placeholder="This reason will be shared with HR."></textarea>
+            </details>
 
             <div class="modal-actions req-actions">
-                <button type="button" class="modal-btn is-cancel" id="pwReqClose">Close</button>
+                <button type="button" class="modal-btn is-cancel" id="pwReqClose" hidden>Close</button>
                 <button type="button" class="modal-btn is-reject" id="pwReqReject">Reject</button>
                 <button type="button" class="modal-btn is-approve" id="pwReqApprove">Approve</button>
             </div>

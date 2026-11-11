@@ -1,7 +1,7 @@
 <?php
 // api/admin-action.php — DB-backed AJAX endpoint for admin archive/restore/purge actions.
 // Replaces static-admin.php for: account_archive, account_restore, account_purge,
-//                                 question_archive, question_restore, question_purge, notify
+//                                 question_archive, question_restore, question_purge, password_decide, notify
 
 session_start();
 header('Content-Type: application/json; charset=UTF-8');
@@ -10,6 +10,7 @@ date_default_timezone_set('Asia/Manila');
 require_once __DIR__ . '/../src/Repositories/AdminRepository.php';
 require_once __DIR__ . '/../src/Services/EmailService.php';
 require_once __DIR__ . '/../src/Helpers/db.php';
+require_once __DIR__ . '/../hr/static-data.php';
 
 function admin_respond(array $data, int $code = 200): void
 {
@@ -110,6 +111,23 @@ try {
                 'message' => 'HR account updated.',
                 'result'  => ['id' => $id, 'name' => $name, 'email' => $email, 'role' => 'HR Staff', 'emailed' => $emailed],
                 'data'    => ['accounts' => repo_admin_accounts(), 'questions' => repo_admin_questions_list(), 'archive' => repo_admin_archive()],
+            ]);
+            break;
+
+        case 'password_decide':
+            if (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') !== 'XMLHttpRequest') {
+                admin_respond(['status' => 'error', 'message' => 'Invalid request.'], 400);
+            }
+            $decision = (string) ($input['decision'] ?? '');
+            $result = static_profile_decide_request(
+                (int) ($input['id'] ?? 0),
+                $decision,
+                (string) ($input['reason'] ?? '')
+            );
+            admin_respond([
+                'status'  => 'success',
+                'message' => $decision === 'approve' ? 'Password change approved.' : 'Password change rejected.',
+                'result'  => $result
             ]);
             break;
 

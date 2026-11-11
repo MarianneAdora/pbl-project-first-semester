@@ -902,25 +902,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const roleDD = createDropdown(document.getElementById('roleDropdown'));
     const statusDD = createDropdown(document.getElementById('statusDropdown'));
 
-    /* ---------- Edit only: the HR's current password (the Admin may see it) ---------- */
-    const currentPw = document.getElementById('current_password');
-    if (isEdit && currentPw) {
-        const unavailable = (text) => {
-            currentPw.type = 'text';
-            currentPw.value = '';
-            currentPw.placeholder = text;
-            const eye = form.querySelector('.eye-toggle[data-target="current_password"]');
-            if (eye) eye.hidden = true;
-        };
-        ADMIN.request('account_password', { id: config.account.id })
-            .then(res => {
-                const pw = res.result && res.result.password;
-                if (pw) currentPw.value = pw;
-                else unavailable('Not available. Set a new password below to make it visible.');
-            })
-            .catch(err => unavailable(err.message || 'Could not load the password.'));
-    }
-
     /* ---------- the eye: show / hide the password ---------- */
     form.querySelectorAll('.eye-toggle').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -4163,7 +4144,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* ---------- 2b. HR password changes: click the line -> approve or reject ----------
        Each "Password Change Requested" line carries its live request (row.req). The pop-up reads it, and the answer goes to
-       static-admin.php (action password_decide). HR sees the result in Settings and in the bell on the HR Dashboard. */
+       api/admin-action.php (action password_decide). HR sees the result in Settings and in the bell on the HR Dashboard. */
     const requests = {};
     data.activity.forEach(r => { if (r.req) requests[r.req.id] = r.req; });
 
@@ -4189,30 +4170,17 @@ document.addEventListener('DOMContentLoaded', () => {
         openId = id;
         reqFocus = document.activeElement;
         const pending = r.status === 'pending';
-        document.getElementById('pwReqName').textContent = r.name;
+        document.getElementById('pwReqLead').textContent = r.name + ' (HR) asked for the changes below · ' + ADMIN.formatDate(r.requested_at);
         document.getElementById('pwReqEmail').textContent = r.email;
-        document.getElementById('pwReqWhen').textContent = ADMIN.formatDate(r.requested_at);
         document.getElementById('pwReqStatus').innerHTML = '<span class="req-pill is-' + esc(r.status) + '">' + esc(PILL[r.status] || r.status) + '</span>' +
             (r.decided_at ? ' <small>' + esc(ADMIN.formatDate(r.decided_at)) + '</small>' : '') +
             (r.status === 'rejected' && r.reason ? '<small class="req-why">Reason: ' + esc(r.reason) + '</small>' : '');
-        document.getElementById('pwReqLead').textContent = pending
-            ? 'This HR account asked to change its password. It stays the same until you answer.'
-            : 'This request was already answered.';
-        // the two passwords, hidden behind dots until the Admin presses Show (only while pending)
-        [['pwReqCur', r.current_password, 'Not available'], ['pwReqNew', r.new_password, 'Not available']].forEach(([id, value, none]) => {
-            const span = document.getElementById(id);
-            const btn = span.parentNode.querySelector('.pw-show');
-            span.closest('div').hidden = !pending;
-            span.dataset.value = value || '';
-            span.textContent = value ? '\u2022'.repeat(Math.min(value.length, 12)) : none;
-            span.classList.toggle('is-none', !value);
-            btn.hidden = !value;
-            btn.textContent = 'Show';
-        });
         document.getElementById('pwReqReasonBox').hidden = !pending;
+        document.getElementById('pwReqReasonBox').open = false;
         document.getElementById('pwReqNote').hidden = !pending;
         reqApprove.hidden = !pending;
         reqReject.hidden = !pending;
+        document.getElementById('pwReqClose').hidden = pending;
         reqReason.value = '';
         reqModal.classList.add('active');
         setTimeout(() => (pending ? reqApprove : document.getElementById('pwReqClose')).focus(), 120);
@@ -4259,12 +4227,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const tr = e.target.closest('tr[data-req]');
         if (tr) { e.preventDefault(); openRequest(Number(tr.dataset.req)); }
     });
-    reqModal.querySelectorAll('.pw-show').forEach(btn => btn.addEventListener('click', () => {
-        const span = document.getElementById(btn.dataset.for);
-        const showing = btn.textContent === 'Hide';
-        span.textContent = showing ? '\u2022'.repeat(Math.min(span.dataset.value.length, 12)) : span.dataset.value;
-        btn.textContent = showing ? 'Show' : 'Hide';
-    }));
     reqApprove.addEventListener('click', () => decide('approve'));
     reqReject.addEventListener('click', () => decide('reject'));
     document.getElementById('pwReqClose').addEventListener('click', closeRequest);
@@ -4274,7 +4236,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     reqModal.addEventListener('keydown', (e) => {          // Tab stays inside the open pop-up
         if (e.key !== 'Tab') return;
-        const items = Array.from(reqModal.querySelectorAll('button, textarea')).filter(el => !el.disabled && !el.hidden && el.offsetParent !== null);
+        const items = Array.from(reqModal.querySelectorAll('button, textarea, summary')).filter(el => !el.disabled && !el.hidden && el.offsetParent !== null);
         if (!items.length) return;
         const first = items[0], last = items[items.length - 1];
         if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
