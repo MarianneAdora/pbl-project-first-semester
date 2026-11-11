@@ -5230,7 +5230,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (pwBusy) return;
         const bad = pwValidate(true);
         if (bad) { $(bad).focus(); return; }
-        if (!(await askConfirm(['New password: ' + '•'.repeat(Math.min(12, pwNew.value.length))]))) return;
+        if (!(await askConfirm([]))) return;
 
         const label = pwSubmit.dataset.label || (pwSubmit.dataset.label = pwSubmit.textContent);
         pwBusy = true;
