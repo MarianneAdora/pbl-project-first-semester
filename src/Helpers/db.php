@@ -31,7 +31,7 @@ function db(): PDO
     } catch (PDOException $e) {
         throw new RuntimeException(
             "Database connection failed: " . $e->getMessage() .
-            " — check DB_* values in your .env file.", $e->getCode(), $e
+            " Check DB_* values in your .env file.", $e->getCode(), $e
         );
     }
 }

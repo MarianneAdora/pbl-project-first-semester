@@ -85,7 +85,7 @@ class RiskScoringService
 
         // ---- Invite link click time (record only, 0 pts) --------------------
         $add('Time between invite and link click', 0, 0,
-            'Recorded only — email scanners open links instantly, so this is not scored.');
+            'Recorded only. Email scanners open links instantly, so this is not scored.');
 
         // ---- Questionnaire speed (max 3) ------------------------------------
         $timingJson = (string) ($response['timing_json'] ?? '{}');
@@ -236,7 +236,7 @@ class RiskScoringService
 
         // ---- Video: time on page (skipped — upload allowed) -----------------
         $add('Time on the video page', 0, 2,
-            'Not scored — applicants may upload a file instead of recording live.');
+            'Not scored. Applicants may upload a file instead of recording live.');
 
         // ---- Video: hash match with another applicant (max 3) ---------------
         $hash  = (string) ($response['video_file_hash'] ?? '');

@@ -252,7 +252,7 @@ $greeting     = 'Hello, ' . $display_name . '!';
                             </div>
                             <ul class="pw-list" id="pwList"></ul>
                         </div>
-                        <p class="notif-foot">HR activity — name, email, picture and password changes — also appears under Recent Activities.</p>
+                        <p class="notif-foot">HR activity, including name, email, picture and password changes, also appears under Recent Activities.</p>
                     </div>
                 </div>
             </div>
