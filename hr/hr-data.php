@@ -545,7 +545,7 @@ function static_archived_applicants(): array
                a.cv_file_url, a.cv_hash
         FROM applicant a
         LEFT JOIN job_positions p ON p.id = a.position_id AND p.archived_at IS NULL
-        WHERE a.deleted_at IS NOT NULL AND a.verified_at IS NOT NULL
+        WHERE a.deleted_at IS NOT NULL
         ORDER BY a.deleted_at DESC
     ")->fetchAll();
 

@@ -376,7 +376,7 @@ $positions = static_positions();
                 <path class="bc-tick" d="M24 41l11 11 21-23"/>
             </svg>
             <h2>Invitation Sent</h2>
-            <p class="success-lead">The invitation has been sent. The applicant will appear in the Screening List once they verify their email with the one-time code.</p>
+            <p class="success-lead">The invitation has been sent. The applicant now appears in the Screening List with status Pending.</p>
 
             <div class="details-box">
                 <h4>Applicant Details</h4>

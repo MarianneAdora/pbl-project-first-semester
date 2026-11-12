@@ -170,8 +170,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$locked) {      // a locked page i
         } elseif ($otpDb) {
             $check = $otpDb->verifyOtp($applicantId, $code, $maxAttempts, $lockSeconds);
             if ($check['ok']) {
-                // The applicant has proven they own this email: only NOW do they enter the system
-                // (Screening List, Dashboard counts, Recent Applicants all filter on verified_at).
+                // The applicant has proven they own this email: verified_at is set so HR can
+                // tell who completed OTP (Screening List, Dashboard counts, Recent Applicants show all invited applicants).
                 try {
                     $pdo = db();
                     repo_mark_verified($applicantId, $pdo);

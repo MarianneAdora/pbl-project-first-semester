@@ -11,7 +11,7 @@ function repo_applicants_active(?PDO $pdo = null): array
     $pdo = $pdo ?: db();
     $rows = $pdo->query(
         "SELECT applicant_id, name, email, phone_number, status, result, created_at" .
-        " FROM applicant WHERE deleted_at IS NULL AND verified_at IS NOT NULL ORDER BY applicant_id ASC"
+        " FROM applicant WHERE deleted_at IS NULL ORDER BY applicant_id ASC"
     )->fetchAll();
     return array_map('applicant_to_display', $rows);
 }
@@ -30,10 +30,10 @@ function repo_generate_reference_code(PDO $pdo): string
 }
 
 // ---------------------------------------------------------------------------
-// "One CV, one email" + "applicant joins the system only after OTP"
-//   applicant.verified_at IS NULL      -> invitation only (hidden from every HR list/count)
-//   applicant.verified_at IS NOT NULL  -> real applicant (set by repo_mark_verified on OTP success)
-// Every HR-facing read below filters on verified_at IS NOT NULL.
+// "One CV, one email" + "applicant joins the list when HR sends the invite"
+//   applicant.verified_at IS NULL      -> invitation sent, visible in HR lists (status Pending)
+//   applicant.verified_at IS NOT NULL  -> applicant completed OTP verification
+// Every HR-facing read below now includes unverified invitations.
 // ---------------------------------------------------------------------------
 
 /** How long an unverified invitation (and its email link) stays usable. */
@@ -259,7 +259,7 @@ function repo_find_applicant(int $id, ?PDO $pdo = null): ?array
     $pdo = $pdo ?: db();
     $st = $pdo->prepare(
         "SELECT applicant_id, name, email, phone_number, status, result, reference_code, secure_token, cv_file_url, position_id, created_at" .
-        " FROM applicant WHERE applicant_id = :id AND deleted_at IS NULL AND verified_at IS NOT NULL LIMIT 1"
+        " FROM applicant WHERE applicant_id = :id AND deleted_at IS NULL LIMIT 1"
     );
     $st->execute([':id' => $id]);
     $row = $st->fetch();
@@ -311,7 +311,7 @@ function repo_find_applicant_by_email(string $email, ?PDO $pdo = null): ?array
     if ($email === '') return null;
     $st = $pdo->prepare(
         "SELECT applicant_id, name, email, phone_number, status, result, reference_code, secure_token, cv_file_url, position_id, created_at" .
-        " FROM applicant WHERE email_normalized = :e AND deleted_at IS NULL AND verified_at IS NOT NULL LIMIT 1"
+        " FROM applicant WHERE email_normalized = :e AND deleted_at IS NULL LIMIT 1"
     );
     $st->execute([':e' => $email]);
     $row = $st->fetch();
@@ -426,7 +426,7 @@ function repo_has_submitted(int $id, ?PDO $pdo = null): bool
 function repo_mark_in_progress(int $id, ?PDO $pdo = null): int
 {
     $pdo = $pdo ?: db();
-    $st = $pdo->prepare("UPDATE applicant SET status = 'in_progress' WHERE applicant_id = :id AND status = 'pending' AND deleted_at IS NULL AND verified_at IS NOT NULL");
+    $st = $pdo->prepare("UPDATE applicant SET status = 'in_progress' WHERE applicant_id = :id AND status = 'pending' AND deleted_at IS NULL");
     $st->execute([':id' => $id]);
     return $st->rowCount();
 }
@@ -537,7 +537,7 @@ function repo_applicants_archived(?PDO $pdo = null): array
     $pdo = $pdo ?: db();
     $rows = $pdo->query(
         "SELECT applicant_id, name, email, phone_number, status, result, deleted_at, created_at" .
-        " FROM applicant WHERE deleted_at IS NOT NULL AND verified_at IS NOT NULL ORDER BY deleted_at DESC"
+        " FROM applicant WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC"
     )->fetchAll();
     $out = [];
     foreach ($rows as $r) {
@@ -553,7 +553,7 @@ function repo_dashboard_stats(?PDO $pdo = null): array
     $pdo = $pdo ?: db();
     $rows = $pdo->query(
         "SELECT LOWER(status) AS s, LOWER(COALESCE(result,'')) AS r, COUNT(*) AS c" .
-        " FROM applicant WHERE deleted_at IS NULL AND verified_at IS NOT NULL GROUP BY 1, 2"
+        " FROM applicant WHERE deleted_at IS NULL GROUP BY 1, 2"
     )->fetchAll();
 
     $stats = ['total' => 0, 'pending' => 0, 'in_progress' => 0, 'completed' => 0, 'passed' => 0, 'failed' => 0];
@@ -579,7 +579,7 @@ function repo_applicants_recent(?PDO $pdo = null, int $limit = 10): array
     $pdo = $pdo ?: db();
     $st = $pdo->prepare(
         "SELECT applicant_id, name, email, phone_number, status, result, created_at" .
-        " FROM applicant WHERE deleted_at IS NULL AND verified_at IS NOT NULL ORDER BY verified_at DESC, applicant_id DESC LIMIT :lim"
+        " FROM applicant WHERE deleted_at IS NULL ORDER BY created_at DESC, applicant_id DESC LIMIT :lim"
     );
     $st->bindValue(':lim', $limit, PDO::PARAM_INT);
     $st->execute();

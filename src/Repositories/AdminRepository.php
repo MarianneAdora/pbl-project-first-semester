@@ -153,7 +153,7 @@ function repo_admin_notify(?PDO $pdo = null): array
 {
     $pdo = $pdo ?: db();
     $rows = $pdo->query(
-        "SELECT created_at FROM applicant WHERE deleted_at IS NULL AND verified_at IS NOT NULL AND encoded_by_user_id IS NOT NULL" .
+        "SELECT created_at FROM applicant WHERE deleted_at IS NULL AND encoded_by_user_id IS NOT NULL" .
         " UNION ALL SELECT created_at FROM schedule" .
         " ORDER BY created_at DESC LIMIT 100"
     )->fetchAll();

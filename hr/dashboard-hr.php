@@ -63,7 +63,7 @@ try {
         "SELECT applicant_id, name, email, phone_number, status, result, created_at, verified_at,
                 invited_at, submitted_at, passed_at
          FROM applicant
-         WHERE deleted_at IS NULL AND verified_at IS NOT NULL"
+          WHERE deleted_at IS NULL"
     )->fetchAll();
     foreach ($rows as $r) {
         $all_applicants[] = [

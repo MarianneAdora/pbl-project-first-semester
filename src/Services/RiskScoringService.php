@@ -336,7 +336,7 @@ class RiskScoringService
     {
         $st = $this->pdo->prepare(
             "SELECT applicant_id, name, email, phone_number
-             FROM applicant WHERE applicant_id <> :id AND deleted_at IS NULL AND verified_at IS NOT NULL"
+             FROM applicant WHERE applicant_id <> :id AND deleted_at IS NULL"
         );
         $st->execute([':id' => $excludeId]);
         return $st->fetchAll();
