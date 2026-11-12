@@ -7,10 +7,12 @@ TRUNCATE TABLE activity_log, score, schedule, response, otp_request_log, otp, qu
 -- USERS
 -- Passwords are bcrypt hashes. Regenerate with generate_hash.php
 -- if you need to change them.
+-- The admin logs in with admin@expertise.com, but its normalized email
+-- is ebsmi.screening@gmail.com.
 -- ============================================================
-INSERT INTO users (role, name, email, password_hash) VALUES
-    ('admin', 'System Admin', 'admin@expertise.com', '$2y$10$oOC0r1YyU3QOURWLlWQ26./BSESWAUkAfop0Dv2zSjgDaNFMePYnG'),
-    ('hr',    'HR Staff',     'hr@expertise.com',    '$2y$10$KSG4v4z3WMhknlDs8LZf3.d066DL98eITbXnpPboAXQ5P6es4fFuy');
+INSERT INTO users (role, name, email, email_normalized, password_hash) VALUES
+    ('admin', 'System Admin', 'admin@expertise.com', 'ebsmi.screening@gmail.com', '$2y$10$oOC0r1YyU3QOURWLlWQ26./BSESWAUkAfop0Dv2zSjgDaNFMePYnG'),
+    ('hr',    'HR Staff',     'hr@expertise.com',    'hr@expertise.com',          '$2y$10$KSG4v4z3WMhknlDs8LZf3.d066DL98eITbXnpPboAXQ5P6es4fFuy');
 
 
 -- =============================================================

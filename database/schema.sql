@@ -1,4 +1,4 @@
-CREATE DATABASE ebsmi_screening;
+-- CREATE DATABASE ebsmi_screening;   -- run once on its own if the database doesn't exist yet, then connect to it
 
 BEGIN;
 
@@ -18,10 +18,6 @@ CREATE TABLE users (
     avatar_url      VARCHAR(512),                -- Cloudinary secure_url for the HR staff avatar
     avatar_public_id VARCHAR(255)             -- Cloudinary public_id for removal
 );
-
--- Migration for existing databases: add email_normalized if missing
-ALTER TABLE users ADD COLUMN IF NOT EXISTS email_normalized VARCHAR(255) NOT NULL DEFAULT '';
-UPDATE users SET email_normalized = LOWER(email) WHERE email_normalized = '' OR email_normalized IS NULL;
 
 -- Migration for existing databases: password reset token columns (nullable)
 ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token VARCHAR(64);
