@@ -173,7 +173,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <button type="submit" class="btn-submit reveal" style="--i:7">LOGIN</button>
             </form>
 
-            <p class="forgot-link"><a href="forgot-password.php">Forgot Password?</a></p>
+            <p class="forgot-link"><a href="auth/forgot-password.php">Forgot Password?</a></p>
         </div>
     </div>
 

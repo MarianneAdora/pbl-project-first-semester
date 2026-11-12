@@ -20,7 +20,7 @@ session_start();
         <!-- Logo Header -->
         <div class="logo-container">
             <div class="logo-crop">
-                        <img src="../assets/images/expertise.png" alt="Expertise Logo">
+                <img src="assets/images/expertise.png" alt="Expertise Logo">
             </div>
             <div class="portal-title">MANAGEMENT PORTAL</div>
         </div>
@@ -44,7 +44,7 @@ session_start();
                 <button type="submit" class="btn-submit" id="resetBtn">Send reset link</button>
             </form>
 
-            <p class="forgot-link"><a href="index.php">&larr; Back to login</a></p>
+            <p class="forgot-link"><a href="../index.php">&larr; Back to login</a></p>
         </div>
     </div>
 

@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (errorMessage) errorMessage.style.display = 'none';
             if (submitBtn) submitBtn.disabled = true;
 
-            fetch('auth/index.php', { method: 'POST', body: new FormData(loginForm) })
+            fetch('index.php', { method: 'POST', body: new FormData(loginForm) })
                 .then(response => response.json())
                 .then(data => {
                     if (data.status !== 'success') {

@@ -7,7 +7,7 @@ header('Pragma: no-cache');
 
 // Protection: Ensure only the Admin can access this page
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
-    header('Location: ../auth/index.php');
+    header('Location: ../index.php');
     exit();
 }
 
