@@ -1594,8 +1594,7 @@
             "created": "2026-08-03 09:00",
             "archived_at": null,
             "avatar": "https://res.cloudinary.com/y0s0brvb/image/private/s--_gAHhkYe--/v1793688646/ebsmi-user-profiles/avatar-1-avatar.jpg",
-            "hash": "$2y$10$Q7OyZfjLPSdGUh7VVRbCBeqvdUX.h7k32eInaPU.sEAYrhYr0Jr.2",
-            "password_plain": "Hrr_12345"
+            "hash": "$2y$10$Q7OyZfjLPSdGUh7VVRbCBeqvdUX.h7k32eInaPU.sEAYrhYr0Jr.2"
         },
         {
             "id": 2,

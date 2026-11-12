@@ -435,7 +435,7 @@ function static_admin_purge_question(string $id): bool
 // The account without its password (this is what the pages and the JavaScript get)
 function static_admin_public_account(array $a): array
 {
-    unset($a['password'], $a['hash'], $a['password_plain']);       // the pages never get a password; the Admin asks for it (account_password)
+    unset($a['password'], $a['hash']);       // the pages never get a password
     $a['role'] = (string) ($a['role'] ?? 'HR Staff');
     return $a;
 }
@@ -469,19 +469,6 @@ function static_admin_accounts(): array
         $out[] = static_admin_public_account($a);
     }
     return $out;
-}
-
-// The password the Admin sees in Edit HR: the readable copy kept when the Admin (or an approved request) set it,
-// or the plain sample password of the starting account. Null = not known (the account only has a hash).
-// SAMPLE ONLY: with the database, passwords stay hashed and this function (and 'password_plain') is deleted.
-function static_admin_password_of(int $id): ?array
-{
-    foreach (static_hr_accounts() as $a) {
-        if ((int) ($a['id'] ?? 0) !== $id) continue;
-        $plain = (string) ($a['password_plain'] ?? ($a['password'] ?? ''));
-        return ['password' => $plain !== '' ? $plain : null];
-    }
-    return null;
 }
 
 function static_admin_next_account_id(array $list): int
@@ -536,7 +523,6 @@ function static_admin_add_account(array $in): array
             'email'       => $email,
             'role'        => 'HR Staff',
             'hash'        => password_hash($pass, PASSWORD_DEFAULT),
-            'password_plain' => $pass,                  // SAMPLE ONLY: lets the Admin see it in Edit HR (see static_admin_password_of)
             'status'      => ($in['status'] ?? 'Active') === 'Inactive' ? 'Inactive' : 'Active',
             'created'     => static_now()->format('Y-m-d H:i'),
             'archived_at' => null
@@ -571,7 +557,6 @@ function static_admin_update_account(int $id, array $in): array
         $list[$pos]['status'] = $status;
         if ($pass !== '') {                       // a new password replaces the old one (the old one is never shown)
             $list[$pos]['hash'] = password_hash($pass, PASSWORD_DEFAULT);
-            $list[$pos]['password_plain'] = $pass;
             unset($list[$pos]['password']);
         }
         $store['hr_accounts'] = $list;
@@ -745,14 +730,9 @@ function static_admin_recent_activity(int $limit = 10): array
 {
     $store   = application_state_read();
     $reqs    = static_profile_requests_by_id($store);
-    // The Admin decides with the passwords in front of him: the HR's current one and the new one asked for.
-    // Only while the request is pending, and only on this Admin page (HR's own status never carries them).
-    // SAMPLE ONLY, like the readable copy in Edit HR.
     foreach (static_profile_requests($store) as $raw) {
         $rid = (int) ($raw['id'] ?? 0);
         if (!isset($reqs[$rid]) || $reqs[$rid]['status'] !== 'pending') continue;
-        $cur = static_admin_password_of((int) ($raw['account_id'] ?? 0));
-        $reqs[$rid]['current_password'] = $cur['password'] ?? null;
         $reqs[$rid]['new_password']     = !empty($raw['plain']) ? (string) $raw['plain'] : null;
     }
     $pending = count(array_filter($reqs, fn($r) => $r['status'] === 'pending'));
@@ -1279,12 +1259,6 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
             case 'account_purge':
                 if (!static_admin_purge_account((int) ($input['id'] ?? 0))) static_admin_respond(['status' => 'error', 'message' => $missing], 404);
                 $message = 'HR account deleted forever.';
-                break;
-
-            case 'account_password':    // Edit HR: show the HR account's current password to the Admin
-                $result = static_admin_password_of((int) ($input['id'] ?? 0));
-                if ($result === null) static_admin_respond(['status' => 'error', 'message' => $missing], 404);
-                static_admin_respond(['status' => 'success', 'message' => '', 'result' => $result]);
                 break;
 
             case 'password_decide':     // Recent Activities pop-up: approve or reject an HR password change
