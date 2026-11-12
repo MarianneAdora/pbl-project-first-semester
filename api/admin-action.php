@@ -88,15 +88,16 @@ try {
             $dup->execute([':e' => $email, ':id' => $id]);
             if ($dup->fetchColumn()) admin_respond(['status' => 'error', 'message' => 'That email address is already in use.'], 422);
 
+            $en = strtolower(trim($email));
             if ($password !== '') {
                 if (strlen($password) < 8 || !preg_match('/[A-Za-z]/', $password) || !preg_match('/\d/', $password))
                     admin_respond(['status' => 'error', 'message' => 'Password must be at least 8 characters with letters and a number.'], 422);
                 $hash = password_hash($password, PASSWORD_DEFAULT);
-                $upd = $pdo->prepare("UPDATE users SET name=:n, email=:e, password_hash=:p WHERE user_id=:id AND role='hr' AND deleted_at IS NULL");
-                $upd->execute([':n' => $name, ':e' => $email, ':p' => $hash, ':id' => $id]);
+                $upd = $pdo->prepare("UPDATE users SET name=:n, email=:e, email_normalized=:en, password_hash=:p WHERE user_id=:id AND role='hr' AND deleted_at IS NULL");
+                $upd->execute([':n' => $name, ':e' => $email, ':en' => $en, ':p' => $hash, ':id' => $id]);
             } else {
-                $upd = $pdo->prepare("UPDATE users SET name=:n, email=:e WHERE user_id=:id AND role='hr' AND deleted_at IS NULL");
-                $upd->execute([':n' => $name, ':e' => $email, ':id' => $id]);
+                $upd = $pdo->prepare("UPDATE users SET name=:n, email=:e, email_normalized=:en WHERE user_id=:id AND role='hr' AND deleted_at IS NULL");
+                $upd->execute([':n' => $name, ':e' => $email, ':en' => $en, ':id' => $id]);
             }
             if (!$upd->rowCount()) admin_respond(['status' => 'error', 'message' => 'Account not found or already deleted.'], 404);
             repo_log_activity('HR Account Edited', $name . ' (HR) · ' . $email);

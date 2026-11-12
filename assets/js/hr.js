@@ -4689,6 +4689,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = $('settingsForm');
     const nameInput = $('setName');
     const emailInput = $('setEmail');
+    const currentPwInput = $('setCurrentPw');
     const saveBtn = $('saveBtn');
     const cancelBtn = $('cancelBtn');
     const prefCard = $('prefCard');
@@ -4730,6 +4731,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return {
             name: nameInput.value.trim(),
             email: emailInput.value.trim(),
+            current_password: currentPwInput ? currentPwInput.value.trim() : '',
             photo: photoState(),
             theme: checked ? checked.value : 'light',
             notifications: toggles.notifications.checked,
@@ -4742,6 +4744,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function fill(state) {
         nameInput.value = state.name;
         emailInput.value = state.email;
+        if (currentPwInput) currentPwInput.value = '';
         resetPhoto();
         themeRadios.forEach(r => { r.checked = r.value === state.theme; });
         Object.keys(toggles).forEach(k => { toggles[k].checked = !!state[k]; });
@@ -4790,6 +4793,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!t.includes('@')) return 'The email must include an @ (example: name@gmail.com).';
             if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(t)) return 'Enter a valid email address (example: name@gmail.com).';
             return '';
+        },
+        current_password(v) {
+            const t = v.trim();
+            if (!t) return 'Please enter your current password.';
+            return '';
         }
     };
 
@@ -4807,9 +4815,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function validate(name, shake) {
-        const input = name === 'name' ? nameInput : emailInput;
-        const message = rules[name](input.value);
-        setError(fieldOf(name), message, shake);
+        const input = name === 'name' ? nameInput : (name === 'email' ? emailInput : currentPwInput);
+        const message = rules[name](input ? input.value : '');
+        const field = fieldOf(name);
+        setError(field, message, shake);
         return !message;
     }
 
@@ -4822,6 +4831,18 @@ document.addEventListener('DOMContentLoaded', () => {
             refreshButtons();
         });
         input.addEventListener('blur', () => { if (touched.has(name)) validate(name, false); });
+    });
+    if (currentPwInput) {
+        currentPwInput.addEventListener('input', () => { validate('current_password', false); refreshButtons(); });
+        currentPwInput.addEventListener('blur', () => { validate('current_password', false); });
+    }
+
+    // Show the Current Password field only when HR is actively changing their email
+    emailInput.addEventListener('input', () => {
+        const changing = emailInput.value.trim() !== String(saved.email || '').trim();
+        const cpField = fieldOf('current_password');
+        if (cpField) cpField.style.display = changing ? '' : 'none';
+        if (!changing) { currentPwInput.value = ''; setError(cpField, ''); }
     });
 
     themeRadios.forEach(r => r.addEventListener('change', () => { preview(); refreshButtons(); }));
@@ -4952,11 +4973,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Saves the profile on the server first (name, email, picture; hr-data.php). Only when that worked are the
     // look settings kept in this browser, so a refused email never leaves a half-saved page.
-    async function persist(state) {
+    async function persist(state, emailChanging) {
         const form = new FormData();
         form.append('action', 'profile_save');
         form.append('name', state.name);
         form.append('email', state.email);
+        if (emailChanging && state.current_password) form.append('current_password', state.current_password);
         if (photoBlob) form.append('avatar', photoBlob, 'avatar.jpg');
         else if (photoRemoved) form.append('avatar_remove', '1');
 
@@ -4985,20 +5007,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let firstBad = null;
         ['name', 'email'].forEach(n => { if (!validate(n, true) && !firstBad) firstBad = n; });
+        const emailChanging = emailInput.value.trim() !== String(saved.email || '').trim();
+        if (emailChanging && currentPwInput && !validate('current_password', true) && !firstBad) firstBad = 'current_password';
         if (firstBad) {
             HR.toast('Fix the highlighted field before saving.', { error: true, duration: 4000 });
-            (firstBad === 'name' ? nameInput : emailInput).focus();
+            if (firstBad === 'name') nameInput.focus();
+            else if (firstBad === 'email') emailInput.focus();
+            else currentPwInput.focus();
             return;
         }
 
         const state = collect();
-        if (state.email !== saved.email) {
+        if (emailChanging) {
             const ok = await askConfirm(['New email: ' + state.email]);
             if (!ok) return;
         }
         setSaving(true);
         try {
-            const data = await persist(state);
+            const data = await persist(state, emailChanging);
             saved = readSaved();
             fill(saved);                           // shows what the server kept (trimmed name, lower-case email, the new picture)
             saveBtn.classList.add('saved');
@@ -5027,7 +5053,7 @@ document.addEventListener('DOMContentLoaded', () => {
     cancelBtn.addEventListener('click', () => {
         if (saving || !isDirty()) return;
         fill(saved);
-        ['name', 'email'].forEach(n => setError(fieldOf(n), ''));
+        ['name', 'email', 'current_password'].forEach(n => setError(fieldOf(n), ''));
         touched.clear();
         HR.settings.apply(HR.settings.get(), true);      // the saved look
         refreshButtons();
@@ -5057,8 +5083,6 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ---------- Waiting for the admin's approval ---------- */
     const pendingBanner = $('pendingBanner');
     const pendingText = $('pendingText');
-    const pwOpenBtn = $('pwOpen');
-    const pwOpenLabel = $('pwOpenLabel');
 
     function paintPending() {
         const p = HRREQ.pendingFor(account.id);
@@ -5128,6 +5152,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const pwModal = $('pwModal');
     const pwForm = $('pwForm');
     const pwOpen = $('pwOpen');
+    const pwOpenLabel = $('pwOpenLabel');
     const pwCurrent = $('pwCurrent');
     const pwNew = $('pwNew');
     const pwConfirm = $('pwConfirm');
@@ -5283,77 +5308,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         HR.toast('Password updated.', { duration: 3500 });
-        const mask = $('pwMask').closest('.set-input');
-        mask.classList.remove('pulse');
-        void mask.offsetWidth;
-        mask.classList.add('pulse');
     });
 
-    /* ---------- HR only: where is my password change request? ----------
-       The new password only works after the Admin approves it. This box shows Pending / Approved / Rejected, and while it
-       is pending the page asks the server every few seconds, so the answer shows up without reloading. */
-    const pwStatus = $('pwStatus');
-    const pwCancelReq = $('pwCancelReq');
-    let currentReq = null;
-
-    function whenText(at) {
-        const m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(String(at || ''));
-        if (!m) return String(at || '');
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        let out = months[Number(m[2]) - 1] + ' ' + Number(m[3]) + ', ' + m[1];
-        if (m[4] !== undefined) { const h = Number(m[4]); out += ' \u00b7 ' + (h % 12 || 12) + ':' + m[5] + ' ' + (h >= 12 ? 'PM' : 'AM'); }
-        return out;
-    }
-
-    function showRequest(r) {
-        currentReq = r || null;
-        if (!pwStatus) return;
-        const show = !!r && r.status !== 'cancelled';
-        pwStatus.hidden = !show;
-        const pending = !!r && r.status === 'pending';
-        pwOpen.disabled = pending;
-        pwOpen.title = pending ? 'Wait for the Admin to answer your request first' : '';
-        pwCancelReq.hidden = !pending;
-        if (!show) return;
-
-        const t = {
-            pending:  ['Password change waiting for approval', 'Sent ' + whenText(r.requested_at) + '. Your current password still works until the Admin approves the new one.'],
-            approved: ['Password change approved', 'Approved ' + whenText(r.decided_at) + '. Use your new password the next time you log in.'],
-            rejected: ['Password change rejected', 'Rejected ' + whenText(r.decided_at) + '. Your current password stays.' + (r.reason ? ' Reason: ' + r.reason : '')]
-        }[r.status] || ['', ''];
-        pwStatus.dataset.state = r.status;
-        $('pwStatusTitle').textContent = t[0];
-        $('pwStatusSub').textContent = t[1];
-    }
-
-    async function refreshRequest() {
-        if (!pwStatus || document.hidden || !currentReq || currentReq.status !== 'pending') return;
-        try {
-            const data = await postProfile({ action: 'password_status' });
-            const before = currentReq;
-            showRequest(data.request);
-            if (before.status === 'pending' && data.request && data.request.status === 'approved') HR.toast('The Admin approved your new password.', { duration: 6000 });
-            if (before.status === 'pending' && data.request && data.request.status === 'rejected') HR.toast('The Admin rejected your password change.', { error: true, duration: 6000 });
-        } catch (err) { /* offline or the session ended: try again next time */ }
-    }
-
-    if (pwStatus) {
-        pwCancelReq.addEventListener('click', async () => {
-            pwCancelReq.disabled = true;
-            try {
-                const data = await postProfile({ action: 'password_cancel' });
-                showRequest(data.request);
-                HR.toast(data.message, { duration: 3500 });
-            } catch (err) {
-                HR.toast(err.message, { error: true, duration: 6000 });
-                refreshRequest();
-            }
-            pwCancelReq.disabled = false;
-        });
-        showRequest(account.request || null);
-        setInterval(refreshRequest, 8000);
-        document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshRequest(); });
-    }
 
     // Tab stays inside the open dialog
     pwModal.addEventListener('keydown', (e) => {

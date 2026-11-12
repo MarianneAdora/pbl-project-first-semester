@@ -1532,6 +1532,15 @@ function static_profile_save(array $in, ?array $upload): array
     }
     if ($stmt->fetch()) throw new StaticProfileError('This email is already in use by another account.');
 
+    // User changing their own email must prove ownership with their current password
+    if (strtolower(trim($email)) !== strtolower(trim((string) ($me['email'] ?? '')))) {
+        $currentPassword = (string) ($in['current_password'] ?? '');
+        if ($currentPassword === '') throw new StaticProfileError('Enter your current password to change your email.', 'pwCurrent');
+        if (!static_profile_current_password_ok($me, $currentPassword)) {
+            throw new StaticProfileError('The current password is not correct.', 'pwCurrent');
+        }
+    }
+
     $avatarUrl = $me['avatar'] ?? null;
 
     // handle avatar upload

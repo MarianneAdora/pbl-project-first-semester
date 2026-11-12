@@ -184,22 +184,21 @@ $account_avatar_url = $profile['avatar_url'];
                     <p class="set-error" id="emailError" role="alert"></p>
                 </div>
 
-                <div class="pw-row">
-                    <div class="set-field">
-                        <label for="pwMask">Password</label>
-                        <!-- Only dots: the real password is never printed into the page -->
-                        <div class="set-input is-readonly">
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C9.24 2 7 4.24 7 7v2h2V7c0-1.66 1.34-3 3-3s3 1.34 3 3v2h2V7c0-2.76-2.24-5-5-5z"/><path d="M18 9H6c-1.1 0-2 .9-2 2v9c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-9c0-1.1-.9-2-2-2zm-6 7.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
-                            <input type="password" id="pwMask" value="XXXXXXXXX" readonly tabindex="-1" aria-label="Password (hidden)">
-                        </div>
+                <div class="set-field" data-field="current_password" style="display:none;">
+                    <label for="setCurrentPw">Current Password</label>
+                    <div class="set-input">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C9.24 2 7 4.24 7 7v2h2V7c0-1.66 1.34-3 3-3s3 1.34 3 3v2h2V7c0-2.76-2.24-5-5-5z"/><path d="M18 9H6c-1.1 0-2 .9-2 2v9c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-9c0-1.1-.9-2-2-2zm-6 7.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+                        <input type="password" id="setCurrentPw" name="current_password" placeholder="Type your current password" autocomplete="current-password" aria-describedby="currentPwError">
                     </div>
-                    <div class="set-field">
-                        <label for="pwOpen">Change Password</label>
-                        <button type="button" class="btn-update-pw" id="pwOpen" aria-haspopup="dialog">
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><path class="lock-shackle" d="M12 2C9.24 2 7 4.24 7 7v2h2V7c0-1.66 1.34-3 3-3s3 1.34 3 3v2h2V7c0-2.76-2.24-5-5-5z"/><path d="M18 9H6c-1.1 0-2 .9-2 2v9c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-9c0-1.1-.9-2-2-2zm-6 7.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
-                            Update Password
-                        </button>
-                    </div>
+                    <p class="set-error" id="currentPwError" role="alert"></p>
+                </div>
+
+                <div class="set-field">
+                    <label for="pwOpen">Change Password</label>
+                    <button type="button" class="btn-update-pw" id="pwOpen" aria-haspopup="dialog">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path class="lock-shackle" d="M12 2C9.24 2 7 4.24 7 7v2h2V7c0-1.66 1.34-3 3-3s3 1.34 3 3v2h2V7c0-2.76-2.24-5-5-5z"/><path d="M18 9H6c-1.1 0-2 .9-2 2v9c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-9c0-1.1-.9-2-2-2zm-6 7.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+                        <span id="pwOpenLabel">Update Password</span>
+                    </button>
                 </div>
             </section>
 
