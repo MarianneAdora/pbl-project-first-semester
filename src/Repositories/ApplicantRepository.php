@@ -5,6 +5,7 @@
 require_once __DIR__ . '/../Helpers/db.php';
 require_once __DIR__ . '/../Helpers/display.php';
 require_once __DIR__ . '/ActivityRepository.php';
+require_once __DIR__ . '/../Services/CloudinaryService.php';
 
 function repo_applicants_active(?PDO $pdo = null): array
 {
@@ -432,8 +433,70 @@ function repo_mark_in_progress(int $id, ?PDO $pdo = null): int
 }
 
 /**
+ * Extract the Cloudinary public_id (folder + filename, no extension) from a
+ * Cloudinary secure_url. Returns null when the URL is not a Cloudinary URL.
+ */
+function cloudinary_public_id_from_url(string $url): ?string
+{
+    if ($url === '') return null;
+    if (!preg_match('#/upload(?:/[a-z]+)?/v\d+/(.+)$#', $url, $m)) return null;
+    $publicId = $m[1];
+    $publicId = preg_replace('/\?.*$/', '', $publicId);
+    $publicId = preg_replace('/\.[^.]+$/', '', $publicId);
+    return $publicId !== '' ? $publicId : null;
+}
+
+/**
+ * Delete an applicant's CV and video files from Cloudinary, without touching
+ * the database metadata (cv_hash, video_file_hash, answers_json are retained).
+ * Called before archiving or purging so media files are removed from storage.
+ */
+function repo_delete_applicant_media(array $ids, ?PDO $pdo = null): void
+{
+    $pdo = $pdo ?: db();
+    if (!$ids) return;
+
+    try {
+        $cloud = new CloudinaryService();
+    } catch (Throwable $e) {
+        return; // Cloudinary not configured: nothing to delete
+    }
+
+    $ph = implode(',', array_fill(0, count($ids), '?'));
+    $idVals = array_values($ids);
+
+    // CV files from applicant table
+    $st = $pdo->prepare(
+        "SELECT applicant_id, cv_file_url FROM applicant" .
+        " WHERE applicant_id IN ($ph) AND cv_file_url IS NOT NULL AND cv_file_url <> ''"
+    );
+    $st->execute($idVals);
+    while ($row = $st->fetch()) {
+        $publicId = cloudinary_public_id_from_url((string) $row['cv_file_url']);
+        if ($publicId !== null) {
+            try { $cloud->deleteResource($publicId, 'auto', 'private'); } catch (Throwable $ignored) {}
+        }
+    }
+
+    // Video files from response table
+    $st = $pdo->prepare(
+        "SELECT applicant_id, video_file_url FROM response" .
+        " WHERE applicant_id IN ($ph) AND video_file_url IS NOT NULL AND video_file_url <> ''"
+    );
+    $st->execute($idVals);
+    while ($row = $st->fetch()) {
+        $publicId = cloudinary_public_id_from_url((string) $row['video_file_url']);
+        if ($publicId !== null) {
+            try { $cloud->deleteResource($publicId, 'video', 'default'); } catch (Throwable $ignored) {}
+        }
+    }
+}
+
+/**
  * Archive (soft-delete) applicants: Screening List Delete -> Archive page.
  * Sets deleted_at = NOW(); archived rows disappear from the list, appear in Archive.
+ * Also removes their CV and video files from Cloudinary (keeps cv_hash,
+ * video_file_hash and answers_json in the database).
  * Returns number of rows actually archived.
  */
 function repo_archive_applicants(array $ids, ?PDO $pdo = null): int
@@ -442,6 +505,7 @@ function repo_archive_applicants(array $ids, ?PDO $pdo = null): int
     $ids = array_values(array_unique(array_map('intval', $ids)));
     $ids = array_filter($ids, fn($i) => $i > 0);
     if (!$ids) return 0;
+    repo_delete_applicant_media($ids, $pdo);
     $ph = implode(',', array_fill(0, count($ids), '?'));
     $st = $pdo->prepare("UPDATE applicant SET deleted_at = NOW() WHERE applicant_id IN ($ph) AND deleted_at IS NULL");
     $st->execute($ids);
@@ -476,6 +540,7 @@ function repo_purge_applicants(array $ids, ?PDO $pdo = null): int
     $ids = array_values(array_unique(array_map('intval', $ids)));
     $ids = array_filter($ids, fn($i) => $i > 0);
     if (!$ids) return 0;
+    repo_delete_applicant_media($ids, $pdo);
     $ph = implode(',', array_fill(0, count($ids), '?'));
     $st = $pdo->prepare("DELETE FROM applicant WHERE applicant_id IN ($ph) AND deleted_at IS NOT NULL");
     $st->execute($ids);
@@ -529,6 +594,14 @@ function repo_set_status(int $id, string $status, ?string $result = null): bool
     ];
     if ("$s" === 'completed') $params[':pass'] = $result === 'passed' ? (new DateTimeImmutable('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d H:i:s') : null;
     $st->execute($params);
+
+    // Auto-archive rejected (failed) applicants: they leave the Screening List and
+    // stay in the Archive for 30 days before permanent deletion (purge runs on
+    // archive page load and every archive-action call).
+    if ($s === 'completed' && $result === 'rejected' && $st->rowCount() > 0) {
+        try { repo_archive_applicants([$id], $pdo); } catch (Throwable $ignored) {}
+    }
+
     return $st->rowCount() > 0;
 }
 
