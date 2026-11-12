@@ -6,7 +6,7 @@ $devMode     = false;   // true = shows the OTP on screen so you can test withou
 $otpLifetime = 300;     // seconds the code stays valid (5 minutes)
 $resendBase   = 30;     // seconds the applicant waits before the 1st resend
 $resendStep   = 10;     // +10 seconds for every further resend (30, 40, 50, 60 ...)
-$resendMax    = 10;     // resends allowed per window; after this a popup appears
+$resendMax    = 10;     // resends allowed per window = the "attempts" shown on the page; after this a popup appears
 $resendWindow = 3600;   // 1 hour: the resend counter renews after this
 $maxAttempts = 3;       // wrong codes allowed (the usual OTP limit). Reaching it locks the page
 $lockSeconds = 900;     // how long the page stays locked after the last wrong attempt (15 minutes)
@@ -69,11 +69,12 @@ $getRequestStamps = function () use ($otpDb, $applicantId, $resendWindow): array
     if ($otpDb) {
         try {
             $st = db()->prepare(
-                "SELECT UNIX_TIMESTAMP(requested_at) FROM otp_request_log
-                 WHERE applicant_id = ? AND requested_at > (NOW() - INTERVAL {$resendWindow} SECOND)"
+                "SELECT EXTRACT(EPOCH FROM (NOW() - requested_at))::int AS age_seconds FROM otp_request_log
+                 WHERE applicant_id = ? AND requested_at > (NOW() - INTERVAL '{$resendWindow} seconds')"
             );
             $st->execute([$applicantId]);
-            return array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN));
+            $now = time();
+            return array_map(fn($age) => $now - (int) $age, $st->fetchAll(PDO::FETCH_COLUMN));
         } catch (Throwable $e) {
             error_log('otp_request_log read error: ' . $e->getMessage());
             return [];
@@ -242,7 +243,10 @@ if ($otpDb) {
 }
 
 // ---- Resend cooldown (30s, 40s, 50s ... max 10 resends, renews after 1 hour) ----
-$rs             = $resendState($getRequestStamps());
+$stamps         = $getRequestStamps();
+$rs             = $resendState($stamps);
+$resendsUsed    = max(0, count($stamps) - 1);                 // every click on "Resend Code" uses one attempt (the first send is free)
+$attemptsLeft   = max(0, $resendMax - $resendsUsed);
 $resendBlocked  = $rs['blocked'];
 $cooldown       = $locked ? 0 : $rs['wait'];
 $showLimitPopup = $resendBlocked && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['resend']);
@@ -366,7 +370,7 @@ $logoSrc = is_file(__DIR__ . '/../assets/images/expertise.png') ? '../assets/ima
             <?php endif; ?>
 
             <p class="attempts reveal<?= $attemptsLeft === 1 ? ' attempts--last' : '' ?>" id="attempts" style="--i:10.6">
-                <?= (int) $attemptsLeft ?> of <?= (int) $maxAttempts ?> attempt<?= $maxAttempts === 1 ? '' : 's' ?> left
+                <?= (int) $attemptsLeft ?> of <?= (int) $resendMax ?> attempt<?= $resendMax === 1 ? '' : 's' ?> left
             </p>
 
         </form>
