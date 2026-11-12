@@ -12,7 +12,7 @@ session_start();
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="assets/css/style.css?v=<?php echo @filemtime(__DIR__ . '/assets/css/style.css'); ?>">
+    <link rel="stylesheet" href="../assets/css/style.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/style.css'); ?>">
 </head>
 <body>
 
@@ -20,7 +20,7 @@ session_start();
         <!-- Logo Header -->
         <div class="logo-container">
             <div class="logo-crop">
-                <img src="assets/images/expertise.png" alt="Expertise Logo">
+                        <img src="../assets/images/expertise.png" alt="Expertise Logo">
             </div>
             <div class="portal-title">MANAGEMENT PORTAL</div>
         </div>
@@ -64,7 +64,7 @@ session_start();
                 btn.textContent = 'Sending...';
 
                 try {
-                    const res = await fetch('api/password-reset.php', {
+                    const res = await fetch('../api/password-reset.php', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         credentials: 'same-origin',

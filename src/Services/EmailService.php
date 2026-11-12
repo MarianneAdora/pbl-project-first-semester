@@ -182,7 +182,7 @@ class EmailService {
         $base = dirname($_SERVER['SCRIPT_NAME'] ?? '');
         if ($base === '' || $base === '/') $base = '';
         if (str_ends_with($base, '/api')) $base = substr($base, 0, -4);
-        return "$scheme://$host$base/reset-password.php?token=" . urlencode($token);
+        return "$scheme://$host$base/auth/reset-password.php?token=" . urlencode($token);
     }
 
     public function sendScheduleApprovedEmail($toEmail, $firstName, $date, $time, $type, $location, $link) {

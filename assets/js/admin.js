@@ -748,7 +748,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const go = () => {
                 if (redirected) return;
                 redirected = true;
-                window.location.href = '../index.php?transition=out';
+                window.location.href = '../auth/index.php?transition=out';
             };
 
             root.classList.add('is-leaving');

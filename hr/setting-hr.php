@@ -7,7 +7,7 @@ header('Pragma: no-cache');
 
 // Protection: Ensure only HR users can access this page
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {
-    header('Location: ../index.php');
+    header('Location: ../auth/index.php');
     exit();
 }
 
