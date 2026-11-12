@@ -151,6 +151,40 @@ class EmailService {
         return $this->brevoSend($data, false);
     }
 
+    public function sendPasswordResetEmail($toEmail, $toName, string $token): bool
+    {
+        $firstName = trim(explode(' ', trim((string) $toName))[0] ?? (string) $toName);
+        if ($firstName === '') $firstName = (string) $toName;
+        $link = self::resetLink($token);
+
+        $htmlContent = $this->loadTemplate('password-reset-email.html');
+        $htmlContent = str_replace('{{FIRST_NAME}}', htmlspecialchars($firstName, ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $htmlContent = str_replace('{{LINK}}', htmlspecialchars($link, ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $htmlContent = str_replace('{{YEAR}}', date('Y'), $htmlContent);
+
+        $data = [
+            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@gmail.com"],
+            "to" => [["email" => $toEmail, "name" => (string) $toName]],
+            "subject" => "Reset your password | Expertise",
+            "htmlContent" => $htmlContent
+        ];
+
+        return $this->brevoSend($data, false);
+    }
+
+    // Builds the public reset page URL that carries the one-time token. Derived from the
+    // current request so it works on localhost and on the real domain alike. The API that
+    // sends this email lives under /api/, while reset-password.php lives at the project root.
+    private static function resetLink(string $token): string
+    {
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $base = dirname($_SERVER['SCRIPT_NAME'] ?? '');
+        if ($base === '' || $base === '/') $base = '';
+        if (str_ends_with($base, '/api')) $base = substr($base, 0, -4);
+        return "$scheme://$host$base/reset-password.php?token=" . urlencode($token);
+    }
+
     public function sendScheduleApprovedEmail($toEmail, $firstName, $date, $time, $type, $location, $link) {
         $htmlContent = $this->loadTemplate('schedule-approved-email.html');
         $htmlContent = str_replace('{{FIRST_NAME}}', htmlspecialchars($firstName, ENT_QUOTES, 'UTF-8'), $htmlContent);

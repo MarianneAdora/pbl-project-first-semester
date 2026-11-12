@@ -56,6 +56,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = filter_var(trim($_POST['email'] ?? ''), FILTER_SANITIZE_EMAIL);
     $password = $_POST['password'] ?? '';
 
+    // Fallback: some web setups disable $_POST population (enable_post_data_reading=Off);
+    // parse the raw body so login still works.
+    if (($email === '' || $password === '') && ($raw = @file_get_contents('php://input')) !== false) {
+        $body = [];
+        parse_str($raw, $body);
+        if ($email === '') $email = filter_var(trim($body['email'] ?? ''), FILTER_SANITIZE_EMAIL);
+        if ($password === '') $password = $body['password'] ?? '';
+    }
+
     $email = strtolower($email);
     $account = $credentials[$email] ?? null;
     $passwordOk = false;
@@ -163,6 +172,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <button type="submit" class="btn-submit reveal" style="--i:7">LOGIN</button>
             </form>
+
+            <p class="forgot-link"><a href="forgot-password.php">Forgot Password?</a></p>
         </div>
     </div>
 

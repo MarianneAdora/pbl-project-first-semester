@@ -360,3 +360,60 @@ html.js.is-ready.is-leaving .reveal {
     display: none;
     border: 1px solid #ffcccc;
 }
+
+.success-message {
+    background-color: #e7f4ea;
+    color: #2e7d32;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 6px;
+    margin-bottom: 14px;
+    display: none;
+    border: 1px solid #b7dfc4;
+}
+
+.forgot-link {
+    margin-top: 16px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #d1122a;
+    text-align: center;
+}
+.forgot-link a {
+    color: #d1122a;
+    text-decoration: none;
+}
+.forgot-link a:hover {
+    text-decoration: underline;
+}
+
+/* ==========================================================================
+   Reset password form (reset-password.php) — Update Password modal look
+   ========================================================================== */
+.reset-field { margin-bottom: 14px; }
+.reset-field > label { display: block; font-size: 13px; font-weight: 700; color: #222222; margin-bottom: 6px; }
+.reset-input { position: relative; height: 46px; border: 1px solid #dcdcdc; border-radius: 6px; background: #ffffff; display: grid; grid-template-columns: 32px 1fr; align-items: center; }
+.reset-input input { width: 100%; height: 100%; border: none; background: transparent; padding: 0 40px 0 10px; font-size: 13px; color: #333333; outline: none; grid-column: 2; }
+.reset-input input::placeholder { color: #8a8a8a; }
+.reset-input .input-icon { grid-column: 1; justify-self: center; width: 20px; height: 20px; fill: #8a8a8a; pointer-events: none; }
+.eye-reset { position: absolute; right: 10px; width: 30px; height: 30px; border: none; border-radius: 50%; background: transparent; cursor: pointer; display: grid; place-items: center; padding: 0; }
+.eye-reset svg { width: 20px; height: 20px; fill: #8a8a8a; }
+.eye-reset .eye-off { display: none; }
+.eye-reset[aria-pressed="true"] .eye-on { display: none; }
+.eye-reset[aria-pressed="true"] .eye-off { display: block; }
+.meter { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; }
+.meter i { height: 6px; border-radius: 3px; background: #dcdcdc; transition: background-color 0.3s ease; }
+.meter-label { margin-top: 5px; font-size: 12px; font-weight: 700; color: #6a6a70; min-height: 16px; }
+.pw-rules.reset-rules { list-style: none; padding: 0; margin: 10px 0 4px 0; display: flex; flex-direction: column; gap: 4px; }
+.pw-rules.reset-rules li { display: flex; align-items: center; font-size: 12px; color: #6a6a70; }
+.pw-rules.reset-rules li .dot { width: 6px; height: 6px; border-radius: 50%; background: #dcdcdc; margin-right: 8px; flex-shrink: 0; }
+.pw-rules.reset-rules li.ok { color: #2e7d32; }
+.pw-rules.reset-rules li.ok .dot { background: #2e7d32; }
+.set-error.reset-error { color: #d1122a; font-size: 11px; margin-top: 4px; display: block; }
+.reset-actions { display: flex; gap: 10px; margin-top: 6px; }
+.reset-btn-cancel { flex: 1; height: 42px; background: #f2f2f2; border: none; border-radius: 21px; color: #333333; font-size: 13px; font-weight: 700; cursor: pointer; }
+.reset-btn-cancel:hover { background: #e6e6e6; }
+.reset-btn-reset { flex: 1; height: 42px; background: #d1122a; border: none; border-radius: 21px; color: #ffffff; font-size: 13px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(209, 18, 42, 0.25); }
+.reset-btn-reset:hover { background: #b50e23; }
+.reset-btn-reset:disabled { opacity: 0.6; cursor: wait; }

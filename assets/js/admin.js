@@ -3641,7 +3641,32 @@ document.addEventListener('DOMContentLoaded', () => {
         if (lastFocus && lastFocus.focus) lastFocus.focus();
     }
 
-    pwOpen.addEventListener('click', openPw);
+    pwOpen.addEventListener('click', async () => {
+        const email = String(account.email || '').trim();
+        if (!email) { ADMIN.toast('Your account has no email address.', { error: true, duration: 5000 }); return; }
+        pwOpen.disabled = true;
+        const savedLabel = pwOpen.textContent;
+        pwOpen.textContent = 'Sending...';
+        try {
+            const res = await fetch('../api/password-reset.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ action: 'request', email })
+            });
+            const data = await res.json().catch(() => ({ status: 'error', message: 'The server did not answer correctly.' }));
+            if (data.status !== 'success') {
+                ADMIN.toast(data.message || 'Something went wrong. Please try again.', { error: true, duration: 6000 });
+                return;
+            }
+            ADMIN.toast(data.message || 'If the email exists, a reset link has been sent.', { duration: 6000 });
+        } catch (err) {
+            ADMIN.toast('Could not reach the server. Please check your connection and try again.', { error: true, duration: 6000 });
+        } finally {
+            pwOpen.disabled = false;
+            pwOpen.textContent = savedLabel;
+        }
+    });
     $('pwCancel').addEventListener('click', closePw);
     pwModal.addEventListener('click', (e) => { if (e.target === pwModal) closePw(); });
 
@@ -3723,9 +3748,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!pwStatus) return;
         const show = !!r && r.status !== 'cancelled';
         pwStatus.hidden = !show;
-        const pending = !!r && r.status === 'pending';
-        pwOpen.disabled = pending;
-        pwOpen.title = pending ? 'Wait for the Admin to answer your request first' : '';
         pwCancelReq.hidden = !pending;
         if (!show) return;
 

@@ -23,6 +23,11 @@ CREATE TABLE users (
 ALTER TABLE users ADD COLUMN IF NOT EXISTS email_normalized VARCHAR(255) NOT NULL DEFAULT '';
 UPDATE users SET email_normalized = LOWER(email) WHERE email_normalized = '' OR email_normalized IS NULL;
 
+-- Migration for existing databases: password reset token columns (nullable)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token VARCHAR(64);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires_at TIMESTAMP;
+CREATE INDEX IF NOT EXISTS idx_users_reset_token ON users(reset_token) WHERE reset_token IS NOT NULL;
+
 -- ------------------------------------------------------------
 -- JOB POSITIONS
 -- One row per job position; each position has its own job
