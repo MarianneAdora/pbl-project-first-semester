@@ -27,7 +27,8 @@ class CvParserService {
         $fallback = $this->regexScan($excerpt);
         try {
             $ai = $this->extractWithGemini($excerpt);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {   // Throwable, not just Exception: a missing PHP extension (e.g. cURL) is an Error
+            error_log('CV Gemini extraction failed: ' . get_class($e) . ': ' . $e->getMessage());
             $ai = [];
         }
         // Gemini can invent values, so every value it returns must actually appear in the CV text.

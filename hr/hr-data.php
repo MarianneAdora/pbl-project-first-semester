@@ -2009,8 +2009,12 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
                         $cvFile['name'] ?? null,
                         $cvFile['type'] ?? null
                     );
-                } catch (Exception $e) {
-                    static_respond(['status' => 'error', 'message' => $e->getMessage()], 422);
+                } catch (Throwable $e) {
+                    error_log('parse_cv failed: ' . get_class($e) . ': ' . $e->getMessage() . ' @ ' . basename($e->getFile()) . ':' . $e->getLine());
+                    static_respond([
+                        'status'  => 'error',
+                        'message' => $e instanceof Exception ? $e->getMessage() : 'This CV could not be read. Try another PDF or a DOCX file.'
+                    ], 422);
                 }
                 // A CV must show first name, last name, email and contact number (the middle name is optional).
                 // If any is missing the file is refused and NOTHING is sent back to fill the form.
