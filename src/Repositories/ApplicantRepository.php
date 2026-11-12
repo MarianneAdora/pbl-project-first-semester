@@ -11,7 +11,7 @@ function repo_applicants_active(?PDO $pdo = null): array
     $pdo = $pdo ?: db();
     $rows = $pdo->query(
         "SELECT applicant_id, name, email, phone_number, status, result, created_at" .
-        " FROM applicant WHERE deleted_at IS NULL AND verified_at IS NOT NULL ORDER BY applicant_id ASC"
+        " FROM applicant WHERE deleted_at IS NULL AND verified_at IS NOT NULL ORDER BY applicant_id DESC"
     )->fetchAll();
     return array_map('applicant_to_display', $rows);
 }
