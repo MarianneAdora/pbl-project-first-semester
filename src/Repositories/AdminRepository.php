@@ -367,7 +367,7 @@ function repo_admin_question_stats(?PDO $pdo = null): array
             if (is_string($answers)) $answers = json_decode($answers, true);
             if (!is_array($answers) || !array_key_exists($key, $answers)) continue;
             $v = $answers[$key];
-            if ($v === null || $v === '' || $v === false) continue;
+            if ($v === null || $v === '') continue;
             if ($type === 'text') { $written++; continue; }
             $answered++;
             $label = is_bool($v) ? ($v ? 'Yes' : 'No') : (string) $v;
@@ -487,17 +487,29 @@ function repo_admin_risk_flags(?PDO $pdo = null): array
     $pdo = $pdo ?: db();
 
     $groups = [
-        'otp'    => ['label' => 'OTP retries',      'color' => '#f5a623'],
-        'fast'   => ['label' => 'Fast completion',  'color' => '#3b82f6'],
-        'device' => ['label' => 'Duplicate device', 'color' => '#a855f7'],
-        'video'  => ['label' => 'Duplicate video',  'color' => '#14b8a6'],
+        'otp'         => ['label' => 'OTP retries',         'color' => '#f5a623'],
+        'fast'        => ['label' => 'Fast completion',     'color' => '#3b82f6'],
+        'device'      => ['label' => 'Duplicate device',    'color' => '#a855f7'],
+        'video'       => ['label' => 'Duplicate video',     'color' => '#14b8a6'],
+        'identity'    => ['label' => 'Identity mismatch',   'color' => '#ef4444'],
+        'document'    => ['label' => 'Document mismatch',   'color' => '#eab308'],
+        'ip'          => ['label' => 'Suspicious IP',       'color' => '#f97316'],
+        'timezone'    => ['label' => 'Unusual timezone',    'color' => '#8b5cf6'],
+        'rapid'       => ['label' => 'Rapid answering',     'color' => '#10b981'],
+        'copypaste'   => ['label' => 'Copy-paste detected', 'color' => '#ec4899'],
     ];
 
     $groupOf = function (string $factor): ?string {
         if (stripos($factor, 'OTP') !== false)                return 'otp';
         if (stripos($factor, 'Questionnaire speed') === 0)    return 'fast';
-        if (stripos($factor, 'Same device') === 0)            return 'device';
-        if (stripos($factor, 'Video matches') === 0)          return 'video';
+        if (stripos($factor, 'Same device') === 0 || stripos($factor, 'Duplicate device') !== false)      return 'device';
+        if (stripos($factor, 'Video matches') === 0 || stripos($factor, 'Duplicate video') !== false)     return 'video';
+        if (stripos($factor, 'Identity mismatch') !== false || stripos($factor, 'Identity') !== false)    return 'identity';
+        if (stripos($factor, 'Document mismatch') !== false || stripos($factor, 'Document') !== false)    return 'document';
+        if (stripos($factor, 'Suspicious IP') !== false || stripos($factor, 'IP') !== false)              return 'ip';
+        if (stripos($factor, 'Unusual timezone') !== false || stripos($factor, 'Timezone') !== false)      return 'timezone';
+        if (stripos($factor, 'Rapid answering') !== false || stripos($factor, 'Rapid') !== false)         return 'rapid';
+        if (stripos($factor, 'Copy-paste') !== false || stripos($factor, 'Copypaste') !== false)           return 'copypaste';
         return null;
     };
 

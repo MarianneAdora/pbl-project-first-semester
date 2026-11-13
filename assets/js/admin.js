@@ -4443,11 +4443,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         function paintList() {
-            const acts = newActivity();
+            const acts = data.activity.slice(0, 20);
             let html = '';
-            acts.slice(0, 20).forEach(row => {
+            acts.forEach(row => {
                 const l = look(row.activity);
-                const isNew = String(row.at || '') > readSeen();
+                const isNew = fresh.has(String(row.at) + '|' + rowActivityKey(row));
                 html += '<li class="notif-item' + (isNew ? ' is-new' : '') + '">' +
                     '<span class="notif-ico ' + l.tone + '">' + svg(l.icon) + '</span>' +
                     '<span class="notif-text"><strong>' + esc(row.activity) + '</strong>' +

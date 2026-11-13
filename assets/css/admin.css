@@ -2491,6 +2491,14 @@ html:where([data-page="dashboardadmin"])[data-theme="dark"] .q-answer.is-muted {
 
 :where(html[data-page="dashboardadmin"]) .hbar-list > li { display: block; }
 
+:where(html[data-page="dashboardadmin"]) .hbar-wrap {
+    max-height: 250px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 4px;
+    scrollbar-width: thin;
+}
+
 :where(html[data-page="dashboardadmin"]) .hbar {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;

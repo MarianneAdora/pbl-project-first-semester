@@ -46,7 +46,7 @@ $logTotal = count($all_log);
 
 $pending = count(array_filter($requests, static fn(array $request): bool => $request['status'] === 'pending'));
 
-$failure  = repo_admin_failure_rates(5);       // Question-Level Failure Rate
+$failure  = repo_admin_failure_rates(20);       // Question-Level Failure Rate (show all knockout questions)
 $risk     = repo_admin_risk_flags();           // Risk Flag Breakdown by Factor
 $volume   = repo_admin_volume();               // Applicant Volume Over Time
 
@@ -354,6 +354,7 @@ $greeting     = 'Hello, ' . $display_name . '!';
                     <?php if (!$failure['rows']): ?>
                     <p class="chart-empty">No knock-out questions yet.</p>
                     <?php else: ?>
+                    <div class="hbar-wrap">
                     <ul class="hbar-list">
                         <?php foreach ($failure['rows'] as $k => $r): ?>
                         <li>
@@ -366,6 +367,7 @@ $greeting     = 'Hello, ' . $display_name . '!';
                         </li>
                         <?php endforeach; ?>
                     </ul>
+                    </div>
                     <div class="ins-foot">
                         <span class="ins-chip"><span class="chip-label">Knock-out questions</span><span class="chip-value"><?php echo (int) $failure['knockouts']; ?></span></span>
                         <span class="ins-chip"><span class="chip-label">Highest failure</span><span class="chip-value"><?php echo htmlspecialchars(strtoupper($failure['rows'][0]['id']), ENT_QUOTES, 'UTF-8'); ?> &middot; <?php echo (int) round($failure['rows'][0]['rate']); ?>%</span></span>
@@ -384,6 +386,7 @@ $greeting     = 'Hello, ' . $display_name . '!';
                     <?php if ((int) $risk['total'] === 0): ?>
                     <p class="chart-empty">No risk flags raised yet.</p>
                     <?php else: ?>
+                    <div class="hbar-wrap">
                     <ul class="hbar-list">
                         <?php foreach ($risk['rows'] as $k => $r): ?>
                         <li>
@@ -396,6 +399,7 @@ $greeting     = 'Hello, ' . $display_name . '!';
                         </li>
                         <?php endforeach; ?>
                     </ul>
+                    </div>
                     <div class="ins-foot">
                         <span class="ins-chip"><span class="chip-label">Flags raised</span><span class="chip-value"><?php echo (int) $risk['total']; ?></span></span>
                         <span class="ins-chip"><span class="chip-label">Top factor</span><span class="chip-value"><?php echo htmlspecialchars($risk['rows'][0]['label'], ENT_QUOTES, 'UTF-8'); ?></span></span>
