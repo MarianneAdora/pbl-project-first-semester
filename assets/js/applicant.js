@@ -1143,9 +1143,8 @@ document.addEventListener('DOMContentLoaded', function () {
         var side = h('div', 'dateside');
         side.appendChild(h('p', 'dateside__label', 'Quick picks'));
         var chips = h('div', 'chips');
-        var nextMonday = addDays(today, ((8 - today.getDay()) % 7) || 7);
         var oneMonth = new Date(today.getFullYear(), today.getMonth() + 1, today.getDate());
-        [['Today', today], ['Next Monday', nextMonday], ['In 2 weeks', addDays(today, 14)], ['In 1 month', oneMonth]].forEach(function (c) {
+        [['In 2 weeks', addDays(today, 14)], ['In 3 weeks', addDays(today, 21)], ['In 1 month', oneMonth], ['In 2 months', addDays(today, 60)]].forEach(function (c) {
             var chip = h('button', 'chip', c[0]);
             chip.type = 'button';
             chip.dataset.date = ymd(c[1]);
