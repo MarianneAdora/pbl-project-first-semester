@@ -15,7 +15,7 @@ $homePage = 'opening.php';        // where "Back Home" goes
 $type     = 'On Site Interview';  // the interview type (BACKEND: comes from the job / HR)
 
 // Interview time slots the applicant can choose from (BACKEND: HR's available slots)
-$slots = ['09:00 AM', '10:00 AM', '11:00 AM', '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM'];
+$slots = ['06:00 PM', '07:00 PM', '08:00 PM', '09:00 PM', '10:00 PM', '11:00 PM', '12:00 AM', '01:00 AM', '02:00 AM', '03:00 AM'];
 
 // Tracker while the evaluation runs: 0 = Submitted, 1 = Processing, 2 = Completed
 $stepLabels = ['Submitted', 'Processing', 'Completed'];
