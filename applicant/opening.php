@@ -77,7 +77,7 @@ if ($alreadySubmitted) {
 }
 
 // Help / contact link (change to your real contact page or mailto)
-$contactLink = 'mailto:hr@expertise.example';
+$contactLink = 'https://www.expertisegroup.com/';
 
 $steps = [
     [
