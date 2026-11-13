@@ -94,8 +94,8 @@ class CloudinaryService {
      * Filename: cv-{applicantId}-{original}, e.g. ebsmi-shortlist-applicant-cvs/cv-9-resume.pdf
      * (unique_filename=false, so re-uploading the same applicant's CV overwrites it).
      * Type: resource_type=auto, so PDFs/images become image resources (PREVIEWABLE) while
-     * DOC/DOCX remain raw. Uploaded as type=private so the asset is NOT publicly
-     * accessible by URL alone; cv-proxy.php streams bytes only to signed-in HR/Admin.
+     * DOC/DOCX remain raw. Uploaded as public so the direct Cloudinary URL can be opened
+     * from the HR details page without a proxy.
      * Returns ['url', 'public_id', 'name'].
      * @param string $filePath     Local temp path of the uploaded file.
      * @param mixed $applicantId  Applicant id (used in the filename, NOT a subfolder).
@@ -127,7 +127,6 @@ class CloudinaryService {
             'folder'     => $folderBase,
             'public_id'  => $publicId,
             'timestamp'  => $timestamp,
-            'type'       => 'private',
             'unique_filename' => 'false',
             'use_filename'    => 'true',
         ];
@@ -139,7 +138,6 @@ class CloudinaryService {
             'timestamp'       => $timestamp,
             'folder'          => $folderBase,
             'public_id'       => $publicId,
-            'type'            => 'private',
             'use_filename'    => 'true',
             'unique_filename' => 'false',
             'signature'       => $signature,
