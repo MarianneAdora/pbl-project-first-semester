@@ -487,29 +487,27 @@ function repo_admin_risk_flags(?PDO $pdo = null): array
     $pdo = $pdo ?: db();
 
     $groups = [
-        'otp'         => ['label' => 'OTP retries',         'color' => '#f5a623'],
-        'fast'        => ['label' => 'Fast completion',     'color' => '#3b82f6'],
-        'device'      => ['label' => 'Duplicate device',    'color' => '#a855f7'],
-        'video'       => ['label' => 'Duplicate video',     'color' => '#14b8a6'],
-        'identity'    => ['label' => 'Identity mismatch',   'color' => '#ef4444'],
-        'document'    => ['label' => 'Document mismatch',   'color' => '#eab308'],
-        'ip'          => ['label' => 'Suspicious IP',       'color' => '#f97316'],
-        'timezone'    => ['label' => 'Unusual timezone',    'color' => '#8b5cf6'],
-        'rapid'       => ['label' => 'Rapid answering',     'color' => '#10b981'],
-        'copypaste'   => ['label' => 'Copy-paste detected', 'color' => '#ec4899'],
+        'otp_failed'        => ['label' => 'Failed OTP attempts',          'color' => '#f5a623'],
+        'otp_requests'      => ['label' => 'Rapid OTP requests',           'color' => '#ef4444'],
+        'questionnaire_speed' => ['label' => 'Fast questionnaire',          'color' => '#3b82f6'],
+        'identity'          => ['label' => 'Shared email/phone',            'color' => '#ec4899'],
+        'reapply'           => ['label' => 'Re-applying after reject',      'color' => '#a855f7'],
+        'device_ip'         => ['label' => 'Shared device/IP',              'color' => '#14b8a6'],
+        'logistics'         => ['label' => 'Contradictory logistics',       'color' => '#eab308'],
+        'video_duplicate'   => ['label' => 'Duplicate video',               'color' => '#10b981'],
+        'consistency'       => ['label' => 'Inconsistent answers',          'color' => '#8b5cf6'],
     ];
 
     $groupOf = function (string $factor): ?string {
-        if (stripos($factor, 'OTP') !== false)                return 'otp';
-        if (stripos($factor, 'Questionnaire speed') === 0)    return 'fast';
-        if (stripos($factor, 'Same device') === 0 || stripos($factor, 'Duplicate device') !== false)      return 'device';
-        if (stripos($factor, 'Video matches') === 0 || stripos($factor, 'Duplicate video') !== false)     return 'video';
-        if (stripos($factor, 'Identity mismatch') !== false || stripos($factor, 'Identity') !== false)    return 'identity';
-        if (stripos($factor, 'Document mismatch') !== false || stripos($factor, 'Document') !== false)    return 'document';
-        if (stripos($factor, 'Suspicious IP') !== false || stripos($factor, 'IP') !== false)              return 'ip';
-        if (stripos($factor, 'Unusual timezone') !== false || stripos($factor, 'Timezone') !== false)      return 'timezone';
-        if (stripos($factor, 'Rapid answering') !== false || stripos($factor, 'Rapid') !== false)         return 'rapid';
-        if (stripos($factor, 'Copy-paste') !== false || stripos($factor, 'Copypaste') !== false)           return 'copypaste';
+        if (stripos($factor, 'Failed OTP attempts') !== false)        return 'otp_failed';
+        if (stripos($factor, 'OTP requests in') !== false)             return 'otp_requests';
+        if (stripos($factor, 'Questionnaire speed') === 0)             return 'questionnaire_speed';
+        if (stripos($factor, 'Same email or phone') !== false)         return 'identity';
+        if (stripos($factor, 'Re-applying after') !== false)           return 'reapply';
+        if (stripos($factor, 'Same device or IP') !== false)           return 'device_ip';
+        if (stripos($factor, 'Contradictory logistics') !== false)     return 'logistics';
+        if (stripos($factor, 'Video matches') !== false)               return 'video_duplicate';
+        if (stripos($factor, 'Inconsistent or irrelevant') !== false)  return 'consistency';
         return null;
     };
 
