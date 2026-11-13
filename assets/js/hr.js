@@ -2947,6 +2947,10 @@ document.addEventListener('DOMContentLoaded', () => {
         freshDecisions = new Set(unreadDecisions().map(n => n.id));
         writeSeen(newest() || readSeen());          // opening counts as reading them
         readDecisions();
+        // Mark any unseen completed screenings as read so the badge clears
+        if (window.HR && window.HR.unseenCompleted) {
+            window.HR.unseenCompleted().forEach(id => window.HR.markSeen(id));
+        }
         panel.hidden = false;
         bell.setAttribute('aria-expanded', 'true');
         paintList();
@@ -2977,6 +2981,10 @@ document.addEventListener('DOMContentLoaded', () => {
         markAllBtn.addEventListener('click', () => {
             writeSeen(newest() || readSeen());
             readDecisions();
+            // Mark all unseen completed screenings as read so the badge clears
+            if (window.HR && window.HR.unseenCompleted) {
+                window.HR.unseenCompleted().forEach(id => window.HR.markSeen(id));
+            }
             fresh = new Set();
             freshDecisions = new Set();
             paint();

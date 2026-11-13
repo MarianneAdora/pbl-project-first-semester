@@ -360,7 +360,7 @@ function repo_admin_question_stats(?PDO $pdo = null): array
         $counts = [];
         $answered = 0;
         $written = 0;
-        $key = (string) $q['question_id'];
+        $key = 'q' . (string) $q['question_id'];
 
         foreach ($subs as $s) {
             $answers = $s['answers_json'];
@@ -455,7 +455,7 @@ function repo_admin_failure_rates(int $limit = 5, ?PDO $pdo = null): array
             if (is_string($answers)) $answers = json_decode($answers, true);
             if (!is_array($answers) || !array_key_exists($key, $answers)) continue;
             $v = $answers[$key];
-            if ($v === null || $v === '' || $v === false) continue;
+            if ($v === null || $v === '') continue;
             $judged++;
 
             $label = is_bool($v) ? ($v ? 'Yes' : 'No') : (string) $v;

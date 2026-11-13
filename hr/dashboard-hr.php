@@ -66,13 +66,14 @@ try {
          WHERE deleted_at IS NULL AND verified_at IS NOT NULL"
     )->fetchAll();
     foreach ($rows as $r) {
+        $d = applicant_to_display($r);
         $all_applicants[] = [
             'id'          => (int) $r['applicant_id'],
             'name'        => (string) $r['name'],
             'email'       => (string) $r['email'],
             'contact'     => (string) ($r['phone_number'] ?? ''),
-            'status'      => strtolower((string) $r['status']),
-            'result'      => strtolower((string) ($r['result'] ?? '')),
+            'status'      => strtolower((string) ($d['status'] ?? '')),
+            'result'      => strtolower((string) ($d['result'] ?? '')),
             'invited_at'  => $r['invited_at']  ? (string) $r['invited_at']  : '',
             'submitted_at'=> $r['submitted_at'] ? (string) $r['submitted_at'] : '',
             'passed_at'   => $r['passed_at']   ? (string) $r['passed_at']   : '',
