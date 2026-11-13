@@ -3222,7 +3222,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = $('settingsForm');
     const nameInput = $('setName');
     const emailInput = $('setEmail');
-    const currentPwInput = $('setCurrentPw');
     const saveBtn = $('saveBtn');
     const cancelBtn = $('cancelBtn');
     const prefCard = $('prefCard');

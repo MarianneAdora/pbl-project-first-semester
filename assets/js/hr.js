@@ -4697,7 +4697,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = $('settingsForm');
     const nameInput = $('setName');
     const emailInput = $('setEmail');
-    const currentPwInput = $('setCurrentPw');
     const saveBtn = $('saveBtn');
     const cancelBtn = $('cancelBtn');
     const prefCard = $('prefCard');
@@ -4739,7 +4738,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return {
             name: nameInput.value.trim(),
             email: emailInput.value.trim(),
-            current_password: currentPwInput ? currentPwInput.value.trim() : '',
             photo: photoState(),
             theme: checked ? checked.value : 'light',
             notifications: toggles.notifications.checked,
@@ -4752,7 +4750,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function fill(state) {
         nameInput.value = state.name;
         emailInput.value = state.email;
-        if (currentPwInput) currentPwInput.value = '';
         resetPhoto();
         themeRadios.forEach(r => { r.checked = r.value === state.theme; });
         Object.keys(toggles).forEach(k => { toggles[k].checked = !!state[k]; });
@@ -4801,13 +4798,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!t.includes('@')) return 'The email must include an @ (example: name@gmail.com).';
             if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(t)) return 'Enter a valid email address (example: name@gmail.com).';
             return '';
-        },
-        current_password(v) {
-            const t = v.trim();
-            if (!t) return 'Please enter your current password.';
-            return '';
-        }
-    };
+    }
+};
 
     function setError(field, message, shake) {
         if (!field) return;
@@ -4823,7 +4815,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function validate(name, shake) {
-        const input = name === 'name' ? nameInput : (name === 'email' ? emailInput : currentPwInput);
+        const input = name === 'name' ? nameInput : (name === 'email' ? emailInput : null);
         const message = rules[name](input ? input.value : '');
         const field = fieldOf(name);
         setError(field, message, shake);
@@ -4839,18 +4831,6 @@ document.addEventListener('DOMContentLoaded', () => {
             refreshButtons();
         });
         input.addEventListener('blur', () => { if (touched.has(name)) validate(name, false); });
-    });
-    if (currentPwInput) {
-        currentPwInput.addEventListener('input', () => { validate('current_password', false); refreshButtons(); });
-        currentPwInput.addEventListener('blur', () => { validate('current_password', false); });
-    }
-
-    // Show the Current Password field only when HR is actively changing their email
-    emailInput.addEventListener('input', () => {
-        const changing = emailInput.value.trim() !== String(saved.email || '').trim();
-        const cpField = fieldOf('current_password');
-        if (cpField) cpField.style.display = changing ? '' : 'none';
-        if (!changing) { currentPwInput.value = ''; setError(cpField, ''); }
     });
 
     themeRadios.forEach(r => r.addEventListener('change', () => { preview(); refreshButtons(); }));
@@ -4986,7 +4966,6 @@ document.addEventListener('DOMContentLoaded', () => {
         form.append('action', 'profile_save');
         form.append('name', state.name);
         form.append('email', state.email);
-        if (emailChanging && state.current_password) form.append('current_password', state.current_password);
         if (photoBlob) form.append('avatar', photoBlob, 'avatar.jpg');
         else if (photoRemoved) form.append('avatar_remove', '1');
 
@@ -5016,12 +4995,10 @@ document.addEventListener('DOMContentLoaded', () => {
         let firstBad = null;
         ['name', 'email'].forEach(n => { if (!validate(n, true) && !firstBad) firstBad = n; });
         const emailChanging = emailInput.value.trim() !== String(saved.email || '').trim();
-        if (emailChanging && currentPwInput && !validate('current_password', true) && !firstBad) firstBad = 'current_password';
         if (firstBad) {
             HR.toast('Fix the highlighted field before saving.', { error: true, duration: 4000 });
             if (firstBad === 'name') nameInput.focus();
             else if (firstBad === 'email') emailInput.focus();
-            else currentPwInput.focus();
             return;
         }
 
@@ -5061,7 +5038,7 @@ document.addEventListener('DOMContentLoaded', () => {
     cancelBtn.addEventListener('click', () => {
         if (saving || !isDirty()) return;
         fill(saved);
-        ['name', 'email', 'current_password'].forEach(n => setError(fieldOf(n), ''));
+        ['name', 'email'].forEach(n => setError(fieldOf(n), ''));
         touched.clear();
         HR.settings.apply(HR.settings.get(), true);      // the saved look
         refreshButtons();
