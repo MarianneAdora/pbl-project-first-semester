@@ -259,6 +259,16 @@ CREATE TABLE score (
 
 CREATE INDEX idx_score_risk_score ON score(risk_score);
 
+-- Retain only file fingerprints after permanent applicant deletion so future
+-- duplicate checks can still work without retaining applicant-identifying rows.
+CREATE TABLE deleted_applicant_fingerprints (
+    fingerprint_id    SERIAL PRIMARY KEY,
+    fingerprint_type VARCHAR(10)  NOT NULL CHECK (fingerprint_type IN ('cv', 'video')),
+    fingerprint_hash VARCHAR(255) NOT NULL,
+    retained_at      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (fingerprint_type, fingerprint_hash)
+);
+
 -- ------------------------------------------------------------
 -- ACTIVITY LOG
 -- ------------------------------------------------------------

@@ -1984,6 +1984,7 @@ html:where([data-page="addhr"],[data-page="addquestion"])[data-theme="dark"] .in
 :where(html[data-page="addquestion"]) .sub-fields .field { margin-bottom: 16px; }
 :where(html[data-page="addquestion"]) .sub-fields .field-row { gap: 0 22px; }
 :where(html[data-page="addquestion"]) .sub-fields .field-hint { margin-top: 6px; }
+:where(html[data-page="addquestion"]) .field[data-field="is_data_protection"] > .check-row { display: inline-flex; margin-bottom: 0; }
 
 /* a one-line box without the leading icon (the extra fields of a type) */
 :where(html[data-page="addquestion"]) .input-box.no-icon input[type="text"] { padding-left: 14px; }

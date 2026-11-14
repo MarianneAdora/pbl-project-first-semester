@@ -222,7 +222,7 @@ try {
 
             $ins = $pdo->prepare(
                 "INSERT INTO question_config (section_no, display_order, section, question_text, question_type, answer_config, passing_answer, is_knockout, is_consent, is_data_protection, reminder_text, is_active, created_at) " .
-                "VALUES (:sn, :order, :sec, :txt, :typ, :ac, :pa, :ko, :consent, FALSE, :rem, :active, :created) RETURNING question_id"
+                "VALUES (:sn, :order, :sec, :txt, :typ, :ac, :pa, :ko, :consent, :data_protection, :rem, :active, :created) RETURNING question_id"
             );
             $ins->execute([
                 ':sn'      => (int) $cleaned['section_no'],
@@ -234,6 +234,7 @@ try {
                 ':pa'      => $passing ? json_encode($passing) : null,
                 ':ko'      => !empty($cleaned['knockout']) ? 't' : 'f',
                 ':consent' => ($cleaned['type'] === 'consent') ? 't' : 'f',
+                ':data_protection' => !empty($cleaned['is_data_protection']) ? 't' : 'f',
                 ':rem'     => $cleaned['no_note'] ?? null,
                 ':active'  => (($cleaned['status'] ?? 'Active') === 'Active') ? 't' : 'f',
                 ':created' => $cleaned['created'] ?? date('Y-m-d H:i'),
@@ -338,7 +339,7 @@ try {
 
             $upd = $pdo->prepare(
                 "UPDATE question_config SET section_no = :sn, display_order = :order, section = :sec, question_text = :txt, question_type = :typ, " .
-                "answer_config = :ac, passing_answer = :pa, is_knockout = :ko, is_consent = :consent, reminder_text = :rem, is_active = :active " .
+                "answer_config = :ac, passing_answer = :pa, is_knockout = :ko, is_consent = :consent, is_data_protection = :data_protection, reminder_text = :rem, is_active = :active " .
                 "WHERE question_id = :id"
             );
             $upd->execute([
@@ -351,6 +352,7 @@ try {
                 ':pa'      => $passing ? json_encode($passing) : null,
                 ':ko'      => !empty($new['knockout']) ? 't' : 'f',
                 ':consent' => ($new['type'] === 'consent') ? 't' : 'f',
+                ':data_protection' => !empty($new['is_data_protection']) ? 't' : 'f',
                 ':rem'     => $new['no_note'] ?? null,
                 ':active'  => (($new['status'] ?? 'Active') === 'Active') ? 't' : 'f',
                 ':id'      => $id,

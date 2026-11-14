@@ -158,8 +158,15 @@ function static_admin_clean_question(array $in, array $all, ?array $old = null):
         'type'       => $type,
         'text'       => $text,
         'status'     => $status,
-        'created'    => $old['created'] ?? static_now()->format('Y-m-d H:i')
+        'created'    => $old['created'] ?? static_now()->format('Y-m-d H:i'),
+        'is_consent' => $type === 'consent',
     ];
+
+    $isDataProtection = filter_var($in['is_data_protection'] ?? false, FILTER_VALIDATE_BOOLEAN);
+    if ($isDataProtection && !in_array($type, ['yesno', 'yesno_select', 'consent'], true)) {
+        throw new InvalidArgumentException('Data-protection tracking is only available for questions with a Yes or agree answer.');
+    }
+    $q['is_data_protection'] = $isDataProtection;
 
     $line = fn(string $key, int $limit = 200): string => mb_substr(trim((string) ($in[$key] ?? '')), 0, $limit);
 

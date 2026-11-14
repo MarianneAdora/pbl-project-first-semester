@@ -244,6 +244,14 @@ class RiskScoringService
             );
             $st->execute([':h' => $hash, ':id' => $applicantId]);
             $match = (bool) $st->fetchColumn();
+            if (!$match) {
+                $st = $this->pdo->prepare(
+                    "SELECT 1 FROM deleted_applicant_fingerprints" .
+                    " WHERE fingerprint_type = 'video' AND fingerprint_hash = :h LIMIT 1"
+                );
+                $st->execute([':h' => $hash]);
+                $match = (bool) $st->fetchColumn();
+            }
         }
         if ($match) {
             $add('Video matches another applicant', 3, 3,

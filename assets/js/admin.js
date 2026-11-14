@@ -1238,6 +1238,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const sectionHint = document.getElementById('sectionHint');
     const textInput = document.getElementById('text');
     const textCount = document.getElementById('textCount');
+    const dataProtectionField = document.getElementById('dataProtectionField');
+    const dataProtectionInput = document.getElementById('isDataProtection');
 
     let saving = false;
     let leaving = false;
@@ -1400,11 +1402,13 @@ document.addEventListener('DOMContentLoaded', () => {
         text: ['text_hint', 'placeholder', 'min_chars', 'max_chars'],
         consent: ['body', 'checkbox']
     };
+    const DATA_PROTECTION_TYPES = ['yesno', 'yesno_select', 'consent'];
 
     const hasLink = () => !!(Q && Q.link);
 
     function showTypeBox() {
         const type = typeDD.getValue();
+        dataProtectionField.hidden = DATA_PROTECTION_TYPES.indexOf(type) === -1;
         form.querySelectorAll('.sub-fields[data-for]').forEach(box => {
             const f = box.dataset.for;
             if (f === 'link') box.hidden = !hasLink();
@@ -1629,7 +1633,8 @@ document.addEventListener('DOMContentLoaded', () => {
             type: type,
             text: val('text').trim(),
             status: statusDD.getValue(),
-            section: picked ? picked.name : title
+            section: picked ? picked.name : title,
+            is_data_protection: DATA_PROTECTION_TYPES.indexOf(type) !== -1 && dataProtectionInput.checked
         };
         if (picked && title && title !== picked.name) q.section_rename = title;      // the Admin retitled the chosen section
 
@@ -1686,6 +1691,7 @@ document.addEventListener('DOMContentLoaded', () => {
     form.elements.pass_min.value = '3';
 
     if (isEdit) {
+        dataProtectionInput.checked = !!Q.is_data_protection;
         put('no_note', Q.no_note);
         favorableDD.setValue(Q.favorable === 'No' ? 'No' : 'Yes', true);
         if (Q.followup) {

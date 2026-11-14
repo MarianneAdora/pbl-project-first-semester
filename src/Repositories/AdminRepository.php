@@ -53,7 +53,7 @@ function repo_admin_questions_list(?PDO $pdo = null): array
     $pdo = $pdo ?: db();
     $rows = $pdo->query(
         'SELECT question_id, section_no, section, question_text, question_type,' .
-        ' answer_config, passing_answer, is_knockout, is_active, created_at' .
+        ' answer_config, passing_answer, is_knockout, is_consent, is_data_protection, is_active, created_at' .
         ' FROM question_config WHERE deleted_at IS NULL ORDER BY section_no, display_order, question_id'
     )->fetchAll();
     $out = [];
@@ -78,6 +78,8 @@ function repo_admin_questions_list(?PDO $pdo = null): array
             'status'     => $r['is_active'] ? 'Active' : 'Inactive',
             'created'    => $r['created_at'] ? date('Y-m-d H:i', strtotime((string) $r['created_at'])) : '',
             'knockout'   => (bool) $r['is_knockout'],
+            'is_consent' => (bool) $r['is_consent'],
+            'is_data_protection' => (bool) $r['is_data_protection'],
         ];
 
         if (!empty($r['is_knockout'])) {

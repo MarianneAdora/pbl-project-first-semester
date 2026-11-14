@@ -145,6 +145,18 @@ function repo_assert_not_duplicate(string $email, ?string $cvHash, ?PDO $pdo = n
                 'cv'
             );
         }
+
+        $st = $pdo->prepare(
+            "SELECT 1 FROM deleted_applicant_fingerprints" .
+            " WHERE fingerprint_type = 'cv' AND fingerprint_hash = :h LIMIT 1"
+        );
+        $st->execute([':h' => $cvHash]);
+        if ($st->fetchColumn()) {
+            throw new DuplicateApplicantException(
+                'This CV was previously uploaded for another applicant. Each CV can only be used once.',
+                'cv'
+            );
+        }
     }
 }
 
@@ -447,11 +459,7 @@ function cloudinary_public_id_from_url(string $url): ?string
     return $publicId !== '' ? $publicId : null;
 }
 
-/**
- * Delete an applicant's CV and video files from Cloudinary, without touching
- * the database metadata (cv_hash, video_file_hash, answers_json are retained).
- * Called only when an archived applicant is permanently deleted.
- */
+/** Attempt to delete an applicant's CV and video files from Cloudinary. */
 function repo_delete_applicant_media(array $ids, ?PDO $pdo = null): void
 {
     $pdo = $pdo ?: db();
@@ -498,6 +506,37 @@ function repo_delete_applicant_media(array $ids, ?PDO $pdo = null): void
             }
         }
     }
+}
+
+/**
+ * Preserve only CV/video fingerprints for future duplicate checks.
+ * The table deliberately has no applicant foreign key or identifying details.
+ */
+function repo_retain_applicant_fingerprints(array $ids, ?PDO $pdo = null): void
+{
+    $pdo = $pdo ?: db();
+    $ids = array_values(array_unique(array_filter(array_map('intval', $ids), fn($id) => $id > 0)));
+    if (!$ids) return;
+
+    $ph = implode(',', array_fill(0, count($ids), '?'));
+    $cv = $pdo->prepare(
+        "INSERT INTO deleted_applicant_fingerprints (fingerprint_type, fingerprint_hash)" .
+        " SELECT 'cv', RTRIM(cv_hash::text) FROM applicant" .
+        " WHERE applicant_id IN ($ph) AND deleted_at IS NOT NULL" .
+        " AND cv_hash IS NOT NULL AND RTRIM(cv_hash::text) <> ''" .
+        " ON CONFLICT (fingerprint_type, fingerprint_hash) DO NOTHING"
+    );
+    $cv->execute($ids);
+
+    $video = $pdo->prepare(
+        "INSERT INTO deleted_applicant_fingerprints (fingerprint_type, fingerprint_hash)" .
+        " SELECT 'video', BTRIM(r.video_file_hash) FROM applicant a" .
+        " JOIN response r ON r.applicant_id = a.applicant_id" .
+        " WHERE a.applicant_id IN ($ph) AND a.deleted_at IS NOT NULL" .
+        " AND r.video_file_hash IS NOT NULL AND BTRIM(r.video_file_hash) <> ''" .
+        " ON CONFLICT (fingerprint_type, fingerprint_hash) DO NOTHING"
+    );
+    $video->execute($ids);
 }
 
 /**
@@ -598,6 +637,7 @@ function repo_purge_applicants(array $ids, ?PDO $pdo = null): int
     $ids = array_values(array_unique(array_map('intval', $ids)));
     $ids = array_filter($ids, fn($i) => $i > 0);
     if (!$ids) return 0;
+    repo_retain_applicant_fingerprints($ids, $pdo);
     repo_delete_applicant_media($ids, $pdo);
     $ph = implode(',', array_fill(0, count($ids), '?'));
     $st = $pdo->prepare("DELETE FROM applicant WHERE applicant_id IN ($ph) AND deleted_at IS NOT NULL");
@@ -622,6 +662,7 @@ function repo_purge_expired_applicants(int $days = 30, ?PDO $pdo = null): int
     $st->execute();
     $ids = array_values(array_filter(array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN)), fn($i) => $i > 0));
     if ($ids) {
+        repo_retain_applicant_fingerprints($ids, $pdo);
         repo_delete_applicant_media($ids, $pdo);
     }
     $st = $pdo->prepare("DELETE FROM applicant WHERE deleted_at IS NOT NULL AND deleted_at < NOW() - (:days || ' days')::INTERVAL");

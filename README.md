@@ -31,3 +31,8 @@ interview time. Restoring a terminal applicant starts a fresh three-day
 window. The check runs on the next HR request after the deadline, rather than
 at an exact scheduled time. Archived files are retained until permanent
 deletion after the 30-day archive period.
+
+Permanent applicant deletion retains only their CV and video file hashes in
+`deleted_applicant_fingerprints` for future duplicate checks. These fingerprints
+are kept indefinitely without applicant IDs or names; hashes may still be
+linkable to known files. Parsed CV content is not retained.

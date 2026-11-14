@@ -281,6 +281,7 @@ function q_dropdown(string $id, string $labelId, array $options, string $selecte
                         <label id="typeLabel">Type <span class="req">*</span></label>
                         <?php q_dropdown('typeDropdown', 'typeLabel', $type_options, $isEdit ? (string) $editing['type'] : '', 'Select Type'); ?>
                         <p class="field-error" role="alert"></p>
+                        <p class="field-hint">"Statement + checkbox" automatically marks this as a consent question.</p>
                     </div>
 
                     <!-- Status -->
@@ -288,6 +289,15 @@ function q_dropdown(string $id, string $labelId, array $options, string $selecte
                         <label id="statusLabel">Status <span class="req">*</span></label>
                         <?php q_dropdown('statusDropdown', 'statusLabel', [['Active', 'Active', '#159a43'], ['Inactive', 'Inactive', '#8a8f96']], $isEdit ? (string) ($editing['status'] ?? 'Active') : 'Active'); ?>
                         <p class="field-error" role="alert"></p>
+                    </div>
+
+                    <div class="field field-wide" data-field="is_data_protection" id="dataProtectionField" hidden>
+                        <label class="check-row">
+                            <input type="checkbox" id="isDataProtection" name="is_data_protection" aria-describedby="dataProtectionHint">
+                            <span class="box"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+                            Track this as a data-protection agreement
+                        </label>
+                        <p class="field-hint" id="dataProtectionHint">When the applicant answers Yes or agrees, save the agreement time with their response.</p>
                     </div>
 
                     <!-- ===== Extra fields of the chosen type (only the matching box is shown) ===== -->

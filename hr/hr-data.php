@@ -1200,6 +1200,7 @@ function static_purge(array $ids): int
     if (empty($ids)) return 0;
     $pdo = db();
     require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
+    repo_retain_applicant_fingerprints($ids, $pdo);
     repo_delete_applicant_media($ids, $pdo);
     $names = [];
     $ph = implode(',', array_fill(0, count($ids), '?'));
@@ -1224,6 +1225,7 @@ function static_purge_expired(): int
     $ids = array_values(array_filter(array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN)), fn($i) => $i > 0));
     if ($ids) {
         require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
+        repo_retain_applicant_fingerprints($ids, $pdo);
         repo_delete_applicant_media($ids, $pdo);
     }
     $stmt = $pdo->prepare("DELETE FROM applicant WHERE deleted_at IS NOT NULL AND deleted_at < :limit");
