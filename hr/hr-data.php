@@ -399,7 +399,7 @@ if (!function_exists('static_log_into')) {
 // Newest first (two lines with the same time keep the order they were written, newest on top)
 function static_activity(): array
 {
-    try { return repo_recent_activity(null, STATIC_ACTIVITY_SHOW_DAYS * 30); }
+    try { return repo_recent_activity(null, 900); }
     catch (Throwable $e) { return []; }
 }
 
@@ -429,11 +429,11 @@ function static_hr_session_id(): int
 function static_hr_feed(int $limit = 30): array
 {
     $out  = [];
-    $rows = repo_recent_activity(null, STATIC_ACTIVITY_SHOW_DAYS * 30);
+    $rows = repo_recent_activity(null, 900);
     $mine = static_hr_session_id();
     foreach ($rows as $row) {
-        $by   = (string) ($row['actor'] ?? '');
-        $item = ['at' => (string) $row['created_at'], 'activity' => (string) $row['activity'], 'details' => (string) $row['details'], 'by' => $by];
+        $by   = (string) ($row['by'] ?? '');
+        $item = ['at' => (string) ($row['at'] ?? ''), 'activity' => (string) $row['activity'], 'details' => (string) $row['details'], 'by' => $by];
 
         // a profile / password line belongs to one HR account: nobody else sees it
         if (isset($row['owner']) && (int) $row['owner'] !== $mine) continue;

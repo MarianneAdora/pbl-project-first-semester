@@ -3021,6 +3021,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.addEventListener('pageshow', (e) => { if (e.persisted) { paint(); refreshFeed(); } });
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshFeed(); });
+    setInterval(() => {
+        if (document.visibilityState === 'visible') refreshFeed();
+    }, 15000);
     window.addEventListener('storage', (e) => {
         if (e.key === SEEN_KEY || e.key === 'hr_settings') paint();
         if (e.key === 'ebsmi_activity_extra' || e.key === 'ebsmi_change_requests') {     // the Admin just answered (other tab)
