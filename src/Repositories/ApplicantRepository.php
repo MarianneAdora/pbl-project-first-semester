@@ -255,12 +255,14 @@ function repo_add_applicant(string $first, string $middle, string $last, string 
     return ['id' => $id, 'name' => $name, 'email' => $email, 'contact' => $phone, 'status' => 'Pending', 'result' => null, 'cv_file_url' => $cvUrl, 'secure_token' => $token];
 }
 
-function repo_find_applicant(int $id, ?PDO $pdo = null): ?array
+/** When true, also returns pending invitations that have not completed email verification. */
+function repo_find_applicant(int $id, ?PDO $pdo = null, bool $includeUnverified = false): ?array
 {
     $pdo = $pdo ?: db();
+    $verifiedFilter = $includeUnverified ? '' : ' AND verified_at IS NOT NULL';
     $st = $pdo->prepare(
         "SELECT applicant_id, name, email, phone_number, status, result, reference_code, secure_token, cv_file_url, position_id, created_at" .
-        " FROM applicant WHERE applicant_id = :id AND deleted_at IS NULL AND verified_at IS NOT NULL LIMIT 1"
+        " FROM applicant WHERE applicant_id = :id AND deleted_at IS NULL" . $verifiedFilter . " LIMIT 1"
     );
     $st->execute([':id' => $id]);
     $row = $st->fetch();

@@ -94,7 +94,7 @@ function details_find_applicant(int $id): ?array
     // Database first: the Screening List now shows real DB ids (not the 101-135 seed ids).
     try {
         require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
-        $found = repo_find_applicant($id);
+        $found = repo_find_applicant($id, includeUnverified: true);
         if ($found) return $found;
     } catch (Throwable $e) {
         error_log('details_find_applicant DB error: ' . $e->getMessage());
