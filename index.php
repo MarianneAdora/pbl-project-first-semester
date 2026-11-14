@@ -5,16 +5,18 @@ session_start();
 if (($_GET['transition'] ?? '') === 'out') {
     $_SESSION = [];
     session_regenerate_id(true);
+    setcookie('remember', '', time() - 3600, '/', '', true, true);
 }
 
 // Login accounts now come from the database (users table): HR staff + Admin.
 require_once __DIR__ . '/src/Helpers/db.php';
 
 $credentials = [];
+$pdo = null;
 try {
     $pdo = db();
     $rows = $pdo->query(
-        "SELECT user_id, role, name, email, password_hash FROM users WHERE deleted_at IS NULL ORDER BY user_id"
+        "SELECT user_id, role, name, email, password_hash FROM users WHERE deleted_at IS NULL AND status = 'Active' ORDER BY user_id"
     )->fetchAll();
     foreach ($rows as $r) {
         $role  = (string) ($r['role'] ?? '');
@@ -28,30 +30,46 @@ try {
             'user_id'  => (int) ($r['user_id'] ?? 0),
         ];
     }
-} catch (Throwable $e) {
-    error_log('index.php DB login load failed: ' . $e->getMessage());
-    $credentials = [];
-}
+    } catch (Throwable $e) {
+        error_log('index.php DB login load failed: ' . $e->getMessage());
+        $credentials = [];
+    }
 
-/* Original hard-coded accounts, kept for reference:
-$credentials = [
-    'hr@expertise.com' => [
-        'password' => 'hr123',
-        'role' => 'hr',
-        'name' => 'HR',                       // shown in "Hello, ...!" (backend: use the real name)
-        'redirect' => 'hr/dashboard-hr.php'
-    ],
-    'admin@expertise.com' => [
-        'password' => 'admin123',
-        'role' => 'admin',
-        'name' => 'Admin',
-        'redirect' => 'admindashboard-admin.php'
-    ]
-];
-*/
+    // Restore session from "remember me" cookie when no session exists
+    if (empty($_SESSION['user_role']) && isset($_COOKIE['remember']) && $pdo instanceof PDO) {
+        $parts = explode('|', $_COOKIE['remember'], 2);
+        if (count($parts) === 2) {
+            $uid = (int) $parts[0];
+            $token = $parts[1];
+            if ($uid > 0 && $token !== '') {
+                $stmt = $pdo->prepare(
+                    "SELECT user_id, role, name, email, remember_token, remember_token_expires_at
+                     FROM users WHERE user_id = :id AND deleted_at IS NULL AND status = 'Active' LIMIT 1"
+                );
+                $stmt->execute([':id' => $uid]);
+                $row = $stmt->fetch();
+                if ($row && !empty($row['remember_token']) && hash_equals($row['remember_token'], hash('sha256', $token))) {
+                    $expires = $row['remember_token_expires_at'];
+                    if ($expires && strtotime($expires) > time()) {
+                        $_SESSION['user_role'] = $row['role'];
+                        $_SESSION['user_email'] = strtolower(trim((string) $row['email']));
+                        $_SESSION['user_name'] = (string) $row['name'];
+                        $_SESSION['user_id'] = (int) $row['user_id'];
+                    }
+                }
+            }
+        }
+    }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    header('Content-Type: application/json');
+    // Already logged in (session or restored via remember me): go straight to the dashboard
+    if (!empty($_SESSION['user_role'])) {
+        $redirect = $_SESSION['user_role'] === 'admin' ? 'admin/dashboard-admin.php' : 'hr/dashboard-hr.php';
+        header('Location: ' . $redirect);
+        exit();
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        header('Content-Type: application/json');
 
     $email = filter_var(trim($_POST['email'] ?? ''), FILTER_SANITIZE_EMAIL);
     $password = $_POST['password'] ?? '';
@@ -78,6 +96,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['user_email'] = $email;
         $_SESSION['user_name'] = $credentials[$email]['name'];
         $_SESSION['user_id']   = $credentials[$email]['user_id'] ?? null;
+
+        // "Remember me": issue a long-lived token cookie + store its hash in the DB
+        $remember = !empty($_POST['remember']);
+        if ($remember && $pdo instanceof PDO && !empty($credentials[$email]['user_id'])) {
+            $uid     = (int) $credentials[$email]['user_id'];
+            $token   = bin2hex(random_bytes(32));
+            $tokenHash = hash('sha256', $token);
+            $expires = date('Y-m-d H:i:s', time() + 30 * 24 * 3600);
+            $pdo->prepare(
+                "UPDATE users SET remember_token = :hash, remember_token_expires_at = :expires WHERE user_id = :id"
+            )->execute([':hash' => $tokenHash, ':expires' => $expires, ':id' => $uid]);
+            setcookie('remember', $uid . '|' . $token, time() + 30 * 24 * 3600, '/', '', true, true);
+        } elseif (!$remember && $pdo instanceof PDO && !empty($credentials[$email]['user_id'])) {
+            // User explicitly did NOT check remember me: clear any existing token
+            $pdo->prepare(
+                "UPDATE users SET remember_token = NULL, remember_token_expires_at = NULL WHERE user_id = :id"
+            )->execute([':id' => (int) $credentials[$email]['user_id']]);
+            setcookie('remember', '', time() - 3600, '/', '', true, true);
+        }
 
         echo json_encode([
             'status' => 'success',

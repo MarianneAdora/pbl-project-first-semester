@@ -848,6 +848,19 @@ document.addEventListener('DOMContentLoaded', () => {
         input.addEventListener('blur', () => { if (touched.has(name)) validateField(name, false); });
     });
 
+    // Surnames with two or more words (e.g. "del Rosario", "dela torre") are fully title-cased.
+    const lastInput = form.elements.last_name;
+    lastInput.addEventListener('blur', () => {
+        const v = lastInput.value.trim();
+        if (!v) return;
+        const words = v.split(/\s+/u).filter(Boolean);
+        if (words.length > 1) {
+            lastInput.value = words.map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+            touched.add('last_name');
+            validateField('last_name', false);
+        }
+    });
+
     // Note is optional, but it still tells you when you hit the limit
     function updateNote() {
         const len = noteInput.value.length;
@@ -1045,7 +1058,7 @@ document.addEventListener('DOMContentLoaded', () => {
            return data;
 
        The email itself is designed in shortlist-email.html. When the server sends it, it replaces:
-           {{FIRST_NAME}}  first word of the applicant's name
+            {{FULL_NAME}}  applicant's full name
            {{LINK}}        the applicant's personal link:  .../applicant/opening.php?token=...
            {{YEAR}}        current year
        and, before redirecting from that link to opening.php, sets the session values
@@ -4697,6 +4710,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = $('settingsForm');
     const nameInput = $('setName');
     const emailInput = $('setEmail');
+    const currentPwInput = $('setCurrentPw');
     const saveBtn = $('saveBtn');
     const cancelBtn = $('cancelBtn');
     const prefCard = $('prefCard');
@@ -4738,6 +4752,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return {
             name: nameInput.value.trim(),
             email: emailInput.value.trim(),
+            current_password: currentPwInput ? currentPwInput.value.trim() : '',
             photo: photoState(),
             theme: checked ? checked.value : 'light',
             notifications: toggles.notifications.checked,
@@ -4750,6 +4765,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function fill(state) {
         nameInput.value = state.name;
         emailInput.value = state.email;
+        if (currentPwInput) currentPwInput.value = '';
         resetPhoto();
         themeRadios.forEach(r => { r.checked = r.value === state.theme; });
         Object.keys(toggles).forEach(k => { toggles[k].checked = !!state[k]; });
@@ -4798,8 +4814,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!t.includes('@')) return 'The email must include an @ (example: name@gmail.com).';
             if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(t)) return 'Enter a valid email address (example: name@gmail.com).';
             return '';
-    }
-};
+        },
+        current_password(v) {
+            const t = v.trim();
+            if (!t) return 'Please enter your current password.';
+            return '';
+        }
+    };
 
     function setError(field, message, shake) {
         if (!field) return;
@@ -4815,7 +4836,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function validate(name, shake) {
-        const input = name === 'name' ? nameInput : (name === 'email' ? emailInput : null);
+        const input = name === 'name' ? nameInput : (name === 'email' ? emailInput : (name === 'current_password' ? currentPwInput : null));
         const message = rules[name](input ? input.value : '');
         const field = fieldOf(name);
         setError(field, message, shake);
@@ -4832,6 +4853,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         input.addEventListener('blur', () => { if (touched.has(name)) validate(name, false); });
     });
+    // Show/hide the Current Password field only when HR is actively changing their email
+    emailInput.addEventListener('input', () => {
+        const changing = emailInput.value.trim() !== String(saved.email || '').trim();
+        const cpField = fieldOf('current_password');
+        if (cpField) cpField.style.display = changing ? '' : 'none';
+        if (!changing) { currentPwInput.value = ''; setError(cpField, ''); }
+    });
+
+    if (currentPwInput) {
+        currentPwInput.addEventListener('input', () => { validate('current_password', false); refreshButtons(); });
+        currentPwInput.addEventListener('blur', () => { validate('current_password', false); });
+    }
 
     themeRadios.forEach(r => r.addEventListener('change', () => { preview(); refreshButtons(); }));
     toggles.notifications.addEventListener('change', () => { syncSubGroup(); refreshButtons(); });
@@ -4966,6 +4999,7 @@ document.addEventListener('DOMContentLoaded', () => {
         form.append('action', 'profile_save');
         form.append('name', state.name);
         form.append('email', state.email);
+        if (emailChanging && state.current_password) form.append('current_password', state.current_password);
         if (photoBlob) form.append('avatar', photoBlob, 'avatar.jpg');
         else if (photoRemoved) form.append('avatar_remove', '1');
 
@@ -4975,7 +5009,7 @@ document.addEventListener('DOMContentLoaded', () => {
         account.name = p.name || state.name;
         account.email = p.email || state.email;
         account.avatar = p.avatar || null;
-        account.avatarUrl = p.avatarUrl || (p.avatar ? account.avatarBase + encodeURIComponent(p.avatar) + '?v=' + (p.avatar_v || 0) : '');
+        account.avatarUrl = p.avatarUrl || p.avatar || '';
 
         const okSettings = HR.settings.save({
             theme: state.theme,
@@ -4995,18 +5029,16 @@ document.addEventListener('DOMContentLoaded', () => {
         let firstBad = null;
         ['name', 'email'].forEach(n => { if (!validate(n, true) && !firstBad) firstBad = n; });
         const emailChanging = emailInput.value.trim() !== String(saved.email || '').trim();
+        if (emailChanging && currentPwInput && !validate('current_password', true) && !firstBad) firstBad = 'current_password';
         if (firstBad) {
             HR.toast('Fix the highlighted field before saving.', { error: true, duration: 4000 });
             if (firstBad === 'name') nameInput.focus();
             else if (firstBad === 'email') emailInput.focus();
+            else currentPwInput.focus();
             return;
         }
 
         const state = collect();
-        if (emailChanging) {
-            const ok = await askConfirm(['New email: ' + state.email]);
-            if (!ok) return;
-        }
         setSaving(true);
         try {
             const data = await persist(state, emailChanging);
@@ -5038,109 +5070,22 @@ document.addEventListener('DOMContentLoaded', () => {
     cancelBtn.addEventListener('click', () => {
         if (saving || !isDirty()) return;
         fill(saved);
-        ['name', 'email'].forEach(n => setError(fieldOf(n), ''));
+        const cpField = fieldOf('current_password');
+        if (cpField) cpField.style.display = 'none';
+        ['name', 'email', 'current_password'].forEach(n => setError(fieldOf(n), ''));
         touched.clear();
         HR.settings.apply(HR.settings.get(), true);      // the saved look
         refreshButtons();
         HR.toast('Changes discarded.', { duration: 2500 });
     });
 
-    /* ---------- Confirm before sending a change to the Admin ---------- */
-    const confirmModal = $('confirmModal');
-    let confirmDone = null;
-    function askConfirm(items) {
-        $('confirmText').textContent = 'These changes need the admin\'s approval before they take effect. Until then you keep your current email and password.';
-        $('confirmList').innerHTML = '';
-        items.forEach(t => { const li = document.createElement('li'); li.textContent = t; $('confirmList').appendChild(li); });
-        confirmModal.classList.add('active');
-        setTimeout(() => $('confirmOk').focus(), 120);
-        return new Promise(resolve => { confirmDone = resolve; });
-    }
-    function closeConfirm(answer) {
-        confirmModal.classList.remove('active');
-        if (confirmDone) { const d = confirmDone; confirmDone = null; d(answer); }
-    }
-    $('confirmOk').addEventListener('click', () => closeConfirm(true));
-    $('confirmCancel').addEventListener('click', () => closeConfirm(false));
-    confirmModal.addEventListener('click', (e) => { if (e.target === confirmModal) closeConfirm(false); });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && confirmModal.classList.contains('active')) { e.stopImmediatePropagation(); closeConfirm(false); } }, true);
-
-    /* ---------- Waiting for the admin's approval ---------- */
-    const pendingBanner = $('pendingBanner');
-    const pendingText = $('pendingText');
-
-    function paintPending() {
-        const p = HRREQ.pendingFor(account.id);
-        const parts = [];
-        if (p && p.new_email) parts.push('new email ' + p.new_email);
-        if (p && p.new_password) parts.push('a new password');
-        pendingBanner.hidden = !parts.length;
-        pendingText.textContent = parts.length
-            ? 'Your ' + parts.join(' and ') + ' will work after the admin approves it. Until then, keep logging in with your current email and password.'
-            : '';
-    }
-
-    /* ---------- The admin's answer: highlighted until HR reads it ("Got it") ---------- */
-    const decisionBox = $('decisionBanners');
-    const DECISION_ICON = {
-        approved: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z',
-        rejected: 'M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z'
-    };
-
-    function niceTime(at) {
-        const d = new Date(String(at || '').replace(' ', 'T'));
-        return isNaN(d) ? String(at || '') : d.toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
-    }
-
-    const shownDecisions = new Set();
-    function paintDecisions() {
-        if (!decisionBox || !window.HRREQ) return;
-        const list = HRREQ.hrUnread(account.id);
-        decisionBox.innerHTML = list.map(n => {
-            const isFresh = !shownDecisions.has(n.id);
-            shownDecisions.add(n.id);
-            return '<div class="decision-banner is-' + n.status + (isFresh ? ' is-fresh' : '') + '" role="status" data-id="' + escHtml(n.id) + '">' +
-                '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + DECISION_ICON[n.status] + '"/></svg>' +
-                '<div class="pb-text"><strong>' + escHtml(n.title) + '</strong><span>' + escHtml(n.detail) + '</span>' +
-                '<em class="db-time">' + escHtml(niceTime(n.at)) + '</em></div>' +
-                '<button type="button" class="db-ok">Got it</button></div>';
-        }).join('');
-        HR.refreshSettingsBadge();
-    }
-    if (decisionBox) {
-        decisionBox.addEventListener('click', (e) => {
-            const btn = e.target.closest('.db-ok');
-            if (!btn) return;
-            HRREQ.markHrRead(account.id, btn.closest('.decision-banner').dataset.id);
-            paintDecisions();
-        });
-    }
-
-    // The Admin decided (maybe in another tab): apply an approved email, tell HR about it
-    function syncDecision() {
-        const r = HRREQ.unappliedFor(account.id);
-        if (!r) return;
-        HRREQ.markApplied(r.id);
-        if (r.status === 'approved') {
-            if (r.new_email) {
-                HR.settings.saveProfile({ name: readSaved().name, email: r.new_email });
-                account.email = r.new_email;
-                if (!isDirty() && !saving) { saved = readSaved(); fill(saved); refreshButtons(); }
-            }
-            HR.toast('The admin approved your change.', { duration: 6000 });
-        } else {
-            HR.toast('The admin rejected your change. Nothing was changed.', { error: true, duration: 6000 });
-        }
-    }
-
     /* ---------- Update password ---------- */
     const pwModal = $('pwModal');
     const pwForm = $('pwForm');
     const pwOpen = $('pwOpen');
-    const pwOpenLabel = $('pwOpenLabel');
-    const pwCurrent = $('pwCurrent');
     const pwNew = $('pwNew');
     const pwConfirm = $('pwConfirm');
+    const pwCurrent = $('pwCurrent');
     const pwSubmit = $('pwSubmit');
     const meter = $('pwMeter');
     const meterLabel = $('pwMeterLabel');
@@ -5181,10 +5126,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function pwValidate(shake) {
         const checks = pwChecks(pwNew.value);
         const problems = {
-            pwCurrent: pwCurrent.value ? '' : 'Enter your current password.',
             pwNew: !pwNew.value ? 'Enter a new password.'
-                : !(checks.len && checks.case && checks.num) ? 'The new password does not meet all the requirements.'
-                : pwNew.value === pwCurrent.value ? 'The new password must be different from the current one.' : '',
+                : !(checks.len && checks.case && checks.num) ? 'The new password does not meet all the requirements.' : '',
             pwConfirm: !pwConfirm.value ? 'Type the new password again.'
                 : pwConfirm.value !== pwNew.value ? 'The passwords do not match.' : ''
         };
@@ -5203,7 +5146,7 @@ document.addEventListener('DOMContentLoaded', () => {
         pwModal.querySelectorAll('.eye').forEach(b => { b.setAttribute('aria-pressed', 'false'); b.previousElementSibling.type = 'password'; });
         paintStrength();
         pwModal.classList.add('active');
-        setTimeout(() => pwCurrent.focus(), 120);
+        setTimeout(() => pwNew.focus(), 120);
     }
 
     function closePw() {
@@ -5216,8 +5159,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const email = String(account.email || '').trim();
         if (!email) { HR.toast('Your account has no email address.', { error: true, duration: 5000 }); return; }
         pwOpen.disabled = true;
-        const savedLabel = pwOpenLabel ? pwOpenLabel.textContent : pwOpen.textContent;
-        pwOpenLabel ? pwOpenLabel.textContent = 'Sending...' : (pwOpen.textContent = 'Sending...');
+        const savedLabel = pwOpen.textContent;
+        pwOpen.textContent = 'Sending...';
         try {
             const res = await fetch('../api/password-reset.php', {
                 method: 'POST',
@@ -5235,7 +5178,7 @@ document.addEventListener('DOMContentLoaded', () => {
             HR.toast('Could not reach the server. Please check your connection and try again.', { error: true, duration: 6000 });
         } finally {
             pwOpen.disabled = false;
-            pwOpenLabel ? pwOpenLabel.textContent = savedLabel : (pwOpen.textContent = savedLabel);
+            pwOpen.textContent = savedLabel;
         }
     });
     $('pwCancel').addEventListener('click', closePw);
@@ -5254,21 +5197,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if (pwConfirm.value) setError(pwField('pwConfirm'), pwConfirm.value === pwNew.value ? '' : 'The passwords do not match.');
     });
     pwConfirm.addEventListener('input', () => setError(pwField('pwConfirm'), pwConfirm.value === pwNew.value ? '' : 'The passwords do not match.'));
-    pwCurrent.addEventListener('input', () => setError(pwField('pwCurrent'), ''));
 
-    // The server checks the current password (hr-data.php). Admin: the new password is saved at once.
-    // HR: the change is sent to the Admin and only works after the Admin approves it.
+    // Password is applied at once (no admin approval needed).
     pwForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         if (pwBusy) return;
         const bad = pwValidate(true);
         if (bad) { $(bad).focus(); return; }
-        if (!(await askConfirm([]))) return;
+        if (!pwCurrent.value) { setError(pwField('pwCurrent'), 'Enter your current password.', true); pwCurrent.focus(); return; }
 
         const label = pwSubmit.dataset.label || (pwSubmit.dataset.label = pwSubmit.textContent);
         pwBusy = true;
         pwSubmit.disabled = true;
-        pwSubmit.textContent = account.role === 'hr' ? 'Sending...' : 'Updating...';
+        pwSubmit.textContent = 'Updating...';
         let data = null;
         let failure = null;
         try {
@@ -5286,12 +5227,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         closePw();
-        if (data.mode === 'pending') {
-            // HR: nothing changed yet. The Admin has to approve it first.
-            HR.toast(data.message, { duration: 5000 });
-            if (typeof showRequest === 'function') showRequest(data.request);
-            return;
-        }
         HR.toast('Password updated.', { duration: 3500 });
     });
 
@@ -5311,20 +5246,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     /* ---------- start ---------- */
-    syncDecision();
     saved = readSaved();
     fill(saved);
-    paintPending();
-    paintDecisions();
     refreshButtons();
-    window.addEventListener('storage', (e) => {
-        if (e.key === 'ebsmi_change_requests') {
-            paintPending();
-            syncDecision();
-        }
-        // the answer row is written right after the request itself, so both keys repaint the banner
-        if (e.key === 'ebsmi_change_requests' || e.key === 'ebsmi_activity_extra') paintDecisions();
-    });
 
     // Another tab saved Settings: show its values here
     window.addEventListener('storage', (e) => {

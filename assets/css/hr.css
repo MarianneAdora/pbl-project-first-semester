@@ -5927,6 +5927,23 @@ html:where([data-page="details"])[data-theme="dark"] .tab-ink { background: #ff6
     margin-bottom: 16px;
 }
 
+/* Animated show/hide for fields that appear conditionally (e.g. Current password) */
+:where(html[data-page="settinghr"]) .set-field.is-hidden {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    margin-top: 0;
+    margin-bottom: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    transition: max-height 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease, margin-top 0.25s ease, margin-bottom 0.25s ease, padding-top 0.25s ease, padding-bottom 0.25s ease;
+}
+
+:where(html[data-page="settinghr"]) .set-field:not(.is-hidden) {
+    max-height: 500px;
+    opacity: 1;
+}
+
 :where(html[data-page="settinghr"]) .set-field > label,
 :where(html[data-page="settinghr"]) .pref-label {
     display: block;

@@ -474,7 +474,12 @@ function repo_delete_applicant_media(array $ids, ?PDO $pdo = null): void
     while ($row = $st->fetch()) {
         $publicId = cloudinary_public_id_from_url((string) $row['cv_file_url']);
         if ($publicId !== null) {
-            try { $cloud->deleteResource($publicId, 'auto', 'private'); } catch (Throwable $ignored) {}
+            // Uploads post to /auto/upload with no explicit type, so Cloudinary stores them
+            // under its default type (upload). Try the common types so deletion works
+            // regardless of how the file was originally uploaded.
+            foreach (['upload', 'private', 'default'] as $type) {
+                try { $cloud->deleteResource($publicId, 'auto', $type); } catch (Throwable $ignored) {}
+            }
         }
     }
 
@@ -487,7 +492,9 @@ function repo_delete_applicant_media(array $ids, ?PDO $pdo = null): void
     while ($row = $st->fetch()) {
         $publicId = cloudinary_public_id_from_url((string) $row['video_file_url']);
         if ($publicId !== null) {
-            try { $cloud->deleteResource($publicId, 'video', 'default'); } catch (Throwable $ignored) {}
+            foreach (['upload', 'default', 'private'] as $type) {
+                try { $cloud->deleteResource($publicId, 'video', $type); } catch (Throwable $ignored) {}
+            }
         }
     }
 }
@@ -557,6 +564,15 @@ function repo_purge_expired_applicants(int $days = 30, ?PDO $pdo = null): int
 {
     $pdo = $pdo ?: db();
     $days = max(1, $days);
+    $st = $pdo->prepare(
+        "SELECT applicant_id FROM applicant WHERE deleted_at IS NOT NULL AND deleted_at < NOW() - (:days || ' days')::INTERVAL"
+    );
+    $st->bindValue(':days', (string) $days, PDO::PARAM_STR);
+    $st->execute();
+    $ids = array_values(array_filter(array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN)), fn($i) => $i > 0));
+    if ($ids) {
+        repo_delete_applicant_media($ids, $pdo);
+    }
     $st = $pdo->prepare("DELETE FROM applicant WHERE deleted_at IS NOT NULL AND deleted_at < NOW() - (:days || ' days')::INTERVAL");
     $st->bindValue(':days', (string) $days, PDO::PARAM_STR);
     $st->execute();

@@ -83,10 +83,6 @@ class RiskScoringService
                 $most . ' code request(s). Email delays make this normal.');
         }
 
-        // ---- Invite link click time (record only, 0 pts) --------------------
-        $add('Time between invite and link click', 0, 0,
-            'Recorded only. Email scanners open links instantly, so this is not scored.');
-
         // ---- Questionnaire speed (max 3) ------------------------------------
         $timingJson = (string) ($response['timing_json'] ?? '{}');
         $timing     = json_decode($timingJson, true);
@@ -233,10 +229,6 @@ class RiskScoringService
         } else {
             $add('Contradictory logistics answers', 0, 3, 'The logistics answers are consistent.');
         }
-
-        // ---- Video: time on page (skipped — upload allowed) -----------------
-        $add('Time on the video page', 0, 2,
-            'Not scored. Applicants may upload a file instead of recording live.');
 
         // ---- Video: hash match with another applicant (max 3) ---------------
         $hash  = (string) ($response['video_file_hash'] ?? '');

@@ -84,10 +84,9 @@ if ($outcome === 'review') {
 if ($outcome === 'failed' && empty($_SESSION['rejection_email_sent'])) {
     $toEmail   = (string) ($_SESSION['applicant_email'] ?? '');
     $fullName  = (string) ($_SESSION['applicant_name'] ?? '');
-    $firstName = trim(explode(' ', trim($fullName))[0] ?? $fullName);
-    if ($toEmail !== '' && $firstName !== '') {
+    if ($toEmail !== '' && $fullName !== '') {
         $emailService = new EmailService();
-        $emailService->sendScreeningRejectedEmail($toEmail, $firstName);
+        $emailService->sendScreeningRejectedEmail($toEmail, $fullName);
         $_SESSION['rejection_email_sent'] = true;
     }
 }

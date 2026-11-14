@@ -3222,6 +3222,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = $('settingsForm');
     const nameInput = $('setName');
     const emailInput = $('setEmail');
+    const currentPwInput = $('setCurrentPw');
     const saveBtn = $('saveBtn');
     const cancelBtn = $('cancelBtn');
     const prefCard = $('prefCard');
@@ -3520,7 +3521,7 @@ document.addEventListener('DOMContentLoaded', () => {
         account.name = p.name || state.name;
         account.email = p.email || state.email;
         account.avatar = p.avatar || null;
-        account.avatarUrl = p.avatarUrl || (p.avatar ? account.avatarBase + encodeURIComponent(p.avatar) + '?v=' + (p.avatar_v || 0) : '');
+        account.avatarUrl = p.avatarUrl || p.avatar || '';
 
         const okSettings = ADMIN.settings.save({
             theme: state.theme,
@@ -3592,7 +3593,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const pwModal = $('pwModal');
     const pwForm = $('pwForm');
     const pwOpen = $('pwOpen');
-    const pwCurrent = $('pwCurrent');
     const pwNew = $('pwNew');
     const pwConfirm = $('pwConfirm');
     const pwSubmit = $('pwSubmit');
@@ -3635,10 +3635,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function pwValidate(shake) {
         const checks = pwChecks(pwNew.value);
         const problems = {
-            pwCurrent: pwCurrent.value ? '' : 'Enter your current password.',
             pwNew: !pwNew.value ? 'Enter a new password.'
-                : !(checks.len && checks.case && checks.num) ? 'The new password does not meet all the requirements.'
-                : pwNew.value === pwCurrent.value ? 'The new password must be different from the current one.' : '',
+                : !(checks.len && checks.case && checks.num) ? 'The new password does not meet all the requirements.' : '',
             pwConfirm: !pwConfirm.value ? 'Type the new password again.'
                 : pwConfirm.value !== pwNew.value ? 'The passwords do not match.' : ''
         };
@@ -3657,7 +3655,7 @@ document.addEventListener('DOMContentLoaded', () => {
         pwModal.querySelectorAll('.eye').forEach(b => { b.setAttribute('aria-pressed', 'false'); b.previousElementSibling.type = 'password'; });
         paintStrength();
         pwModal.classList.add('active');
-        setTimeout(() => pwCurrent.focus(), 120);
+        setTimeout(() => pwNew.focus(), 120);
     }
 
     function closePw() {
@@ -3708,10 +3706,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (pwConfirm.value) setError(pwField('pwConfirm'), pwConfirm.value === pwNew.value ? '' : 'The passwords do not match.');
     });
     pwConfirm.addEventListener('input', () => setError(pwField('pwConfirm'), pwConfirm.value === pwNew.value ? '' : 'The passwords do not match.'));
-    pwCurrent.addEventListener('input', () => setError(pwField('pwCurrent'), ''));
 
-    // The server checks the current password (hr-data.php). Admin: the new password is saved at once.
-    // HR: the change is sent to the Admin and only works after the Admin approves it.
+    // Password is applied at once (no admin approval needed).
     pwForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         if (pwBusy) return;
@@ -3721,11 +3717,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const label = pwSubmit.dataset.label || (pwSubmit.dataset.label = pwSubmit.textContent);
         pwBusy = true;
         pwSubmit.disabled = true;
-        pwSubmit.textContent = account.role === 'hr' ? 'Sending...' : 'Updating...';
+        pwSubmit.textContent = 'Updating...';
         let data = null;
         let failure = null;
         try {
-            data = await postProfile({ action: 'password_change', current: pwCurrent.value, next: pwNew.value });
+            data = await postProfile({ action: 'password_change', next: pwNew.value });
         } catch (err) { failure = err; }
         pwBusy = false;
         pwSubmit.disabled = false;

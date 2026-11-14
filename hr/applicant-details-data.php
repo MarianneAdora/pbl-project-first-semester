@@ -719,9 +719,8 @@ function details_email_template(string $file): ?string
 
 function details_email(string $kind, array $a, array $iv): array
 {
-    $firstRaw = details_first_name((string) $a['name']);
-    $first   = details_h($firstRaw);
-    $date    = details_h(details_date_label($iv['date']));
+    $full   = details_h((string) $a['name']);
+    $date   = details_h(details_date_label($iv['date']));
     $time    = details_h(details_time_label($iv['time']));
     $type    = details_h($iv['type']);
     $venue   = details_h(DETAILS_VENUE);
@@ -746,8 +745,8 @@ function details_email(string $kind, array $a, array $iv): array
             $template
         );
         $html = str_replace(
-            ['{{FIRST_NAME}}', '{{DATE}}', '{{TIME}}', '{{INTERVIEW_TYPE}}', '{{LOCATION}}', '{{LINK}}', '{{YEAR}}'],
-            [$first, $date, $time, $type, $venue, $link, $year],
+            ['{{FULL_NAME}}', '{{DATE}}', '{{TIME}}', '{{INTERVIEW_TYPE}}', '{{LOCATION}}', '{{LINK}}', '{{YEAR}}'],
+            [$full, $date, $time, $type, $venue, $link, $year],
             $template
         );
         return ['to' => (string) $a['email'], 'subject' => $subject, 'html' => $html];
@@ -780,7 +779,7 @@ function details_email(string $kind, array $a, array $iv): array
         . '<tr><td style="padding:26px 40px 0 40px;"><p style="margin:0 0 8px 0;font-size:13px;font-weight:700;color:#d1122a;">' . $kicker . '</p>'
         . '<h1 style="margin:0;font-size:26px;line-height:1.25;font-weight:800;color:#1f1f23;">' . $title . '</h1></td></tr>'
         . '<tr><td style="padding:20px 40px 0 40px;color:#3a3d44;font-size:15px;line-height:1.7;">'
-        . '<p style="margin:0 0 12px 0;color:#1f1f23;font-weight:700;">Hi ' . $first . ',</p><p style="margin:0;">' . $lead . '</p></td></tr>'
+        . '<p style="margin:0 0 12px 0;color:#1f1f23;font-weight:700;">Hi ' . $full . ',</p><p style="margin:0;">' . $lead . '</p></td></tr>'
         . '<tr><td style="padding:22px 40px 0 40px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8f8f9;border:1px solid #e6e7ea;border-radius:12px;"><tr><td style="padding:12px 22px;">'
         . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">'
         . $row('Date', $date) . $row('Time', $time) . $row('Interview Type', $type) . $row('Location', $venue)

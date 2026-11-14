@@ -441,12 +441,6 @@ class CvParserService {
                 continue;
             }
 
-            // Lowercase particles (stay lowercase unless first word)
-            if (in_array($lower, $lowercase_particles, true) && !$isFirst) {
-                $result[] = $lower;
-                continue;
-            }
-
             // Everything else: title-case (first letter uppercase, rest lowercase)
             $result[] = ucfirst(strtolower($word));
         }

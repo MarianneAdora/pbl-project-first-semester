@@ -637,6 +637,11 @@ function static_add_applicant(array $in, ?array $cvUpload = null): array
     $first   = static_check_name_part((string) ($in['first_name']  ?? ''), 'first name',  true);
     $middle  = static_check_name_part((string) ($in['middle_name'] ?? ''), 'middle name', false, 0);   // optional; one or two initials (B. / J.D.) are fine, no minimum length
     $last    = static_check_name_part((string) ($in['last_name']   ?? ''), 'last name',   true);
+    // A surname with two or more names (e.g. "dela torre") is fully capitalized: "Dela Torre"
+    $lastWords = preg_split('/\s+/u', $last);
+    if (count($lastWords) > 1) {
+        $last = implode(' ', array_map(fn($w) => ucfirst(strtolower($w)), $lastWords));
+    }
     $name    = static_compose_name($first, $middle, $last);
     $email   = trim((string) ($in['email'] ?? ''));
     $contact = trim((string) ($in['contact'] ?? ''));
@@ -992,7 +997,10 @@ function static_position_delete(int $id): array
         try {
             require_once __DIR__ . '/../src/Services/CloudinaryService.php';
             $cloud = new CloudinaryService();
-            $cloud->deleteResource((string) $pos['jd_public_id'], 'auto', 'default');
+            // Uploads post to /auto/upload with no explicit type; try common types.
+            foreach (['upload', 'default', 'private'] as $type) {
+                try { $cloud->deleteResource((string) $pos['jd_public_id'], 'auto', $type); } catch (Throwable $ignored) {}
+            }
         } catch (Throwable $e) {
             error_log('Job Description Cloudinary delete error: ' . $e->getMessage());
             // continue archiving even if Cloudinary delete fails
@@ -1141,6 +1149,8 @@ function static_archive(array $ids, array $at = []): int
     $ids = array_map('intval', $ids);
     if (empty($ids)) return 0;
     $pdo = db();
+    require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
+    repo_delete_applicant_media($ids, $pdo);
     $zone = new DateTimeZone('Asia/Manila');
     $now  = static_now()->format('Y-m-d H:i:s');
     $n = 0;
@@ -1197,6 +1207,8 @@ function static_purge(array $ids): int
     $ids = array_map('intval', $ids);
     if (empty($ids)) return 0;
     $pdo = db();
+    require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
+    repo_delete_applicant_media($ids, $pdo);
     $names = [];
     $ph = implode(',', array_fill(0, count($ids), '?'));
     $ns = $pdo->prepare("SELECT applicant_id, name FROM applicant WHERE applicant_id IN ($ph) AND deleted_at IS NOT NULL");
@@ -1215,6 +1227,13 @@ function static_purge_expired(): int
 {
     $limit = static_now()->modify('-' . STATIC_ARCHIVE_DAYS . ' days')->format('Y-m-d H:i:s');
     $pdo = db();
+    $st = $pdo->prepare("SELECT applicant_id FROM applicant WHERE deleted_at IS NOT NULL AND deleted_at < :limit");
+    $st->execute([':limit' => $limit]);
+    $ids = array_values(array_filter(array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN)), fn($i) => $i > 0));
+    if ($ids) {
+        require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
+        repo_delete_applicant_media($ids, $pdo);
+    }
     $stmt = $pdo->prepare("DELETE FROM applicant WHERE deleted_at IS NOT NULL AND deleted_at < :limit");
     $stmt->execute([':limit' => $limit]);
     return (int) $stmt->rowCount();
@@ -1762,36 +1781,11 @@ function static_profile_change_password(string $current, string $new): array
         return ['mode' => 'applied', 'request' => null];
     }
 
-    // HR: one request at a time
-    $stmt = $pdo->prepare("SELECT request_id FROM password_requests WHERE account_id = :aid AND status = 'pending' LIMIT 1");
-    $stmt->execute([':aid' => $me['id']]);
-    if ($stmt->fetch()) {
-        throw new StaticProfileError('You already have a password change waiting for the Admin to approve.');
-    }
-
-    // current_hash = what the account has now; new_password = the HASH of the new one (never the plain text)
-    $h = $pdo->prepare('SELECT password_hash FROM users WHERE user_id = :id');
-    $h->execute([':id' => $me['id']]);
-    $currentHash = (string) ($h->fetchColumn() ?: '');
-
-    $stmt = $pdo->prepare("
-        INSERT INTO password_requests (account_id, current_hash, new_password, status, created_at)
-        VALUES (:aid, :current_hash, :new_password, 'pending', :created_at)
-        RETURNING request_id, account_id, status, decision, reason, created_at, reviewed_at
-    ");
-    $stmt->execute([
-        ':aid'          => $me['id'],
-        ':current_hash' => $currentHash,
-        ':new_password' => password_hash($new, PASSWORD_DEFAULT),
-        ':created_at'   => static_now()->format('Y-m-d H:i:s')
-    ]);
-    $row = $stmt->fetch();
-    $row['name']  = $me['name'];
-    $row['email'] = $me['email'];
-
-    try { repo_log_activity('Password Change Requested', $me['name'] . ' (HR) · ' . $me['email'], 'HR'); } catch (Throwable $e) {}
-
-    return ['mode' => 'pending', 'request' => static_profile_request_public(static_profile_request_row($row))];
+    // HR: apply at once (no admin approval needed for password)
+    $stmt = $pdo->prepare("UPDATE users SET password_hash = :hash WHERE user_id = :id");
+    $stmt->execute([':hash' => password_hash($new, PASSWORD_DEFAULT), ':id' => $me['id']]);
+    try { repo_log_activity('Changed HR Password', $me['name'] . ' (' . $me['email'] . ')'); } catch (Throwable $e) {}
+    return ['mode' => 'applied', 'request' => null];
 }
 
 // HR takes back the request that is still pending
@@ -2137,10 +2131,10 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
             case 'password_change':
                 $res = static_profile_change_password((string) ($input['current'] ?? ''), (string) ($input['next'] ?? ''));
                 static_respond([
-                    'status'  => 'success',
-                    'message' => $res['mode'] === 'applied' ? 'Password updated.' : 'Your password change was sent to the Admin for approval.',
-                    'mode'    => $res['mode'],
-                    'request' => $res['request']
+                'status'  => 'success',
+                'message' => 'Password updated.',
+                'mode'    => $res['mode'],
+                'request' => $res['request']
                 ]);
                 break;
 

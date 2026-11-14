@@ -108,9 +108,8 @@ class EmailService {
     }
 
     public function sendOtpEmail($toEmail, $toName, $otpCode) {
-        $firstName = trim(explode(' ', trim((string) $toName))[0] ?? (string) $toName);
         $htmlContent = $this->loadTemplate('otp-email.html');
-        $htmlContent = str_replace('{{FIRST_NAME}}', htmlspecialchars($firstName, ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $htmlContent = str_replace('{{FULL_NAME}}', htmlspecialchars((string) $toName, ENT_QUOTES, 'UTF-8'), $htmlContent);
         $htmlContent = str_replace('{{OTP_CODE}}', htmlspecialchars((string) $otpCode, ENT_QUOTES, 'UTF-8'), $htmlContent);
         $htmlContent = str_replace('{{YEAR}}', date('Y'), $htmlContent);
 
@@ -125,9 +124,7 @@ class EmailService {
     }
 
     public function sendInviteEmail($toEmail, $toName, $secureToken) {
-        // $toName may be the full name — the template wants the first name only.
-        $firstName = trim(explode(' ', trim((string) $toName))[0] ?? (string) $toName);
-        if ($firstName === '') $firstName = (string) $toName;
+        // $toName is the applicant's full name.
         // 1. Build the personal link using the secure token
         // NOTE: Change 'localhost' to your real domain when you deploy
         $link = "http://localhost/pbl-project-first-semester/applicant/opening.php?token=" . $secureToken;
@@ -136,7 +133,7 @@ class EmailService {
         $htmlContent = $this->loadTemplate('shortlist-email.html');
 
         // 3. Replace the placeholders
-        $htmlContent = str_replace('{{FIRST_NAME}}', htmlspecialchars($firstName, ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $htmlContent = str_replace('{{FULL_NAME}}', htmlspecialchars((string) $toName, ENT_QUOTES, 'UTF-8'), $htmlContent);
         $htmlContent = str_replace('{{LINK}}', htmlspecialchars($link, ENT_QUOTES, 'UTF-8'), $htmlContent);
         $htmlContent = str_replace('{{YEAR}}', date('Y'), $htmlContent);
 
@@ -153,12 +150,10 @@ class EmailService {
 
     public function sendPasswordResetEmail($toEmail, $toName, string $token): bool
     {
-        $firstName = trim(explode(' ', trim((string) $toName))[0] ?? (string) $toName);
-        if ($firstName === '') $firstName = (string) $toName;
         $link = self::resetLink($token);
 
         $htmlContent = $this->loadTemplate('password-reset-email.html');
-        $htmlContent = str_replace('{{FIRST_NAME}}', htmlspecialchars($firstName, ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $htmlContent = str_replace('{{FULL_NAME}}', htmlspecialchars((string) $toName, ENT_QUOTES, 'UTF-8'), $htmlContent);
         $htmlContent = str_replace('{{LINK}}', htmlspecialchars($link, ENT_QUOTES, 'UTF-8'), $htmlContent);
         $htmlContent = str_replace('{{YEAR}}', date('Y'), $htmlContent);
 
@@ -185,9 +180,9 @@ class EmailService {
         return "$scheme://$host$base/auth/reset-password.php?token=" . urlencode($token);
     }
 
-    public function sendScheduleApprovedEmail($toEmail, $firstName, $date, $time, $type, $location, $link) {
+    public function sendScheduleApprovedEmail($toEmail, $fullName, $date, $time, $type, $location, $link) {
         $htmlContent = $this->loadTemplate('schedule-approved-email.html');
-        $htmlContent = str_replace('{{FIRST_NAME}}', htmlspecialchars($firstName, ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $htmlContent = str_replace('{{FULL_NAME}}', htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8'), $htmlContent);
         $htmlContent = str_replace('{{DATE}}', htmlspecialchars($date, ENT_QUOTES, 'UTF-8'), $htmlContent);
         $htmlContent = str_replace('{{TIME}}', htmlspecialchars($time, ENT_QUOTES, 'UTF-8'), $htmlContent);
         $htmlContent = str_replace('{{INTERVIEW_TYPE}}', htmlspecialchars($type, ENT_QUOTES, 'UTF-8'), $htmlContent);
@@ -197,7 +192,7 @@ class EmailService {
 
         $data = [
             "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@gmail.com"],
-            "to" => [["email" => $toEmail, "name" => $firstName]],
+            "to" => [["email" => $toEmail, "name" => $fullName]],
             "subject" => "Your interview is confirmed | Expertise",
             "htmlContent" => $htmlContent
         ];
@@ -205,9 +200,9 @@ class EmailService {
         return $this->brevoSend($data, true);
     }
 
-    public function sendScheduleRescheduledEmail($toEmail, $firstName, $date, $time, $type, $location, $link) {
+    public function sendScheduleRescheduledEmail($toEmail, $fullName, $date, $time, $type, $location, $link) {
         $htmlContent = $this->loadTemplate('schedule-rescheduled-email.html');
-        $htmlContent = str_replace('{{FIRST_NAME}}', htmlspecialchars($firstName, ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $htmlContent = str_replace('{{FULL_NAME}}', htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8'), $htmlContent);
         $htmlContent = str_replace('{{DATE}}', htmlspecialchars($date, ENT_QUOTES, 'UTF-8'), $htmlContent);
         $htmlContent = str_replace('{{TIME}}', htmlspecialchars($time, ENT_QUOTES, 'UTF-8'), $htmlContent);
         $htmlContent = str_replace('{{INTERVIEW_TYPE}}', htmlspecialchars($type, ENT_QUOTES, 'UTF-8'), $htmlContent);
@@ -217,7 +212,7 @@ class EmailService {
 
         $data = [
             "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@gmail.com"],
-            "to" => [["email" => $toEmail, "name" => $firstName]],
+            "to" => [["email" => $toEmail, "name" => $fullName]],
             "subject" => "New interview schedule | Expertise",
             "htmlContent" => $htmlContent
         ];
@@ -226,10 +221,8 @@ class EmailService {
     }
 
     public function sendHrCredentialsEmail($toEmail, $toName, $password) {
-        $firstName = trim(explode(' ', trim((string) $toName))[0] ?? (string) $toName);
-        if ($firstName === '') $firstName = (string) $toName;
         $htmlContent = $this->loadTemplate('hr-credentials-email.html');
-        $htmlContent = str_replace('{{FIRST_NAME}}', htmlspecialchars($firstName, ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $htmlContent = str_replace('{{FULL_NAME}}', htmlspecialchars((string) $toName, ENT_QUOTES, 'UTF-8'), $htmlContent);
         $htmlContent = str_replace('{{EMAIL}}',      htmlspecialchars((string) $toEmail,   ENT_QUOTES, 'UTF-8'), $htmlContent);
         $htmlContent = str_replace('{{PASSWORD}}',   htmlspecialchars((string) $password,  ENT_QUOTES, 'UTF-8'), $htmlContent);
         $htmlContent = str_replace('{{YEAR}}', date('Y'), $htmlContent);
@@ -258,14 +251,14 @@ class EmailService {
         ];
         return $this->brevoSend($data, false);
     }
-    public function sendScreeningRejectedEmail($toEmail, $firstName) {
+    public function sendScreeningRejectedEmail($toEmail, $fullName) {
         $htmlContent = $this->loadTemplate('screening-rejected-email.html');
-        $htmlContent = str_replace('{{FIRST_NAME}}', htmlspecialchars($firstName, ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $htmlContent = str_replace('{{FULL_NAME}}', htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8'), $htmlContent);
         $htmlContent = str_replace('{{YEAR}}', date('Y'), $htmlContent);
 
         $data = [
             "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@gmail.com"],
-            "to" => [["email" => $toEmail, "name" => $firstName]],
+            "to" => [["email" => $toEmail, "name" => $fullName]],
             "subject" => "Your application update | Expertise",
             "htmlContent" => $htmlContent
         ];

@@ -1,6 +1,35 @@
 <?php
 session_start();
 
+require_once __DIR__ . '/../src/Helpers/db.php';
+
+// Restore session from "remember me" cookie when no session exists
+if (empty($_SESSION['user_role']) && isset($_COOKIE['remember'])) {
+    $pdo = db();
+    $parts = explode('|', $_COOKIE['remember'], 2);
+    if (count($parts) === 2) {
+        $uid = (int) $parts[0];
+        $token = $parts[1];
+        if ($uid > 0 && $token !== '') {
+            $stmt = $pdo->prepare(
+                "SELECT user_id, role, name, email, remember_token, remember_token_expires_at
+                 FROM users WHERE user_id = :id AND deleted_at IS NULL LIMIT 1"
+            );
+            $stmt->execute([':id' => $uid]);
+            $row = $stmt->fetch();
+            if ($row && !empty($row['remember_token']) && hash_equals($row['remember_token'], hash('sha256', $token))) {
+                $expires = $row['remember_token_expires_at'];
+                if ($expires && strtotime($expires) > time()) {
+                    $_SESSION['user_role'] = $row['role'];
+                    $_SESSION['user_email'] = strtolower(trim((string) $row['email']));
+                    $_SESSION['user_name'] = (string) $row['name'];
+                    $_SESSION['user_id'] = (int) $row['user_id'];
+                }
+            }
+        }
+    }
+}
+
 // No caching, so the Back button after logout never shows this page
 header('Cache-Control: no-store, no-cache, must-revalidate');
 header('Pragma: no-cache');
@@ -383,9 +412,6 @@ $greeting     = 'Hello, ' . $display_name . '!';
                             <span class="chart-sub">Share of flags from each factor</span>
                         </div>
                     </div>
-                    <?php if ((int) $risk['total'] === 0): ?>
-                    <p class="chart-empty">No risk flags raised yet.</p>
-                    <?php else: ?>
                     <div class="hbar-wrap">
                     <ul class="hbar-list">
                         <?php foreach ($risk['rows'] as $k => $r): ?>
@@ -402,9 +428,8 @@ $greeting     = 'Hello, ' . $display_name . '!';
                     </div>
                     <div class="ins-foot">
                         <span class="ins-chip"><span class="chip-label">Flags raised</span><span class="chip-value"><?php echo (int) $risk['total']; ?></span></span>
-                        <span class="ins-chip"><span class="chip-label">Top factor</span><span class="chip-value"><?php echo htmlspecialchars($risk['rows'][0]['label'], ENT_QUOTES, 'UTF-8'); ?></span></span>
+                        <span class="ins-chip"><span class="chip-label">Top factor</span><span class="chip-value"><?php echo (int) $risk['total'] > 0 ? htmlspecialchars($risk['rows'][0]['label'], ENT_QUOTES, 'UTF-8') : '—'; ?></span></span>
                     </div>
-                    <?php endif; ?>
                 </section>
 
                 <!-- Applicant Volume Over Time (bar chart, drawn by dashboardadmin.js) -->

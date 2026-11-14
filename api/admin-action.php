@@ -39,7 +39,7 @@ try {
             $name     = trim((string) ($acc['name']     ?? ''));
             $email    = strtolower(trim((string) ($acc['email']    ?? '')));
             $password = (string) ($acc['password'] ?? '');
-            $status   = ($acc['status'] ?? 'Active') === 'Inactive' ? 'inactive' : 'active';
+            $status   = ($acc['status'] ?? 'Active') === 'Inactive' ? 'Inactive' : 'Active';
             $sendMail = !empty($acc['send_email']);
 
             if (!$name)  admin_respond(['status' => 'error', 'message' => 'Please enter the full name.'], 422);
@@ -53,8 +53,8 @@ try {
             if ($exists->fetchColumn()) admin_respond(['status' => 'error', 'message' => 'That email address is already in use.'], 422);
 
             $hash = password_hash($password, PASSWORD_DEFAULT);
-            $ins = $pdo->prepare("INSERT INTO users (name, email, password_hash, role, created_at) VALUES (:n, :e, :p, 'hr', NOW()) RETURNING user_id");
-            $ins->execute([':n' => $name, ':e' => $email, ':p' => $hash]);
+            $ins = $pdo->prepare("INSERT INTO users (name, email, password_hash, role, status, created_at) VALUES (:n, :e, :p, 'hr', :s, NOW()) RETURNING user_id");
+            $ins->execute([':n' => $name, ':e' => $email, ':p' => $hash, ':s' => $status]);
             $newId = (int) $ins->fetchColumn();
             repo_log_activity('HR Account Added', $name . ' (HR) · ' . $email);
 
@@ -77,6 +77,7 @@ try {
             $name     = trim((string) ($acc['name']     ?? ''));
             $email    = strtolower(trim((string) ($acc['email']    ?? '')));
             $password = (string) ($acc['password'] ?? '');
+            $status   = ($acc['status'] ?? 'Active') === 'Inactive' ? 'Inactive' : 'Active';
             $sendMail = !empty($acc['send_email']);
 
             if (!$id)   admin_respond(['status' => 'error', 'message' => 'Invalid account ID.'], 422);
@@ -93,11 +94,11 @@ try {
                 if (strlen($password) < 8 || !preg_match('/[A-Za-z]/', $password) || !preg_match('/\d/', $password))
                     admin_respond(['status' => 'error', 'message' => 'Password must be at least 8 characters with letters and a number.'], 422);
                 $hash = password_hash($password, PASSWORD_DEFAULT);
-                $upd = $pdo->prepare("UPDATE users SET name=:n, email=:e, email_normalized=:en, password_hash=:p WHERE user_id=:id AND role='hr' AND deleted_at IS NULL");
-                $upd->execute([':n' => $name, ':e' => $email, ':en' => $en, ':p' => $hash, ':id' => $id]);
+                $upd = $pdo->prepare("UPDATE users SET name=:n, email=:e, email_normalized=:en, password_hash=:p, status=:s WHERE user_id=:id AND role='hr' AND deleted_at IS NULL");
+                $upd->execute([':n' => $name, ':e' => $email, ':en' => $en, ':p' => $hash, ':s' => $status, ':id' => $id]);
             } else {
-                $upd = $pdo->prepare("UPDATE users SET name=:n, email=:e, email_normalized=:en WHERE user_id=:id AND role='hr' AND deleted_at IS NULL");
-                $upd->execute([':n' => $name, ':e' => $email, ':en' => $en, ':id' => $id]);
+                $upd = $pdo->prepare("UPDATE users SET name=:n, email=:e, email_normalized=:en, status=:s WHERE user_id=:id AND role='hr' AND deleted_at IS NULL");
+                $upd->execute([':n' => $name, ':e' => $email, ':en' => $en, ':s' => $status, ':id' => $id]);
             }
             if (!$upd->rowCount()) admin_respond(['status' => 'error', 'message' => 'Account not found or already deleted.'], 404);
             repo_log_activity('HR Account Edited', $name . ' (HR) · ' . $email);

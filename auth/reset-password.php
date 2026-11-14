@@ -22,7 +22,7 @@ $token = $_GET['token'] ?? '';
         <!-- Logo Header -->
         <div class="logo-container">
             <div class="logo-crop">
-                <img src="assets/images/expertise.png" alt="Expertise Logo">
+                <img src="../assets/images/expertise.png" alt="Expertise Logo">
             </div>
             <div class="portal-title">MANAGEMENT PORTAL</div>
         </div>
@@ -151,11 +151,11 @@ $token = $_GET['token'] ?? '';
                 paint();
                 if (pwConfirm.value) {
                     const match = pwConfirm.value === pwNew.value;
-                    pwConfirm.parentElement.querySelector('.reset-error').textContent = match ? '' : 'The passwords do not match.';
+                    pwConfirm.closest('.set-field').querySelector('.reset-error').textContent = match ? '' : 'The passwords do not match.';
                 }
             });
             pwConfirm.addEventListener('input', () => {
-                pwConfirm.parentElement.querySelector('.reset-error').textContent = pwConfirm.value === pwNew.value ? '' : 'The passwords do not match.';
+                pwConfirm.closest('.set-field').querySelector('.reset-error').textContent = pwConfirm.value === pwNew.value ? '' : 'The passwords do not match.';
             });
 
             cancel.addEventListener('click', () => { window.location.href = '../index.php'; });
@@ -164,17 +164,17 @@ $token = $_GET['token'] ?? '';
                 e.preventDefault();
                 if (error) error.style.display = 'none';
                 if (success) { success.style.display = 'none'; success.textContent = ''; }
-                pwNew.parentElement.querySelector('.reset-error').textContent = '';
-                pwConfirm.parentElement.querySelector('.reset-error').textContent = '';
+                pwNew.closest('.set-field').querySelector('.reset-error').textContent = '';
+                pwConfirm.closest('.set-field').querySelector('.reset-error').textContent = '';
 
                 const c = checks(pwNew.value);
                 if (!c.len || !c.case || !c.num) {
-                    pwNew.parentElement.querySelector('.reset-error').textContent = 'The password does not meet all the requirements.';
+                    pwNew.closest('.set-field').querySelector('.reset-error').textContent = 'The password does not meet all the requirements.';
                     pwNew.focus();
                     return;
                 }
                 if (!pwConfirm.value || pwConfirm.value !== pwNew.value) {
-                    pwConfirm.parentElement.querySelector('.reset-error').textContent = 'Please enter the same password in both fields.';
+                    pwConfirm.closest('.set-field').querySelector('.reset-error').textContent = 'Please enter the same password in both fields.';
                     pwConfirm.focus();
                     return;
                 }

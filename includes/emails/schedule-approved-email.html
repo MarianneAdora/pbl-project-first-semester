@@ -9,7 +9,7 @@
   EMAIL TEMPLATE (design only). Tables + inline styles on purpose: Gmail/Outlook ignore most CSS.
   Same design as email.html (brand stripe, logo, Plus Jakarta Sans, red button, maroon footer).
   The backend replaces:
-    {{FIRST_NAME}}      -> applicant's first name
+    {{FULL_NAME}}      -> applicant's full name
     {{DATE}}            -> e.g. Monday, October 20, 2026
     {{TIME}}            -> e.g. 10:00 AM
     {{INTERVIEW_TYPE}}  -> e.g. Face-to-face
@@ -61,7 +61,7 @@
 
         <!-- message -->
         <tr><td class="px" style="padding:22px 44px 0 44px;color:#3a3d44;font-size:15px;line-height:1.7;font-weight:500;">
-            <p style="margin:0 0 14px 0;color:#1f1f23;font-weight:700;">Hi {{FIRST_NAME}},</p>
+            <p style="margin:0 0 14px 0;color:#1f1f23;font-weight:700;">Hi {{FULL_NAME}},</p>
             <p style="margin:0;">Good news! The schedule you chose is available. Your interview is now confirmed.</p>
         </td></tr>
 

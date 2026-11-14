@@ -8,7 +8,7 @@
 <!--
   EMAIL TEMPLATE (design only). Tables + inline styles on purpose: Gmail/Outlook ignore most CSS.
   The backend replaces:
-    {{FIRST_NAME}}  -> applicant's first name
+    {{FULL_NAME}}  -> applicant's full name
     {{LINK}}        -> personal link to the opening page (opening.php?token=...)   (used twice)
     {{YEAR}}        -> current year
   Font: Plus Jakarta Sans, same as the system. It loads in Apple Mail, iOS Mail and most
@@ -55,7 +55,7 @@
 
         <!-- message -->
         <tr><td class="px" style="padding:22px 44px 0 44px;color:#3a3d44;font-size:15px;line-height:1.7;font-weight:500;">
-            <p style="margin:0 0 14px 0;color:#1f1f23;font-weight:700;">Hi {{FIRST_NAME}},</p>
+            <p style="margin:0 0 14px 0;color:#1f1f23;font-weight:700;">Hi {{FULL_NAME}},</p>
             <p style="margin:0 0 14px 0;">Thank you for applying to <strong style="color:#1f1f23;">Expertise</strong>. After reviewing your application, we would like to move you forward to the screening stage.</p>
             <p style="margin:0;">Please complete the two steps below. Once we have reviewed your responses, our team will contact you about the interview.</p>
         </td></tr>
