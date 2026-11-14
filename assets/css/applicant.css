@@ -800,6 +800,10 @@ html:where([data-page="application-status"]).js.is-ready .bc-glyph  { animation:
 /* time list */
 :where(html[data-page="application-status"]) .picker__menu {
     right: 0;
+    max-height: min(18rem, calc(100vh - 8rem));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
     margin: 0;
     padding: 0.45rem;
     list-style: none;
