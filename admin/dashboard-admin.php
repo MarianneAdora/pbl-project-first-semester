@@ -392,7 +392,7 @@ $greeting     = 'Hello, ' . $display_name . '!';
                         <?php foreach ($failure['rows'] as $k => $r): ?>
                         <li>
                             <a class="hbar<?php echo $k === 0 && $r['failed'] > 0 ? ' is-top' : ''; ?><?php echo $r['failed'] === 0 ? ' is-zero' : ''; ?>" href="question-list.php" style="--w:<?php echo (float) $r['rate']; ?>%; --c:var(--red-bright); --k:<?php echo $k; ?>"
-                               title="<?php echo htmlspecialchars($r['label'] . ' - ' . $r['failed'] . ' of ' . $r['judged'] . ' applicants did not pass. Click to open Questions.', ENT_QUOTES, 'UTF-8'); ?>">
+                               title="<?php echo htmlspecialchars($r['label'] . ' - ' . $r['failed'] . ' of ' . $r['submissions'] . ' submitted questionnaires did not pass. Click to open Questions.', ENT_QUOTES, 'UTF-8'); ?>">
                                 <span class="hbar-name"><b><?php echo htmlspecialchars(strtoupper($r['id']), ENT_QUOTES, 'UTF-8'); ?></b><?php echo htmlspecialchars(substr($r['label'], strlen($r['id']) + 2), ENT_QUOTES, 'UTF-8'); ?></span>
                                 <span class="hbar-val"><?php echo (int) round($r['rate']); ?>%</span>
                                 <span class="hbar-track"><span class="hbar-fill"></span></span>

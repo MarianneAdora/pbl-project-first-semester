@@ -324,6 +324,52 @@ function repo_admin_questions(?PDO $pdo = null): array
     )->fetchAll();
 }
 
+function repo_admin_response_answer(array $answers, int $questionId, string $suffix = ''): array
+{
+    $keys = $suffix === ''
+        ? [$questionId, (string) $questionId, 'q' . $questionId]
+        : [$questionId . ':' . $suffix, 'q' . $questionId . ':' . $suffix, $questionId . '_' . $suffix, 'q' . $questionId . '_' . $suffix];
+
+    foreach ($keys as $key) {
+        if (array_key_exists($key, $answers)) return [true, $answers[$key]];
+    }
+
+    return [false, null];
+}
+
+function repo_admin_normalize_response_answer($value): string
+{
+    if (is_bool($value)) return $value ? 'Yes' : 'No';
+    if (is_string($value)) {
+        $decoded = json_decode($value, true);
+        if (is_array($decoded) && array_key_exists('answer', $decoded)) $value = $decoded['answer'];
+    }
+    return is_scalar($value) ? trim((string) $value) : '';
+}
+
+function repo_admin_response_meets_passing_answer(array $answers, int $questionId, string $type, array $pass, array $config): bool
+{
+    [$found, $value] = repo_admin_response_answer($answers, $questionId);
+    $given = $found ? repo_admin_normalize_response_answer($value) : '';
+
+    if ($type === 'scale' || array_key_exists('min', $pass)) {
+        $minimum = max(1, (int) ($pass['min'] ?? 1));
+        return $given !== '' && is_numeric($given) && (int) $given >= $minimum;
+    }
+
+    $expected = repo_admin_normalize_response_answer($pass['answer'] ?? 'Yes');
+    if ($given === '' || $expected === '' || strcasecmp($given, $expected) !== 0) return false;
+
+    $passFollow = isset($pass['pass_follow']) && is_array($pass['pass_follow']) ? $pass['pass_follow'] : [];
+    $followWhen = (string) ($config['followup_when'] ?? 'Yes');
+    if ($passFollow && strcasecmp($expected, $followWhen) === 0) {
+        [$followFound, $follow] = repo_admin_response_answer($answers, $questionId, 'follow');
+        return $followFound && in_array(trim((string) $follow), array_map('strval', $passFollow), true);
+    }
+
+    return true;
+}
+
 /**
  * Build the exact stats shape admin.js expects:
  * { submissions, sections: [{no,name,count}], questions: [{id,section_no,section,text,type,status,answered,top,top_count,share,options,note,expected}] }
@@ -358,17 +404,17 @@ function repo_admin_question_stats(?PDO $pdo = null): array
         $counts = [];
         $answered = 0;
         $written = 0;
-        $key = 'q' . (string) $q['question_id'];
+        $questionId = (int) $q['question_id'];
 
         foreach ($subs as $s) {
             $answers = $s['answers_json'];
             if (is_string($answers)) $answers = json_decode($answers, true);
-            if (!is_array($answers) || !array_key_exists($key, $answers)) continue;
-            $v = $answers[$key];
-            if ($v === null || $v === '') continue;
+            if (!is_array($answers)) continue;
+            [$found, $v] = repo_admin_response_answer($answers, $questionId);
+            if (!$found || $v === null || repo_admin_normalize_response_answer($v) === '') continue;
             if ($type === 'text') { $written++; continue; }
             $answered++;
-            $label = is_bool($v) ? ($v ? 'Yes' : 'No') : (string) $v;
+            $label = repo_admin_normalize_response_answer($v);
             $counts[$label] = ($counts[$label] ?? 0) + 1;
         }
 
@@ -420,14 +466,13 @@ function repo_admin_question_stats(?PDO $pdo = null): array
 // DASHBOARD INSIGHT CARDS (live from the database)
 // ---------------------------------------------------------------------------
 
-// Active knock-out questions: share of applicants who did not pass each one (highest first).
-// BACKEND: per knock-out question, COUNT(responses that fail passing answer) / COUNT(responses answered).
+// Active knock-out questions: share of submitted questionnaires that did not meet each passing rule.
 function repo_admin_failure_rates(int $limit = 5, ?PDO $pdo = null): array
 {
     $pdo = $pdo ?: db();
 
     $questions = $pdo->query(
-        'SELECT question_id, section, question_text, passing_answer, question_type' .
+        'SELECT question_id, section, question_text, passing_answer, question_type, answer_config' .
         ' FROM question_config WHERE deleted_at IS NULL AND is_active = TRUE AND is_knockout = TRUE' .
         ' ORDER BY section_no, display_order, question_id'
     )->fetchAll();
@@ -440,32 +485,27 @@ function repo_admin_failure_rates(int $limit = 5, ?PDO $pdo = null): array
         $pass = $q['passing_answer'];
         if (is_string($pass)) $pass = json_decode($pass, true);
         if (!is_array($pass)) $pass = [];
-        $passAnswer = (string) ($pass['answer'] ?? 'Yes');
-
         $type = (string) $q['question_type'];
-        $key = 'q' . (int) $q['question_id'];
+        $questionId = (int) $q['question_id'];
+        $config = $q['answer_config'];
+        if (is_string($config)) $config = json_decode($config, true);
+        if (!is_array($config)) $config = [];
 
-        $judged = 0;
         $failed = 0;
 
         foreach ($subs as $s) {
             $answers = $s['answers_json'];
             if (is_string($answers)) $answers = json_decode($answers, true);
-            if (!is_array($answers) || !array_key_exists($key, $answers)) continue;
-            $v = $answers[$key];
-            if ($v === null || $v === '') continue;
-            $judged++;
-
-            $label = is_bool($v) ? ($v ? 'Yes' : 'No') : (string) $v;
-            if ($label !== $passAnswer) $failed++;
+            if (!is_array($answers)) $answers = [];
+            if (!repo_admin_response_meets_passing_answer($answers, $questionId, $type, $pass, $config)) $failed++;
         }
 
         $rows[] = [
             'id'     => 'q' . (int) $q['question_id'],
             'label'  => 'Q' . (int) $q['question_id'] . ': ' . (string) $q['question_text'],
             'failed' => $failed,
-            'judged' => $judged,
-            'rate'   => $judged > 0 ? round($failed / $judged * 100, 1) : 0,
+            'submissions' => $totalSubs,
+            'rate'   => $totalSubs > 0 ? round($failed / $totalSubs * 100, 1) : 0,
         ];
     }
 
@@ -478,7 +518,7 @@ function repo_admin_failure_rates(int $limit = 5, ?PDO $pdo = null): array
     ];
 }
 
-// Risk Flag Breakdown by Factor: share of screenings where each factor group raised a flag.
+// Risk Flag Breakdown by Factor: count flags by factor group and show each group's share of all flags.
 // Reads risk_flags_json from the score table (factors[].label + factors[].points).
 function repo_admin_risk_flags(?PDO $pdo = null): array
 {
@@ -494,9 +534,10 @@ function repo_admin_risk_flags(?PDO $pdo = null): array
         'logistics'         => ['label' => 'Contradictory logistics',       'color' => '#eab308'],
         'video_duplicate'   => ['label' => 'Duplicate video',               'color' => '#10b981'],
         'consistency'       => ['label' => 'Inconsistent answers',          'color' => '#8b5cf6'],
+        'other'             => ['label' => 'Other factors',                 'color' => '#94a3b8'],
     ];
 
-    $groupOf = function (string $factor): ?string {
+    $groupOf = function (string $factor): string {
         if (stripos($factor, 'Failed OTP attempts') !== false)        return 'otp_failed';
         if (stripos($factor, 'OTP requests in') !== false)             return 'otp_requests';
         if (stripos($factor, 'Questionnaire speed') === 0)             return 'questionnaire_speed';
@@ -506,27 +547,25 @@ function repo_admin_risk_flags(?PDO $pdo = null): array
         if (stripos($factor, 'Contradictory logistics') !== false)     return 'logistics';
         if (stripos($factor, 'Video matches') !== false)               return 'video_duplicate';
         if (stripos($factor, 'Inconsistent or irrelevant') !== false)  return 'consistency';
-        return null;
+        return 'other';
     };
 
     $rows = $pdo->query("SELECT risk_flags_json FROM score")->fetchAll();
 
     $count = array_fill_keys(array_keys($groups), 0);
-    $total = 0;
+    $evaluations = count($rows);
+    $totalFlags = 0;
 
     foreach ($rows as $r) {
         $flags = $r['risk_flags_json'];
         if (is_string($flags)) $flags = json_decode($flags, true);
         if (!is_array($flags)) continue;
 
-        $total++;
-        $hit = [];
         foreach ((array) ($flags['factors'] ?? []) as $f) {
             $g = $groupOf((string) ($f['label'] ?? ''));
-            if ($g !== null && !isset($hit[$g]) && (int) ($f['points'] ?? 0) > 0) {
-                $hit[$g] = true;
-                $count[$g]++;
-            }
+            if ((int) ($f['points'] ?? 0) <= 0) continue;
+            $count[$g]++;
+            $totalFlags++;
         }
     }
 
@@ -537,13 +576,17 @@ function repo_admin_risk_flags(?PDO $pdo = null): array
             'label'  => $g['label'],
             'color'  => $g['color'],
             'count'  => $count[$key],
-            'share'  => $total > 0 ? round($count[$key] / $total * 100, 1) : 0,
+            'share'  => 0,
             'sample' => false,
         ];
     }
+    foreach ($out as &$row) {
+        $row['share'] = $totalFlags > 0 ? round($row['count'] / $totalFlags * 100, 1) : 0;
+    }
+    unset($row);
     usort($out, fn($a, $b) => $b['count'] <=> $a['count']);
 
-    return ['evaluations' => $total, 'total' => $total, 'rows' => $out, 'has_sample' => false];
+    return ['evaluations' => $evaluations, 'total' => $totalFlags, 'rows' => $out, 'has_sample' => false];
 }
 
 // Applicant Volume Over Time: applications received per week / per month from the applicant table.

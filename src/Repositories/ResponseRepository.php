@@ -35,9 +35,18 @@ function repo_response_find(int $applicantId, ?PDO $pdo = null): ?array
  * Mark screening started (questionnaire opened): applicant pending -> in_progress,
  * response row created with started_at. Safe to call repeatedly.
  */
+function repo_response_reset_sequence(?PDO $pdo = null): void
+{
+    $pdo = $pdo ?: db();
+    $pdo->query(
+        "SELECT setval(pg_get_serial_sequence('response', 'response_id'), COALESCE(MAX(response_id), 1), MAX(response_id) IS NOT NULL) FROM response"
+    );
+}
+
 function repo_response_start(int $applicantId, ?PDO $pdo = null): void
 {
     $pdo = $pdo ?: db();
+    repo_response_reset_sequence($pdo);
     $pdo->prepare(
         "UPDATE applicant SET status = 'in_progress'" .
         " WHERE applicant_id = :id AND status = 'pending' AND deleted_at IS NULL"
@@ -182,6 +191,8 @@ function repo_response_submit(int $applicantId, array $answers, array $video = [
     foreach ($timingRaw as $k => $ms) {
         if (is_numeric($ms)) $timing[(string) $k] = (int) $ms;
     }
+
+    repo_response_reset_sequence($pdo);
 
     $pdo->prepare(
         "INSERT INTO response (applicant_id, answers_json, video_file_url, video_file_hash," .
