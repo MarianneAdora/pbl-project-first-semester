@@ -1,29 +1,15 @@
--- ============================================================
--- FULL RESET (run only for a complete seed run)
--- Skip this statement when inserting only users and/or questions.
--- ============================================================
+-- Full seed: run the whole file. This reset is destructive.
+-- Partial seed: comment out this statement and every section you do not need.
 TRUNCATE TABLE activity_log, score, schedule, response, otp_request_log, otp, question_config, applicant, users RESTART IDENTITY CASCADE;
 
--- ============================================================
-
--- SELECTIVE SEEDING
--- For users and/or questions only, run the matching INSERT block(s) below.
--- Do not run CLEANUP or any other seed sections for a selective insert.
--- CLEANUP resets the database for a complete seed run.
-
 -- USERS
--- Passwords are bcrypt hashes. Regenerate with generate_hash.php
--- if you need to change them.
--- The admin's normalized email matches its lowercase login email.
--- ============================================================
+-- Passwords are bcrypt hashes. Regenerate with generate_hash.php if they change.
 INSERT INTO users (role, name, email, email_normalized, password_hash, status) VALUES
     ('admin', 'System Admin', 'admin@expertise.com', 'admin@expertise.com', '$2y$10$oOC0r1YyU3QOURWLlWQ26./BSESWAUkAfop0Dv2zSjgDaNFMePYnG', 'Active'),
     ('hr',    'HR Staff',     'hr@expertise.com',    'hr@expertise.com',          '$2y$10$KSG4v4z3WMhknlDs8LZf3.d066DL98eITbXnpPboAXQ5P6es4fFuy', 'Active');
 
--- ============================================================
 -- QUESTIONS
 -- 13 questions across 5 sections.
--- ============================================================
 INSERT INTO question_config
     (section_no, display_order, section, question_text, question_type, answer_config, passing_answer, is_knockout, is_consent, is_data_protection, reminder_text)
 VALUES
@@ -170,11 +156,8 @@ VALUES
     NULL,
     false, true, true, 'You must agree to proceed.');
 
--- ============================================================
-
 -- APPLICANTS
 -- 100 rows with varying statuses/results (Filipino names, phones starting with 09).
--- ============================================================
 INSERT INTO applicant (reference_code, secure_token, encoded_by_user_id,
    name, first_name, middle_name, last_name, name_normalized,
    email, email_normalized, phone_number, cv_file_url, cv_hash, verified_at, status, result,
@@ -380,26 +363,34 @@ INSERT INTO applicant (reference_code, secure_token, encoded_by_user_id,
 ('APP100','b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e6',1, 'Ysabel  Kang', 'Ysabel', '', 'Kang', 'ysabelkang',
     'ysabel.kang@example.com', 'ysabel.kang@example.com', '09700000000', NULL, NULL, '2026-09-01 10:10:00', 'pending', NULL, '2026-09-01 09:10:00', NULL, NULL, NULL, '2026-12-05 10:10:00');
 
--- ============================================================
+-- INTERVIEW SCHEDULES
+-- Eligible passed-applicant schedules are normalized to a 7-day turnaround below.
 INSERT INTO schedule (applicant_id, preferred_date, preferred_time, final_date, final_time, venue, status, email_sent_at, answered_at, created_at, updated_at) VALUES
+(1, '2026-10-02', '10:00:00', '2026-10-02', '10:00:00', 'Conference Room A', 'confirmed', '2026-10-01 08:00:00', '2026-10-02 10:00:00', NOW(), NOW()),
+(5, '2026-10-24', '14:00:00', '2026-10-24', '14:00:00', 'Conference Room B', 'confirmed', '2026-10-22 08:00:00', '2026-10-24 14:00:00', NOW(), NOW()),
+(6, '2026-10-28', '09:00:00', '2026-10-28', '09:00:00', 'Conference Room C', 'confirmed', '2026-10-24 08:00:00', '2026-10-28 09:00:00', NOW(), NOW()),
 (17, '2026-08-25', '11:00:00', '2026-08-25', '11:00:00', 'Conference Room B', 'confirmed', '2026-08-24 11:00:00', '2026-08-25 11:00:00', NOW(), NOW()),
 (24, '2026-09-01', '11:00:00', '2026-09-01', '11:00:00', 'Conference Room C', 'confirmed', '2026-08-31 11:00:00', '2026-09-01 11:00:00', NOW(), NOW()),
 (29, '2026-08-21', '09:00:00', '2026-08-21', '09:00:00', 'Conference Room B', 'confirmed', '2026-08-20 09:00:00', '2026-08-21 09:00:00', NOW(), NOW()),
 (41, '2026-08-26', '14:00:00', '2026-08-26', '14:00:00', 'Conference Room B', 'confirmed', '2026-08-25 14:00:00', '2026-08-26 14:00:00', NOW(), NOW()),
 (44, '2026-08-29', '10:00:00', '2026-08-29', '10:00:00', 'Conference Room B', 'confirmed', '2026-08-28 10:00:00', '2026-08-29 10:00:00', NOW(), NOW()),
-(47, '2026-08-30', '13:00:00', '2026-08-30', '13:00:00', 'Conference Room B', 'confirmed', '2026-08-29 13:00:00', '2026-08-30 13:00:00', NOW(), NOW());
+(47, '2026-08-30', '13:00:00', '2026-08-30', '13:00:00', 'Conference Room B', 'confirmed', '2026-08-29 13:00:00', '2026-08-30 13:00:00', NOW(), NOW()),
+(57, '2026-12-17', '12:34:12', '2026-12-17', '12:34:12', 'Conference Room B', 'confirmed', '2026-12-17 09:56:02', '2026-12-17 01:37:40', NOW(), NOW()),
+(71, '2026-12-16', '08:31:10', '2026-12-16', '08:31:10', 'Conference Room A', 'confirmed', '2026-12-16 18:11:03', '2026-12-16 22:53:34', NOW(), NOW()),
+(75, '2026-12-12', '12:30:27', '2026-12-12', '12:30:27', 'Conference Room A', 'confirmed', '2026-12-12 13:51:31', '2026-12-12 04:30:32', NOW(), NOW()),
+(77, '2026-12-01', '08:27:52', '2026-12-01', '08:27:52', 'Conference Room A', 'confirmed', '2026-12-01 17:41:24', '2026-12-01 06:17:19', NOW(), NOW()),
+(89, '2026-12-06', '06:47:47', '2026-12-06', '06:47:47', 'Conference Room C', 'confirmed', '2026-12-06 07:27:41', '2026-12-06 04:14:02', NOW(), NOW()),
+(90, '2026-12-02', '06:21:53', '2026-12-02', '06:21:53', 'Conference Room C', 'confirmed', '2026-12-02 10:58:37', '2026-12-02 01:17:03', NOW(), NOW()),
+(93, '2026-12-09', '22:17:17', '2026-12-09', '22:17:17', 'Conference Room C', 'confirmed', '2026-12-09 06:15:34', '2026-12-09 15:45:16', NOW(), NOW());
 
-
-
--- INTERVIEW SCHEDULES
--- Confirmed schedules for passed applicants (drives the
--- Scheduling Turnaround Time card).
--- answered_at must be >= passed_at to count as scheduled.
--- ============================================================
-INSERT INTO schedule (applicant_id, preferred_date, preferred_time, final_date, final_time, venue, status, email_sent_at, answered_at, created_at, updated_at) VALUES
-(1, '2026-10-02', '10:00:00', '2026-10-02', '10:00:00', 'Conference Room A', 'confirmed', '2026-10-01 08:00:00', '2026-10-02 10:00:00', NOW(), NOW()),
-(5, '2026-10-24', '14:00:00', '2026-10-24', '14:00:00', 'Conference Room B', 'confirmed', '2026-10-22 08:00:00', '2026-10-24 14:00:00', NOW(), NOW()),
-(6, '2026-10-28', '09:00:00', '2026-10-28', '09:00:00', 'Conference Room C', 'confirmed', '2026-10-24 08:00:00', '2026-10-28 09:00:00', NOW(), NOW());
+UPDATE schedule s
+SET answered_at = COALESCE(a.passed_at, a.submitted_at) + INTERVAL '7 days'
+FROM applicant a
+WHERE a.applicant_id = s.applicant_id
+  AND a.deleted_at IS NULL
+  AND a.result = 'passed'
+  AND s.status IN ('confirmed', 'rescheduled')
+  AND COALESCE(a.passed_at, a.submitted_at) IS NOT NULL;
 
 -- ============================================================
 -- QUESTIONNAIRE RESPONSES
@@ -499,18 +490,4 @@ INSERT INTO score (response_id, risk_score, risk_flags_json, narrative_json, fin
 (41, 5.00, '{"band": "Medium", "factors": [{"max": 2, "label": "Failed OTP attempts", "points": 2, "reason": "Significant failed otp attempts indicator."}, {"max": 3, "label": "Questionnaire speed", "points": 2, "reason": "Significant questionnaire speed indicator."}, {"max": 3, "label": "Same device or IP as other applicants", "points": 1, "reason": "Minor same device or ip as other applicants indicator."}, {"max": 3, "label": "Video matches another applicant", "points": 2, "reason": "Significant video matches another applicant indicator."}, {"max": 2, "label": "Identity mismatch", "points": 2, "reason": "Significant identity mismatch indicator."}, {"max": 2, "label": "Document inconsistency", "points": 2, "reason": "Significant document inconsistency indicator."}, {"max": 2, "label": "Suspicious IP", "points": 2, "reason": "Significant suspicious ip indicator."}, {"max": 2, "label": "Unusual timezone", "points": 2, "reason": "Significant unusual timezone indicator."}, {"max": 3, "label": "Rapid answering", "points": 2, "reason": "Significant rapid answering indicator."}, {"max": 2, "label": "Copy-paste detected", "points": 0, "reason": "No copy-paste detected detected."}], "auto_high": ["Failed OTP attempts detected.", "Questionnaire speed detected.", "Video matches another applicant detected.", "Identity mismatch detected.", "Document inconsistency detected.", "Suspicious IP detected.", "Unusual timezone detected.", "Rapid answering detected."]}'::jsonb, '{"summary": "Risk evaluation for response 41"}'::jsonb, 'pending', '2026-12-09 04:53:44'),
 (42, 7.00, '{"band": "High", "factors": [{"max": 2, "label": "Failed OTP attempts", "points": 2, "reason": "Significant failed otp attempts indicator."}, {"max": 3, "label": "Questionnaire speed", "points": 3, "reason": "Strong questionnaire speed indicator."}, {"max": 3, "label": "Same device or IP as other applicants", "points": 3, "reason": "Strong same device or ip as other applicants indicator."}, {"max": 3, "label": "Video matches another applicant", "points": 3, "reason": "Strong video matches another applicant indicator."}, {"max": 2, "label": "Identity mismatch", "points": 2, "reason": "Significant identity mismatch indicator."}, {"max": 2, "label": "Document inconsistency", "points": 2, "reason": "Significant document inconsistency indicator."}, {"max": 2, "label": "Suspicious IP", "points": 2, "reason": "Significant suspicious ip indicator."}, {"max": 2, "label": "Unusual timezone", "points": 2, "reason": "Significant unusual timezone indicator."}, {"max": 3, "label": "Rapid answering", "points": 3, "reason": "Strong rapid answering indicator."}, {"max": 2, "label": "Copy-paste detected", "points": 2, "reason": "Significant copy-paste detected indicator."}], "auto_high": ["Failed OTP attempts detected.", "Questionnaire speed detected.", "Same device or IP as other applicants detected.", "Video matches another applicant detected.", "Identity mismatch detected.", "Document inconsistency detected.", "Suspicious IP detected.", "Unusual timezone detected.", "Rapid answering detected.", "Copy-paste detected detected."]}'::jsonb, '{"summary": "Risk evaluation for response 42"}'::jsonb, 'manual_review', '2026-12-08 22:56:41');
 
--- ============================================================
--- INTERVIEW SCHEDULES
--- Additional confirmed schedules for new passed applicants.
--- ============================================================
-INSERT INTO schedule (applicant_id, preferred_date, preferred_time, final_date, final_time, venue, status, email_sent_at, answered_at, created_at, updated_at) VALUES
-(57, '2026-12-17', '12:34:12', '2026-12-17', '12:34:12', 'Conference Room B', 'confirmed', '2026-12-17 09:56:02', '2026-12-17 01:37:40', NOW(), NOW()),
-(71, '2026-12-16', '08:31:10', '2026-12-16', '08:31:10', 'Conference Room A', 'confirmed', '2026-12-16 18:11:03', '2026-12-16 22:53:34', NOW(), NOW()),
-(75, '2026-12-12', '12:30:27', '2026-12-12', '12:30:27', 'Conference Room A', 'confirmed', '2026-12-12 13:51:31', '2026-12-12 04:30:32', NOW(), NOW()),
-(77, '2026-12-01', '08:27:52', '2026-12-01', '08:27:52', 'Conference Room A', 'confirmed', '2026-12-01 17:41:24', '2026-12-01 06:17:19', NOW(), NOW()),
-(89, '2026-12-06', '06:47:47', '2026-12-06', '06:47:47', 'Conference Room C', 'confirmed', '2026-12-06 07:27:41', '2026-12-06 04:14:02', NOW(), NOW()),
-(90, '2026-12-02', '06:21:53', '2026-12-02', '06:21:53', 'Conference Room C', 'confirmed', '2026-12-02 10:58:37', '2026-12-02 01:17:03', NOW(), NOW()),
-(93, '2026-12-09', '22:17:17', '2026-12-09', '22:17:17', 'Conference Room C', 'confirmed', '2026-12-09 06:15:34', '2026-12-09 15:45:16', NOW(), NOW());
-
--- ============================================================
--- End of additional seeds (applicants 51-100).
+-- End of seed data.
