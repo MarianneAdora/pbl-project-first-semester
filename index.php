@@ -80,9 +80,9 @@ try {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Content-Type: application/json');
 
-        // Rate limit login attempts (15 attempts per 15 minutes per IP)
+        // Rate limit login attempts (50 attempts per 15 minutes per IP)
         $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
-        $rl = rate_limit('login:' . $ip, 15, 15 * 60);
+        $rl = rate_limit('login:' . $ip, 50, 15 * 60);
         if (!$rl['allowed']) {
             $seconds = (int) $rl['retry_after'];
             $waitText = $seconds >= 60
