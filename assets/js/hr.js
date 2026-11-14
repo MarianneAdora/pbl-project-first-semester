@@ -2478,8 +2478,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const completedChip = document.getElementById('completedNewChip');
 
     // the order the server sent (newest activity first), so rows can go back there once viewed
-    const tbody = document.querySelector('.applicants-table tbody');
-    const originalRows = Array.from(document.querySelectorAll('.clickable-row'));
+    const tbody = document.getElementById('recentApplicantsBody');
+    let originalRows = tbody ? Array.from(tbody.querySelectorAll('.clickable-row')) : [];
 
     function paintUnseen() {
         // red mark on completed applicants HR has not opened yet
@@ -2507,7 +2507,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('storage', paintUnseen);
 
     // Recent Applicants: fade the bottom edge while there are more rows to scroll to
-    const listScroll = document.querySelector('.table-responsive');
+    const listScroll = tbody ? tbody.closest('.table-responsive') : null;
     function updateListFade() {
         if (!listScroll) return;
         const more = listScroll.scrollHeight - listScroll.scrollTop - listScroll.clientHeight > 4;
@@ -2519,6 +2519,11 @@ document.addEventListener('DOMContentLoaded', () => {
         updateListFade();
         setTimeout(updateListFade, 900);          // again once the entrance animation has settled
     }
+    window.addEventListener('hr:recent-applicants-updated', () => {
+        originalRows = tbody ? Array.from(tbody.querySelectorAll('.clickable-row')) : [];
+        paintUnseen();
+        updateListFade();
+    });
 
     // 1. Stat Card Clicking -> Route to screening-list.php
     document.querySelectorAll('.stat-card').forEach(card => {
@@ -2532,14 +2537,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 2. Clickable Applicant Table Rows -> Route to details.php
     //    Opening a completed applicant clears their red mark (and lowers the badge).
-    document.querySelectorAll('.clickable-row').forEach(row => {
-        row.addEventListener('click', () => {
+    if (tbody) {
+        tbody.addEventListener('click', (e) => {
+            const row = e.target.closest('.clickable-row');
+            if (!row || !tbody.contains(row)) return;
             const targetUrl = row.getAttribute('data-url');
             if (!targetUrl) return;
             HR.markSeen(row.dataset.id);
             window.location.href = targetUrl;
         });
-    });
+    }
 
     // When does the card around an element start rising in? (its --i is set in the PHP; the cards come one
     // after another, 70ms apart, and after a login they wait for the stripes to clear). Used so every
@@ -2916,6 +2923,53 @@ document.addEventListener('DOMContentLoaded', () => {
         if (markAllBtn) markAllBtn.disabled = fresh.size === 0 && unread().length === 0 && freshDecisions.size === 0 && unreadDecisions().length === 0;
     }
 
+    function paintRecentApplicants(applicants) {
+        const body = document.getElementById('recentApplicantsBody');
+        if (!body || !Array.isArray(applicants)) return;
+
+        const badgeClass = (value) => ({
+            pending: 'status-pending',
+            'in progress': 'status-progress',
+            completed: 'status-completed',
+            passed: 'status-passed',
+            failed: 'status-failed',
+            rejected: 'status-failed'
+        })[String(value || '').trim().toLowerCase()] || 'status-default';
+
+        const dateLabel = (value) => {
+            const match = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(String(value || ''));
+            if (!match) return String(value || '');
+            const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+            const now = new Date();
+            const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+            const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+            const label = MONTHS[date.getMonth()] + ' ' + date.getDate() + ', ' + match[1];
+            if (!match[4]) return label;
+            const hour = Number(match[4]);
+            const time = (hour % 12 || 12) + ':' + match[5] + ' ' + (hour >= 12 ? 'PM' : 'AM');
+            if (sameDay(date, now)) return 'Today, ' + time;
+            if (sameDay(date, yesterday)) return 'Yesterday, ' + time;
+            return label;
+        };
+
+        const rows = applicants.slice(0, 10).map(applicant => {
+            const id = Number(applicant.id);
+            if (!Number.isSafeInteger(id) || id <= 0) return '';
+            const status = String(applicant.status || 'Pending');
+            const completed = status.toLowerCase() === 'completed';
+            const result = applicant.result ? String(applicant.result) : '';
+            const name = esc(applicant.name);
+            const statusHtml = '<span class="status-pill ' + badgeClass(status) + '">' + esc(status) + '</span>' +
+                (completed && result ? ' <span class="status-pill ' + badgeClass(result) + '">' + esc(result) + '</span>' : '');
+            return '<tr class="clickable-row" data-id="' + id + '" data-completed="' + (completed ? '1' : '0') + '" data-url="details.php?id=' + id + '">' +
+                '<td title="' + name + '"><span class="name-cell"><span class="unseen-dot" title="Completed screening, not viewed yet"></span><strong>' + name + '</strong></span></td>' +
+                '<td>' + esc(dateLabel(applicant.updated)) + '</td><td>' + statusHtml + '</td></tr>';
+        }).filter(Boolean);
+
+        body.innerHTML = rows.length ? rows.join('') : '<tr><td colspan="3" class="empty-row">No applicants yet.</td></tr>';
+        window.dispatchEvent(new CustomEvent('hr:recent-applicants-updated'));
+    }
+
     function paintBadge() {
         const total = notifyOn() ? unread().length + completedLeft() + unreadDecisions().length : 0;
         badge.textContent = total > 99 ? '99+' : String(total);
@@ -2999,6 +3053,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(res => res.json())
             .then(data => {
                 if (!data || data.status !== 'success' || !Array.isArray(data.activity)) return;
+                paintRecentApplicants(data.recent_applicants);
                 if (!panel.hidden) {
                     // lines that arrived while the panel is open count as read, but show highlighted
                     const known = new Set(feed.map(keyOf));

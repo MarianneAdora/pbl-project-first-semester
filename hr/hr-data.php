@@ -1926,7 +1926,7 @@ function static_profile_for_page(string $avatarBase): array
        restore  ids = [101, 102]                      Archive "Restore"
        purge    ids = [101, 102]                      Archive "Delete forever"
        status   id, status, result                    Pending | In Progress | Completed (+ Passed | Rejected)
-       activity (nothing)                             the latest HR activity, for the bell on the HR Dashboard
+       activity (nothing)                             the latest HR activity and recent applicants for the HR Dashboard
        profile_save | password_change | password_status | password_cancel   Settings > Account (see PROFILE above)
    Every change that worked also writes one line to the activity log (static_log), which the Admin
    Dashboard shows under Recent Activities.
@@ -2103,8 +2103,13 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
                 break;
 
             case 'activity':
-                // The bell on the HR Dashboard asks for the latest lines (page restored from the cache, tab back in view)
-                static_respond(['status' => 'success', 'activity' => static_hr_feed()]);
+                // Refresh the bell and dashboard tables when a cached tab becomes visible again.
+                require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
+                static_respond([
+                    'status' => 'success',
+                    'activity' => static_hr_feed(),
+                    'recent_applicants' => repo_applicants_recent(null, 10)
+                ]);
                 break;
 
             case 'profile_save':

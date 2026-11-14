@@ -749,15 +749,15 @@ function repo_dashboard_stats(?PDO $pdo = null): array
 }
 
 /**
- * Recent Applicants for the HR dashboard: newest created first, with a display 'updated' label.
- * (No updated_at column exists; created_at is the authoritative timestamp.)
+ * Recent Applicants for the HR dashboard: newest inserted first, with a display 'updated' label.
+ * The generated ID is the stable insertion order, even when imported/demo created_at values are future-dated.
  */
 function repo_applicants_recent(?PDO $pdo = null, int $limit = 10): array
 {
     $pdo = $pdo ?: db();
     $st = $pdo->prepare(
         "SELECT applicant_id, name, email, phone_number, status, result, created_at" .
-        " FROM applicant WHERE deleted_at IS NULL ORDER BY created_at DESC, applicant_id DESC LIMIT :lim"
+        " FROM applicant WHERE deleted_at IS NULL ORDER BY applicant_id DESC LIMIT :lim"
     );
     $st->bindValue(':lim', $limit, PDO::PARAM_INT);
     $st->execute();

@@ -243,9 +243,9 @@ try {
 $completed_ids = [103, 104, 106, 108, 109, 111, 114, 116, 119, 121, 124, 126, 129, 131, 135];
 */
 
-// Recent applicants = new applicants + applicants whose status just changed.
-// 'updated' is the time of the newest event (applied OR status change).
-// LIVE DATA: newest rows from the applicant table (ORDER BY created_at DESC LIMIT 10).
+// Recent applicants = newest applicants by insertion order.
+// 'updated' is the creation time shown to HR; applicant_id keeps newly added rows on top
+// even when older imported/demo rows have a future created_at timestamp.
 // Falls back to the sample list when the DB is unreachable, so the page never breaks.
 //   status: 'Pending' | 'In Progress' | 'Completed'    result: 'Passed' | 'Rejected' | null
 try {
@@ -258,8 +258,7 @@ try {
 $recent_applicants = [];
 */
 
-// Newest activity first, and never more than 10, even if the query returns more
-usort($recent_applicants, fn($a, $b) => strtotime($b['updated']) <=> strtotime($a['updated']));
+// Never more than 10, even if the query returns more.
 $recent_applicants = array_slice($recent_applicants, 0, 10);
 
 // "Today, 10:52 AM" / "Yesterday" / "Sep 30, 2026"
@@ -715,7 +714,7 @@ function status_badge(string $status): string
                                 <th>Status</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="recentApplicantsBody">
                             <?php if (empty($recent_applicants)): ?>
                             <tr>
                                 <td colspan="3" class="empty-row">No applicants yet.</td>
