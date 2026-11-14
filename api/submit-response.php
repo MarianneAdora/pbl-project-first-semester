@@ -35,7 +35,7 @@ $action = (string) ($input['action'] ?? '');
 // CSRF protection for state-changing submit action
 if ($action === 'submit') {
     $csrfIn = (string) ($input['csrf_token'] ?? '');
-    if (!csrf_consume($csrfIn)) {
+    if (!csrf_verify($csrfIn)) {
         respond_json(['status' => 'error', 'message' => 'Invalid CSRF token. Please refresh and try again.'], 403);
     }
 }

@@ -9,28 +9,29 @@ BEGIN;
 -- HR staff and admin accounts.
 -- ------------------------------------------------------------
 CREATE TABLE users (
-    user_id             SERIAL PRIMARY KEY,
-    role                VARCHAR(20)  NOT NULL CHECK (role IN ('hr', 'admin')),
-    name                VARCHAR(255) NOT NULL,
-    email               VARCHAR(255) NOT NULL UNIQUE,
-    email_normalized    VARCHAR(255) NOT NULL DEFAULT '', -- lowercase email, used for lookups
-    password_hash       VARCHAR(255) NOT NULL,
-    status              VARCHAR(20)  NOT NULL DEFAULT 'Active' CHECK (status IN ('Active', 'Inactive')),
-    deleted_at          TIMESTAMP,
-    created_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    avatar_url          VARCHAR(512),          -- Cloudinary secure_url for the HR staff avatar
-    avatar_public_id    VARCHAR(255)           -- Cloudinary public_id for removal
+    user_id               SERIAL PRIMARY KEY,
+    role                  VARCHAR(20)   NOT NULL CHECK (role IN ('hr', 'admin')),
+    name                  VARCHAR(255)  NOT NULL,
+    email                 VARCHAR(255)  NOT NULL UNIQUE,
+    email_normalized      VARCHAR(255)  NOT NULL DEFAULT '', -- lowercase email, used for lookups
+    password_hash         VARCHAR(255)  NOT NULL,
+    status                VARCHAR(20)   NOT NULL DEFAULT 'Active' CHECK (status IN ('Active', 'Inactive')),
+    deleted_at            TIMESTAMP,
+    created_at            TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    avatar_url            VARCHAR(512),           -- Cloudinary secure_url for the HR staff avatar
+    avatar_public_id      VARCHAR(255),           -- Cloudinary public_id for removal
+
+    reset_token           VARCHAR(64),            -- password reset token
+    reset_token_expires_at TIMESTAMP,
+
+    remember_token        VARCHAR(64),            -- "Remember me" persistent login token
+    remember_token_expires_at TIMESTAMP
 );
 
--- Password reset token columns (nullable)
-ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token VARCHAR(64);
-ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires_at TIMESTAMP;
-CREATE INDEX IF NOT EXISTS idx_users_reset_token ON users(reset_token) WHERE reset_token IS NOT NULL;
-
--- "Remember me" persistent login token columns (nullable)
-ALTER TABLE users ADD COLUMN IF NOT EXISTS remember_token VARCHAR(64);
-ALTER TABLE users ADD COLUMN IF NOT EXISTS remember_token_expires_at TIMESTAMP;
-CREATE INDEX IF NOT EXISTS idx_users_remember_token ON users(remember_token) WHERE remember_token IS NOT NULL;
+CREATE INDEX idx_users_reset_token ON users(reset_token) WHERE reset_token IS NOT NULL;
+CREATE INDEX idx_users_remember_token ON users(remember_token) WHERE remember_token IS NOT NULL;
+CREATE INDEX idx_users_status ON users(status);
 
 -- ------------------------------------------------------------
 -- JOB POSITIONS
@@ -47,6 +48,8 @@ CREATE TABLE job_positions (
     archived_at   TIMESTAMP
 );
 
+CREATE INDEX idx_job_positions_archived_at ON job_positions(archived_at);
+
 -- ------------------------------------------------------------
 -- APPLICANT
 -- One row per invited applicant.
@@ -57,26 +60,38 @@ CREATE TABLE applicant (
     secure_token         VARCHAR(64)  NOT NULL UNIQUE,
     encoded_by_user_id   INT REFERENCES users(user_id),
     position_id          INT REFERENCES job_positions(id), -- the job position this applicant was added under
+
     name                 VARCHAR(255) NOT NULL,   -- full name = first + middle + last (kept for the rest of the app)
     first_name           VARCHAR(100) NOT NULL,
     middle_name          VARCHAR(100) NOT NULL DEFAULT '',
     last_name            VARCHAR(100) NOT NULL,
     name_normalized      VARCHAR(255) NOT NULL,   -- lowercase, no dots/commas, single spaces -> one person, one applicant
+
     email                VARCHAR(255) NOT NULL,
     email_normalized     VARCHAR(255) NOT NULL,   -- lowercase; Gmail dots/+tags removed for consistent matching
     phone_number         VARCHAR(20),
+
     cv_file_url          VARCHAR(512),
     cv_hash              CHAR(64),                -- SHA-256 of the CV file -> one CV, one applicant
+
     verified_at          TIMESTAMP,               -- NULL = invited only; set when the OTP is verified
     status               VARCHAR(20)  NOT NULL DEFAULT 'pending'
                          CHECK (status IN ('pending', 'in_progress', 'completed', 'submitted', 'reviewed', 'rejected', 'accepted')),
     result               VARCHAR(20),
+
     invited_at           TIMESTAMP,               -- when the invitation was sent
     submitted_at         TIMESTAMP,               -- when the screening was completed
     passed_at            TIMESTAMP,               -- when the result became Passed
     deleted_at           TIMESTAMP,
     created_at           TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE UNIQUE INDEX uq_applicant_name_normalized  ON applicant(name_normalized);
+CREATE UNIQUE INDEX uq_applicant_email_normalized ON applicant(email_normalized);
+CREATE UNIQUE INDEX uq_applicant_cv_hash          ON applicant(cv_hash) WHERE cv_hash IS NOT NULL;
+CREATE INDEX idx_applicant_unverified      ON applicant(created_at) WHERE verified_at IS NULL;
+CREATE INDEX idx_applicant_status          ON applicant(status);
+CREATE INDEX idx_applicant_deleted_at      ON applicant(deleted_at);
 
 -- ------------------------------------------------------------
 -- OTP
@@ -94,6 +109,9 @@ CREATE TABLE otp (
     created_at      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE INDEX idx_otp_applicant_id ON otp(applicant_id);
+CREATE INDEX idx_otp_expires_at   ON otp(expires_at);
+
 -- ------------------------------------------------------------
 -- OTP REQUEST LOG
 -- One row per OTP send; used to count requests within a 10-minute window for
@@ -104,6 +122,22 @@ CREATE TABLE otp_request_log (
     applicant_id    INT       NOT NULL REFERENCES applicant(applicant_id) ON DELETE CASCADE,
     requested_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX idx_otp_request_log_applicant    ON otp_request_log(applicant_id);
+CREATE INDEX idx_otp_request_log_requested_at ON otp_request_log(requested_at);
+
+-- ------------------------------------------------------------
+-- RATE LIMIT LOG
+-- Database-backed rate limiting (used by rate_limit() in security.php).
+-- One row per rate-limited request.
+-- ------------------------------------------------------------
+CREATE TABLE rate_limit_log (
+    id          SERIAL PRIMARY KEY,
+    key_hash    CHAR(64)   NOT NULL,
+    created_at  TIMESTAMP  NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_rate_limit_key_time ON rate_limit_log(key_hash, created_at);
 
 -- ------------------------------------------------------------
 -- QUESTION CONFIG
@@ -150,6 +184,11 @@ CREATE TABLE question_config (
     created_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE INDEX idx_question_config_section_order
+    ON question_config (section_no, display_order, question_id)
+    WHERE deleted_at IS NULL;
+CREATE INDEX idx_question_config_active ON question_config(is_active);
+
 -- ------------------------------------------------------------
 -- RESPONSE
 -- One row per applicant; updated in place as they progress.
@@ -171,6 +210,8 @@ CREATE TABLE response (
     submitted_at               TIMESTAMP
 );
 
+CREATE INDEX idx_response_answers_json ON response USING GIN (answers_json);
+
 -- ------------------------------------------------------------
 -- SCHEDULE
 -- Interview scheduling; one or more rows per applicant (rescheduling adds rows).
@@ -191,6 +232,9 @@ CREATE TABLE schedule (
     updated_at      TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE INDEX idx_schedule_applicant_id ON schedule(applicant_id);
+CREATE INDEX idx_schedule_final_date   ON schedule(final_date);
+
 -- ------------------------------------------------------------
 -- SCORE
 -- Risk scoring result for each submitted response.
@@ -210,6 +254,8 @@ CREATE TABLE score (
                             CHECK (final_decision IS NULL OR final_decision IN ('pending', 'accepted', 'rejected', 'manual_review')),
     reviewed_at            TIMESTAMP
 );
+
+CREATE INDEX idx_score_risk_score ON score(risk_score);
 
 -- ------------------------------------------------------------
 -- ACTIVITY LOG
@@ -239,38 +285,6 @@ CREATE TABLE password_requests (
     reviewed_at   TIMESTAMP,
     reviewed_by   INT REFERENCES users(user_id)
 );
-
--- ------------------------------------------------------------
--- INDEXES
--- ------------------------------------------------------------
-CREATE UNIQUE INDEX uq_applicant_name_normalized  ON applicant(name_normalized);
-CREATE UNIQUE INDEX uq_applicant_email_normalized ON applicant(email_normalized);
-CREATE UNIQUE INDEX uq_applicant_cv_hash          ON applicant(cv_hash) WHERE cv_hash IS NOT NULL;
-CREATE INDEX idx_applicant_unverified      ON applicant(created_at) WHERE verified_at IS NULL;
-CREATE INDEX idx_applicant_status          ON applicant(status);
-CREATE INDEX idx_applicant_deleted_at      ON applicant(deleted_at);
-
-CREATE INDEX idx_job_positions_archived_at ON job_positions(archived_at);
-
-CREATE INDEX idx_otp_applicant_id          ON otp(applicant_id);
-CREATE INDEX idx_otp_expires_at            ON otp(expires_at);
-
-CREATE INDEX idx_otp_request_log_applicant    ON otp_request_log(applicant_id);
-CREATE INDEX idx_otp_request_log_requested_at ON otp_request_log(requested_at);
-
-CREATE INDEX idx_question_config_section_order
-    ON question_config (section_no, display_order, question_id)
-    WHERE deleted_at IS NULL;
-CREATE INDEX idx_question_config_active    ON question_config(is_active);
-
-CREATE INDEX idx_response_answers_json     ON response USING GIN (answers_json);
-
-CREATE INDEX idx_schedule_applicant_id     ON schedule(applicant_id);
-CREATE INDEX idx_schedule_final_date       ON schedule(final_date);
-
-CREATE INDEX idx_score_risk_score          ON score(risk_score);
-
-CREATE INDEX idx_users_status ON users(status);
 
 COMMIT;
 

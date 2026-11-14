@@ -1,5 +1,7 @@
 <?php
 session_start();
+require_once __DIR__ . '/../src/Helpers/security.php';
+$csrf = csrf_token();
 
 // ---- Settings ---------------------------------------------------------------
 // Same rule as the other applicant pages: only a verified applicant, and only after sending.
@@ -248,6 +250,7 @@ $iconChevron  = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6
 <html lang="en" data-page="application-status">
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="<?= attr($csrf) ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($title) ?> | Expertise</title>
 

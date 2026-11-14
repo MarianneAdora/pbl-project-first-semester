@@ -35,9 +35,9 @@ $input  = is_array($json) ? $json : $_POST;
 $action = (string) ($input['action'] ?? '');
 
 $csrfIn = (string) ($input['csrf_token'] ?? '');
-if (!csrf_consume($csrfIn)) {
-    hr_respond(['status' => 'error', 'message' => 'Invalid CSRF token. Please refresh and try again.'], 403);
-}
+    if (!csrf_verify($csrfIn)) {
+        hr_respond(['status' => 'error', 'message' => 'Invalid CSRF token. Please refresh and try again.'], 403);
+    }
 
 if (($_SESSION['user_role'] ?? '') !== 'hr' || empty($_SESSION['user_id'])) {
     hr_respond(['status' => 'error', 'message' => 'Your session has ended. Please log in again.'], 403);

@@ -158,7 +158,7 @@ function rate_limit(string $key, int $maxAttempts, int $windowSeconds): array
 
     // Clean old entries for this key + count in one pass
     $stmt = $pdo->prepare(
-        "DELETE FROM rate_limit_log WHERE key_hash = :kh AND created_at < (:ws)::TIMESTAMP"
+        "DELETE FROM rate_limit_log WHERE key_hash = :kh AND created_at <= (:ws)::TIMESTAMP"
     );
     $stmt->execute([
         ':kh' => $keyHash,
@@ -170,13 +170,15 @@ function rate_limit(string $key, int $maxAttempts, int $windowSeconds): array
     $count = (int) $stmt->fetchColumn();
 
     if ($count >= $maxAttempts) {
+        // retry_after = when the maxAttempts-th oldest entry expires (count drops below the limit)
         $stmt = $pdo->prepare(
-            "SELECT EXTRACT(EPOCH FROM (MIN(created_at) + INTERVAL '{$windowSeconds} seconds' - NOW()))::int AS retry_after
-             FROM rate_limit_log WHERE key_hash = :kh"
+            "SELECT EXTRACT(EPOCH FROM (created_at + INTERVAL '{$windowSeconds} seconds' - NOW()))::int AS retry_after
+             FROM rate_limit_log WHERE key_hash = :kh
+             ORDER BY created_at ASC LIMIT 1 OFFSET :off"
         );
-        $stmt->execute([':kh' => $keyHash]);
+        $stmt->execute([':kh' => $keyHash, ':off' => $maxAttempts - 1]);
         $row = $stmt->fetch();
-        $retryAfter = $row ? max(1, (int) ($row['retry_after'] ?? 0)) : $windowSeconds;
+        $retryAfter = $row ? max(0, (int) ($row['retry_after'] ?? 0)) : $windowSeconds;
         return ['allowed' => false, 'remaining' => 0, 'retry_after' => $retryAfter];
     }
 
@@ -253,7 +255,7 @@ function truncate(string $value, int $max): string
 /**
  * HTML-escape a value for safe output in HTML context.
  */
-function e(?string $value, bool $flags = ENT_QUOTES | ENT_SUBSTITUTE): string
+function e(?string $value, int $flags = ENT_QUOTES | ENT_SUBSTITUTE): string
 {
     if ($value === null) return '';
     return htmlspecialchars((string) $value, $flags, 'UTF-8');

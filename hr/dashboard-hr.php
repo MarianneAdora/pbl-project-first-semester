@@ -108,14 +108,15 @@ try {
             'passed_at'   => $r['passed_at']   ? (string) $r['passed_at']   : '',
         ];
     }
-    // Interview answers: confirmed/rescheduled rows from the schedule table
+    // Interview answers: confirmed/rescheduled rows from the schedule table.
+    // answered_at is when HR entered the final schedule; fall back to updated_at for older rows.
     $ivRows = $pdo->query(
-        "SELECT applicant_id, status, updated_at FROM schedule WHERE status IN ('confirmed', 'rescheduled')"
+        "SELECT applicant_id, status, answered_at, updated_at FROM schedule WHERE status IN ('confirmed', 'rescheduled')"
     )->fetchAll();
     foreach ($ivRows as $r) {
         $interviews[(int) $r['applicant_id']] = [
             'status'      => (string) $r['status'],
-            'answered_at' => (string) $r['updated_at'],
+            'answered_at' => (string) ($r['answered_at'] ?? $r['updated_at']),
         ];
     }
 } catch (Throwable $e) {

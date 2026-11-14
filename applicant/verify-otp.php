@@ -1,5 +1,7 @@
 <?php
 session_start();
+require_once __DIR__ . '/../src/Helpers/security.php';
+$csrf = csrf_token();
 
 // ---- Settings ---------------------------------------------------------------
 $devMode     = false;   // true = shows the OTP on screen so you can test without email
@@ -263,6 +265,7 @@ $logoSrc = is_file(__DIR__ . '/../assets/images/expertise.png') ? '../assets/ima
 <html lang="en" data-page="verify-otp">
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="<?= attr($csrf) ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Verify Your Email | Expertise</title>
 

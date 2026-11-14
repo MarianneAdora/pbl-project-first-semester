@@ -1,5 +1,7 @@
 <?php
 session_start();
+require_once __DIR__ . '/../src/Helpers/security.php';
+$csrf = csrf_token();
 
 // ---- Settings ---------------------------------------------------------------
 // Only an applicant who passed the email check may be here. Set this to false to design or test
@@ -68,6 +70,7 @@ $screening = [
 <html lang="en" data-page="questionnaire">
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="<?= attr($csrf) ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Questionnaire | Expertise</title>
 

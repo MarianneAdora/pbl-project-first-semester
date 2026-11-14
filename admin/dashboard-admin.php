@@ -26,9 +26,12 @@ if (empty($_SESSION['user_role']) && isset($_COOKIE['remember'])) {
                     $_SESSION['user_id'] = (int) $row['user_id'];
                 }
             }
+            }
         }
     }
-}
+
+require_once __DIR__ . '/../src/Helpers/security.php';
+$csrf = csrf_token();
 
 // No caching, so the Back button after logout never shows this page
 header('Cache-Control: no-store, no-cache, must-revalidate');
@@ -108,6 +111,7 @@ $greeting     = 'Hello, ' . $display_name . '!';
 <html lang="en" data-page="dashboardadmin">
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="<?= attr($csrf) ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Expertise Admin</title>
 

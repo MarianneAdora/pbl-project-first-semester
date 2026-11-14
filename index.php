@@ -84,18 +84,22 @@ try {
         $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
         $rl = rate_limit('login:' . $ip, 5, 15 * 60);
         if (!$rl['allowed']) {
+            $seconds = (int) $rl['retry_after'];
+            $waitText = $seconds >= 60
+                ? ceil($seconds / 60) . ' minute' . (ceil($seconds / 60) > 1 ? 's' : '')
+                : ($seconds > 0 ? $seconds . ' second' . ($seconds > 1 ? 's' : '') : 'now');
             http_response_code(429);
             echo json_encode([
                 'status' => 'error',
-                'message' => 'Too many login attempts. Please try again in ' . $rl['retry_after'] . ' seconds.',
-                'retry_after' => $rl['retry_after'],
+                'message' => 'Too many login attempts. Please try again in ' . $waitText . '.',
+                'retry_after' => $seconds,
             ]);
             exit();
         }
 
-        // CSRF verification
+        // CSRF verification (verify only; consumed on successful login below)
         $csrfIn = (string) ($_POST['csrf_token'] ?? '');
-        if (!csrf_consume($csrfIn)) {
+        if (!csrf_verify($csrfIn)) {
             http_response_code(403);
             echo json_encode(['status' => 'error', 'message' => 'Invalid CSRF token. Please refresh and try again.']);
             exit();
@@ -127,6 +131,9 @@ try {
         $_SESSION['user_name'] = $credentials[$email]['name'];
         $_SESSION['user_id']   = $credentials[$email]['user_id'] ?? null;
 
+        // Consume the one-time CSRF token on successful login
+        csrf_consume($csrfIn);
+
         // "Remember me": issue a long-lived token cookie + store its hash in the DB
         $remember = !empty($_POST['remember']);
         if ($remember && $pdo instanceof PDO && !empty($credentials[$email]['user_id'])) {
@@ -154,7 +161,8 @@ try {
     } else {
         echo json_encode([
             'status' => 'error',
-            'message' => 'Invalid email address or password.'
+            'message' => 'Invalid email address or password.',
+            'csrf_token' => csrf_token(),
         ]);
         exit();
     }

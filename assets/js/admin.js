@@ -102,12 +102,17 @@ window.ADMIN = (function () {
        BACKEND: point SERVER_API at the real PHP; the same request / answer shape is used. */
     const SERVER_API = '../api/admin-action.php';
 
+    function csrfToken() {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        return meta ? meta.content : '';
+    }
+
     function request(action, payload) {
         return fetch(SERVER_API, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
             credentials: 'same-origin',
-            body: JSON.stringify(Object.assign({ action: action }, payload || {}))
+            body: JSON.stringify(Object.assign({ action: action, csrf_token: csrfToken() }, payload || {}))
         })
             .then(
                 res => res.json().catch(() => { throw new Error('The server did not answer correctly. Please try again.'); }),

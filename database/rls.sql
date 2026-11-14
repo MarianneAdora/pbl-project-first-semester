@@ -70,6 +70,33 @@ CREATE POLICY response_staff_read ON response
     USING (true);
 
 -- ------------------------------------------------------------
+-- SCHEDULE
+-- Interview scheduling rows. Staff may read and write all schedules;
+-- each row is tied to an applicant_id.
+-- ------------------------------------------------------------
+ALTER TABLE schedule ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS schedule_admin_all ON schedule;
+CREATE POLICY schedule_admin_all ON schedule
+    FOR ALL TO admin
+    USING (true);
+
+DROP POLICY IF EXISTS schedule_staff_read ON schedule;
+CREATE POLICY schedule_staff_read ON schedule
+    FOR SELECT TO admin, hr
+    USING (true);
+
+DROP POLICY IF EXISTS schedule_staff_insert ON schedule;
+CREATE POLICY schedule_staff_insert ON schedule
+    FOR INSERT TO admin, hr
+    WITH CHECK (true);
+
+DROP POLICY IF EXISTS schedule_staff_update ON schedule;
+CREATE POLICY schedule_staff_update ON schedule
+    FOR UPDATE TO admin, hr
+    USING (true);
+
+-- ------------------------------------------------------------
 -- SCORE
 -- ------------------------------------------------------------
 ALTER TABLE score ENABLE ROW LEVEL SECURITY;

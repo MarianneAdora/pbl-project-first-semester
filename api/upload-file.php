@@ -25,9 +25,9 @@ $applicantId = (int) $_SESSION['applicant_id'];
 
 // CSRF protection
 $csrfIn = (string) ($_POST['csrf_token'] ?? '');
-if (!csrf_consume($csrfIn)) {
-    $respond(['status' => 'error', 'message' => 'Invalid CSRF token. Please refresh and try again.'], 403);
-}
+    if (!csrf_verify($csrfIn)) {
+        $respond(['status' => 'error', 'message' => 'Invalid CSRF token. Please refresh and try again.'], 403);
+    }
 
 $file = isset($_FILES['video']) && is_array($_FILES['video']) ? $_FILES['video'] : null;
 if (!$file || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {

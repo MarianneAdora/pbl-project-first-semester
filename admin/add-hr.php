@@ -1,5 +1,7 @@
 <?php
 session_start();
+require_once __DIR__ . '/../src/Helpers/security.php';
+$csrf = csrf_token();
 
 // No caching, so the Back button after logout never shows this page
 header('Cache-Control: no-store, no-cache, must-revalidate');
@@ -35,6 +37,7 @@ $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
 <html lang="en" data-page="addhr">
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="<?= attr($csrf) ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $isEdit ? 'Edit HR Account' : 'Create HR Account'; ?> - Expertise Admin</title>
 

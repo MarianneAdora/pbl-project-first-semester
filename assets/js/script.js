@@ -47,10 +47,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (errorMessage) errorMessage.style.display = 'none';
             if (submitBtn) submitBtn.disabled = true;
 
-            fetch('index.php', { method: 'POST', body: new FormData(loginForm) })
+            fetch('index.php', { method: 'POST', credentials: 'same-origin', body: new FormData(loginForm) })
                 .then(response => response.json())
                 .then(data => {
                     if (data.status !== 'success') {
+                        if (data.csrf_token) {
+                            const input = loginForm.querySelector('input[name="csrf_token"]');
+                            if (input) input.value = data.csrf_token;
+                        }
                         showError(data.message);
                         return;
                     }

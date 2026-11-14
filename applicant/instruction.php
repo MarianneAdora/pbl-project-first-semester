@@ -1,5 +1,7 @@
 <?php
 session_start();
+require_once __DIR__ . '/../src/Helpers/security.php';
+$csrf = csrf_token();
 
 // ---- Settings ---------------------------------------------------------------
 $nextPage      = 'questionnaire.php';
@@ -46,6 +48,7 @@ $reminders = [
 <html lang="en" data-page="instruction">
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="<?= attr($csrf) ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Before You Begin | Expertise</title>
 

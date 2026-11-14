@@ -1,5 +1,7 @@
 <?php
 session_start();
+require_once __DIR__ . '/../src/Helpers/security.php';
+$csrf = csrf_token();
 
 // ---- Applicant identity -------------------------------------------------------
 // The email link opens this page (opening.php?token=...). The token is looked up
@@ -101,6 +103,7 @@ $steps = [
 <html lang="en" data-page="opening">
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="<?= attr($csrf) ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Applicant Screening | Expertise</title>
 

@@ -1,5 +1,7 @@
 <?php
 session_start();
+require_once __DIR__ . '/../src/Helpers/security.php';
+$csrf = csrf_token();
 
 // No caching, so the Back button after logout never shows this page
 header('Cache-Control: no-store, no-cache, must-revalidate');
@@ -101,6 +103,7 @@ function q_dropdown(string $id, string $labelId, array $options, string $selecte
 <html lang="en" data-page="addquestion">
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="<?= attr($csrf) ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $isEdit ? 'Edit Questionnaire' : 'Create Questionnaire'; ?> - Expertise Admin</title>
 

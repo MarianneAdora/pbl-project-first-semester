@@ -648,12 +648,16 @@ if (['questionnaire', 'upload-video'].indexOf(document.documentElement.getAttrib
     }
 
     /* ---------- talking to the server (hr/static-applicant.php now, the backend later) ---------- */
+    function csrfToken() {
+        var m = document.querySelector('meta[name="csrf-token"]');
+        return m ? m.content : '';
+    }
     function post(payload) {
         return fetch(cfg().endpoint, {
             method: 'POST',
             credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(Object.assign({ csrf_token: csrfToken() }, payload || {}))
         }).then(function (res) {
             return res.json().catch(function () { return {}; }).then(function (data) {
                 if (!res.ok || data.status !== 'success') {
@@ -1777,6 +1781,7 @@ document.addEventListener('DOMContentLoaded', function () {
             xhr.onabort = function () { reject({ cancelled: true }); };
             var fd = new FormData();
             fd.append('video', file, file.name);
+            fd.append('csrf_token', csrfToken());
             xhr.send(fd);
         });
         return { promise: promise, cancel: function () { xhr.abort(); } };
