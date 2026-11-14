@@ -628,7 +628,7 @@ if (['questionnaire', 'upload-video'].indexOf(document.documentElement.getAttrib
 
             case 'date':
                 if (!v || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return 'Please choose a date.';
-                return v >= today() ? '' : 'Please choose today or a later date.';
+                return v > today() ? '' : 'Please choose tomorrow or a later date.';
 
             case 'text':
                 var len = String(v || '').trim().length;
@@ -1112,8 +1112,9 @@ document.addEventListener('DOMContentLoaded', function () {
     function buildDate(q, box) {
         var todayStr = Screening.today();
         var today = fromYmd(todayStr);
-        var picked = answers[q.id] && answers[q.id] >= todayStr ? answers[q.id] : '';
-        if (!picked && answers[q.id]) { delete answers[q.id]; save(); }   // a date in the past is no longer valid
+        var tomorrowStr = ymd(addDays(today, 1));
+        var picked = answers[q.id] && answers[q.id] > todayStr ? answers[q.id] : '';
+        if (!picked && answers[q.id]) { delete answers[q.id]; save(); }   // today and past dates are no longer valid
         var view = fromYmd(picked || todayStr);
         view.setDate(1);
 
@@ -1204,10 +1205,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     b.dataset.date = key;
                     b.setAttribute('aria-label', WEEKDAYS[date.getDay()] + ', ' + MONTHS[date.getMonth()] + ' ' + day + ', ' + date.getFullYear());
                     b.style.setProperty('--n', day);
-                    if (key < todayStr) b.disabled = true;
+                    if (key <= todayStr) b.disabled = true;
                     if (key === todayStr) b.classList.add('is-today');
                     if (key === picked) { b.classList.add('is-selected'); b.setAttribute('aria-pressed', 'true'); }
-                    b.tabIndex = (picked ? key === picked : key === todayStr) ? 0 : -1;
+                    b.tabIndex = (picked ? key === picked : key === tomorrowStr) ? 0 : -1;
                     b.addEventListener('click', function () { choose(key, false); });
                     grid.appendChild(b);
                 })(n);
@@ -1222,6 +1223,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         function choose(key, fromChip) {
+            if (key <= todayStr) return;
             picked = key;
             answers[q.id] = key;
             var d = fromYmd(key);
@@ -1250,7 +1252,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (step === undefined) return;
             e.preventDefault();
             var target = addDays(fromYmd(cur.dataset.date), step);
-            if (ymd(target) < todayStr) return;
+            if (ymd(target) <= todayStr) return;
             if (target.getMonth() !== view.getMonth() || target.getFullYear() !== view.getFullYear()) {
                 view = new Date(target.getFullYear(), target.getMonth(), 1);
                 draw(step > 0 ? 1 : -1);

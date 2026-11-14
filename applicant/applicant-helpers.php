@@ -355,7 +355,7 @@ function static_validate_answer(array $q, array $answers): string
         case 'date':
             $d = DateTimeImmutable::createFromFormat('Y-m-d', (string) $v);
             if (!$d || $d->format('Y-m-d') !== $v) return 'Please choose a date.';
-            return $v >= (new DateTimeImmutable('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d') ? '' : 'Please choose today or a later date.';
+            return $v > (new DateTimeImmutable('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d') ? '' : 'Please choose tomorrow or a later date.';
 
         case 'text':
             $len = mb_strlen(trim((string) $v));
