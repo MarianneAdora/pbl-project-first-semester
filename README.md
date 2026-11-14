@@ -23,3 +23,11 @@ The legacy `getDbConnection()` in `src/Helpers/functions.php` now delegates to
 `db()`, so there is only one source of truth.
 
 Other secrets (Brevo, Cloudinary, Gemini) are also configured in `.env`.
+
+HR dashboard, screening, and archive requests check for terminal applicants to
+archive: rejected applicants after three days from rejection, and passed
+applicants three days after their latest confirmed, rescheduled, or completed
+interview time. Restoring a terminal applicant starts a fresh three-day
+window. The check runs on the next HR request after the deadline, rather than
+at an exact scheduled time. Archived files are retained until permanent
+deletion after the 30-day archive period.

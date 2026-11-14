@@ -32,9 +32,8 @@ function repo_generate_reference_code(PDO $pdo): string
 
 // ---------------------------------------------------------------------------
 // "One CV, one email" + "applicant joins the system only after OTP"
-//   applicant.verified_at IS NULL      -> invitation only (hidden from every HR list/count)
-//   applicant.verified_at IS NOT NULL  -> real applicant (set by repo_mark_verified on OTP success)
-// Every HR-facing read below filters on verified_at IS NOT NULL.
+//   applicant.verified_at IS NULL      -> pending invitation; included in HR pending counts
+//   applicant.verified_at IS NOT NULL  -> applicant has verified their email via OTP
 // ---------------------------------------------------------------------------
 
 /** How long an unverified invitation (and its email link) stays usable. */
@@ -451,7 +450,7 @@ function cloudinary_public_id_from_url(string $url): ?string
 /**
  * Delete an applicant's CV and video files from Cloudinary, without touching
  * the database metadata (cv_hash, video_file_hash, answers_json are retained).
- * Called before archiving or purging so media files are removed from storage.
+ * Called only when an archived applicant is permanently deleted.
  */
 function repo_delete_applicant_media(array $ids, ?PDO $pdo = null): void
 {
@@ -504,8 +503,7 @@ function repo_delete_applicant_media(array $ids, ?PDO $pdo = null): void
 /**
  * Archive (soft-delete) applicants: Screening List Delete -> Archive page.
  * Sets deleted_at = NOW(); archived rows disappear from the list, appear in Archive.
- * Also removes their CV and video files from Cloudinary (keeps cv_hash,
- * video_file_hash and answers_json in the database).
+ * Files remain available until the applicant is permanently deleted.
  * Returns number of rows actually archived.
  */
 function repo_archive_applicants(array $ids, ?PDO $pdo = null): int
@@ -514,11 +512,59 @@ function repo_archive_applicants(array $ids, ?PDO $pdo = null): int
     $ids = array_values(array_unique(array_map('intval', $ids)));
     $ids = array_filter($ids, fn($i) => $i > 0);
     if (!$ids) return 0;
-    repo_delete_applicant_media($ids, $pdo);
     $ph = implode(',', array_fill(0, count($ids), '?'));
     $st = $pdo->prepare("UPDATE applicant SET deleted_at = NOW() WHERE applicant_id IN ($ph) AND deleted_at IS NULL");
     $st->execute($ids);
     return $st->rowCount();
+}
+
+/**
+ * Auto-archive rejected applicants 3 days after rejection, and passed applicants
+ * 3 days after their latest confirmed/rescheduled interview time. Restoring a
+ * terminal applicant resets the applicable timer.
+ */
+function repo_auto_archive_terminal_applicants(?PDO $pdo = null): int
+{
+    $pdo = $pdo ?: db();
+    $st = $pdo->query("
+        SELECT a.applicant_id
+        FROM applicant a
+        WHERE a.deleted_at IS NULL
+          AND LOWER(a.status) = 'completed'
+          AND (
+            (
+                LOWER(COALESCE(a.result, '')) = 'rejected'
+                AND a.rejected_at IS NOT NULL
+                AND GREATEST(a.rejected_at, COALESCE(a.restored_at, a.rejected_at))
+                    <= (NOW() AT TIME ZONE 'Asia/Manila') - INTERVAL '3 days'
+            )
+            OR
+            (
+                LOWER(COALESCE(a.result, '')) = 'passed'
+                AND EXISTS (
+                    SELECT 1
+                    FROM schedule s
+                    WHERE s.applicant_id = a.applicant_id
+                      AND s.status IN ('confirmed', 'rescheduled', 'completed')
+                      AND s.final_date IS NOT NULL
+                      AND s.final_time IS NOT NULL
+                      AND NOT EXISTS (
+                          SELECT 1
+                          FROM schedule newer
+                          WHERE newer.applicant_id = s.applicant_id
+                            AND newer.schedule_id > s.schedule_id
+                      )
+                      AND GREATEST(
+                          s.final_date + s.final_time,
+                          COALESCE(a.restored_at, s.final_date + s.final_time)
+                      ) + INTERVAL '3 days'
+                          <= (NOW() AT TIME ZONE 'Asia/Manila')
+                )
+            )
+          )
+    ");
+    $ids = array_values(array_filter(array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN)), fn($id) => $id > 0));
+    return $ids ? repo_archive_applicants($ids, $pdo) : 0;
 }
 
 /**
@@ -531,7 +577,10 @@ function repo_restore_applicants(array $ids, ?PDO $pdo = null): int
     $ids = array_filter($ids, fn($i) => $i > 0);
     if (!$ids) return 0;
     $ph = implode(',', array_fill(0, count($ids), '?'));
-    $st = $pdo->prepare("UPDATE applicant SET deleted_at = NULL WHERE applicant_id IN ($ph) AND deleted_at IS NOT NULL");
+    $st = $pdo->prepare(
+        "UPDATE applicant SET deleted_at = NULL, restored_at = NOW() AT TIME ZONE 'Asia/Manila'" .
+        " WHERE applicant_id IN ($ph) AND deleted_at IS NOT NULL"
+    );
     $st->execute($ids);
     return $st->rowCount();
 }
@@ -600,9 +649,14 @@ function repo_set_status(int $id, string $status, ?string $result = null): bool
         $result = strtolower((string) $result);
     }
 
+    $timeFields = $s === 'completed'
+        ? ", submitted_at = COALESCE(submitted_at, NOW() AT TIME ZONE 'Asia/Manila'), " .
+          "passed_at = " . ($result === 'passed' ? "COALESCE(passed_at, NOW() AT TIME ZONE 'Asia/Manila')" : "NULL") . ", " .
+          "rejected_at = " . ($result === 'rejected' ? "COALESCE(rejected_at, NOW() AT TIME ZONE 'Asia/Manila')" : "NULL")
+        : ", submitted_at = NULL, passed_at = NULL, rejected_at = NULL";
+    $timeFields .= ", restored_at = CASE WHEN restored_at IS NOT NULL THEN NOW() AT TIME ZONE 'Asia/Manila' END";
     $st = $pdo->prepare(
-        "UPDATE applicant SET status = :status, result = :result" .
-        ("$s" === 'completed' ? ", submitted_at = COALESCE(submitted_at, NOW()), passed_at = :pass" : "") .
+        "UPDATE applicant SET status = :status, result = :result" . $timeFields .
         " WHERE applicant_id = :id AND deleted_at IS NULL"
     );
     $params = [
@@ -610,15 +664,7 @@ function repo_set_status(int $id, string $status, ?string $result = null): bool
         ':status' => $s,
         ':result' => $result,
     ];
-    if ("$s" === 'completed') $params[':pass'] = $result === 'passed' ? (new DateTimeImmutable('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d H:i:s') : null;
     $st->execute($params);
-
-    // Auto-archive rejected (failed) applicants: they leave the Screening List and
-    // stay in the Archive for 30 days before permanent deletion (purge runs on
-    // archive page load and every archive-action call).
-    if ($s === 'completed' && $result === 'rejected' && $st->rowCount() > 0) {
-        try { repo_archive_applicants([$id], $pdo); } catch (Throwable $ignored) {}
-    }
 
     return $st->rowCount() > 0;
 }
@@ -628,7 +674,7 @@ function repo_applicants_archived(?PDO $pdo = null): array
     $pdo = $pdo ?: db();
     $rows = $pdo->query(
         "SELECT applicant_id, name, email, phone_number, status, result, deleted_at, created_at" .
-        " FROM applicant WHERE deleted_at IS NOT NULL AND verified_at IS NOT NULL ORDER BY deleted_at DESC"
+        " FROM applicant WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC"
     )->fetchAll();
     $out = [];
     foreach ($rows as $r) {
@@ -644,7 +690,7 @@ function repo_dashboard_stats(?PDO $pdo = null): array
     $pdo = $pdo ?: db();
     $rows = $pdo->query(
         "SELECT LOWER(status) AS s, LOWER(COALESCE(result,'')) AS r, COUNT(*) AS c" .
-        " FROM applicant WHERE deleted_at IS NULL AND verified_at IS NOT NULL GROUP BY 1, 2"
+        " FROM applicant WHERE deleted_at IS NULL GROUP BY 1, 2"
     )->fetchAll();
 
     $stats = ['total' => 0, 'pending' => 0, 'in_progress' => 0, 'completed' => 0, 'passed' => 0, 'failed' => 0];
@@ -670,7 +716,7 @@ function repo_applicants_recent(?PDO $pdo = null, int $limit = 10): array
     $pdo = $pdo ?: db();
     $st = $pdo->prepare(
         "SELECT applicant_id, name, email, phone_number, status, result, created_at" .
-        " FROM applicant WHERE deleted_at IS NULL AND verified_at IS NOT NULL ORDER BY verified_at DESC, applicant_id DESC LIMIT :lim"
+        " FROM applicant WHERE deleted_at IS NULL ORDER BY created_at DESC, applicant_id DESC LIMIT :lim"
     );
     $st->bindValue(':lim', $limit, PDO::PARAM_INT);
     $st->execute();

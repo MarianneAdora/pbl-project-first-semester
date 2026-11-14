@@ -47,6 +47,12 @@ require_once __DIR__ . '/../src/Helpers/db.php';
 require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
 require_once __DIR__ . '/hr-data.php';
 
+try {
+    repo_auto_archive_terminal_applicants();
+} catch (Throwable $e) {
+    error_log('dashboard auto-archive error: ' . $e->getMessage());
+}
+
 // Summary cards + Passed/Rejected chart are LIVE from the applicant table.
 try {
     $stats = repo_dashboard_stats();
@@ -92,7 +98,7 @@ try {
         "SELECT applicant_id, name, email, phone_number, status, result, created_at, verified_at,
                 invited_at, submitted_at, passed_at
          FROM applicant
-         WHERE deleted_at IS NULL AND verified_at IS NOT NULL"
+         WHERE deleted_at IS NULL"
     )->fetchAll();
     foreach ($rows as $r) {
         $d = applicant_to_display($r);

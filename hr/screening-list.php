@@ -16,6 +16,12 @@ header('Pragma: no-cache');
 // UI labels Pending / In Progress / Completed (+ Passed/Rejected) in src/Helpers/display.php.
 require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
 
+try {
+    repo_auto_archive_terminal_applicants();
+} catch (Throwable $e) {
+    error_log('screeninglist auto-archive error: ' . $e->getMessage());
+}
+
 // Rows per page
 $per_page = 6;
 

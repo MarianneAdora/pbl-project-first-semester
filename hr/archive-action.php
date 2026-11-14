@@ -23,6 +23,7 @@ $action = (string) ($input["action"] ?? "");
 $ids = array_map("intval", (array) ($input["ids"] ?? []));
 
 try {
+    repo_auto_archive_terminal_applicants();
     try { repo_purge_expired_applicants(30); } catch (Throwable $ignored) { /* page still works */ }
 
     // Status change: Pass / Reject a single applicant from the Screening List.

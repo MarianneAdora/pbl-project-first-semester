@@ -124,22 +124,12 @@ function static_recent(array $applicants, int $limit = 10): array
 //   2. Time-to-Complete Distribution   how long applicants take from invite to submission (histogram)
 //   3. Scheduling Turnaround Time      time between PASS and HR entering the final interview schedule
 //
-// Where every number comes from (so the backend knows exactly what to query):
-//   applicants.invited_at     when HR added the applicant / the invite went out   (static_add_applicant)
-//   applicants.submitted_at   when the screening became Completed                 (static_set_status)
-//   applicants.passed_at      when the result became Passed                       (static_set_status)
-//   interviews.answered_at    when HR confirmed / re-scheduled the interview      (details.php; falls back to
-//                             interviews.updated for rows saved before this field existed)
-//
-// BACKEND (later), one query each:
-//   funnel       SELECT COUNT(*) total, SUM(status IN ('In Progress','Completed')) started,
-//                       SUM(status = 'Completed') completed, SUM(result = 'Passed') passed,
-//                       SUM(result = 'Passed' AND iv.status IN ('confirmed','rescheduled')) scheduled
-//                FROM applicants a LEFT JOIN interviews iv ON iv.applicant_id = a.id WHERE a.archived_at IS NULL
-//   histogram    SELECT TIMESTAMPDIFF(HOUR, invited_at, submitted_at) FROM applicants WHERE submitted_at IS NOT NULL
-//                (bucket the hours with the edges in static_time_bins())
-//   turnaround   SELECT AVG(TIMESTAMPDIFF(HOUR, a.passed_at, iv.answered_at)) FROM applicants a
-//                JOIN interviews iv ON iv.applicant_id = a.id WHERE iv.status IN ('confirmed','rescheduled')
+// The dashboard reads all non-archived applicants, including unverified invitations:
+//   invited_at   when HR added the applicant
+//   submitted_at when the screening became Completed
+//   passed_at    when the result became Passed
+//   rejected_at  when the result became Rejected
+// Confirmed/rescheduled schedule rows provide the final interview time and answer timestamp.
 // ---------------------------------------------------------------------------
 const STATIC_TURNAROUND_TARGET_HOURS = 72;     // HR's goal: enter the final schedule within 3 days of the pass
 
@@ -211,7 +201,7 @@ function static_dashboard_empty_insights(): array
     ];
 }
 
-// All three blocks, worked out from the ACTIVE applicants (archived ones are not counted) + the interview rows.
+// All three blocks use non-archived applicants (including pending invitations) + interview rows.
 function static_dashboard_insights(array $applicants, array $interviews = []): array
 {
     $out        = static_dashboard_empty_insights();
@@ -545,7 +535,7 @@ function static_archived_applicants(): array
                a.cv_file_url, a.cv_hash
         FROM applicant a
         LEFT JOIN job_positions p ON p.id = a.position_id AND p.archived_at IS NULL
-        WHERE a.deleted_at IS NOT NULL AND a.verified_at IS NOT NULL
+        WHERE a.deleted_at IS NOT NULL
         ORDER BY a.deleted_at DESC
     ")->fetchAll();
 
@@ -1150,7 +1140,6 @@ function static_archive(array $ids, array $at = []): int
     if (empty($ids)) return 0;
     $pdo = db();
     require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
-    repo_delete_applicant_media($ids, $pdo);
     $zone = new DateTimeZone('Asia/Manila');
     $now  = static_now()->format('Y-m-d H:i:s');
     $n = 0;
@@ -1191,7 +1180,10 @@ function static_restore(array $ids): int
         foreach ($ns->fetchAll() as $nr) $names[(int) $nr['applicant_id']] = (string) $nr['name'];
     }
     foreach ($ids as $id) {
-        $stmt = $pdo->prepare("UPDATE applicant SET deleted_at = NULL WHERE applicant_id = :id AND deleted_at IS NOT NULL");
+        $stmt = $pdo->prepare(
+            "UPDATE applicant SET deleted_at = NULL, restored_at = NOW() AT TIME ZONE 'Asia/Manila'" .
+            " WHERE applicant_id = :id AND deleted_at IS NOT NULL"
+        );
         $stmt->execute([':id' => $id]);
         if ($stmt->rowCount() > 0) {
             try { repo_log_activity('Restored Applicant', ($names[$id] ?? 'ID #' . $id) . ' · ID #' . $id); } catch (Throwable $e) {}

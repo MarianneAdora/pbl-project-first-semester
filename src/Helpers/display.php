@@ -2,14 +2,14 @@
 // src/Helpers/display.php — translate detailed DB pipeline states into the simplified UI states.
 // Schema is NEVER changed to match the UI; these mappers are the only bridge.
 //
-// DB applicant.status: pending | in_progress | submitted | reviewed | rejected | accepted
+// DB applicant.status: pending | in_progress | completed | submitted | reviewed | rejected | accepted
 // UI status:           Pending | In Progress | Completed
 // UI result:           Passed | Rejected | null
 //
 // Mapping:
 //   pending                  -> Pending,     result null
 //   in_progress              -> In Progress, result null
-//   submitted / reviewed     -> Completed,   result null (awaiting final decision)
+//   completed / submitted / reviewed -> Completed, result null (awaiting final decision)
 //   accepted                 -> Completed,   Passed
 //   rejected                 -> Completed,   Rejected
 // A non-empty applicant.result column (passed/rejected variants) always wins when present.
@@ -19,6 +19,7 @@ function display_status(string $dbStatus): string
     switch (strtolower(trim($dbStatus))) {
         case 'pending': return 'Pending';
         case 'in_progress': return 'In Progress';
+        case 'completed':
         case 'submitted':
         case 'reviewed':
         case 'accepted':

@@ -83,7 +83,9 @@ CREATE TABLE applicant (
     submitted_at         TIMESTAMP,               -- when the screening was completed
     passed_at            TIMESTAMP,               -- when the result became Passed
     deleted_at           TIMESTAMP,
-    created_at           TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at           TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    rejected_at          TIMESTAMP,               -- when the result became Rejected
+    restored_at          TIMESTAMP                -- reset point for terminal auto-archive after restore
 );
 
 CREATE UNIQUE INDEX uq_applicant_name_normalized  ON applicant(name_normalized);
