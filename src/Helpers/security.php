@@ -151,18 +151,17 @@ function rate_limit_ensure_table(): void
 function rate_limit(string $key, int $maxAttempts, int $windowSeconds): array
 {
     $pdo = db();
-    $now = time();
-    $windowStart = $now - $windowSeconds;
-
     $keyHash = hash('sha256', $key);
 
-    // Clean old entries for this key + count in one pass
+    // Use the database clock for both writes and expiry checks.
     $stmt = $pdo->prepare(
-        "DELETE FROM rate_limit_log WHERE key_hash = :kh AND created_at <= (:ws)::TIMESTAMP"
+        "DELETE FROM rate_limit_log
+         WHERE key_hash = :kh
+           AND created_at <= NOW() - (CAST(:window_seconds AS INTEGER) * INTERVAL '1 second')"
     );
     $stmt->execute([
         ':kh' => $keyHash,
-        ':ws' => date('Y-m-d H:i:s', $windowStart),
+        ':window_seconds' => $windowSeconds,
     ]);
 
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM rate_limit_log WHERE key_hash = :kh");
@@ -172,7 +171,7 @@ function rate_limit(string $key, int $maxAttempts, int $windowSeconds): array
     if ($count >= $maxAttempts) {
         // retry_after = when the maxAttempts-th oldest entry expires (count drops below the limit)
         $stmt = $pdo->prepare(
-            "SELECT EXTRACT(EPOCH FROM (created_at + INTERVAL '{$windowSeconds} seconds' - NOW()))::int AS retry_after
+            "SELECT CEIL(EXTRACT(EPOCH FROM (created_at + INTERVAL '{$windowSeconds} seconds' - NOW())))::int AS retry_after
              FROM rate_limit_log WHERE key_hash = :kh
              ORDER BY created_at ASC LIMIT 1 OFFSET :off"
         );

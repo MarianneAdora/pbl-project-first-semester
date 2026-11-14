@@ -3,6 +3,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('loginForm');
     const togglePassword = document.getElementById('togglePassword');
     const passwordInput = document.getElementById('password');
+    const emailInput = loginForm ? loginForm.elements.email : null;
+    const emailError = document.getElementById('emailError');
+    const passwordError = document.getElementById('passwordError');
     const errorMessage = document.getElementById('errorMessage');
     const pageOverlay = document.getElementById('pageOverlay');
     const submitBtn = loginForm ? loginForm.querySelector('.btn-submit') : null;
@@ -42,8 +45,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 3. AJAX login: elements lift away while the stripes sweep in, then redirect
     if (loginForm) {
+        emailInput.addEventListener('input', () => clearFieldError(emailInput, emailError));
+        passwordInput.addEventListener('input', () => clearFieldError(passwordInput, passwordError));
+
         loginForm.addEventListener('submit', (e) => {
             e.preventDefault();
+            if (!emailInput.validity.valid) {
+                showFieldError(emailInput, emailError, emailInput.validity.valueMissing
+                    ? 'Please enter your email address.'
+                    : 'Please enter a valid email address.');
+                emailInput.focus();
+                return;
+            }
+            clearFieldError(emailInput, emailError);
+
+            if (!passwordInput.value) {
+                showFieldError(passwordInput, passwordError, 'Please enter your password.');
+                passwordInput.focus();
+                return;
+            }
+            clearFieldError(passwordInput, passwordError);
+
             if (errorMessage) errorMessage.style.display = 'none';
             if (submitBtn) submitBtn.disabled = true;
 
@@ -100,5 +122,17 @@ document.addEventListener('DOMContentLoaded', () => {
             errorMessage.style.display = 'block';
         }
         if (submitBtn) submitBtn.disabled = false;
+    }
+
+    function showFieldError(input, messageElement, message) {
+        input.setAttribute('aria-invalid', 'true');
+        messageElement.textContent = message;
+        messageElement.style.display = 'flex';
+    }
+
+    function clearFieldError(input, messageElement) {
+        input.removeAttribute('aria-invalid');
+        messageElement.textContent = '';
+        messageElement.style.display = 'none';
     }
 });

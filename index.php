@@ -222,21 +222,23 @@ try {
 
             <div class="error-message" id="errorMessage"></div>
 
-            <form id="loginForm" method="POST" autocomplete="off">
+            <form id="loginForm" method="POST" autocomplete="off" novalidate>
     <input type="hidden" name="csrf_token" value="<?= attr($csrf) ?>">
                 <div class="form-group reveal" style="--i:4">
                     <label for="email">Email</label>
-                    <input type="email" id="email" name="email" class="form-control" required>
+                    <input type="email" id="email" name="email" class="form-control" aria-describedby="emailError" required>
+                    <p class="field-error" id="emailError" role="alert"></p>
                 </div>
 
                 <div class="form-group reveal" style="--i:5">
                     <label for="password">Password</label>
                     <div class="input-wrapper">
-                        <input type="password" id="password" name="password" class="form-control" required>
+                        <input type="password" id="password" name="password" class="form-control" aria-describedby="passwordError" required>
                         <svg class="eye-icon" id="togglePassword" viewBox="0 0 24 24">
                             <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
                         </svg>
                     </div>
+                    <p class="field-error" id="passwordError" role="alert"></p>
                 </div>
 
                 <div class="remember-wrapper reveal" style="--i:6">

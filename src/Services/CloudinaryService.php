@@ -7,17 +7,17 @@ class CloudinaryService {
     private $apiSecret;
 
     public function __construct() {
-        $env = parse_ini_file(__DIR__ . '/../../.env');
-        $this->cloudName = $env['CLOUDINARY_CLOUD_NAME'] ?? '';
-        $this->apiKey = $env['CLOUDINARY_API_KEY'] ?? '';
-        $this->apiSecret = $env['CLOUDINARY_API_SECRET'] ?? '';
+        require_once __DIR__ . '/../Helpers/env.php';
+        $this->cloudName = getenv('CLOUDINARY_CLOUD_NAME') ?: '';
+        $this->apiKey = getenv('CLOUDINARY_API_KEY') ?: '';
+        $this->apiSecret = getenv('CLOUDINARY_API_SECRET') ?: '';
 
         if (empty($this->cloudName) || empty($this->apiKey) || empty($this->apiSecret)) {
             throw new Exception("Cloudinary credentials are missing from your .env file.");
         }
     }
     /** Build multipart/form-data body and POST via file_get_contents (no cURL needed). */
-    private function multipartPost(string $url, array $fields, array $files = []): string
+    private function multipartPost(string $url, array $fields, array $files = []): array
     {
         $boundary = '----WebKitFormBoundary' . uniqid();
         $delimiter = "--$boundary";
@@ -56,19 +56,13 @@ class CloudinaryService {
         if ($response === false) {
             throw new Exception("Request to $url failed.");
         }
-        return $response;
-    }
-
-    /** Get HTTP response code from $http_response_header after file_get_contents. */
-    private function httpCode(): int
-    {
+        $httpCode = 0;
         foreach ($http_response_header ?? [] as $header) {
-            if (stripos($header, 'HTTP/') === 0) {
-                preg_match('/HTTP\/[\d.]+ (\d+)/', $header, $m);
-                if (!empty($m[1])) return (int) $m[1];
+            if (preg_match('/^HTTP\/[\d.]+\s+(\d+)/i', $header, $m)) {
+                $httpCode = (int) $m[1];
             }
         }
-        return 200;
+        return ['status' => $httpCode, 'body' => $response];
     }
 
 
@@ -144,11 +138,14 @@ class CloudinaryService {
         ];
         $files = ['file' => $filePath];
 
-        $response = $this->multipartPost($url, $fields, $files);
-        $httpCode = $this->httpCode();
+        $http = $this->multipartPost($url, $fields, $files);
+        $response = $http['body'];
 
-        if ($httpCode === 200) {
+        if ($http['status'] === 200) {
             $result = json_decode($response, true);
+            if (!is_array($result) || empty($result['secure_url'])) {
+                throw new Exception('Cloudinary CV upload returned an invalid response.');
+            }
             return [
                 'url'       => $result['secure_url'] ?? '',
                 'public_id' => $result['public_id'] ?? ($folderBase . '/' . $publicId),
@@ -214,11 +211,14 @@ class CloudinaryService {
         ];
         $files = ['file' => $filePath];
 
-        $response = $this->multipartPost($url, $fields, $files);
-        $httpCode = $this->httpCode();
+        $http = $this->multipartPost($url, $fields, $files);
+        $response = $http['body'];
 
-        if ($httpCode === 200) {
+        if ($http['status'] === 200) {
             $result = json_decode($response, true);
+            if (!is_array($result) || empty($result['secure_url'])) {
+                throw new Exception('Cloudinary job description upload returned an invalid response.');
+            }
             return [
                 'url'       => $result['secure_url'] ?? '',
                 'public_id' => $result['public_id'] ?? ($folderBase . '/' . $publicId),
@@ -304,11 +304,14 @@ class CloudinaryService {
             'signature'     => $signature,
         ];
 
-        $response = $this->multipartPost($url, $fields);
-        $httpCode = $this->httpCode();
+        $http = $this->multipartPost($url, $fields);
+        $response = $http['body'];
 
-        if ($httpCode === 200) {
+        if ($http['status'] === 200) {
             $result = json_decode($response, true);
+            if (!is_array($result)) {
+                throw new Exception('Cloudinary delete returned an invalid response.');
+            }
             return [
                 'success'  => !empty($result['result']) && in_array($result['result'], ['ok', 'deleted', 'not_found'], true),
                 'result'   => $result['result'] ?? 'unknown',
@@ -360,11 +363,14 @@ class CloudinaryService {
         ];
         $files = ['file' => $filePath];
 
-        $response = $this->multipartPost($url, $fields, $files);
-        $httpCode = $this->httpCode();
+        $http = $this->multipartPost($url, $fields, $files);
+        $response = $http['body'];
 
-        if ($httpCode === 200) {
+        if ($http['status'] === 200) {
             $result = json_decode($response, true);
+            if (!is_array($result) || empty($result['secure_url'])) {
+                throw new Exception('Cloudinary video upload returned an invalid response.');
+            }
             return [
                 'success' => true,
                 'url' => $result['secure_url'],
@@ -430,10 +436,13 @@ class CloudinaryService {
             'signature'       => $signature,
         ];
         $files = ['file' => $filePath];
-        $response = $this->multipartPost($url, $fields, $files);
-        $httpCode = $this->httpCode();
-        if ($httpCode === 200) {
+        $http = $this->multipartPost($url, $fields, $files);
+        $response = $http['body'];
+        if ($http['status'] === 200) {
             $result = json_decode($response, true);
+            if (!is_array($result) || empty($result['secure_url'])) {
+                throw new Exception('Cloudinary avatar upload returned an invalid response.');
+            }
             return [
                 'url'       => $result['secure_url'] ?? '',
                 'public_id' => $result['public_id'] ?? ($folderBase . '/' . $publicId),

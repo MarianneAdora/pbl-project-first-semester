@@ -4,8 +4,8 @@ class GeminiService {
     private $models = ['gemini-3.8-flash', 'gemini-3.6-flash'];
 
     public function __construct() {
-        $env = @parse_ini_file(__DIR__ . '/../../.env');
-        $this->apiKey = trim((string) ($env['GEMINI_API_KEY'] ?? ''));
+        require_once __DIR__ . '/../Helpers/env.php';
+        $this->apiKey = trim((string) (getenv('GEMINI_API_KEY') ?: ''));
         if (empty($this->apiKey)) {
             throw new Exception("GEMINI_API_KEY is missing from .env");
         }

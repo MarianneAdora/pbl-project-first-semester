@@ -1610,6 +1610,7 @@ function static_profile_save(array $in, ?array $upload): array
         } catch (StaticProfileError $e) {
             throw $e;
         } catch (Throwable $e) {
+            error_log('Profile avatar upload failed: ' . $e->getMessage());
             throw new StaticProfileError('Avatar upload failed.');
         }
     }
