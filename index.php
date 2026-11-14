@@ -7,15 +7,15 @@ secure_session(1800);
 session_start();
 send_security_headers(false);
 
-// CSRF token for the login form
-$csrf = csrf_token();
-
 // Arriving from "Log out": end the old session so the dashboards can't be reopened with Back
 if (($_GET['transition'] ?? '') === 'out') {
     $_SESSION = [];
     session_regenerate_id(true);
     setcookie('remember', '', time() - 3600, '/', '', true, true);
 }
+
+// Generate the form token after logout has reset the session.
+$csrf = csrf_token();
 
 // Login accounts now come from the database (users table): HR staff + Admin.
 require_once __DIR__ . '/src/Helpers/db.php';
@@ -80,9 +80,9 @@ try {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Content-Type: application/json');
 
-        // Rate limit login attempts (5 attempts per 15 minutes per IP)
+        // Rate limit login attempts (15 attempts per 15 minutes per IP)
         $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
-        $rl = rate_limit('login:' . $ip, 5, 15 * 60);
+        $rl = rate_limit('login:' . $ip, 15, 15 * 60);
         if (!$rl['allowed']) {
             $seconds = (int) $rl['retry_after'];
             $waitText = $seconds >= 60
