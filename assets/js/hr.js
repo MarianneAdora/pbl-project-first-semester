@@ -807,10 +807,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const NOTE_MAX = 500;
-    const noteInput = form.elements.note;
-    const noteCount = document.getElementById('noteCount');
-
     function setError(name, message, shake) {
         const field = fieldOf(name);
         if (!field) return;
@@ -860,16 +856,6 @@ document.addEventListener('DOMContentLoaded', () => {
             validateField('last_name', false);
         }
     });
-
-    // Note is optional, but it still tells you when you hit the limit
-    function updateNote() {
-        const len = noteInput.value.length;
-        noteCount.textContent = len + '/' + NOTE_MAX;
-        noteCount.classList.toggle('at-limit', len >= NOTE_MAX);
-        setError('note', len >= NOTE_MAX ? 'You reached the ' + NOTE_MAX + '-character limit.' : '');
-    }
-    noteInput.addEventListener('input', updateNote);
-    updateNote();
 
     /* ---------- CV picker (click or drag a file onto the box) ---------- */
     function prettySize(bytes) {
@@ -1069,7 +1055,6 @@ document.addEventListener('DOMContentLoaded', () => {
        (PDFs = previewable image type) and its URL is saved as cv_file_url.
        Invitation email still not sent. */
     async function sendInvitation(formData) {
-        formData.delete('note'); // no notes column yet
         formData.set('action', 'add'); // hr-data.php routes on this; without it the server answers "Unknown action."
         const res = await fetch('../hr/hr-data.php', { method: 'POST', body: formData, credentials: 'same-origin' });
         let data;
@@ -1141,7 +1126,6 @@ document.addEventListener('DOMContentLoaded', () => {
         touched.clear();
         setPosOpen(false);
         setPosition('');
-        updateNote();
         successCard.hidden = true;
         formCard.hidden = false;
         // replay the small rise-in so the swap does not feel abrupt
@@ -1474,7 +1458,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     /* ---------- Cancel (asks first when something was typed) ---------- */
-    const isDirty = () => ['first_name', 'middle_name', 'last_name', 'email', 'contact', 'note'].some(n => form.elements[n].value.trim() !== '')
+    const isDirty = () => ['first_name', 'middle_name', 'last_name', 'email', 'contact'].some(n => form.elements[n].value.trim() !== '')
         || posInput.value !== '' || fileInput.files.length > 0;
 
     cancelBtn.addEventListener('click', () => {

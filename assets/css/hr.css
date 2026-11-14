@@ -947,18 +947,6 @@ html.js.is-ready.is-leaving .reveal {
     height: 44px;
 }
 
-:where(html[data-page="addapplicants"]) .input-box textarea {
-    height: auto;
-    min-height: 92px;
-    padding-top: 13px;
-    padding-bottom: 12px;
-    resize: vertical;
-    line-height: 1.5;
-}
-
-:where(html[data-page="addapplicants"]) .textarea-box { align-items: flex-start; }
-:where(html[data-page="addapplicants"]) .textarea-box .field-icon { top: 13px; }
-
 :where(html[data-page="addapplicants"]) .input-box ::placeholder {
     color: #8c9097;
     font-weight: 500;
@@ -1017,19 +1005,6 @@ html.js.is-ready.is-leaving .reveal {
 
 /* the icon inside a box that has an error turns red as well */
 :where(html[data-page="addapplicants"]) .field.has-error .field-icon { fill: var(--red-bright); }
-
-/* character counter inside the note box */
-:where(html[data-page="addapplicants"]) .note-count {
-    position: absolute;
-    right: 12px;
-    bottom: 8px;
-    font-size: 11px;
-    font-weight: 700;
-    color: #8c9097;
-    pointer-events: none;
-}
-
-:where(html[data-page="addapplicants"]) .note-count.at-limit { color: var(--red-bright); }
 
 @keyframes shake {
     0%, 100% { transform: translateX(0); }
@@ -7176,7 +7151,6 @@ html[data-theme="dark"] {
 :where(html[data-theme="dark"]) .field.has-error .input-box {
     background: rgba(209,18,42,0.12);
 }
-:where(html[data-theme="dark"]) .note-count,
 :where(html[data-theme="dark"]) .file-name {
     color: #8b93a0;
 }
