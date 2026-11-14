@@ -1,18 +1,17 @@
 <?php
 // src/Helpers/encrypt.php — field-level encryption for sensitive data at rest.
 // Uses AES-256-GCM via openssl_encrypt/openssl_decrypt. Key must be 32 bytes.
-// Set ENCRYPTION_KEY in .env (32 random chars). Fallback derives a key from
-// DB_PASS (not ideal, but better than plaintext when no key is configured).
+// Set ENCRYPTION_KEY in .env to a secret of at least 32 characters.
 
 declare(strict_types=1);
 
 function encryption_key(): string
 {
     $key = getenv('ENCRYPTION_KEY');
-    if ($key === false || $key === '') {
-        $key = hash('sha256', (string) (getenv('DB_PASS') ?: 'default-change-me'), true);
+    if ($key === false || strlen($key) < 32) {
+        throw new RuntimeException('ENCRYPTION_KEY must be configured with at least 32 characters.');
     }
-    return $key;
+    return hash('sha256', $key, true);
 }
 
 /**

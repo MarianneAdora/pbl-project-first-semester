@@ -4,7 +4,6 @@
 // Answers: { status: 'success', url, hash } | { status: 'error', message }.
 // Requires a verified applicant session (opening.php?token=... + OTP).
 
-session_start();
 require_once __DIR__ . '/../src/Helpers/security.php';
 secure_session(1800);
 session_start();

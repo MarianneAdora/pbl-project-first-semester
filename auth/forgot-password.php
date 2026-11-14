@@ -20,7 +20,7 @@ session_start();
         <!-- Logo Header -->
         <div class="logo-container">
             <div class="logo-crop">
-                <img src="assets/images/expertise.png" alt="Expertise Logo">
+                <img src="../assets/images/expertise.png" alt="Expertise Logo">
             </div>
             <div class="portal-title">MANAGEMENT PORTAL</div>
         </div>
@@ -35,10 +35,11 @@ session_start();
             <div class="error-message" id="errorMessage"></div>
             <div class="success-message" id="successMessage" style="display:none;"></div>
 
-            <form id="forgotForm" autocomplete="off">
+            <form id="forgotForm" autocomplete="off" novalidate>
                 <div class="form-group">
                     <label for="email">Email</label>
-                    <input type="email" id="email" name="email" class="form-control" required>
+                    <input type="email" id="email" name="email" class="form-control" aria-describedby="emailError" required>
+                    <p class="field-error" id="emailError" role="alert"></p>
                 </div>
 
                 <button type="submit" class="btn-submit" id="resetBtn">Send reset link</button>
@@ -54,9 +55,22 @@ session_start();
             const btn = document.getElementById('resetBtn');
             const error = document.getElementById('errorMessage');
             const success = document.getElementById('successMessage');
+            const email = form.elements.email;
+            const emailError = document.getElementById('emailError');
+
+            email.addEventListener('input', clearEmailError);
 
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
+                if (!email.validity.valid) {
+                    showEmailError(email.validity.valueMissing
+                        ? 'Please enter your email address.'
+                        : 'Please enter a valid email address.');
+                    email.focus();
+                    return;
+                }
+
+                clearEmailError();
                 if (error) error.style.display = 'none';
                 if (success) { success.style.display = 'none'; success.textContent = ''; }
                 const label = btn.dataset.label || btn.textContent;
@@ -94,6 +108,18 @@ session_start();
                     error.textContent = message;
                     error.style.display = 'block';
                 }
+            }
+
+            function showEmailError(message) {
+                email.setAttribute('aria-invalid', 'true');
+                emailError.textContent = message;
+                emailError.style.display = 'flex';
+            }
+
+            function clearEmailError() {
+                email.removeAttribute('aria-invalid');
+                emailError.textContent = '';
+                emailError.style.display = 'none';
             }
         });
     </script>

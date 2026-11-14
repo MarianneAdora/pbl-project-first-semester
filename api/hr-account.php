@@ -6,7 +6,6 @@
 //   status          {}                  the pending request, if any
 // Every change is written to the activity log, so it shows in the Admin's Recent Activities.
 
-session_start();
 require_once __DIR__ . '/../src/Helpers/security.php';
 secure_session(1800);
 session_start();

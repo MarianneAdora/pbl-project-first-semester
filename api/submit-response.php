@@ -5,7 +5,6 @@
 // Answers land in response.answers_json, video URL in response.video_file_url,
 // applicant.status -> submitted (Completed in HR UI).
 
-session_start();
 require_once __DIR__ . '/../src/Helpers/security.php';
 secure_session(1800);
 session_start();

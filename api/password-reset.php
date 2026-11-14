@@ -8,7 +8,9 @@
 //
 // No session is required: the request step is reached from the public login / forgot pages,
 // and the reset step is reached from the token link in the email.
-session_start();
+error_reporting(0);
+@ini_set('display_errors', '0');
+
 require_once __DIR__ . '/../src/Helpers/security.php';
 secure_session(1800);
 session_start();

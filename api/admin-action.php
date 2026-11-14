@@ -1,6 +1,5 @@
 <?php
 // api/admin-action.php — DB-backed AJAX endpoint for admin archive/restore/purge actions.
-session_start();
 require_once __DIR__ . '/../src/Helpers/security.php';
 secure_session(1800);
 session_start();

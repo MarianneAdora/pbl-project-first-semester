@@ -1775,8 +1775,12 @@ function static_profile_change_password(string $current, string $new): array
     $pdo = db();
 
     if ($me['role'] === 'admin') {
-        $stmt = $pdo->prepare("UPDATE users SET password_hash = :hash WHERE user_id = :id");
-        $stmt->execute([':hash' => password_hash($new, PASSWORD_DEFAULT), ':id' => $me['id']]);
+        $stmt = $pdo->prepare("UPDATE users SET password_hash = :hash WHERE email = :email AND role = 'admin' AND deleted_at IS NULL");
+        $stmt->execute([
+            ':hash' => password_hash($new, PASSWORD_DEFAULT),
+            ':email' => $me['email']
+        ]);
+        if ($stmt->rowCount() === 0) throw new StaticProfileError('Your account could not be found. Please log in again.');
         try { repo_log_activity('Changed Admin Password', $me['name'] . ' (' . $me['email'] . ')'); } catch (Throwable $e) {}
         return ['mode' => 'applied', 'request' => null];
     }
@@ -1784,6 +1788,7 @@ function static_profile_change_password(string $current, string $new): array
     // HR: apply at once (no admin approval needed for password)
     $stmt = $pdo->prepare("UPDATE users SET password_hash = :hash WHERE user_id = :id");
     $stmt->execute([':hash' => password_hash($new, PASSWORD_DEFAULT), ':id' => $me['id']]);
+    if ($stmt->rowCount() === 0) throw new StaticProfileError('Your account could not be found. Please log in again.');
     try { repo_log_activity('Changed HR Password', $me['name'] . ' (' . $me['email'] . ')'); } catch (Throwable $e) {}
     return ['mode' => 'applied', 'request' => null];
 }
