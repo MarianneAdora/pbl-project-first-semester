@@ -58,7 +58,7 @@ try {
             // Never reveal whether the email exists: look it up, but answer the same either way.
             $user = $pdo->prepare(
                 "SELECT user_id, name, email FROM users
-                 WHERE email_normalized = LOWER(:e) AND deleted_at IS NULL LIMIT 1"
+                 WHERE LOWER(email) = :e AND deleted_at IS NULL LIMIT 1"
             );
             $user->execute([':e' => $email]);
             $row = $user->fetch();

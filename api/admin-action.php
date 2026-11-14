@@ -60,8 +60,8 @@ try {
             if ($exists->fetchColumn()) admin_respond(['status' => 'error', 'message' => 'That email address is already in use.'], 422);
 
             $hash = password_hash($password, PASSWORD_DEFAULT);
-            $ins = $pdo->prepare("INSERT INTO users (name, email, password_hash, role, status, created_at) VALUES (:n, :e, :p, 'hr', :s, NOW()) RETURNING user_id");
-            $ins->execute([':n' => $name, ':e' => $email, ':p' => $hash, ':s' => $status]);
+            $ins = $pdo->prepare("INSERT INTO users (name, email, email_normalized, password_hash, role, status, created_at) VALUES (:n, :e, :en, :p, 'hr', :s, NOW()) RETURNING user_id");
+            $ins->execute([':n' => $name, ':e' => $email, ':en' => $email, ':p' => $hash, ':s' => $status]);
             $newId = (int) $ins->fetchColumn();
             repo_log_activity('HR Account Added', $name . ' (HR) · ' . $email);
 
