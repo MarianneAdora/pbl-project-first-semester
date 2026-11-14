@@ -3446,6 +3446,15 @@ html:where([data-page="questionnaire"],[data-page="upload-video"]).js.is-ready .
     font-weight: 700;
 }
 
+:where(html[data-page="upload-video"]) .intro__instruction {
+    max-width: 42rem;
+    margin: 0.8rem 0 0;
+    font-size: 1.02rem;
+    line-height: 1.6;
+    font-weight: 600;
+    color: var(--text);
+}
+
 /* ===== "Only 10 seconds" reminder under the title ===== */
 :where(html[data-page="upload-video"]) .tenbadge {
     display: flex;

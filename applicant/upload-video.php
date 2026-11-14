@@ -55,6 +55,11 @@ if (empty($questions)) {
 }
 $formatsText = strtoupper(implode(', ', $video['formats']));
 
+$fullName = trim((string) ($_SESSION['applicant_name'] ?? ''));
+$videoIntroText = $fullName !== ''
+    ? 'Good day, my name is ' . $fullName . ', and I successfully answer the screening application, thank you.'
+    : 'Good day, my name is (full name), and I successfully answer the screening application, thank you.';
+
 $screening = [
     'questions'      => $questions,
     'video'          => $video,
@@ -120,6 +125,7 @@ $screening = [
                 <p class="intro__text">
                     Upload your completed video response, or record it right here with your camera. You can add one video only.
                 </p>
+                <p class="intro__instruction"><?= htmlspecialchars($videoIntroText, ENT_QUOTES, 'UTF-8') ?></p>
                 <p class="tenbadge">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4.5l3 1.8M9.5 3h5"/></svg>
                     Only <?= (int) $video['max_seconds'] ?> seconds needed. No longer video is required.
