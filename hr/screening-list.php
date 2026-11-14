@@ -192,7 +192,6 @@ foreach ($archived_rows as $a) {
     <main class="main-content">
         <header class="content-header reveal" style="--i:1">
             <h1>Applicants Screening List</h1>
-            <p>Manage and review all applicants.</p>
         </header>
 
         <!-- Search + select all + filter toggle -->

@@ -238,7 +238,6 @@ $positions = static_positions();
     <main class="main-content">
         <header class="content-header reveal" style="--i:1">
             <h1>Add Shortlisted Applicant</h1>
-            <p>Enter the applicant details and send a screening invitation.</p>
         </header>
 
         <!-- ================= Form ================= -->

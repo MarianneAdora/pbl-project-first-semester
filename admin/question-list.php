@@ -160,7 +160,6 @@ try {
         <div class="page-head reveal" style="--i:1">
             <header class="content-header">
                 <h1>Questionnaires</h1>
-                <p>Manage all questionnaires in the system</p>
             </header>
             <a href="add-question.php" class="btn btn-primary btn-add" id="addQuestionBtn">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>

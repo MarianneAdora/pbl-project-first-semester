@@ -263,7 +263,6 @@ $greeting     = 'Hello, ' . $display_name . '!';
         <header class="content-header has-bell has-profile reveal" style="--i:1">
             <div class="header-text">
                 <h1 id="greeting" title="<?php echo htmlspecialchars($greeting, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($greeting, ENT_QUOTES, 'UTF-8'); ?></h1>
-                <p>Overview of the system activities and key information</p>
             </div>
             <div class="header-tools">
                 <div class="notif-wrap">

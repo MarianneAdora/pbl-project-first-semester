@@ -159,7 +159,6 @@ try {
     <main class="main-content">
         <header class="content-header reveal" style="--i:1">
             <h1>Archive</h1>
-            <p>Deleted HR accounts and questionnaires stay here for <?php echo ARCHIVE_DAYS; ?> days, then they are permanently deleted.</p>
         </header>
 
         <!-- Search + type filter (HR account / questionnaire) + time left filter -->

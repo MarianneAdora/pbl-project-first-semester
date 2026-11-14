@@ -426,7 +426,6 @@ function status_badge(string $status): string
             <div class="header-start">
                 <div class="header-text">
                     <h1 id="greeting" title="Hello, <?php echo htmlspecialchars($display_name); ?>!">Hello, <?php echo htmlspecialchars($display_name); ?>!</h1>
-                    <p>Overview of application activity.</p>
                 </div>
             </div>
 

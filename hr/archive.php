@@ -192,7 +192,6 @@ foreach ($applicants as $a) {
     <main class="main-content archive-page">
         <header class="content-header reveal" style="--i:1">
             <h1>Archive</h1>
-            <p>Deleted applicants stay here for <?php echo (int) $archive_days; ?> days, then they are permanently deleted.</p>
         </header>
 
         <!-- Search + select all + filter toggle -->

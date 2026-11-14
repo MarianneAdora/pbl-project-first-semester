@@ -140,7 +140,6 @@ $account_avatar_url = $profile['avatar_url'];
     <main class="main-content">
         <header class="content-header reveal" style="--i:1">
             <h1>Settings</h1>
-            <p>Manage your profile and system preferences</p>
         </header>
 
         <form id="settingsForm" class="settings-stack" novalidate autocomplete="off">
