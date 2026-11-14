@@ -1,5 +1,11 @@
 <?php
 class EmailService {
+    private function brevoApiKey(): string
+    {
+        require_once __DIR__ . '/../Helpers/env.php';
+        return trim((string) (getenv('BREVO_API_KEY') ?: ''));
+    }
+
     private function templatePath(string $file): string
     {
         // All email HTML templates live in includes/emails/.
@@ -39,8 +45,7 @@ class EmailService {
 
     private function brevoSend(array $data, bool $echoError = true): bool
     {
-        $env = parse_ini_file(__DIR__ . '/../../.env');
-        $apiKey = $env['BREVO_API_KEY'] ?? '';
+        $apiKey = $this->brevoApiKey();
         if (empty($apiKey)) {
             error_log('Brevo: BREVO_API_KEY is missing from your .env file.');
             return false;
@@ -54,10 +59,11 @@ class EmailService {
                           . "accept: application/json\r\n",
                 'content' => json_encode($data),
                 'timeout' => 15,
+                'ignore_errors' => true,
             ],
             'ssl' => [
-                'verify_peer' => false,
-                'verify_peer_name' => false,
+                'verify_peer' => true,
+                'verify_peer_name' => true,
             ],
         ]);
         $response = @file_get_contents($url, false, $context);
@@ -67,14 +73,9 @@ class EmailService {
             if ($echoError) echo "<strong>Brevo API Error:</strong> Request failed.<br>";
             return false;
         }
-        // Check HTTP response code from $http_response_header superglobal
-        $httpCode = 201;
+        $httpCode = 0;
         foreach ($http_response_header ?? [] as $header) {
-            if (stripos($header, 'HTTP/') === 0) {
-                preg_match('/HTTP\/[\d.]+ (\d+)/', $header, $m);
-                if (!empty($m[1])) $httpCode = (int) $m[1];
-                break;
-            }
+            if (preg_match('/^HTTP\/[\d.]+\s+(\d+)/i', $header, $m)) $httpCode = (int) $m[1];
         }
         if ($httpCode === 201) return true;
         error_log("Brevo API error (HTTP $httpCode): " . $response);
@@ -82,9 +83,7 @@ class EmailService {
         return false;
     }
     public function sendTestEmail($toEmail) {
-        // 1. Manually load the .env file just for this test
-        $env = parse_ini_file(__DIR__ . '/../../.env');
-        $apiKey = $env['BREVO_API_KEY'] ?? '';
+        $apiKey = $this->brevoApiKey();
 
         if (empty($apiKey)) {
             die("Error: BREVO_API_KEY is missing from your .env file.");
@@ -239,10 +238,6 @@ class EmailService {
 
     public function sendEmail(string $toEmail, string $subject, string $html, string $toName = ''): bool
     {
-        $env = parse_ini_file(__DIR__ . '/../../.env');
-        $apiKey = $env['BREVO_API_KEY'] ?? '';
-        if (empty($apiKey)) return false;
-
         $data = [
             'sender'      => ['name' => 'Expertise BPO', 'email' => 'ebsmi.screening@gmail.com'],
             'to'          => [['email' => $toEmail, 'name' => $toName !== '' ? $toName : $toEmail]],
