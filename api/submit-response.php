@@ -6,6 +6,11 @@
 // applicant.status -> submitted (Completed in HR UI).
 
 session_start();
+require_once __DIR__ . '/../src/Helpers/security.php';
+secure_session(1800);
+session_start();
+send_security_headers(false);
+
 header('Content-Type: application/json; charset=UTF-8');
 
 function respond_json(array $data, int $code = 200): void {
@@ -26,6 +31,14 @@ $applicantId = (int) $_SESSION['applicant_id'];
 $json = json_decode((string) file_get_contents('php://input'), true);
 $input = is_array($json) ? $json : $_POST;
 $action = (string) ($input['action'] ?? '');
+
+// CSRF protection for state-changing submit action
+if ($action === 'submit') {
+    $csrfIn = (string) ($input['csrf_token'] ?? '');
+    if (!csrf_consume($csrfIn)) {
+        respond_json(['status' => 'error', 'message' => 'Invalid CSRF token. Please refresh and try again.'], 403);
+    }
+}
 
 require_once __DIR__ . '/../src/Repositories/ResponseRepository.php';
 

@@ -1,5 +1,14 @@
 <?php
+declare(strict_types=1);
+require_once __DIR__ . '/src/Helpers/security.php';
+require_once __DIR__ . '/src/Helpers/db.php';
+
+secure_session(1800);
 session_start();
+send_security_headers(false);
+
+// CSRF token for the login form
+$csrf = csrf_token();
 
 // Arriving from "Log out": end the old session so the dashboards can't be reopened with Back
 if (($_GET['transition'] ?? '') === 'out') {
@@ -71,7 +80,28 @@ try {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Content-Type: application/json');
 
-    $email = filter_var(trim($_POST['email'] ?? ''), FILTER_SANITIZE_EMAIL);
+        // Rate limit login attempts (5 attempts per 15 minutes per IP)
+        $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+        $rl = rate_limit('login:' . $ip, 5, 15 * 60);
+        if (!$rl['allowed']) {
+            http_response_code(429);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Too many login attempts. Please try again in ' . $rl['retry_after'] . ' seconds.',
+                'retry_after' => $rl['retry_after'],
+            ]);
+            exit();
+        }
+
+        // CSRF verification
+        $csrfIn = (string) ($_POST['csrf_token'] ?? '');
+        if (!csrf_consume($csrfIn)) {
+            http_response_code(403);
+            echo json_encode(['status' => 'error', 'message' => 'Invalid CSRF token. Please refresh and try again.']);
+            exit();
+        }
+
+        $email = filter_var(trim($_POST['email'] ?? ''), FILTER_SANITIZE_EMAIL);
     $password = $_POST['password'] ?? '';
 
     // Fallback: some web setups disable $_POST population (enable_post_data_reading=Off);
@@ -185,6 +215,7 @@ try {
             <div class="error-message" id="errorMessage"></div>
 
             <form id="loginForm" method="POST" autocomplete="off">
+    <input type="hidden" name="csrf_token" value="<?= attr($csrf) ?>">
                 <div class="form-group reveal" style="--i:4">
                     <label for="email">Email</label>
                     <input type="email" id="email" name="email" class="form-control" required>

@@ -22,6 +22,10 @@
 
 if (!defined('TRIGGER_SCORING_INTERNAL')) {
     session_start();
+    require_once __DIR__ . '/../src/Helpers/security.php';
+    secure_session(1800);
+    session_start();
+    send_security_headers(false);
     header('Content-Type: application/json; charset=UTF-8');
 }
 

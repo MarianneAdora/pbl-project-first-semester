@@ -7,6 +7,11 @@
 // Every change is written to the activity log, so it shows in the Admin's Recent Activities.
 
 session_start();
+require_once __DIR__ . '/../src/Helpers/security.php';
+secure_session(1800);
+session_start();
+send_security_headers(false);
+
 header('Content-Type: application/json; charset=UTF-8');
 date_default_timezone_set('Asia/Manila');
 
@@ -21,16 +26,22 @@ function hr_respond(array $data, int $code = 200): void
     exit;
 }
 
-if (($_SESSION['user_role'] ?? '') !== 'hr' || empty($_SESSION['user_id'])) {
-    hr_respond(['status' => 'error', 'message' => 'Your session has ended. Please log in again.'], 403);
-}
+// CSRF + auth guard
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     hr_respond(['status' => 'error', 'message' => 'Invalid request.'], 405);
 }
-
 $json   = json_decode((string) file_get_contents('php://input'), true);
 $input  = is_array($json) ? $json : $_POST;
 $action = (string) ($input['action'] ?? '');
+
+$csrfIn = (string) ($input['csrf_token'] ?? '');
+if (!csrf_consume($csrfIn)) {
+    hr_respond(['status' => 'error', 'message' => 'Invalid CSRF token. Please refresh and try again.'], 403);
+}
+
+if (($_SESSION['user_role'] ?? '') !== 'hr' || empty($_SESSION['user_id'])) {
+    hr_respond(['status' => 'error', 'message' => 'Your session has ended. Please log in again.'], 403);
+}
 $uid    = (int) $_SESSION['user_id'];
 
 try {

@@ -1,9 +1,11 @@
 <?php
 // api/admin-action.php — DB-backed AJAX endpoint for admin archive/restore/purge actions.
-// Replaces question-admin.php for: account_archive, account_restore, account_purge,
-//                                 question_archive, question_restore, question_purge, password_decide, notify
-
 session_start();
+require_once __DIR__ . '/../src/Helpers/security.php';
+secure_session(1800);
+session_start();
+send_security_headers(false);
+
 header('Content-Type: application/json; charset=UTF-8');
 date_default_timezone_set('Asia/Manila');
 
@@ -19,18 +21,24 @@ function admin_respond(array $data, int $code = 200): void
     exit;
 }
 
-if (($_SESSION['user_role'] ?? '') !== 'admin') {
-    admin_respond(['status' => 'error', 'message' => 'Your session has ended. Please log in again.'], 403);
-}
+// CSRF + auth guard for all state-changing POSTs
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     admin_respond(['status' => 'error', 'message' => 'Invalid request.'], 405);
 }
-
-$json   = json_decode((string) file_get_contents('php://input'), true);
-$input  = is_array($json) ? $json : $_POST;
+$json  = json_decode((string) file_get_contents('php://input'), true);
+$input = is_array($json) ? $json : $_POST;
 $action = (string) ($input['action'] ?? '');
 
+$csrfIn = (string) ($input['csrf_token'] ?? '');
+if (!csrf_consume($csrfIn)) {
+    admin_respond(['status' => 'error', 'message' => 'Invalid CSRF token. Please refresh and try again.'], 403);
+}
+if (($_SESSION['user_role'] ?? '') !== 'admin') {
+    admin_respond(['status' => 'error', 'message' => 'Your session has ended. Please log in again.'], 403);
+}
+
 try {
+    $missing = 'That item was not found. It may have been removed already.';
     $missing = 'That item was not found. It may have been removed already.';
 
     switch ($action) {
@@ -271,7 +279,9 @@ try {
             if ($pos === null) admin_respond(['status' => 'error', 'message' => 'That question was not found. It may have been deleted.'], 404);
 
             $oldRow = null;
-            foreach (db()->query("SELECT * FROM question_config WHERE question_id = " . $id)->fetchAll() as $r) { $oldRow = $r; }
+            $stmt = $pdo->prepare("SELECT * FROM question_config WHERE question_id = :id");
+            $stmt->execute([':id' => $id]);
+            foreach ($stmt->fetchAll() as $r) { $oldRow = $r; }
             $old = [
                 'id'      => 'q' . $id,
                 'status'  => $oldRow && $oldRow['is_active'] ? 'Active' : 'Inactive',

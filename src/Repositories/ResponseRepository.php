@@ -4,6 +4,7 @@
 // video_file_url + video_file_hash, submitted_at marks completion.
 
 require_once __DIR__ . '/../Helpers/db.php';
+require_once __DIR__ . '/../Helpers/security.php';
 
 /**
  * Fetch the applicant's screening submission, if any.
@@ -12,6 +13,7 @@ require_once __DIR__ . '/../Helpers/db.php';
 function repo_response_find(int $applicantId, ?PDO $pdo = null): ?array
 {
     $pdo = $pdo ?: db();
+    assert_applicant_access($applicantId);
     $st = $pdo->prepare(
         "SELECT response_id, applicant_id, answers_json, video_file_url, video_file_hash," .
         " ip_address, device_fingerprint, data_protection_agreed_at, started_at, submitted_at" .
@@ -57,6 +59,7 @@ function repo_response_start(int $applicantId, ?PDO $pdo = null): void
 function repo_response_submit(int $applicantId, array $answers, array $video = [], ?PDO $pdo = null): void
 {
     $pdo = $pdo ?: db();
+    assert_applicant_access($applicantId);
 
     // Applicant must exist, be reachable, and not already submitted.
     $st = $pdo->prepare(
@@ -220,6 +223,7 @@ function repo_response_submit(int $applicantId, array $answers, array $video = [
 function repo_score_find(int $applicantId, ?PDO $pdo = null): ?array
 {
     $pdo = $pdo ?: db();
+    assert_applicant_access($applicantId);
     $st = $pdo->prepare(
         "SELECT s.risk_score, s.risk_flags_json, s.narrative_json, r.submitted_at " .
         "FROM score s JOIN response r ON r.response_id = s.response_id " .

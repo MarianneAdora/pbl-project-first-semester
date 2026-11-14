@@ -9,6 +9,11 @@
 // No session is required: the request step is reached from the public login / forgot pages,
 // and the reset step is reached from the token link in the email.
 session_start();
+require_once __DIR__ . '/../src/Helpers/security.php';
+secure_session(1800);
+session_start();
+send_security_headers(false);
+
 header('Content-Type: application/json; charset=UTF-8');
 date_default_timezone_set('Asia/Manila');
 
@@ -24,6 +29,14 @@ function respond(array $data, int $code = 200): void
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     respond(['status' => 'error', 'message' => 'Invalid request.'], 405);
+}
+
+// Rate limit password reset requests (5 per 15 minutes per IP)
+$ip = (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+$rl = rate_limit('password-reset:' . $ip, 5, 15 * 60);
+if (!$rl['allowed']) {
+    http_response_code(429);
+    respond(['status' => 'error', 'message' => 'Too many reset requests. Please try again in ' . $rl['retry_after'] . ' seconds.', 'retry_after' => $rl['retry_after']]);
 }
 
 $json = json_decode((string) file_get_contents('php://input'), true);
