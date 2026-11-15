@@ -3858,7 +3858,7 @@ if (document.documentElement.getAttribute('data-page') === 'dashboardadmin') {
    }
    ========================================================================== */
 document.addEventListener('DOMContentLoaded', () => {
-    const data = window.ADMIN_DASH || { stats: { sections: [], questions: [], submissions: 0 }, activity: [] };
+    const data = window.ADMIN_DASH || { stats: { sections: [], questions: [], submissions: 0 }, activity: [], pw_requests: [] };
     const esc = ADMIN.esc;
     const SEEN_KEY = 'admin_activity_seen';
     const DASH_SEEN_KEY = 'admin_dashboard_last_seen_at';
@@ -4168,7 +4168,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const svg = (d) => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + d + '"/></svg>';
         const SEEN_KEY = 'admin_activity_seen';
         const pwReqs = {};                          // id -> request (pending pw changes)
-        data.pw_requests.forEach(r => { pwReqs[r.id] = r; });
+        (Array.isArray(data.pw_requests) ? data.pw_requests : []).forEach(r => { pwReqs[r.id] = r; });
         let fresh = new Set();
         let lastCount = -1;
 
@@ -4240,7 +4240,10 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             apwList.innerHTML = pwHtml;
             paintBadge();
-            if (amarkAll) amarkAll.disabled = acts.length === 0 && pending.length === 0;
+            if (amarkAll) {
+                const unreadChanges = window.HRREQ ? HRREQ.adminUnread().length : 0;
+                amarkAll.disabled = fresh.size === 0 && newActivity().length === 0 && unreadChanges === 0;
+            }
             if (apwMarkAll) apwMarkAll.disabled = pending.length === 0;
         }
 
@@ -4270,7 +4273,7 @@ document.addEventListener('DOMContentLoaded', () => {
             amarkAll.addEventListener('click', () => {
                 fresh = new Set();
                 markBellSeen();
-                markActivitySeen();
+                ADMIN.notify.markSeen();
                 paintList();
             });
         }
