@@ -542,6 +542,12 @@ html:where([data-page="application-status"]).js.is-ready .bc-glyph  { animation:
     to   { opacity: 1; transform: none; }
 }
 
+/* A final result (Passed / Rejected) is shown instantly: no entrance reveal, no icon draw */
+html.js.status-static .reveal { opacity: 1 !important; animation: none !important; }
+html.js.status-static .bc-circle,
+html.js.status-static .bc-glyph { animation: none !important; }
+html.js.status-static .bc-tick { animation: none !important; stroke-dashoffset: 0 !important; }
+
 /* ===== Loading icon: a ring that turns around a document being read ===== */
 :where(html[data-page="application-status"]) .eval-spin {
     display: block;
@@ -4702,4 +4708,16 @@ html:where([data-page="verify-otp"]).js.is-ready .verify__icon {
     :where(html[data-page="verify-otp"]) .otp__box {
         font-size: 1.35rem;
     }
+}
+
+/* ===== Mobile base (all applicant pages) ===== */
+@media (max-width: 767px) {
+    body { overflow-y: auto; overflow-x: hidden; min-height: 100dvh; }
+    .btn, button, .stage button, .option-btn, .next-btn, .back-btn {
+        min-height: 44px;
+        min-width: 44px;
+        font-size: 16px;
+    }
+    input, textarea, select { font-size: 16px; } /* prevents iOS zoom on focus */
+    .stage { padding-bottom: env(safe-area-inset-bottom); }
 }

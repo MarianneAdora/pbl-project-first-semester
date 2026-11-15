@@ -717,9 +717,35 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2. Sidebar collapse / expand (and remember it)
     if (sidebarToggle && sidebar) {
         sidebarToggle.addEventListener('click', () => {
-            sidebar.classList.toggle('collapsed');
-            saveSidebar();
+            const isMobile = window.matchMedia('(max-width: 767px)').matches;
+            if (isMobile) {
+                const wasOpen = root.classList.contains('drawer-open');
+                root.classList.toggle('drawer-open');
+                if (!wasOpen) ensureDrawerBackdrop();
+            } else {
+                sidebar.classList.toggle('collapsed');
+                saveSidebar();
+            }
         });
+    }
+
+    // Escape closes the mobile drawer
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') root.classList.remove('drawer-open');
+    });
+
+    // Create (once) the drawer backdrop and wire its close + nav-link close behaviour
+    function ensureDrawerBackdrop() {
+        let b = document.querySelector('.drawer-backdrop');
+        if (!b) {
+            b = document.createElement('div');
+            b.className = 'drawer-backdrop';
+            document.body.appendChild(b);
+            b.addEventListener('click', () => root.classList.remove('drawer-open'));
+            sidebar.querySelectorAll('.nav-item').forEach((item) => {
+                item.addEventListener('click', () => root.classList.remove('drawer-open'));
+            });
+        }
     }
 
     // 3. Logout: confirm, then elements lift away while the stripes sweep in

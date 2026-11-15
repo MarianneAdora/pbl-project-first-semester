@@ -459,3 +459,37 @@ html.js.is-ready.is-leaving .reveal {
 .reset-btn-reset { flex: 1; height: 42px; background: #d1122a; border: none; border-radius: 21px; color: #ffffff; font-size: 13px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(209, 18, 42, 0.25); }
 .reset-btn-reset:hover { background: #b50e23; }
 .reset-btn-reset:disabled { opacity: 0.6; cursor: wait; }
+
+/* ==========================================================================
+   Mobile / responsive base (auth pages)
+   ========================================================================== */
+@media (max-width: 767px) {
+    body {
+        overflow-y: auto;
+        height: auto;
+        min-height: 100dvh;
+        align-items: flex-start;
+        justify-content: flex-start;
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+    .portal-wrapper {
+        width: 100%;
+        max-width: 100%;
+        padding: 0 16px;
+        transform: none;
+        box-sizing: border-box;
+    }
+    .login-card {
+        width: 100%;
+        padding: 24px 16px 26px;
+        border-radius: 16px;
+    }
+    .logo-crop img { width: 160px; }
+    .form-control { height: 46px; font-size: 16px; } /* 16px prevents iOS zoom */
+    .btn-submit { height: 48px; font-size: 15px; }
+    .reset-input { height: 46px; }
+    .reset-input input { font-size: 16px; }
+    .reset-actions { flex-direction: column; gap: 8px; }
+    .reset-btn-cancel, .reset-btn-reset { width: 100%; }
+}

@@ -50,6 +50,31 @@ try {
         exit;
     }
 
+    // Manual HR rejection of a single applicant (before or after they answered).
+    // Stores result='rejected' and HR's reason/note in rejection_reason.
+    if ($action === "reject") {
+        $sid = (int) ($input["id"] ?? 0);
+        $reason = (string) ($input["reason"] ?? "");
+        if ($sid <= 0) {
+            $respond(["status" => "error", "message" => "Invalid applicant id."], 400);
+        }
+        require_once __DIR__ . "/../src/Repositories/ApplicantRepository.php";
+        $ok = repo_reject_applicant($sid, $reason);
+        if (!$ok) {
+            $respond(["status" => "error", "message" => "That applicant was not found."], 404);
+        }
+        $nameRow = repo_find_applicant($sid);
+        $label = $nameRow ? (string) $nameRow["name"] : "#" . $sid;
+        repo_log_activity("Applicant Manually Rejected", $label . " · reason: " . ($reason !== '' ? $reason : '(none)'));
+        $respond([
+            "status" => "success",
+            "count" => 1,
+            "stats" => repo_dashboard_stats(),
+            "completed_ids" => [],
+        ]);
+        exit;
+    }
+
     // Names for the activity log (fetched before the move).
     if ($action === "archive") {
         $names = repo_applicant_names($ids, false);

@@ -270,8 +270,14 @@ $iconChevron  = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6
         // safety: if the scripts fail to load, never leave the page invisible
         setTimeout(function () { document.documentElement.classList.add('is-ready'); }, 3000);
         // the evaluation page already played for this result: go straight to the result (no flash of the loading page)
+        // an applicant who already has a final result stored (Passed / Rejected) skips the evaluation screen entirely;
+        // only a result pending review (no DB result yet) shows the evaluation animation.
+        <?php if ($dbResult !== ''): ?>
+        // a final result (Passed / Rejected) is shown instantly: skip the entrance transition too
+        document.documentElement.classList.add('status-static');
+        <?php endif; ?>
         try {
-            if (<?= $interview ? 'true' : 'false' ?> || sessionStorage.getItem('expertise.status.seen') === <?= json_encode($seenKey) ?>) {
+            if (<?= $interview ? 'true' : 'false' ?> || sessionStorage.getItem('expertise.status.seen') === <?= json_encode($seenKey) ?> || <?= ($dbResult !== '' ? 'true' : 'false') ?>) {
                 document.documentElement.classList.add('eval-done');
             }
         } catch (e) { <?= $interview ? '' : '/* storage blocked: the loading page plays every time */' ?> }
@@ -449,7 +455,7 @@ $iconChevron  = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6
         <?php if ($result['manually'] ?? false): ?>
         <!-- Manually rejected by HR before the applicant answered the questionnaire -->
         <h1 class="status__title reveal" style="--i:2">Application Not Moved Forward</h1>
-        <p class="status__text reveal" style="--i:3">Thank you for your interest in joining Expertise. After reviewing your application, we will not be moving forward with your candidacy for this position at this time.</p>
+        <p class="status__text reveal" style="--i:3">Thank you for your interest in joining Expertise. Our HR team has manually reviewed your application and decided not to move forward with your candidacy for this position at this time.</p>
         <?php else: ?>
         <!-- Failed after answering the questionnaire -->
         <h1 class="status__title reveal" style="--i:2">Screening Not Passed</h1>
