@@ -275,6 +275,7 @@ CREATE TABLE deleted_applicant_fingerprints (
 CREATE TABLE activity_log (
     log_id       SERIAL PRIMARY KEY,
     actor        VARCHAR(20) NOT NULL,
+    actor_name   VARCHAR(255) NOT NULL DEFAULT '',
     activity     VARCHAR(100) NOT NULL,
     details      TEXT NOT NULL DEFAULT '-',
     created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP

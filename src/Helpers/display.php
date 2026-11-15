@@ -4,7 +4,7 @@
 //
 // DB applicant.status: pending | in_progress | completed | submitted | reviewed | rejected | accepted
 // UI status:           Pending | In Progress | Completed
-// UI result:           Passed | Rejected | null
+// UI result:           Passed | Rejected | null (HR may reject before screening completion)
 //
 // Mapping:
 //   pending                  -> Pending,     result null

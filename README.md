@@ -24,6 +24,18 @@ The legacy `getDbConnection()` in `src/Helpers/functions.php` now delegates to
 
 Other secrets (Brevo, Cloudinary, Gemini) are also configured in `.env`.
 
+## Existing database updates
+
+For databases created before activity actor names were added, run this once:
+
+```sql
+ALTER TABLE activity_log
+    ADD COLUMN IF NOT EXISTS actor_name VARCHAR(255) NOT NULL DEFAULT '';
+```
+
+New databases created from `database/schema.sql` already include the column.
+Older activity rows do not contain the actor's name and will continue to show the role.
+
 HR dashboard, screening, and archive requests check for terminal applicants to
 archive: rejected applicants after three days from rejection, and passed
 applicants three days after their latest confirmed, rescheduled, or completed

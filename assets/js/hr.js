@@ -3127,6 +3127,76 @@ if (document.documentElement.getAttribute('data-page') === 'details') {
         return null;
     }
 
+    function post(payload) {
+        return fetch(D.endpoint, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify(Object.assign({ id: D.id }, payload))
+        }).then(function (res) {
+            return res.json().catch(function () { return {}; }).then(function (data) {
+                if (!res.ok || data.status !== 'success') {
+                    throw new Error(data.message || 'We could not reach the server. Please try again.');
+                }
+                return data;
+            });
+        });
+    }
+
+    var rejectButton = $('rejectApplicantBtn');
+    var rejectModal = $('rejectModal');
+    var rejectConfirm = $('rejectConfirm');
+    var rejectCancel = $('rejectCancel');
+    var rejectBusy = false;
+
+    function openRejectModal() {
+        if (!rejectModal) return;
+        rejectModal.classList.add('active');
+        rejectModal.setAttribute('aria-hidden', 'false');
+        if (rejectConfirm) setTimeout(function () { rejectConfirm.focus(); }, 60);
+    }
+
+    function closeRejectModal() {
+        if (!rejectModal || rejectBusy) return;
+        rejectModal.classList.remove('active');
+        rejectModal.setAttribute('aria-hidden', 'true');
+        if (rejectButton) rejectButton.focus();
+    }
+
+    if (rejectButton && !rejectButton.disabled) {
+        rejectButton.addEventListener('click', openRejectModal);
+    }
+    if (rejectCancel) rejectCancel.addEventListener('click', closeRejectModal);
+    if (rejectModal) {
+        rejectModal.addEventListener('click', function (e) {
+            if (e.target === rejectModal) closeRejectModal();
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && rejectModal.classList.contains('active')) closeRejectModal();
+        });
+    }
+    if (rejectConfirm) {
+        rejectConfirm.addEventListener('click', function () {
+            if (rejectBusy) return;
+            rejectBusy = true;
+            rejectConfirm.disabled = true;
+            rejectCancel.disabled = true;
+            rejectConfirm.textContent = 'Rejecting...';
+            post({ action: 'reject' }).then(function () {
+                window.location.reload();
+            }).catch(function (err) {
+                rejectBusy = false;
+                rejectConfirm.disabled = false;
+                rejectCancel.disabled = false;
+                rejectConfirm.textContent = 'Reject Applicant';
+                rejectModal.classList.remove('active');
+                rejectModal.setAttribute('aria-hidden', 'true');
+                toast(err.message, { error: true, duration: 6000 });
+                if (rejectButton) rejectButton.focus();
+            });
+        });
+    }
+
     /* ======================================================================
        PART 1: tabs
        ====================================================================== */
@@ -3339,23 +3409,6 @@ if (document.documentElement.getAttribute('data-page') === 'details') {
         pTick: '<svg class="picker__check" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>',
         tick: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>'
     };
-
-    /* ---------- talking to the server (hr/applicant-details-data.php now, the backend later) ---------- */
-    function post(payload) {
-        return fetch(D.endpoint, {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify(Object.assign({ id: D.id }, payload))
-        }).then(function (res) {
-            return res.json().catch(function () { return {}; }).then(function (data) {
-                if (!res.ok || data.status !== 'success') {
-                    throw new Error(data.message || 'We could not reach the server. Please try again.');
-                }
-                return data;
-            });
-        });
-    }
 
     /* ---------- small helpers ---------- */
     function two(n) { return (n < 10 ? '0' : '') + n; }

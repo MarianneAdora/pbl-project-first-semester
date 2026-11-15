@@ -4200,8 +4200,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const body = document.getElementById('activityBody');
     body.innerHTML = data.activity.length
         ? data.activity.map((row, i) => {
-            const isNew = fresh.has(row.at) && String(row.by).toLowerCase() !== 'admin';
-            const who = String(row.by).toLowerCase() === 'admin' ? 'admin' : 'hr';
+            const role = String(row.actor || (String(row.by).toLowerCase() === 'admin' ? 'Admin' : 'HR')).toLowerCase();
+            const isNew = fresh.has(row.at) && role !== 'admin';
+            const who = role === 'admin' ? 'admin' : 'hr';
             // A "Password Change Requested" line opens the approve / reject pop-up (it shows what happened to it, too)
             const req = row.kind === 'pw_request' && row.req ? row.req : null;
             const pill = req ? ' <span class="req-pill is-' + esc(req.status) + '" data-pill>' + esc(PILL[req.status] || req.status) + '</span>' : '';
@@ -4210,7 +4211,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 '<td>' + (isNew ? '<span class="new-dot" title="New since your last visit"></span>' : '') + esc(ADMIN.formatDate(row.at)) + '</td>' +
                 '<td title="' + esc(row.activity) + '"><strong>' + esc(row.activity) + '</strong></td>' +
                 '<td title="' + esc(row.details) + '">' + esc(row.details) + pill + '</td>' +
-                '<td><span class="role-tag ' + who + '">' + esc(row.by) + '</span></td>' +
+                '<td><span class="role-tag ' + who + '">' + esc(row.actor_name || row.by) + '</span></td>' +
             '</tr>';
         }).join('')
         : '<tr><td colspan="4" class="empty-row">No activity yet.</td></tr>';

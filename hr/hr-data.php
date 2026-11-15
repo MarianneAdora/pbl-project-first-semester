@@ -73,7 +73,7 @@ function static_accounts(): array
 // ---------------------------------------------------------------------------
 // Applicants, with their status, result and the time of their latest activity.
 //   status:  'Pending' | 'In Progress' | 'Completed'
-//   result:  'Passed' | 'Rejected' | null   (only a Completed screening has a result)
+//   result:  'Passed' | 'Rejected' | null   (HR may reject before screening completion)
 //   updated: newest event (applied OR status change), 'YYYY-MM-DD HH:MM'
 // ---------------------------------------------------------------------------
 function static_seed_applicants(): array
@@ -97,7 +97,7 @@ function static_stats(array $applicants): array
         'in_progress' => $count($is('status', 'In Progress')),
         'completed'   => $count($is('status', 'Completed')),
         'passed'      => $count(fn($a) => strtolower((string) $a['status']) === 'completed' && strtolower((string) $a['result']) === 'passed'),
-        'failed'      => $count(fn($a) => strtolower((string) $a['status']) === 'completed' && strtolower((string) $a['result']) === 'rejected')
+        'failed'      => $count(fn($a) => strtolower((string) $a['result']) === 'rejected')
     ];
 }
 

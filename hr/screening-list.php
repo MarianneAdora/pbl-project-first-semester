@@ -28,7 +28,7 @@ $per_page = 6;
 // Live data from the database (soft-deleted rows are excluded = the Archive).
 // Keep these keys: id, name, email, contact, status, result.
 //   status: 'Pending' | 'In Progress' | 'Completed' (mapped from the DB pipeline)
-//   result: 'Passed' | 'Rejected' | null (null = no result yet)
+//   result: 'Passed' | 'Rejected' | null (HR can reject an applicant before screening is complete)
 try {
     $applicants = repo_applicants_active();
 } catch (Throwable $e) {

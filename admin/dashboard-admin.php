@@ -67,6 +67,8 @@ foreach ($requests as $request) {
         'activity' => 'Password Change Requested',
         'details'  => $request['name'] . ' (HR) · ' . $request['email'],
         'by'       => 'HR',
+        'actor_name' => $request['name'],
+        'actor'    => 'HR',
         'kind'     => 'pw_request',
         'req'      => $request
     ];

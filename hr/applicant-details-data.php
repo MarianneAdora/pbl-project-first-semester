@@ -866,12 +866,21 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
     if (!$applicant) {
         details_respond(['status' => 'error', 'message' => 'That applicant was not found. They may have been moved to the Archive.'], 404);
     }
-    if (!details_access($applicant)['interview']) {
+    if ($action !== 'reject' && !details_access($applicant)['interview']) {
         details_respond(['status' => 'error', 'message' => details_locked_message('interview')], 403);
     }
 
     try {
         switch ($action) {
+            case 'reject':
+                require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
+                if (!repo_reject_applicant((int) $applicant['id'])) {
+                    details_respond(['status' => 'error', 'message' => 'That applicant could not be updated.'], 404);
+                }
+                require_once __DIR__ . '/../src/Repositories/ActivityRepository.php';
+                repo_log_activity('Applicant Status Changed', $applicant['name'] . ' · Rejected');
+                details_respond(['status' => 'success']);
+
             case 'interview_approve':
                 [$iv, $email] = details_interview_approve($applicant);
                 require_once __DIR__ . '/../src/Repositories/ActivityRepository.php';

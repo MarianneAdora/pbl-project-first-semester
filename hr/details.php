@@ -247,8 +247,11 @@ $pageData = [
             <div class="profile-status">
                 <span class="status-pill big <?php echo $pillClass[$status] ?? 'status-default'; ?>"><?php echo $h($status); ?></span>
                 <?php if ($resultLabel !== ''): ?>
-                    <span class="status-pill big <?php echo $resultClass; ?>"><?php echo $h($resultLabel); ?></span>
+                    <span class="status-pill big <?php echo $resultClass; ?>" data-applicant-result><?php echo $h($resultLabel); ?></span>
                 <?php endif; ?>
+                <button type="button" class="profile-reject-btn" id="rejectApplicantBtn"<?php echo $result === 'Rejected' ? ' disabled aria-disabled="true"' : ''; ?>>
+                    <?php echo $result === 'Rejected' ? 'Rejected' : 'Reject'; ?>
+                </button>
             </div>
         </section>
 
@@ -611,6 +614,21 @@ $pageData = [
 
         </section>
     </main>
+
+    <!-- Reject an applicant -->
+    <div class="modal-backdrop" id="rejectModal" aria-hidden="true">
+        <div class="modal-card reject-card" role="dialog" aria-modal="true" aria-labelledby="rejectTitle" aria-describedby="rejectDescription">
+            <div class="reject-modal-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+            </div>
+            <h3 id="rejectTitle">Reject this applicant?</h3>
+            <p id="rejectDescription"><strong><?php echo $h($applicant['name']); ?></strong> will be marked as rejected, regardless of their current screening status.</p>
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel" id="rejectCancel">Cancel</button>
+                <button type="button" class="btn-confirm" id="rejectConfirm">Reject Applicant</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Approve the interview schedule (an email goes out right after) -->
     <div class="modal-backdrop" id="approveModal" aria-hidden="true">

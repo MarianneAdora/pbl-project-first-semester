@@ -14,14 +14,16 @@ function repo_log_activity(string $activity, string $details = '-', ?string $act
     $sessionActor = $role === 'hr' ? 'HR' : 'Admin';
     if ($actor !== null && $actor !== $sessionActor) return;
     $actor = $sessionActor;
+    $actorName = trim((string) ($_SESSION['user_name'] ?? ''));
+    if ($actorName === '') $actorName = $actor;
     $pdo = $pdo ?: db();
     $details = trim($details);
     if ($details === '') $details = '-';
     try {
         $st = $pdo->prepare(
-            "INSERT INTO activity_log (actor, activity, details, created_at) VALUES (:a, :act, :d, NOW())"
+            "INSERT INTO activity_log (actor, actor_name, activity, details, created_at) VALUES (:a, :an, :act, :d, NOW())"
         );
-        $st->execute([':a' => $actor, ':act' => $activity, ':d' => $details]);
+        $st->execute([':a' => $actor, ':an' => $actorName, ':act' => $activity, ':d' => $details]);
     } catch (Throwable $e) {
         // never break the calling action because of logging; record the error for diagnosis
         error_log('repo_log_activity failed: ' . $e->getMessage() . ' @ ' . basename($e->getFile()) . ':' . $e->getLine());
@@ -32,7 +34,7 @@ function repo_recent_activity(?PDO $pdo = null, int $limit = 10): array
 {
     $pdo = $pdo ?: db();
     $st = $pdo->prepare(
-        "SELECT actor, activity, details, created_at FROM activity_log
+        "SELECT actor, actor_name, activity, details, created_at FROM activity_log
          WHERE actor IN ('HR', 'Admin')
          ORDER BY created_at DESC, log_id DESC LIMIT :lim"
     );
@@ -45,6 +47,8 @@ function repo_recent_activity(?PDO $pdo = null, int $limit = 10): array
             'activity' => (string) $r['activity'],
             'details'  => (string) $r['details'],
             'by'       => (string) $r['actor'],
+            'actor_name' => trim((string) $r['actor_name']) !== '' ? (string) $r['actor_name'] : (string) $r['actor'],
+            'actor'    => (string) $r['actor'],
         ];
     }
     return $out;

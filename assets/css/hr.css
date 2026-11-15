@@ -3246,9 +3246,31 @@ html:where([data-page="details"])[data-theme="dark"] .modal-backdrop {
 :where(html[data-page="details"]) .profile-line svg { width: 16px; height: 16px; fill: var(--d-faint); flex-shrink: 0; }
 :where(html[data-page="details"]) .profile-line span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-:where(html[data-page="details"]) .profile-status { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
+:where(html[data-page="details"]) .profile-status { display: flex; flex-direction: row; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; flex-shrink: 0; }
 
 :where(html[data-page="details"]) .status-pill.big { padding: 7px 22px; border-radius: 20px; font-size: 14px; }
+
+:where(html[data-page="details"]) .profile-reject-btn {
+    min-height: 32px;
+    padding: 0 11px;
+    border: 1px solid var(--d-red);
+    border-radius: 9px;
+    background: var(--d-red);
+    color: #ffffff;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+:where(html[data-page="details"]) .profile-reject-btn:hover:not(:disabled) {
+    box-shadow: 0 4px 12px rgba(163, 8, 30, 0.25);
+    transform: translateY(-1px);
+}
+
+:where(html[data-page="details"]) .profile-reject-btn:focus-visible { outline: 3px solid rgba(163, 8, 30, 0.35); outline-offset: 2px; }
+:where(html[data-page="details"]) .profile-reject-btn:disabled { opacity: 0.65; cursor: default; }
 
 /* ---- Tabs ---- */
 :where(html[data-page="details"]) .tabs {
@@ -4229,15 +4251,62 @@ html:where([data-page="details"])[data-theme="dark"] .iv-new-item svg { fill: #f
 :where(html[data-page="details"]) .approve-card .modal-actions button:disabled { opacity: 0.6; cursor: wait; transform: none; }
 :where(html[data-page="details"]) .approve-card .modal-actions button:focus-visible { outline: 3px solid rgba(163, 8, 30, 0.35); outline-offset: 2px; }
 
+:where(html[data-page="details"]) .modal-card.reject-card {
+    max-width: 410px;
+    padding: 22px 22px 20px;
+    text-align: center;
+}
+
+:where(html[data-page="details"]) .reject-modal-icon {
+    width: 42px;
+    height: 42px;
+    margin: 0 auto 12px;
+    display: grid;
+    place-items: center;
+    border-radius: 13px;
+    background: var(--d-red-soft);
+    color: var(--d-red);
+}
+
+:where(html[data-page="details"]) .reject-modal-icon svg { width: 24px; height: 24px; fill: currentColor; }
+:where(html[data-page="details"]) .reject-card h3 { margin-bottom: 7px; }
+:where(html[data-page="details"]) .reject-card p { margin-bottom: 16px; font-size: 13px; line-height: 1.5; color: var(--d-soft); overflow-wrap: anywhere; }
+:where(html[data-page="details"]) .reject-card p strong { color: var(--d-ink); font-weight: 800; }
+:where(html[data-page="details"]) .reject-card .modal-actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 8px; }
+:where(html[data-page="details"]) .reject-card .modal-actions button {
+    box-sizing: border-box;
+    min-width: 0;
+    height: 40px;
+    padding: 0 10px;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 800;
+}
+:where(html[data-page="details"]) .reject-card .btn-cancel { background: transparent; border: 1.5px solid var(--d-line); color: var(--d-ink); }
+:where(html[data-page="details"]) .reject-card .btn-cancel:hover { background: var(--d-sub); border-color: var(--d-faint); }
+:where(html[data-page="details"]) .reject-card .btn-confirm { background: #a3081e; border: 1.5px solid #a3081e; color: #ffffff; }
+:where(html[data-page="details"]) .reject-card .btn-confirm:hover:not(:disabled) { background: #820416; border-color: #820416; }
+:where(html[data-page="details"]) .reject-card .modal-actions button:disabled { opacity: 0.6; cursor: wait; transform: none; }
+:where(html[data-page="details"]) .reject-card .modal-actions button:focus-visible { outline: 3px solid rgba(163, 8, 30, 0.35); outline-offset: 2px; }
+
 html:where([data-page="details"])[data-theme="dark"] .approve-card .btn-cancel { background: transparent; border-color: #4a525c; color: #c9ced6; }
 html:where([data-page="details"])[data-theme="dark"] .approve-card .btn-cancel:hover { background: #272c33; }
 html:where([data-page="details"])[data-theme="dark"] .approve-card .btn-confirm { background: #ff6b80; border-color: #ff6b80; color: #2a0a10; }
 html:where([data-page="details"])[data-theme="dark"] .approve-card .btn-confirm:hover:not(:disabled) { background: #ff8595; border-color: #ff8595; }
 
+html:where([data-page="details"])[data-theme="dark"] .reject-card .btn-cancel { background: transparent; border-color: #4a525c; color: #c9ced6; }
+html:where([data-page="details"])[data-theme="dark"] .reject-card .btn-cancel:hover { background: #272c33; }
+html:where([data-page="details"])[data-theme="dark"] .reject-card .btn-confirm { background: #ff6b80; border-color: #ff6b80; color: #2a0a10; }
+html:where([data-page="details"])[data-theme="dark"] .reject-card .btn-confirm:hover:not(:disabled) { background: #ff8595; border-color: #ff8595; }
+
 @media (max-width: 440px) {
     :where(html[data-page="details"]) .modal-card.approve-card { padding: 24px 20px 20px; }
     :where(html[data-page="details"]) .approve-card .modal-actions { grid-template-columns: minmax(0, 1fr); }
     :where(html[data-page="details"]) .approve-card .btn-confirm { order: -1; }          /* the main answer first, easy to reach with a thumb */
+    :where(html[data-page="details"]) .modal-card.reject-card { padding: 20px 18px 18px; }
+    :where(html[data-page="details"]) .reject-card .modal-actions { grid-template-columns: minmax(0, 1fr); }
+    :where(html[data-page="details"]) .reject-card .btn-confirm { order: -1; }
 }
 
 @media (prefers-reduced-motion: reduce) {

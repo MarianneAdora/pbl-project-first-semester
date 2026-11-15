@@ -558,9 +558,9 @@ function repo_archive_applicants(array $ids, ?PDO $pdo = null): int
 }
 
 /**
- * Auto-archive rejected applicants 3 days after rejection, and passed applicants
- * 3 days after their latest confirmed/rescheduled interview time. Restoring a
- * terminal applicant resets the applicable timer.
+ * Auto-archive rejected applicants 3 days after rejection regardless of screening
+ * progress, and passed applicants 3 days after their latest confirmed/rescheduled
+ * interview time. Restoring a terminal applicant resets the applicable timer.
  */
 function repo_auto_archive_terminal_applicants(?PDO $pdo = null): int
 {
@@ -569,7 +569,6 @@ function repo_auto_archive_terminal_applicants(?PDO $pdo = null): int
         SELECT a.applicant_id
         FROM applicant a
         WHERE a.deleted_at IS NULL
-          AND LOWER(a.status) = 'completed'
           AND (
             (
                 LOWER(COALESCE(a.result, '')) = 'rejected'
@@ -579,6 +578,8 @@ function repo_auto_archive_terminal_applicants(?PDO $pdo = null): int
             )
             OR
             (
+                LOWER(a.status) = 'completed'
+                AND
                 LOWER(COALESCE(a.result, '')) = 'passed'
                 AND EXISTS (
                     SELECT 1
@@ -707,6 +708,23 @@ function repo_set_status(int $id, string $status, ?string $result = null): bool
     ];
     $st->execute($params);
 
+    return $st->rowCount() > 0;
+}
+
+/**
+ * Mark an active applicant rejected without changing their screening progress.
+ * Rejection is allowed before a screening has been completed.
+ */
+function repo_reject_applicant(int $id): bool
+{
+    $pdo = db();
+    $st = $pdo->prepare(
+        "UPDATE applicant SET result = 'rejected', passed_at = NULL, " .
+        "rejected_at = COALESCE(rejected_at, NOW() AT TIME ZONE 'Asia/Manila'), " .
+        "restored_at = CASE WHEN restored_at IS NOT NULL THEN NOW() AT TIME ZONE 'Asia/Manila' END " .
+        "WHERE applicant_id = :id AND deleted_at IS NULL"
+    );
+    $st->execute([':id' => $id]);
     return $st->rowCount() > 0;
 }
 
