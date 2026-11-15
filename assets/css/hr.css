@@ -4252,41 +4252,30 @@ html:where([data-page="details"])[data-theme="dark"] .iv-new-item svg { fill: #f
 :where(html[data-page="details"]) .approve-card .modal-actions button:focus-visible { outline: 3px solid rgba(163, 8, 30, 0.35); outline-offset: 2px; }
 
 :where(html[data-page="details"]) .modal-card.reject-card {
-    max-width: 410px;
-    padding: 22px 22px 20px;
+    max-width: 380px;
+    padding: 26px 26px 24px;
     text-align: center;
 }
 
-:where(html[data-page="details"]) .reject-modal-icon {
-    width: 42px;
-    height: 42px;
-    margin: 0 auto 12px;
-    display: grid;
-    place-items: center;
-    border-radius: 13px;
-    background: var(--d-red-soft);
-    color: var(--d-red);
-}
-
-:where(html[data-page="details"]) .reject-modal-icon svg { width: 24px; height: 24px; fill: currentColor; }
-:where(html[data-page="details"]) .reject-card h3 { margin-bottom: 7px; }
-:where(html[data-page="details"]) .reject-card p { margin-bottom: 16px; font-size: 13px; line-height: 1.5; color: var(--d-soft); overflow-wrap: anywhere; }
+:where(html[data-page="details"]) .reject-card h3 { margin-bottom: 8px; }
+:where(html[data-page="details"]) .reject-card p { margin-bottom: 22px; font-size: 13px; line-height: 1.5; color: var(--d-soft); overflow-wrap: anywhere; }
 :where(html[data-page="details"]) .reject-card p strong { color: var(--d-ink); font-weight: 800; }
-:where(html[data-page="details"]) .reject-card .modal-actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 8px; }
+:where(html[data-page="details"]) .reject-card .modal-actions { display: flex; gap: 12px; }
 :where(html[data-page="details"]) .reject-card .modal-actions button {
     box-sizing: border-box;
+    flex: 1;
     min-width: 0;
     height: 40px;
-    padding: 0 10px;
-    border-radius: 8px;
+    padding: 0 14px;
+    border-radius: 20px;
     font-family: inherit;
     font-size: 12.5px;
-    font-weight: 800;
+    font-weight: 700;
 }
-:where(html[data-page="details"]) .reject-card .btn-cancel { background: transparent; border: 1.5px solid var(--d-line); color: var(--d-ink); }
-:where(html[data-page="details"]) .reject-card .btn-cancel:hover { background: var(--d-sub); border-color: var(--d-faint); }
-:where(html[data-page="details"]) .reject-card .btn-confirm { background: #a3081e; border: 1.5px solid #a3081e; color: #ffffff; }
-:where(html[data-page="details"]) .reject-card .btn-confirm:hover:not(:disabled) { background: #820416; border-color: #820416; }
+:where(html[data-page="details"]) .reject-card .btn-cancel { background: #eeeeee; border: none; color: #444444; }
+:where(html[data-page="details"]) .reject-card .btn-cancel:hover { background: #e0e0e0; }
+:where(html[data-page="details"]) .reject-card .btn-confirm { background: #a3081e; border: none; color: #ffffff; font-weight: 800; }
+:where(html[data-page="details"]) .reject-card .btn-confirm:hover:not(:disabled) { background: #820416; }
 :where(html[data-page="details"]) .reject-card .modal-actions button:disabled { opacity: 0.6; cursor: wait; transform: none; }
 :where(html[data-page="details"]) .reject-card .modal-actions button:focus-visible { outline: 3px solid rgba(163, 8, 30, 0.35); outline-offset: 2px; }
 
@@ -4295,18 +4284,17 @@ html:where([data-page="details"])[data-theme="dark"] .approve-card .btn-cancel:h
 html:where([data-page="details"])[data-theme="dark"] .approve-card .btn-confirm { background: #ff6b80; border-color: #ff6b80; color: #2a0a10; }
 html:where([data-page="details"])[data-theme="dark"] .approve-card .btn-confirm:hover:not(:disabled) { background: #ff8595; border-color: #ff8595; }
 
-html:where([data-page="details"])[data-theme="dark"] .reject-card .btn-cancel { background: transparent; border-color: #4a525c; color: #c9ced6; }
+html:where([data-page="details"])[data-theme="dark"] .reject-card .btn-cancel { background: transparent; border: 1.5px solid #4a525c; color: #c9ced6; }
 html:where([data-page="details"])[data-theme="dark"] .reject-card .btn-cancel:hover { background: #272c33; }
 html:where([data-page="details"])[data-theme="dark"] .reject-card .btn-confirm { background: #ff6b80; border-color: #ff6b80; color: #2a0a10; }
-html:where([data-page="details"])[data-theme="dark"] .reject-card .btn-confirm:hover:not(:disabled) { background: #ff8595; border-color: #ff8595; }
+html:where([data-page="details"])[data-theme="dark"] .reject-card .btn-confirm:hover:not(:disabled) { background: #ff8595; }
 
 @media (max-width: 440px) {
     :where(html[data-page="details"]) .modal-card.approve-card { padding: 24px 20px 20px; }
     :where(html[data-page="details"]) .approve-card .modal-actions { grid-template-columns: minmax(0, 1fr); }
     :where(html[data-page="details"]) .approve-card .btn-confirm { order: -1; }          /* the main answer first, easy to reach with a thumb */
-    :where(html[data-page="details"]) .modal-card.reject-card { padding: 20px 18px 18px; }
-    :where(html[data-page="details"]) .reject-card .modal-actions { grid-template-columns: minmax(0, 1fr); }
-    :where(html[data-page="details"]) .reject-card .btn-confirm { order: -1; }
+    :where(html[data-page="details"]) .modal-card.reject-card { padding: 22px 20px 20px; }
+    :where(html[data-page="details"]) .reject-card .modal-actions { gap: 8px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

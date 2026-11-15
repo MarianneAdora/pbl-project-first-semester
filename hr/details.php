@@ -618,9 +618,6 @@ $pageData = [
     <!-- Reject an applicant -->
     <div class="modal-backdrop" id="rejectModal" aria-hidden="true">
         <div class="modal-card reject-card" role="dialog" aria-modal="true" aria-labelledby="rejectTitle" aria-describedby="rejectDescription">
-            <div class="reject-modal-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-            </div>
             <h3 id="rejectTitle">Reject this applicant?</h3>
             <p id="rejectDescription"><strong><?php echo $h($applicant['name']); ?></strong> will be marked as rejected, regardless of their current screening status.</p>
             <div class="modal-actions">
