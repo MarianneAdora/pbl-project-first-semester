@@ -40,6 +40,9 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {
     exit();
 }
 
+require_once __DIR__ . '/../src/Helpers/security.php';
+$csrf = csrf_token();
+
 date_default_timezone_set('Asia/Manila');
 
 // Login/dashboard data now comes from the database (applicant table).
@@ -290,6 +293,7 @@ function status_badge(string $status): string
 <html lang="en" data-page="dashboardhr">
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="<?php echo htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8'); ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HR Dashboard - Expertise Portal</title>
 

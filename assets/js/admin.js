@@ -3836,8 +3836,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const PILL = { pending: 'Needs approval', approved: 'Approved', rejected: 'Rejected', cancelled: 'Cancelled' };
     const body = document.getElementById('activityBody');
-    body.innerHTML = data.activity.length
-        ? data.activity.map((row, i) => {
+    function renderDashboardActivityRows(rows) {
+        return rows.length
+            ? rows.map((row, i) => {
             const role = String(row.actor || (String(row.by).toLowerCase() === 'admin' ? 'Admin' : 'HR')).toLowerCase();
             const isNew = fresh.has(row.at) && role !== 'admin';
             const who = role === 'admin' ? 'admin' : 'hr';
@@ -3853,6 +3854,8 @@ document.addEventListener('DOMContentLoaded', () => {
             '</tr>';
         }).join('')
         : '<tr><td colspan="4" class="empty-row">No activity yet.</td></tr>';
+    }
+    body.innerHTML = renderDashboardActivityRows(data.activity);
 
     /* ---------- 2b. HR password changes: click the line -> approve or reject ----------
        Each "Password Change Requested" line carries its live request (row.req). The pop-up reads it, and the answer goes to
@@ -4017,10 +4020,10 @@ document.addEventListener('DOMContentLoaded', () => {
             add:     'M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z',
             remove:  'M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z',
             restore: 'M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z',
+            download: 'M5 20h14v-2H5v2zm7-3 7-7h-4V3H9v7H5l7 7z',
             event:   'M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z',
             sync:    'M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z',
             done:    'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z',
-            dot:     'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z',
             person:  'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z',
             lock:    'M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z',
             cancel:  'M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z'
@@ -4038,6 +4041,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         const look = (activity) => {
             const a = String(activity).toLowerCase();
+            if (a.indexOf('dashboard report downloaded') !== -1) return { icon: ICONS.download, tone: 'tone-blue' };
             if (a.indexOf('hr change') !== -1) {
                 if (a.indexOf('approved') !== -1) return { icon: ICONS.done, tone: 'tone-green' };
                 if (a.indexOf('rejected') !== -1) return { icon: ICONS.cancel, tone: 'tone-red' };
@@ -4053,7 +4057,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (a.indexOf('added') !== -1) return { icon: ICONS.add, tone: 'tone-green' };
             if (a.indexOf('interview') !== -1) return { icon: ICONS.event, tone: 'tone-blue' };
             if (a.indexOf('status') !== -1) return { icon: ICONS.sync, tone: 'tone-amber' };
-            return { icon: ICONS.dot, tone: '' };
+            return { icon: ICONS.sync, tone: 'tone-blue' };
         };
         const svg = (d) => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + d + '"/></svg>';
         const SEEN_KEY = 'admin_activity_seen';
@@ -4293,14 +4297,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const pdfBtn = document.getElementById('statsPdfBtn');
     if (pdfBtn) {
         pdfBtn.addEventListener('click', () => {
-            if (!window.DashboardPdf) {
+            if (!window.DashboardPdf || !window.DashboardPdf.recordDownload) {
                 ADMIN.toast('The PDF maker is missing. Reload the dashboard and try again.', { error: true, duration: 5000 });
                 return;
             }
             pdfBtn.disabled = true;
             pdfBtn.classList.add('is-busy');
             // a short moment so the button can show it is working
-            setTimeout(() => {
+            setTimeout(async () => {
+                let downloaded = false;
                 try {
                     const now = new Date();
                     const day = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
@@ -4313,9 +4318,21 @@ document.addEventListener('DOMContentLoaded', () => {
                         volume: data.volume
                     }, { generated: now, by: (document.getElementById('greeting') || {}).title ? document.getElementById('greeting').title.replace(/^Hello,\s*|!$/g, '') : 'Admin' });
                     window.DashboardPdf.download(blob, 'Admin-Dashboard-Statistics-' + day + '.pdf');
-                    ADMIN.toast('PDF downloaded.', { duration: 3000 });
+                    downloaded = true;
+                    const recorded = await window.DashboardPdf.recordDownload('admin');
+                    if (recorded.activity) {
+                        data.activity = [recorded.activity].concat(data.activity.filter(row =>
+                            row.at !== recorded.activity.at || row.activity !== recorded.activity.activity ||
+                            row.details !== recorded.activity.details || row.by !== recorded.activity.by
+                        )).slice(0, 10);
+                        body.innerHTML = renderDashboardActivityRows(data.activity);
+                        ADMIN.notify.refresh();
+                    }
+                    ADMIN.toast('PDF downloaded and recorded in Recent Activities.', { duration: 3500 });
                 } catch (err) {
-                    ADMIN.toast('Could not make the PDF. Please try again.', { error: true, duration: 4000 });
+                    ADMIN.toast(downloaded
+                        ? 'PDF downloaded, but its Recent Activities entry could not be recorded: ' + err.message
+                        : 'Could not make the PDF. Please try again.', { error: true, duration: 5000 });
                 } finally {
                     pdfBtn.disabled = false;
                     pdfBtn.classList.remove('is-busy');

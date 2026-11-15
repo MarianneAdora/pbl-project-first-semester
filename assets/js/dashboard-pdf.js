@@ -503,7 +503,23 @@ if (['dashboardadmin', 'dashboardhr'].includes(document.documentElement.getAttri
         setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
     }
 
-    window.DashboardPdf = { build: build, download: download };
+    function recordDownload(report) {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        return fetch('../api/report-download.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ report: report, csrf_token: meta ? meta.content : '' })
+        }).then(
+            response => response.json().catch(() => { throw new Error('The server did not answer correctly. Please try again.'); }),
+            () => { throw new Error('Could not reach the server. Please check your connection and try again.'); }
+        ).then(data => {
+            if (data.status !== 'success') throw new Error(data.message || 'The activity could not be recorded.');
+            return data;
+        });
+    }
+
+    window.DashboardPdf = { build: build, download: download, recordDownload: recordDownload };
 })();
 }
 

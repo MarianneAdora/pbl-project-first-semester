@@ -7,12 +7,24 @@
 
 require_once __DIR__ . '/../Helpers/db.php';
 
-function repo_log_activity(string $activity, string $details = '-', ?string $actor = null, ?PDO $pdo = null): void
+function repo_activity_format(array $row): array
+{
+    return [
+        'at'         => $row['created_at'] ? date('Y-m-d H:i:s', strtotime((string) $row['created_at'])) : '',
+        'activity'   => (string) $row['activity'],
+        'details'    => (string) $row['details'],
+        'by'         => (string) $row['actor'],
+        'actor_name' => trim((string) $row['actor_name']) !== '' ? (string) $row['actor_name'] : (string) $row['actor'],
+        'actor'      => (string) $row['actor'],
+    ];
+}
+
+function repo_log_activity(string $activity, string $details = '-', ?string $actor = null, ?PDO $pdo = null): ?array
 {
     $role = (string) ($_SESSION['user_role'] ?? '');
-    if (!in_array($role, ['hr', 'admin'], true)) return;
+    if (!in_array($role, ['hr', 'admin'], true)) return null;
     $sessionActor = $role === 'hr' ? 'HR' : 'Admin';
-    if ($actor !== null && $actor !== $sessionActor) return;
+    if ($actor !== null && $actor !== $sessionActor) return null;
     $actor = $sessionActor;
     $actorName = trim((string) ($_SESSION['user_name'] ?? ''));
     if ($actorName === '') $actorName = $actor;
@@ -21,12 +33,17 @@ function repo_log_activity(string $activity, string $details = '-', ?string $act
     if ($details === '') $details = '-';
     try {
         $st = $pdo->prepare(
-            "INSERT INTO activity_log (actor, actor_name, activity, details, created_at) VALUES (:a, :an, :act, :d, NOW())"
+            "INSERT INTO activity_log (actor, actor_name, activity, details, created_at)
+             VALUES (:a, :an, :act, :d, NOW())
+             RETURNING actor, actor_name, activity, details, created_at"
         );
         $st->execute([':a' => $actor, ':an' => $actorName, ':act' => $activity, ':d' => $details]);
+        $row = $st->fetch();
+        return is_array($row) ? repo_activity_format($row) : null;
     } catch (Throwable $e) {
         // never break the calling action because of logging; record the error for diagnosis
         error_log('repo_log_activity failed: ' . $e->getMessage() . ' @ ' . basename($e->getFile()) . ':' . $e->getLine());
+        return null;
     }
 }
 
@@ -41,16 +58,7 @@ function repo_recent_activity(?PDO $pdo = null, int $limit = 10): array
     $st->bindValue(':lim', $limit, PDO::PARAM_INT);
     $st->execute();
     $out = [];
-    foreach ($st->fetchAll() as $r) {
-        $out[] = [
-            'at'       => $r['created_at'] ? date('Y-m-d H:i:s', strtotime((string) $r['created_at'])) : '',
-            'activity' => (string) $r['activity'],
-            'details'  => (string) $r['details'],
-            'by'       => (string) $r['actor'],
-            'actor_name' => trim((string) $r['actor_name']) !== '' ? (string) $r['actor_name'] : (string) $r['actor'],
-            'actor'    => (string) $r['actor'],
-        ];
-    }
+    foreach ($st->fetchAll() as $r) $out[] = repo_activity_format($r);
     return $out;
 }
 
