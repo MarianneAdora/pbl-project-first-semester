@@ -352,7 +352,7 @@ $greeting     = 'Hello, ' . $display_name . '!';
                     </div>
                     <div class="stats-tools">
                         <span class="stats-unit">Bar = % of applicants who chose the top answer</span>
-                        <button type="button" class="stats-download" id="statsPdfBtn" title="Download the results as a PDF file">
+                        <button type="button" class="stats-download" id="statsPdfBtn" title="Download dashboard statistics as a PDF file">
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
                             Download PDF
                         </button>
@@ -495,9 +495,19 @@ $greeting     = 'Hello, ' . $display_name . '!';
             try { echo json_encode(repo_admin_notify(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); }
             catch (Throwable $e) { echo json_encode(['activity' => [], 'recent' => [], 'expiring' => 0, 'days' => 7]); }
         ?>;
-        window.ADMIN_DASH = <?php echo json_encode(['stats' => $stats, 'activity' => $recent, 'volume' => $volume, 'pending' => $pending, 'pw_requests' => array_values(array_filter($requests, static fn(array $r): bool => $r['status'] === 'pending'))], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
+        window.ADMIN_DASH = <?php echo json_encode([
+            'stats' => $stats,
+            'overview' => ['hr_active' => $overview['hr_active'], 'questions' => $overview['questions'], 'sections' => $overview['sections']],
+            'failure' => $failure,
+            'risk' => $risk,
+            'activity' => $recent,
+            'volume' => $volume,
+            'pending' => $pending,
+            'pw_requests' => array_values(array_filter($requests, static fn(array $r): bool => $r['status'] === 'pending'))
+        ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
     </script>
     <!-- Shared admin behaviour first, then this page's script -->
+    <script src="../assets/js/dashboard-pdf.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/dashboard-pdf.js'); ?>"></script>
     <script src="../assets/js/admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/admin.js'); ?>"></script>
 </body>
 </html>

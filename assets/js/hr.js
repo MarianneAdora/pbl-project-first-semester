@@ -2471,6 +2471,40 @@ document.addEventListener('DOMContentLoaded', () => {
     const arrivedViaTransition = !!(window.HR && HR.arrivedViaTransition);
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+    const pdfBtn = document.getElementById('hrStatsPdfBtn');
+    if (pdfBtn) {
+        pdfBtn.addEventListener('click', () => {
+            if (!window.DashboardPdf || !window.HR_DASH) {
+                HR.toast('The dashboard PDF could not be loaded. Reload the page and try again.', { error: true, duration: 5000 });
+                return;
+            }
+            pdfBtn.disabled = true;
+            pdfBtn.classList.add('is-busy');
+            try {
+                const now = new Date();
+                const day = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+                const greeting = document.getElementById('greeting');
+                const by = greeting && greeting.title ? greeting.title.replace(/^Hello,\s*|!$/g, '') : 'HR';
+                const report = window.HR_DASH;
+                const blob = window.DashboardPdf.build({
+                    type: 'hr',
+                    stats: report.stats,
+                    funnel: report.funnel,
+                    duration: report.duration,
+                    turnaround: report.turnaround,
+                    pass_rate: report.pass_rate
+                }, { generated: now, by: by });
+                window.DashboardPdf.download(blob, 'HR-Dashboard-Statistics-' + day + '.pdf');
+                HR.toast('PDF downloaded.', { duration: 3000 });
+            } catch (err) {
+                HR.toast('Could not make the PDF. Please try again.', { error: true, duration: 4000 });
+            } finally {
+                pdfBtn.disabled = false;
+                pdfBtn.classList.remove('is-busy');
+            }
+        });
+    }
+
     // 0. Completed-screening notifications -----------------------------------
     //    Tell the shared helper who has completed, then mark rows / badge / chip.
     if (typeof completedIds !== 'undefined') HR.syncCompleted(completedIds);
@@ -2878,6 +2912,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function look(activity) {
         const a = String(activity).toLowerCase();
+        if (a.indexOf('hr change') !== -1) {
+            if (a.indexOf('approved') !== -1) return { icon: ICONS.done, tone: 'tone-green' };
+            if (a.indexOf('rejected') !== -1) return { icon: ICONS.cancel, tone: 'tone-red' };
+            return { icon: ICONS.person, tone: 'tone-blue' };
+        }
         if (a.indexOf('password') !== -1 && a.indexOf('approved') !== -1) return { icon: ICONS.done, tone: 'tone-green' };
         if (a.indexOf('password') !== -1 && a.indexOf('rejected') !== -1) return { icon: ICONS.cancel, tone: 'tone-red' };
         if (a.indexOf('password') !== -1) return { icon: ICONS.lock, tone: 'tone-amber' };
@@ -5358,24 +5397,19 @@ window.HRREQ = (function () {
     const isAdminRow = (a) => String(a.by).toLowerCase() === 'admin';
     const partsOf = (r) => [r.new_email ? 'email' : '', r.new_password ? 'password' : ''].filter(Boolean).join(' & ');
 
-    // FRONT-END PREVIEW: sample rows so the design can be seen before the backend exists (set DEMO to false to switch off)
-    const DEMO = true;
-    if (DEMO && !read('ebsmi_demo_seeded', false)) {
-        const ago = (min) => { const d = new Date(Date.now() - min * 60000); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()); };
-        write(KEY, [
-            { id: 1, hr_id: 9001, hr_name: 'Maria Santos', old_email: 'maria.santos@expertise.com', new_email: 'maria.s@gmail.com',
-              new_password: 'NewPass123', current_password: 'OldPass123', status: 'pending', created: ago(18), decided: null, applied: false },
-            { id: 2, hr_id: 9002, hr_name: 'John Reyes', old_email: 'john.reyes@expertise.com', new_email: 'j.reyes@gmail.com',
-              new_password: null, current_password: null, status: 'approved', created: ago(190), decided: ago(150), applied: true }
-        ]);
-        write(ACT, [
-            { id: 'seed1', at: ago(18),  activity: 'HR Change Request',  details: 'Maria Santos (HR) · email & password · waiting for approval', by: 'HR',    ref: 1,    hr_id: 9001, read: false },
-            { id: 'seed2', at: ago(60),  activity: 'HR Name Changed',    details: 'Mariaa Santos → Maria Santos',                                 by: 'HR',    ref: null, hr_id: 9001, read: false },
-            { id: 'seed3', at: ago(150), activity: 'HR Change Approved', details: 'John Reyes (HR) · email',                                      by: 'Admin', ref: 2,    hr_id: 9002, read: false },
-            { id: 'seed4', at: ago(190), activity: 'HR Change Request',  details: 'John Reyes (HR) · email · waiting for approval',               by: 'HR',    ref: 2,    hr_id: 9002, read: true }
-        ]);
-        write('ebsmi_demo_seeded', true);
-    }
+    // Remove preview rows saved by earlier versions from this browser.
+    (function removePreviewData() {
+        const requests = read(KEY, []);
+        const cleanRequests = requests.filter(r =>
+            !((Number(r.id) === 1 && Number(r.hr_id) === 9001) ||
+              (Number(r.id) === 2 && Number(r.hr_id) === 9002))
+        );
+        if (cleanRequests.length !== requests.length) write(KEY, cleanRequests);
+
+        const activity = read(ACT, []);
+        const cleanActivity = activity.filter(r => !/^seed[1-4]$/.test(String(r.id)));
+        if (cleanActivity.length !== activity.length) write(ACT, cleanActivity);
+    })();
 
     // Rows saved by an older version of this file have no id / read / hr_id: they count as already read
     (function migrate() {

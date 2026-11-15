@@ -430,6 +430,10 @@ function status_badge(string $status): string
             </div>
 
             <div class="header-tools">
+            <button type="button" class="hr-pdf-download" id="hrStatsPdfBtn" title="Download dashboard statistics as a PDF file">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                Download PDF
+            </button>
             <!-- Notification bell: your recent activity (the Admin sees the same lines) + completed screenings to review -->
             <div class="notif-wrap">
                 <button type="button" class="notif-bell" id="notifBell" aria-haspopup="true" aria-expanded="false" aria-controls="notifPanel" aria-label="Notifications" title="Notifications">
@@ -764,6 +768,13 @@ function status_badge(string $status): string
         window.DASH_INSIGHTS = <?php echo json_encode([
             'duration' => ['labels' => $duration['labels'], 'titles' => $duration['titles'], 'counts' => $duration['counts'], 'n' => $duration['n']]
         ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+        window.HR_DASH = <?php echo json_encode([
+            'stats' => $stats,
+            'funnel' => $funnel,
+            'duration' => $duration,
+            'turnaround' => $turnaround,
+            'pass_rate' => $pass_rate
+        ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
         // HR's recent activity (the bell in the header)
         window.HR_ACTIVITY = <?php echo json_encode($hr_feed, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
     </script>
@@ -787,6 +798,7 @@ function status_badge(string $status): string
         echo json_encode($archiveSync, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
     ?>;</script>
     <script>window.HR_ACCOUNT = <?php echo json_encode(['id' => (int) ($_SESSION['user_id'] ?? 0)], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
+    <script src="../assets/js/dashboard-pdf.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/dashboard-pdf.js'); ?>"></script>
     <script src="../assets/js/hr.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/hr.js'); ?>"></script>
 </body>
 </html>
