@@ -622,6 +622,7 @@ window.ADMIN = (function () {
                 const n = res && res.data && res.data.notify;
                 if (!n) return;
                 notify.activity = Array.isArray(n.activity) ? n.activity : [];
+                if (Array.isArray(n.recent)) notify.recent = n.recent;
                 if (n.days) notify.days = n.days;
                 expiring = Math.max(0, Number(n.expiring) || 0);
                 refreshBadges();
@@ -4137,12 +4138,12 @@ if (document.documentElement.getAttribute('data-page') === 'dashboardadmin') {
 document.addEventListener('DOMContentLoaded', () => {
     const data = window.ADMIN_DASH || { stats: { sections: [], questions: [], submissions: 0 }, activity: [] };
     const esc = ADMIN.esc;
-    const BELL_SEEN_KEY = 'admin_notification_seen';
+    const BELL_SEEN_KEY = 'admin_notification_seen_v2';
     let bellSeenAt;
     try {
         bellSeenAt = localStorage.getItem(BELL_SEEN_KEY);
         if (bellSeenAt === null) {
-            bellSeenAt = localStorage.getItem('admin_activity_seen') || '';
+            bellSeenAt = '';
             localStorage.setItem(BELL_SEEN_KEY, bellSeenAt);
         }
     } catch (err) {
@@ -4416,23 +4417,28 @@ document.addEventListener('DOMContentLoaded', () => {
         let fresh = new Set();
         let lastCount = -1;
 
-        const serverUnseen = () => (window.ADMIN_NOTIFY && Array.isArray(window.ADMIN_NOTIFY.activity) ? window.ADMIN_NOTIFY.activity : [])
-            .filter(at => String(at) > bellSeenAt);
-        const newActivity = () => {
-            const unseenAt = new Set(serverUnseen().map(String));
-            const serverRows = data.activity.filter(r => unseenAt.has(String(r.at)) && String(r.by).toLowerCase() !== 'admin');
-            const hrRows = window.HRREQ ? HRREQ.adminUnread() : [];
-            return serverRows.concat(hrRows);
+        const activityRows = () => {
+            const serverRows = window.ADMIN_NOTIFY && Array.isArray(window.ADMIN_NOTIFY.recent) ? window.ADMIN_NOTIFY.recent : [];
+            const hrRows = window.HRREQ ? HRREQ.activity().filter(r => String(r.by).toLowerCase() !== 'admin') : [];
+            const rows = data.activity.concat(serverRows, hrRows);
+            const seen = new Set();
+            return rows.filter(row => {
+                const key = String(row.at) + '|' + rowActivityKey(row) + '|' + String(row.by).toLowerCase();
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            }).sort((a, b) => String(b.at).localeCompare(String(a.at)));
         };
+        const newActivity = () => activityRows().slice(0, 20).filter(row => String(row.at) > bellSeenAt);
         const unreadPw = () => Object.values(pwReqs).filter(r => r.status === 'pending');
 
         function markBellSeen() {
-            bellSeenAt = serverUnseen().reduce((seen, at) => String(at) > seen ? String(at) : seen, bellSeenAt);
+            bellSeenAt = activityRows().reduce((seen, row) => String(row.at) > seen ? String(row.at) : seen, bellSeenAt);
             try { localStorage.setItem(BELL_SEEN_KEY, bellSeenAt); } catch (err) { /* storage unavailable */ }
         }
 
         function paintBadge() {
-            const total = serverUnseen().length + ADMIN.notify.unreadChanges() + unreadPw().length;
+            const total = newActivity().length + unreadPw().length;
             abadge.textContent = total > 99 ? '99+' : String(total);
             abadge.hidden = total <= 0;
             abell.classList.toggle('has-notifications', total > 0);
@@ -4448,11 +4454,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         function paintList() {
-            const localRows = window.HRREQ ? HRREQ.activity().filter(r => String(r.by).toLowerCase() !== 'admin') : [];
-            const keys = new Set(data.activity.map(r => String(r.at) + '|' + rowActivityKey(r)));
-            const acts = data.activity.concat(localRows.filter(r => !keys.has(String(r.at) + '|' + rowActivityKey(r))))
-                .sort((a, b) => String(b.at).localeCompare(String(a.at)))
-                .slice(0, 20);
+            const acts = activityRows().slice(0, 20);
             let html = '';
             acts.forEach(row => {
                 const l = look(row.activity);

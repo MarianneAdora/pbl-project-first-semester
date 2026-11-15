@@ -158,6 +158,7 @@ function repo_admin_notify(?PDO $pdo = null): array
         "SELECT created_at FROM activity_log WHERE actor = 'HR' ORDER BY created_at DESC, log_id DESC LIMIT 100"
     )->fetchAll();
     $activity = array_map(fn($r) => date('Y-m-d H:i:s', strtotime((string) $r['created_at'])), $rows);
+    $recent = repo_recent_activity($pdo, 100);
 
     $days = 7;
     $expiring = (int) $pdo->query(
@@ -167,7 +168,7 @@ function repo_admin_notify(?PDO $pdo = null): array
         "  SELECT deleted_at FROM question_config WHERE deleted_at IS NOT NULL" .
         ") t WHERE deleted_at > NOW() - INTERVAL '30 days' AND deleted_at < NOW() - INTERVAL '" . (30 - $days) . " days'"
     )->fetchColumn();
-    return ['activity' => $activity, 'expiring' => $expiring, 'days' => $days];
+    return ['activity' => $activity, 'recent' => $recent, 'expiring' => $expiring, 'days' => $days];
 }
 
 // ---------------------------------------------------------------------------

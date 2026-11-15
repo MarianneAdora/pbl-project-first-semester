@@ -2974,6 +2974,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const total = notifyOn() ? unread().length + completedLeft() + unreadDecisions().length : 0;
         badge.textContent = total > 99 ? '99+' : String(total);
         badge.hidden = total <= 0;
+        bell.classList.toggle('has-notifications', total > 0);
         bell.setAttribute('aria-label', total > 0 ? 'Notifications, ' + total + ' new' : 'Notifications');
         bell.title = total > 0 ? total + ' new notification' + (total === 1 ? '' : 's') : 'Notifications';
         if (total > lastCount && lastCount >= 0) {

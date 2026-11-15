@@ -2070,7 +2070,8 @@ html.js.is-ready.is-leaving .reveal {
     background: #f6f7f9;
     border-color: #d5d9de;
     transform: translateY(-2px) scale(1.04);
-    outline: none;
+    outline: 2px solid #f0586e;
+    outline-offset: 2px;
 }
 
 :where(html[data-page="dashboardhr"]) .legend-text { flex: 1; text-align: left; }
@@ -2540,8 +2541,9 @@ html.js.is-ready:where([data-page="dashboardhr"]) .fn-stage {
 :where(html[data-page="dashboardhr"]) .fn-stage:focus-visible,
 :where(html[data-page="dashboardhr"]) .fn-count:focus,
 :where(html[data-page="dashboardhr"]) .fn-count:focus-visible {
-    outline: none;
-    box-shadow: none;
+    outline: 2px solid #f0586e;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px rgba(240, 88, 110, 0.15);
 }
 :where(html[data-page="dashboardhr"]) .fl-item.is-active { background: #f6f7f9; border-color: #d5d9de; transform: translateY(-2px) scale(1.04); }
 
@@ -2878,14 +2880,19 @@ html.js.is-ready:where([data-page="dashboardhr"]) .fl-item {
 
 :where(html[data-page="dashboardhr"]) .notif-bell:hover {
     transform: translateY(-2px);
-    border-color: #f0586e;
-    color: #f0586e;
-    box-shadow: 0 10px 22px rgba(240, 88, 110, 0.22);
+    border-color: #a3081e;
+    color: #a3081e;
+    box-shadow: 0 10px 22px rgba(163, 8, 30, 0.22);
 }
 
 :where(html[data-page="dashboardhr"]) .notif-bell:active { transform: translateY(0) scale(0.96); }
-:where(html[data-page="dashboardhr"]) .notif-bell:focus-visible { outline: 2px solid #f0586e; outline-offset: 3px; }
-:where(html[data-page="dashboardhr"]) .notif-bell[aria-expanded="true"] { border-color: #f0586e; color: #f0586e; }
+:where(html[data-page="dashboardhr"]) .notif-bell:focus-visible { outline: 2px solid #a3081e; outline-offset: 3px; }
+:where(html[data-page="dashboardhr"]) .notif-bell[aria-expanded="true"] { border-color: #a3081e; color: #a3081e; }
+:where(html[data-page="dashboardhr"]) .notif-bell.has-notifications {
+    border-color: #a3081e;
+    color: #a3081e;
+    box-shadow: 0 4px 15px rgba(163, 8, 30, 0.22);
+}
 
 :where(html[data-page="dashboardhr"]) .notif-bell svg {
     width: 22px;
@@ -2917,7 +2924,7 @@ html.js.is-ready:where([data-page="dashboardhr"]) .fl-item {
     align-items: center;
     justify-content: center;
     border-radius: 999px;
-    background: #e60000;
+    background: #a3081e;
     color: #ffffff;
     font-size: 12px;
     font-weight: 800;

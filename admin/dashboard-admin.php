@@ -491,7 +491,7 @@ $greeting     = 'Hello, ' . $display_name . '!';
     <script>
         window.ADMIN_NOTIFY = <?php
             try { echo json_encode(repo_admin_notify(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); }
-            catch (Throwable $e) { echo json_encode(['activity' => [], 'expiring' => 0, 'days' => 7]); }
+            catch (Throwable $e) { echo json_encode(['activity' => [], 'recent' => [], 'expiring' => 0, 'days' => 7]); }
         ?>;
         window.ADMIN_DASH = <?php echo json_encode(['stats' => $stats, 'activity' => $recent, 'volume' => $volume, 'pending' => $pending, 'pw_requests' => array_values(array_filter($requests, static fn(array $r): bool => $r['status'] === 'pending'))], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
     </script>
