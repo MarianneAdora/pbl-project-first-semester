@@ -239,7 +239,7 @@ function repo_find_applicant(int $id, ?PDO $pdo = null, bool $includeUnverified 
     $pdo = $pdo ?: db();
     $verifiedFilter = $includeUnverified ? '' : ' AND verified_at IS NOT NULL';
     $st = $pdo->prepare(
-        "SELECT applicant_id, name, email, phone_number, status, result, reference_code, secure_token, cv_file_url, position_id, created_at" .
+        "SELECT applicant_id, name, email, phone_number, status, result, rejection_reason, reference_code, secure_token, cv_file_url, position_id, created_at" .
         " FROM applicant WHERE applicant_id = :id AND deleted_at IS NULL" . $verifiedFilter . " LIMIT 1"
     );
     $st->execute([':id' => $id]);
@@ -265,7 +265,7 @@ function repo_find_applicant_by_token(string $token, ?PDO $pdo = null): ?array
     $token = trim($token);
     if ($token === '') return null;
     $st = $pdo->prepare(
-        "SELECT applicant_id, name, email, phone_number, status, result, reference_code, secure_token, cv_file_url, created_at" .
+        "SELECT applicant_id, name, email, phone_number, status, result, rejection_reason, reference_code, secure_token, cv_file_url, created_at" .
         " FROM applicant WHERE secure_token = :t AND deleted_at IS NULL" .
         " AND (verified_at IS NOT NULL OR created_at > NOW() - INTERVAL '" . INVITE_LIFETIME_DAYS . " days') LIMIT 1"
     );
@@ -291,7 +291,7 @@ function repo_find_applicant_by_email(string $email, ?PDO $pdo = null): ?array
     $email = repo_normalize_email($email);
     if ($email === '') return null;
     $st = $pdo->prepare(
-        "SELECT applicant_id, name, email, phone_number, status, result, reference_code, secure_token, cv_file_url, position_id, created_at" .
+        "SELECT applicant_id, name, email, phone_number, status, result, rejection_reason, reference_code, secure_token, cv_file_url, position_id, created_at" .
         " FROM applicant WHERE email_normalized = :e AND deleted_at IS NULL AND verified_at IS NOT NULL LIMIT 1"
     );
     $st->execute([':e' => $email]);

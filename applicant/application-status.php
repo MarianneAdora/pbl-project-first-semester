@@ -52,9 +52,17 @@ require_once __DIR__ . '/../src/Services/EmailService.php';
 $applicantRowForResult = repo_find_applicant((int) ($_SESSION['applicant_id'] ?? 0));
 $dbResult  = (string) ($applicantRowForResult['result'] ?? '');
 $dbStatus  = (string) ($applicantRowForResult['status'] ?? '');
+$dbReason  = (string) ($applicantRowForResult['rejection_reason'] ?? '');
+
+// A manual HR rejection (before the applicant ever answered the questionnaire)
+// has result='rejected' but status is NOT 'completed'. A questionnaire failure
+// has status='completed'. Distinguish them so the page shows a different message.
+$dbManuallyRejected = ($dbResult === 'rejected' && strtolower($dbStatus) !== 'completed');
 
 if (in_array(strtolower($dbResult), ['accepted', 'passed'], true)) {
     $outcome = 'passed';
+} elseif ($dbManuallyRejected) {
+    $outcome = 'failed';
 } elseif (in_array(strtolower($dbResult), ['rejected', 'failed'], true)) {
     $outcome = 'failed';
 } else {
@@ -63,12 +71,14 @@ if (in_array(strtolower($dbResult), ['accepted', 'passed'], true)) {
 }
 
 $result = [
-    'outcome' => $outcome,
-    'band'    => '',
-    'points'  => 0,
-    'factors' => [],
-    'knockouts' => [],
-    'unmet'   => [],
+    'outcome'      => $outcome,
+    'manually'     => $dbManuallyRejected,
+    'band'         => '',
+    'points'       => 0,
+    'factors'      => [],
+    'knockouts'    => [],
+    'unmet'        => [],
+    'reason'       => $dbReason,
 ];
 
 if ($devMode && in_array($_GET['demo'] ?? '', ['passed', 'failed', 'review'], true)) {
@@ -88,7 +98,7 @@ if ($outcome === 'failed' && empty($_SESSION['rejection_email_sent'])) {
     $fullName  = (string) ($_SESSION['applicant_name'] ?? '');
     if ($toEmail !== '' && $fullName !== '') {
         $emailService = new EmailService();
-        $emailService->sendScreeningRejectedEmail($toEmail, $fullName);
+        $emailService->sendScreeningRejectedEmail($toEmail, $fullName, $dbReason);
         $_SESSION['rejection_email_sent'] = true;
     }
 }
@@ -433,14 +443,26 @@ $iconChevron  = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6
     </section>
 
     <?php else: ?>
-    <!-- ===== 2c. Failed: a message, and that is all ===== -->
+    <!-- ===== 2c. Failed: manual HR rejection or questionnaire failure ===== -->
     <section class="status view view--result">
         <?= $bigCross ?>
+        <?php if ($result['manually'] ?? false): ?>
+        <!-- Manually rejected by HR before the applicant answered the questionnaire -->
+        <h1 class="status__title reveal" style="--i:2">Application Not Moved Forward</h1>
+        <p class="status__text reveal" style="--i:3">Thank you for your interest in joining Expertise. After reviewing your application, we will not be moving forward with your candidacy for this position at this time.</p>
+        <?php else: ?>
+        <!-- Failed after answering the questionnaire -->
         <h1 class="status__title reveal" style="--i:2">Screening Not Passed</h1>
         <p class="status__text reveal" style="--i:3">Thank you for your interest in joining Expertise. Unfortunately, you did not meet the requirements for this position at this time.</p>
+        <?php endif; ?>
 
         <div class="panel reveal" style="--i:4">
-            <?php if (!empty($result['unmet']) && ($result['outcome'] ?? '') === 'failed'): ?>
+            <?php if (!empty($dbReason)): ?>
+                <h2 class="panel__title">Reason</h2>
+                <p class="panel__text"><?= htmlspecialchars((string) $dbReason) ?></p>
+            <?php elseif ($result['manually'] ?? false): ?>
+                <p class="panel__text">We appreciate your interest and wish you the best in your job search.</p>
+            <?php elseif (!empty($result['unmet']) && ($result['outcome'] ?? '') === 'failed'): ?>
                 <h2 class="panel__title">Requirements not met</h2>
                 <ul class="unmet">
                     <?php foreach ($result['unmet'] as $text): ?>

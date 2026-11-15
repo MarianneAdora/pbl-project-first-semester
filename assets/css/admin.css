@@ -2780,9 +2780,18 @@ html:where([data-page="dashboardadmin"])[data-theme="dark"] .vol-chart { --vc: #
 :where(html[data-page="dashboardadmin"]) .activity-card .data-table th:last-child, :where(html[data-page="dashboardadmin"]) .activity-card .data-table td:last-child { padding-right: 20px; }
 
 /* activities recorded since the Admin last opened the Dashboard */
-:where(html[data-page="dashboardadmin"]) .activity-card .data-table tbody tr.is-new { background-color: color-mix(in srgb, var(--red-bright) 6%, transparent); }
-:where(html[data-page="dashboardadmin"]) .activity-card .data-table tbody tr.is-new td strong { font-weight: 800; }
-:where(html[data-page="dashboardadmin"]) .activity-card .data-table tbody tr.is-new:hover { background-color: color-mix(in srgb, var(--red-bright) 11%, transparent); }
+:where(html[data-page="dashboardadmin"]) .activity-card .data-table tbody tr.is-new {
+    background-color: color-mix(in srgb, var(--red-bright) 8%, var(--surface));
+}
+:where(html[data-page="dashboardadmin"]) .activity-card .data-table tbody tr.is-new td:first-child {
+    box-shadow: inset 3px 0 0 var(--red-bright);
+}
+:where(html[data-page="dashboardadmin"]) .activity-card .data-table tbody tr.is-new td strong {
+    font-weight: 800;
+}
+:where(html[data-page="dashboardadmin"]) .activity-card .data-table tbody tr.is-new:hover {
+    background-color: color-mix(in srgb, var(--red-bright) 13%, var(--surface));
+}
 
 :where(html[data-page="dashboardadmin"]) .empty-row { padding: 34px 10px !important; text-align: center; color: var(--ink-soft); font-weight: 600; }
 

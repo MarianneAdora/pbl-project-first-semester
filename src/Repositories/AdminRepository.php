@@ -155,7 +155,7 @@ function repo_admin_notify(?PDO $pdo = null): array
 {
     $pdo = $pdo ?: db();
     $rows = $pdo->query(
-        "SELECT created_at FROM activity_log WHERE actor = 'HR' ORDER BY created_at DESC, log_id DESC LIMIT 100"
+        "SELECT created_at FROM (SELECT created_at, log_id AS ord FROM activity_log WHERE actor IN ('HR', 'Admin') UNION ALL SELECT created_at, request_id AS ord FROM password_requests) act ORDER BY created_at DESC, ord DESC LIMIT 100"
     )->fetchAll();
     $activity = array_map(fn($r) => date('Y-m-d H:i:s', strtotime((string) $r['created_at'])), $rows);
     $recent = repo_recent_activity($pdo, 100);

@@ -443,8 +443,8 @@ window.ADMIN = (function () {
         return notifyOn('activity') && window.HRREQ ? HRREQ.adminUnread().length : 0;
     }
 
-    function markActivitySeen() {
-        const newest = (notify.activity || []).reduce((a, b) => (b > a ? b : a), readSeen());
+    function markActivitySeen(customTimestamp) {
+        const newest = customTimestamp || (notify.activity || []).reduce((a, b) => (b > a ? b : a), readSeen());
         try { localStorage.setItem(SEEN_KEY, newest); } catch (err) { /* storage unavailable */ }
         try { window.HRREQ && window.HRREQ.markAdminRead(); } catch (err) { /* storage unavailable */ }
         refreshBadges();
@@ -3776,6 +3776,8 @@ if (document.documentElement.getAttribute('data-page') === 'dashboardadmin') {
 document.addEventListener('DOMContentLoaded', () => {
     const data = window.ADMIN_DASH || { stats: { sections: [], questions: [], submissions: 0 }, activity: [] };
     const esc = ADMIN.esc;
+    const SEEN_KEY = 'admin_activity_seen';
+    const DASH_SEEN_KEY = 'admin_dashboard_last_seen_at';
     const BELL_SEEN_KEY = 'admin_notification_seen_v2';
     let bellSeenAt;
     try {
@@ -3831,16 +3833,37 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /* ---------- 2. Recent Activities (latest 10) + the "new" marks ---------- */
-    // What HR did since the Admin last opened the Dashboard (read BEFORE it is marked as seen)
-    const fresh = new Set(ADMIN.notify.unseen());
+    // What was recorded since the Admin last checked the Dashboard (read BEFORE it is marked as seen)
+    let seenAt = '';
+    try {
+        const stored = localStorage.getItem(DASH_SEEN_KEY);
+        if (stored !== null && stored !== '') {
+            seenAt = stored;
+        } else {
+            // First check baseline: if there are rows, baseline to older rows
+            // so current new activities (such as recent downloads/actions) are highlighted
+            if (data.activity && data.activity.length >= 3) {
+                seenAt = data.activity[2].at || '';
+            } else if (data.activity && data.activity.length >= 2) {
+                seenAt = data.activity[1].at || '';
+            } else {
+                seenAt = '';
+            }
+        }
+    } catch (e) {
+        seenAt = '';
+    }
 
     const PILL = { pending: 'Needs approval', approved: 'Approved', rejected: 'Rejected', cancelled: 'Cancelled' };
     const body = document.getElementById('activityBody');
+
+    const latestAt = (data.activity || []).reduce((max, r) => (r.at && r.at > max ? r.at : max), seenAt || '');
+
     function renderDashboardActivityRows(rows) {
-        return rows.length
+        return rows && rows.length
             ? rows.map((row, i) => {
             const role = String(row.actor || (String(row.by).toLowerCase() === 'admin' ? 'Admin' : 'HR')).toLowerCase();
-            const isNew = fresh.has(row.at) && role !== 'admin';
+            const isNew = Boolean(seenAt && row.at && row.at > seenAt);
             const who = role === 'admin' ? 'admin' : 'hr';
             // A "Password Change Requested" line opens the approve / reject pop-up (it shows what happened to it, too)
             const req = row.kind === 'pw_request' && row.req ? row.req : null;
@@ -3855,7 +3878,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }).join('')
         : '<tr><td colspan="4" class="empty-row">No activity yet.</td></tr>';
     }
-    body.innerHTML = renderDashboardActivityRows(data.activity);
+    if (body) {
+        body.innerHTML = renderDashboardActivityRows(data.activity);
+    }
 
     /* ---------- 2b. HR password changes: click the line -> approve or reject ----------
        Each "Password Change Requested" line carries its live request (row.req). The pop-up reads it, and the answer goes to
@@ -3971,39 +3996,36 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(updateListFade, 900);                 // again once the entrance animation has settled
     }
 
-    // The "N new" chip counts what is still highlighted: the server's rows since the last visit (this visit only)
-    // plus the HR changes nobody opened yet (those stay until the Admin opens or decides them)
+    // The "N new" chip counts what is newly highlighted on this visit
     const chip = document.getElementById('newChip');
-    const serverNew = data.activity.filter(r => fresh.has(r.at) && String(r.by).toLowerCase() !== 'admin').length;
+    const serverNew = (data.activity || []).filter(r => Boolean(seenAt && r.at && r.at > seenAt)).length;
     let lastUnread = 0;
     function paintChip() {
-        const hr = ADMIN.notify.unreadChanges();
-        const n = serverNew + hr;
-        chip.textContent = n + ' new';
-        chip.hidden = n <= 0;
-        lastUnread = hr;
+        const n = serverNew;
+        if (chip) {
+            chip.textContent = n + ' new';
+            chip.hidden = n <= 0;
+        }
         return n;
-    }
-    // redraw the list, the chip and the sidebar badge after something was read, decided or received
-    function refreshActivityUI() {
-        renderActivity(allActivity(), false);
-        updateListFade();
-        paintChip();
-        ADMIN.notify.refresh();
     }
 
     const newCount = paintChip();
     if (newCount > 0) {
-        const waiting = HRREQ.list().filter(r => r.status === 'pending').length;
-        setTimeout(() => ADMIN.toast(newCount + ' new HR ' + (newCount === 1 ? 'update' : 'updates') + '.' +
+        const waiting = (window.HRREQ ? HRREQ.list() : []).filter(r => r.status === 'pending').length;
+        setTimeout(() => ADMIN.toast(newCount + ' new ' + (newCount === 1 ? 'activity' : 'activities') + ' recorded.' +
             (waiting ? ' ' + waiting + ' waiting for your approval.' : ''), {
             actionLabel: 'View',
             duration: 6000,
             onAction: jumpToActivities
         }), ADMIN.arrivedViaTransition ? 1500 : 900);
     }
-    // Opening the Dashboard counts as "seen" for the server's rows. HR changes stay highlighted until opened / decided.
-    ADMIN.notify.markSeen();
+    // Opening / checking the Dashboard marks all currently displayed activities as seen.
+    // When the page refreshes, those rows are now <= seenAt and render white like old records.
+    if (latestAt) {
+        try { localStorage.setItem(DASH_SEEN_KEY, latestAt); } catch (e) {}
+        try { localStorage.setItem(SEEN_KEY, latestAt); } catch (e) {}
+    }
+    ADMIN.notify.markSeen(latestAt);
 
     /* ---------- 2b. Admin notification bell (recent activities + pending password approvals) ---------- */
     const abell = document.getElementById('notifBell');
@@ -4143,7 +4165,6 @@ document.addEventListener('DOMContentLoaded', () => {
             apanel.hidden = false;
             abell.setAttribute('aria-expanded', 'true');
             markBellSeen();
-            markActivitySeen();
             paintList();
         }
         function rowActivityKey(r) { return r.activity + '|' + r.details; }
@@ -4320,12 +4341,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     window.DashboardPdf.download(blob, 'Admin-Dashboard-Statistics-' + day + '.pdf');
                     downloaded = true;
                     const recorded = await window.DashboardPdf.recordDownload('admin');
-                    if (recorded.activity) {
+                    if (recorded && recorded.activity) {
                         data.activity = [recorded.activity].concat(data.activity.filter(row =>
                             row.at !== recorded.activity.at || row.activity !== recorded.activity.activity ||
                             row.details !== recorded.activity.details || row.by !== recorded.activity.by
                         )).slice(0, 10);
-                        body.innerHTML = renderDashboardActivityRows(data.activity);
+                        if (body) {
+                            body.innerHTML = renderDashboardActivityRows(data.activity);
+                        }
+                        if (recorded.activity.at) {
+                            try { localStorage.setItem(SEEN_KEY, recorded.activity.at); } catch (e) {}
+                        }
                         ADMIN.notify.refresh();
                     }
                     ADMIN.toast('PDF downloaded and recorded in Recent Activities.', { duration: 3500 });
