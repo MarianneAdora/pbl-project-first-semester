@@ -2305,6 +2305,28 @@ html.js.is-ready.is-leaving .reveal {
     background-color: #fde9eb;
 }
 
+/* ---------- New since last visit: recent applicants (mirrors admin's recent activities) ---------- */
+:where(html[data-page="dashboardhr"]) .clickable-row.is-new {
+    background-color: #fff4f5;
+}
+
+:where(html[data-page="dashboardhr"]) .clickable-row.is-new td:first-child {
+    box-shadow: inset 3px 0 0 #d1122a;
+}
+
+:where(html[data-page="dashboardhr"]) .clickable-row.is-new strong {
+    font-weight: 800;
+}
+
+:where(html[data-page="dashboardhr"]) .clickable-row.is-new .unseen-dot {
+    display: block;
+    animation: dotPulse 2s ease-in-out infinite;
+}
+
+:where(html[data-page="dashboardhr"]) .clickable-row.is-new:hover {
+    background-color: #fde9eb;
+}
+
 @keyframes dotPulse {
     0%, 100% { box-shadow: 0 0 0 3px rgba(209, 18, 42, 0.16); }
     50%      { box-shadow: 0 0 0 6px rgba(209, 18, 42, 0.05); }
@@ -2312,6 +2334,7 @@ html.js.is-ready.is-leaving .reveal {
 
 @media (prefers-reduced-motion: reduce) {
     :where(html[data-page="dashboardhr"]) .clickable-row.is-unseen .unseen-dot,
+    :where(html[data-page="dashboardhr"]) .clickable-row.is-new .unseen-dot,
     :where(html[data-page="dashboardhr"]) .stat-bar span { animation: none; }
 }
 

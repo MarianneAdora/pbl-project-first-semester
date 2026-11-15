@@ -733,6 +733,7 @@ function status_badge(string $status): string
                             <tr class="clickable-row"
                                 data-id="<?php echo (int) $applicant['id']; ?>"
                                 data-completed="<?php echo $is_completed ? '1' : '0'; ?>"
+                                data-updated="<?php echo htmlspecialchars($applicant['updated']); ?>"
                                 data-url="details.php?id=<?php echo (int) $applicant['id']; ?>">
                                 <td title="<?php echo htmlspecialchars($applicant['name']); ?>">
                                     <span class="name-cell">

@@ -2541,9 +2541,34 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     paintUnseen();
 
+    // New-since-last-visit highlight for Recent Applicants (mirrors admin's recent activities).
+    const NEW_SEEN_KEY = 'hr_dashboard_last_seen_at';
+    function readNewSeenAt() {
+        try { return Number(localStorage.getItem(NEW_SEEN_KEY) || 0); } catch (e) { return 0; }
+    }
+    function writeNewSeenAt(ts) {
+        try { localStorage.setItem(NEW_SEEN_KEY, String(ts)); } catch (e) { /* storage unavailable */ }
+    }
+    function paintNew() {
+        if (!tbody) return;
+        const seenAt = readNewSeenAt();
+        let latest = seenAt;
+        originalRows.forEach(row => {
+            const updated = row.dataset.updated || '';
+            const ts = updated ? new Date(updated).getTime() : 0;
+            const isNew = ts > seenAt;
+            row.classList.toggle('is-new', isNew);
+            const dot = row.querySelector('.unseen-dot');
+            if (dot) dot.title = isNew ? 'New since your last visit' : 'Completed screening, not viewed yet';
+            if (ts > latest) latest = ts;
+        });
+        writeNewSeenAt(latest || seenAt);
+    }
+    paintNew();
+
     // the page can come back from the cache (Back button) or change in another tab
-    window.addEventListener('pageshow', (e) => { if (e.persisted) paintUnseen(); });
-    window.addEventListener('storage', paintUnseen);
+    window.addEventListener('pageshow', (e) => { if (e.persisted) { paintUnseen(); paintNew(); } });
+    window.addEventListener('storage', () => { paintUnseen(); paintNew(); });
 
     // Recent Applicants: fade the bottom edge while there are more rows to scroll to
     const listScroll = tbody ? tbody.closest('.table-responsive') : null;
@@ -2561,6 +2586,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('hr:recent-applicants-updated', () => {
         originalRows = tbody ? Array.from(tbody.querySelectorAll('.clickable-row')) : [];
         paintUnseen();
+        paintNew();
         updateListFade();
     });
 
