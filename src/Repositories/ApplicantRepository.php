@@ -714,17 +714,31 @@ function repo_set_status(int $id, string $status, ?string $result = null): bool
 /**
  * Mark an active applicant rejected without changing their screening progress.
  * Rejection is allowed before a screening has been completed.
+ * $reason is HR's note explaining why the applicant was rejected.
  */
-function repo_reject_applicant(int $id): bool
+function repo_reject_applicant(int $id, string $reason = ''): bool
 {
     $pdo = db();
+    // Self-heal: add rejection_reason column on older databases.
+    try {
+        $col = $pdo->query(
+            "SELECT 1 FROM information_schema.columns" .
+            " WHERE table_name = 'applicant' AND column_name = 'rejection_reason' LIMIT 1"
+        )->fetchColumn();
+        if (!$col) {
+            $pdo->exec("ALTER TABLE applicant ADD COLUMN rejection_reason TEXT");
+        }
+    } catch (Throwable $e) {
+        error_log('repo_reject_applicant schema heal skipped: ' . $e->getMessage());
+    }
     $st = $pdo->prepare(
-        "UPDATE applicant SET result = 'rejected', passed_at = NULL, " .
-        "rejected_at = COALESCE(rejected_at, NOW() AT TIME ZONE 'Asia/Manila'), " .
-        "restored_at = CASE WHEN restored_at IS NOT NULL THEN NOW() AT TIME ZONE 'Asia/Manila' END " .
-        "WHERE applicant_id = :id AND deleted_at IS NULL"
+        "UPDATE applicant SET result = 'rejected', passed_at = NULL, "
+        . "rejected_at = COALESCE(rejected_at, NOW() AT TIME ZONE 'Asia/Manila'), "
+        . "rejection_reason = :reason, "
+        . "restored_at = CASE WHEN restored_at IS NOT NULL THEN NOW() AT TIME ZONE 'Asia/Manila' END "
+        . "WHERE applicant_id = :id AND deleted_at IS NULL"
     );
-    $st->execute([':id' => $id]);
+    $st->execute([':id' => $id, ':reason' => trim($reason)]);
     return $st->rowCount() > 0;
 }
 

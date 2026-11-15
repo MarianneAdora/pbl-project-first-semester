@@ -874,8 +874,21 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
         switch ($action) {
             case 'reject':
                 require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
-                if (!repo_reject_applicant((int) $applicant['id'])) {
+                $reason = (string) ($input['reason'] ?? '');
+                if (!repo_reject_applicant((int) $applicant['id'], $reason)) {
                     details_respond(['status' => 'error', 'message' => 'That applicant could not be updated.'], 404);
+                }
+                // Notify the applicant by email, including HR's reason.
+                try {
+                    require_once __DIR__ . '/../src/Services/EmailService.php';
+                    $svc = new EmailService();
+                    $svc->sendScreeningRejectedEmail(
+                        (string) ($applicant['email'] ?? ''),
+                        (string) ($applicant['name'] ?? ''),
+                        $reason
+                    );
+                } catch (Throwable $e) {
+                    error_log('reject email error: ' . $e->getMessage());
                 }
                 require_once __DIR__ . '/../src/Repositories/ActivityRepository.php';
                 repo_log_activity('Applicant Status Changed', $applicant['name'] . ' · Rejected');

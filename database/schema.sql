@@ -85,6 +85,7 @@ CREATE TABLE applicant (
     deleted_at           TIMESTAMP,
     created_at           TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     rejected_at          TIMESTAMP,               -- when the result became Rejected
+    rejection_reason     TEXT,                    -- HR's reason/note for rejecting the applicant
     restored_at          TIMESTAMP                -- reset point for terminal auto-archive after restore
 );
 

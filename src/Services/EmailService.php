@@ -246,9 +246,10 @@ class EmailService {
         ];
         return $this->brevoSend($data, false);
     }
-    public function sendScreeningRejectedEmail($toEmail, $fullName) {
+    public function sendScreeningRejectedEmail($toEmail, $fullName, $reason = '') {
         $htmlContent = $this->loadTemplate('screening-rejected-email.html');
         $htmlContent = str_replace('{{FULL_NAME}}', htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $htmlContent = str_replace('{{REASON}}', htmlspecialchars(trim($reason), ENT_QUOTES, 'UTF-8'), $htmlContent);
         $htmlContent = str_replace('{{YEAR}}', date('Y'), $htmlContent);
 
         $data = [

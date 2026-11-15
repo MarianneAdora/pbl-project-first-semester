@@ -3192,12 +3192,14 @@ if (document.documentElement.getAttribute('data-page') === 'details') {
     var rejectModal = $('rejectModal');
     var rejectConfirm = $('rejectConfirm');
     var rejectCancel = $('rejectCancel');
+    var rejectReason = $('rejectReason');
     var rejectBusy = false;
 
     function openRejectModal() {
         if (!rejectModal) return;
         rejectModal.classList.add('active');
         rejectModal.setAttribute('aria-hidden', 'false');
+        if (rejectReason) rejectReason.value = '';
         if (rejectConfirm) setTimeout(function () { rejectConfirm.focus(); }, 60);
     }
 
@@ -3227,7 +3229,8 @@ if (document.documentElement.getAttribute('data-page') === 'details') {
             rejectConfirm.disabled = true;
             rejectCancel.disabled = true;
             rejectConfirm.textContent = 'Rejecting...';
-            post({ action: 'reject' }).then(function () {
+            var reason = rejectReason ? rejectReason.value : '';
+            post({ action: 'reject', reason: reason }).then(function () {
                 window.location.reload();
             }).catch(function (err) {
                 rejectBusy = false;
