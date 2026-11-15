@@ -679,8 +679,8 @@ function repo_set_status(int $id, string $status, ?string $result = null): bool
 }
 
 /**
- * Mark an active applicant rejected without changing their screening progress.
- * Rejection is allowed before a screening has been completed.
+ * Mark an active applicant manually rejected. The terminal status distinguishes
+ * an HR decision from an automated screening failure, which remains completed.
  * $reason is HR's note explaining why the applicant was rejected.
  */
 function repo_reject_applicant(int $id, string $reason = ''): bool
@@ -699,7 +699,7 @@ function repo_reject_applicant(int $id, string $reason = ''): bool
         error_log('repo_reject_applicant schema heal skipped: ' . $e->getMessage());
     }
     $st = $pdo->prepare(
-        "UPDATE applicant SET result = 'rejected', passed_at = NULL, "
+        "UPDATE applicant SET status = 'rejected', result = 'rejected', passed_at = NULL, "
         . "rejected_at = COALESCE(rejected_at, NOW() AT TIME ZONE 'Asia/Manila'), "
         . "rejection_reason = :reason, "
         . "restored_at = CASE WHEN restored_at IS NOT NULL THEN NOW() AT TIME ZONE 'Asia/Manila' END "

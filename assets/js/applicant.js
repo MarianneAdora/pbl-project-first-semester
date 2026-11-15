@@ -144,19 +144,25 @@ document.addEventListener('DOMContentLoaded', function () {
         requestAnimationFrame(frame);
     }
 
-    /* ---------- 3. waiting for HR: ask the page every few seconds if HR answered ---------- */
+    /* ---------- 3. Check for an HR rejection or interview update ---------- */
     var ivView = document.querySelector('.view--interview');
-    if (ivView && ivView.dataset.state === 'pending') {
-        var knownSig = ivView.dataset.sig || '';
+    var alreadyManuallyRejected = root.getAttribute('data-manually-rejected') === '1';
+    if (!alreadyManuallyRejected && (evalView || ivView)) {
+        var knownSig = ivView ? (ivView.dataset.sig || '') : '';
         var pollTimer = null;
         var checkHr = function () {
             if (document.hidden) return;
             fetch(window.location.pathname + '?status=1', {
                 credentials: 'same-origin', cache: 'no-store', headers: { 'Accept': 'application/json' }
             }).then(function (res) { return res.json(); }).then(function (data) {
-                if (data && data.status === 'success' && data.sig && data.sig !== knownSig) {
+                if (data && data.status === 'success' && data.manually_rejected) {
                     clearInterval(pollTimer);
-                    Applicant.go(window.location.pathname);          // HR answered: show the new page
+                    Applicant.go(window.location.pathname);
+                    return;
+                }
+                if (ivView && data && data.status === 'success' && data.sig && data.sig !== knownSig) {
+                    clearInterval(pollTimer);
+                    Applicant.go(window.location.pathname);
                 }
             }).catch(function () { /* offline: try again next time */ });
         };

@@ -2030,7 +2030,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ---------- Restore / Delete forever ----------
     async function act(action, it, btn, okMessage) {
+        const deleting = action.endsWith('_purge');
+        const originalLabel = btn.getAttribute('aria-label');
+        const originalTitle = btn.title;
         busy = true; btn.disabled = true;
+        if (deleting) {
+            btn.classList.add('is-loading');
+            btn.setAttribute('aria-busy', 'true');
+            btn.setAttribute('aria-label', 'Deleting permanently');
+            btn.title = 'Deleting permanently';
+        }
         try {
             const res = await ADMIN.request(action, { id: it.id });
             load(res.data.archive);
@@ -2039,7 +2048,15 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {
             btn.disabled = false;
             ADMIN.toast(err.message || 'Something went wrong. Please try again.', { error: true, duration: 6000 });
-        } finally { busy = false; }
+        } finally {
+            if (deleting) {
+                btn.classList.remove('is-loading');
+                btn.removeAttribute('aria-busy');
+                btn.setAttribute('aria-label', originalLabel || 'Delete forever');
+                btn.title = originalTitle;
+            }
+            busy = false;
+        }
     }
 
     // Restore: the row turns into a chip and flies back to where it belongs in the sidebar

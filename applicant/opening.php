@@ -27,7 +27,8 @@ if ($tokenParam !== '') {
         if ($isNewApplicant) {
             foreach (['otp_verified', 'otp', 'otp_expires', 'otp_sent_at', 'otp_attempts', 'otp_locked_until',
                       'otp_failed_total', 'otp_request_times', 'otp_was_locked',
-                      'screening_submitted', 'screening_reference', 'screening_result', 'interview'] as $k) {
+                      'screening_submitted', 'screening_reference', 'screening_result', 'interview',
+                      'rejection_email_sent'] as $k) {
                 unset($_SESSION[$k]);
             }
         }
@@ -36,16 +37,18 @@ if ($tokenParam !== '') {
         $_SESSION['applicant_name']  = (string) $found['name'];
         $_SESSION['applicant_email'] = (string) $found['email'];
 
-        // If the applicant already has a screening result (Passed / Rejected),
-        // skip the opening/instruction flow and go straight to the status page.
+        // Rejected applicants see this opening page once, then use its status button.
+        // Passed applicants still go straight to their result.
         $existingResult = strtolower((string) ($found['result'] ?? ''));
         if ($existingResult !== '') {
             $outcome = in_array($existingResult, ['accepted', 'passed'], true) ? 'passed' : 'failed';
             $_SESSION['otp_verified']      = true;
             $_SESSION['screening_submitted'] = true;
             $_SESSION['screening_result']  = ['outcome' => $outcome];
-            header('Location: application-status.php');
-            exit;
+            if ($outcome !== 'failed') {
+                header('Location: application-status.php');
+                exit;
+            }
         }
     }
 }

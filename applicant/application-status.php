@@ -50,14 +50,13 @@ require_once __DIR__ . '/../src/Services/EmailService.php';
 // ---- The evaluation result (read from live DB, set by RiskScoringService after submission) ---
 // The applicant.result column holds 'accepted' (Passed), 'rejected' (Rejected), or NULL (review pending).
 $applicantRowForResult = repo_find_applicant((int) ($_SESSION['applicant_id'] ?? 0));
-$dbResult  = (string) ($applicantRowForResult['result'] ?? '');
-$dbStatus  = (string) ($applicantRowForResult['status'] ?? '');
+$dbResult  = strtolower((string) ($applicantRowForResult['result'] ?? ''));
+$dbStatus  = strtolower((string) ($applicantRowForResult['db_status'] ?? ''));
 $dbReason  = (string) ($applicantRowForResult['rejection_reason'] ?? '');
 
-// A manual HR rejection (before the applicant ever answered the questionnaire)
-// has result='rejected' but status is NOT 'completed'. A questionnaire failure
-// has status='completed'. Distinguish them so the page shows a different message.
-$dbManuallyRejected = ($dbResult === 'rejected' && strtolower($dbStatus) !== 'completed');
+// The display status collapses DB states to Completed; use raw db_status to
+// distinguish an HR rejection from an automatic screening failure.
+$dbManuallyRejected = ($dbResult === 'rejected' && $dbStatus !== 'completed');
 
 if (in_array(strtolower($dbResult), ['accepted', 'passed'], true)) {
     $outcome = 'passed';
@@ -93,12 +92,12 @@ if ($outcome === 'review') {
 }
 
 // ---- Send rejection email (once per session) --------------------------------
-if ($outcome === 'failed' && empty($_SESSION['rejection_email_sent'])) {
+if ($outcome === 'failed' && !$dbManuallyRejected && empty($_SESSION['rejection_email_sent'])) {
     $toEmail   = (string) ($_SESSION['applicant_email'] ?? '');
     $fullName  = (string) ($_SESSION['applicant_name'] ?? '');
     if ($toEmail !== '' && $fullName !== '') {
         $emailService = new EmailService();
-        $emailService->sendScreeningRejectedEmail($toEmail, $fullName, $dbReason);
+        $emailService->sendScreeningRejectedEmail($toEmail, $fullName, $dbReason, (bool) ($result['manually'] ?? false));
         $_SESSION['rejection_email_sent'] = true;
     }
 }
@@ -201,10 +200,16 @@ if ($applicantRow) {
 
 $interview = isset($_SESSION['interview']) && is_array($_SESSION['interview']) ? $_SESSION['interview'] : null;
 $ivSig     = $interview ? md5(json_encode($interview)) : '';
+$showInterview = $outcome === 'passed' ? $interview : null;
 
 // The page asks this every few seconds while it waits for HR (see application-status.js)
 if (($_GET['status'] ?? '') === '1') {
-    interview_json(['status' => 'success', 'state' => $interview['status'] ?? 'none', 'sig' => $ivSig]);
+    interview_json([
+        'status' => 'success',
+        'state' => $interview['status'] ?? 'none',
+        'sig' => $ivSig,
+        'manually_rejected' => $dbManuallyRejected,
+    ]);
 }
 
 // testing only: pretend HR answered
@@ -241,7 +246,7 @@ $comments = [
 // Which view opens first
 $loadingMs = (int) (static_risk_config()['loading_ms'] ?? 8000);
 $seenKey = $reference . '|' . $outcome;                 // the loading page plays once per result (a refresh skips it)
-$title   = $interview ? 'Interview Schedule' : 'Screening Result';
+$title   = $showInterview ? 'Interview Schedule' : 'Screening Result';
 
 // small icons used on the cards
 $iconCalendar = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 17.5h.01M12 17.5h.01"/></svg>';
@@ -257,7 +262,7 @@ $bigLoad  = '<svg class="eval-spin" viewBox="0 0 80 80" aria-hidden="true"><circ
 $iconChevron  = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
 ?>
 <!DOCTYPE html>
-<html lang="en" data-page="application-status">
+<html lang="en" data-page="application-status" data-manually-rejected="<?= $dbManuallyRejected ? '1' : '0' ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="csrf-token" content="<?= attr($csrf) ?>">
@@ -269,18 +274,24 @@ $iconChevron  = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6
         document.documentElement.classList.add('js');
         // safety: if the scripts fail to load, never leave the page invisible
         setTimeout(function () { document.documentElement.classList.add('is-ready'); }, 3000);
-        // the evaluation page already played for this result: go straight to the result (no flash of the loading page)
-        // an applicant who already has a final result stored (Passed / Rejected) skips the evaluation screen entirely;
-        // only a result pending review (no DB result yet) shows the evaluation animation.
-        <?php if ($dbResult !== ''): ?>
-        // a final result (Passed / Rejected) is shown instantly: skip the entrance transition too
-        document.documentElement.classList.add('status-static');
+        // A manual HR rejection skips evaluation; screening results play once per result.
+        <?php if ($dbManuallyRejected): ?>
+        document.documentElement.classList.add('status-static', 'eval-done');
         <?php endif; ?>
         try {
-            if (<?= $interview ? 'true' : 'false' ?> || sessionStorage.getItem('expertise.status.seen') === <?= json_encode($seenKey) ?> || <?= ($dbResult !== '' ? 'true' : 'false') ?>) {
+            var scheduleChanged = false;
+            var interviewSignature = <?= json_encode($showInterview ? $ivSig : '') ?>;
+            if (interviewSignature) {
+                var previousInterviewSignature = sessionStorage.getItem('expertise.interview.signature');
+                scheduleChanged = previousInterviewSignature !== null && previousInterviewSignature !== interviewSignature;
+                sessionStorage.setItem('expertise.interview.signature', interviewSignature);
+            }
+            var statusAlreadySeen = sessionStorage.getItem('expertise.status.seen') === <?= json_encode($seenKey) ?>;
+            if (<?= $showInterview ? 'true' : 'false' ?> || statusAlreadySeen) {
                 document.documentElement.classList.add('eval-done');
             }
-        } catch (e) { <?= $interview ? '' : '/* storage blocked: the loading page plays every time */' ?> }
+            if (statusAlreadySeen && !scheduleChanged) document.documentElement.classList.add('status-static');
+        } catch (e) { <?= $showInterview ? '' : '/* storage blocked: the loading page plays every time */' ?> }
     </script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -296,7 +307,7 @@ $iconChevron  = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6
 
     <img class="corner-logo reveal" style="--i:0" src="../assets/images/expertise.png" alt="Expertise">
 
-<?php if ($interview): ?>
+<?php if ($showInterview): ?>
     <?php
         $state   = $interview['status'];
         $isNew   = $state === 'suggested';
@@ -455,7 +466,7 @@ $iconChevron  = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6
         <?php if ($result['manually'] ?? false): ?>
         <!-- Manually rejected by HR before the applicant answered the questionnaire -->
         <h1 class="status__title reveal" style="--i:2">Application Not Moved Forward</h1>
-        <p class="status__text reveal" style="--i:3">Thank you for your interest in joining Expertise. Our HR team has manually reviewed your application and decided not to move forward with your candidacy for this position at this time.</p>
+        <p class="status__text reveal" style="--i:3">Thank you for your interest in joining Expertise. Our HR team has manually rejected your application and decided not to move forward with your candidacy for this position at this time.</p>
         <?php else: ?>
         <!-- Failed after answering the questionnaire -->
         <h1 class="status__title reveal" style="--i:2">Screening Not Passed</h1>

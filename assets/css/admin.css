@@ -3235,6 +3235,21 @@ html:where([data-page="archiveadmin"],[data-page="hrlist"],[data-page="questionl
 :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .icon-btn:active { transform: scale(0.94); }
 :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .icon-btn:disabled { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
 
+:where(html[data-page="archiveadmin"]) .icon-btn.is-loading { position: relative; color: var(--red); opacity: 1; cursor: wait; }
+:where(html[data-page="archiveadmin"]) .icon-btn.is-loading svg { opacity: 0; }
+:where(html[data-page="archiveadmin"]) .icon-btn.is-loading::after {
+    content: "";
+    position: absolute;
+    width: 17px;
+    height: 17px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: archiveActionSpin 0.7s linear infinite;
+}
+
+@keyframes archiveActionSpin { to { transform: rotate(360deg); } }
+
 /* ---- Rows animate in when the list changes ---- */
 :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table tbody tr.row-in {
     animation: hrRowIn 0.35s var(--ease-out) backwards;

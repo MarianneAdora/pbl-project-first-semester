@@ -2286,7 +2286,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function purgeIds(ids) {
-        if (!ids.length || busy) return;
+        if (!ids.length || busy) return false;
         busy = true;
         updateSelectionUi();
 
@@ -2301,7 +2301,7 @@ document.addEventListener('DOMContentLoaded', () => {
             busy = false;
             updateSelectionUi();
             HR.toast(result.err.message, { error: true });
-            return;
+            return false;
         }
 
         const removedCount = applicants.filter(a => idSet.has(a.id)).length;
@@ -2309,6 +2309,7 @@ document.addEventListener('DOMContentLoaded', () => {
         afterRemoval(idSet);
         HR.setArchiveBadge(result.r.count);
         HR.toast(plural(removedCount, 'applicant') + ' permanently deleted.');     // no Undo: it is final
+        return true;
     }
 
     restoreSelected.addEventListener('click', () => restoreIds(Array.from(selected)));
@@ -2324,18 +2325,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function closeDeleteModal() {
+        if (busy) return;
         deleteModal.classList.remove('active');
         pendingDelete = [];
     }
 
+    function setDeleteLoading(loading) {
+        confirmDelete.disabled = loading;
+        cancelDelete.disabled = loading;
+        confirmDelete.classList.toggle('is-loading', loading);
+        confirmDelete.textContent = loading ? 'Deleting...' : 'Delete forever';
+        if (loading) confirmDelete.setAttribute('aria-busy', 'true');
+        else confirmDelete.removeAttribute('aria-busy');
+    }
+
     deleteSelected.addEventListener('click', () => openDeleteModal(Array.from(selected)));
     cancelDelete.addEventListener('click', closeDeleteModal);
-    confirmDelete.addEventListener('click', () => {
+    confirmDelete.addEventListener('click', async () => {
         const ids = pendingDelete.slice();
-        closeDeleteModal();
-        purgeIds(ids);
+        if (!ids.length || busy) return;
+        setDeleteLoading(true);
+        const deleted = await purgeIds(ids);
+        setDeleteLoading(false);
+        if (deleted) closeDeleteModal();
     });
-    deleteModal.addEventListener('click', (e) => { if (e.target === deleteModal) closeDeleteModal(); });
+    deleteModal.addEventListener('click', (e) => { if (e.target === deleteModal && !busy) closeDeleteModal(); });
 
     // Escape: close the confirmation first; otherwise leave select mode
     // (unless it was already used to close a dropdown / clear the search / close the logout box)

@@ -246,10 +246,18 @@ class EmailService {
         ];
         return $this->brevoSend($data, false);
     }
-    public function sendScreeningRejectedEmail($toEmail, $fullName, $reason = '') {
+    public function sendScreeningRejectedEmail($toEmail, $fullName, $reason = '', bool $manuallyRejected = false) {
         $htmlContent = $this->loadTemplate('screening-rejected-email.html');
         $htmlContent = str_replace('{{FULL_NAME}}', htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8'), $htmlContent);
-        $htmlContent = str_replace('{{REASON}}', htmlspecialchars(trim($reason), ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $reason = trim((string) $reason);
+        $reasonSection = $reason !== ''
+            ? '<p style="margin:14px 0 0 0;"><strong>Reason:</strong> ' . htmlspecialchars($reason, ENT_QUOTES, 'UTF-8') . '</p>'
+            : '';
+        $htmlContent = str_replace('{{REASON_SECTION}}', $reasonSection, $htmlContent);
+        $message = $manuallyRejected
+            ? 'Our HR team has manually rejected your application and decided not to move forward with your candidacy for this position at this time.'
+            : 'After carefully reviewing your responses, we will not be moving forward with your application for this role at this time. This was not an easy decision, and it does not take away from the effort you put in.';
+        $htmlContent = str_replace('{{REJECTION_MESSAGE}}', $message, $htmlContent);
         $htmlContent = str_replace('{{YEAR}}', date('Y'), $htmlContent);
 
         $data = [

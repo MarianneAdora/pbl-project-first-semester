@@ -247,6 +247,28 @@ html.js.is-ready.is-leaving .reveal {
     box-shadow: 0 4px 12px rgba(163, 8, 30, 0.3);
 }
 
+:where(html[data-page="archive"]) .btn-confirm.is-loading {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    cursor: wait;
+    opacity: 0.88;
+}
+
+:where(html[data-page="archive"]) .btn-confirm.is-loading::before {
+    content: "";
+    width: 14px;
+    height: 14px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: archiveDeleteSpin 0.7s linear infinite;
+}
+
+@keyframes archiveDeleteSpin { to { transform: rotate(360deg); } }
+
 /* ==========================================================================
    Sidebar Styling (Enhanced 3D Shadow Depth)
    ========================================================================== */

@@ -885,7 +885,8 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
                     $svc->sendScreeningRejectedEmail(
                         (string) ($applicant['email'] ?? ''),
                         (string) ($applicant['name'] ?? ''),
-                        $reason
+                        $reason,
+                        true
                     );
                 } catch (Throwable $e) {
                     error_log('reject email error: ' . $e->getMessage());
