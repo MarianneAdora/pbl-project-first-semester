@@ -1025,7 +1025,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const data = await sendInvitation(new FormData(form));
             lastApplicant = data.applicant;
-            // No red badge here: the applicant only appears in the Screening List after they verify the OTP.
+            HR.noteNewApplicant(data.applicant.id);
             openSentModal(data.applicant);
         } catch (err) {
             HR.toast(err.message || 'Something went wrong. Please try again.', { error: true, duration: 8000 });
