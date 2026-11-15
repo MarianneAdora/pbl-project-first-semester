@@ -267,9 +267,9 @@ $greeting     = 'Hello, ' . $display_name . '!';
                 <h1 id="greeting" title="<?php echo htmlspecialchars($greeting, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($greeting, ENT_QUOTES, 'UTF-8'); ?></h1>
             </div>
             <div class="header-tools">
-                <button type="button" class="stats-download" id="statsPdfBtn" title="Download dashboard statistics as a PDF file">
+                <button type="button" class="stats-download" id="statsDownloadBtn" title="Download dashboard statistics">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-                    Download PDF
+                    Download Stats
                 </button>
                 <div class="notif-wrap">
                     <button type="button" class="notif-bell" id="notifBell" aria-haspopup="true" aria-expanded="false" aria-controls="notifPanel" aria-label="Notifications" title="Notifications">

@@ -2471,7 +2471,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const arrivedViaTransition = !!(window.HR && HR.arrivedViaTransition);
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    const pdfBtn = document.getElementById('hrStatsPdfBtn');
+    const pdfBtn = document.getElementById('hrStatsDownloadBtn');
     if (pdfBtn) {
         pdfBtn.addEventListener('click', async () => {
             if (!window.DashboardPdf || !window.DashboardPdf.recordDownload || !window.HR_DASH) {

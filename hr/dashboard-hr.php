@@ -434,9 +434,9 @@ function status_badge(string $status): string
             </div>
 
             <div class="header-tools">
-            <button type="button" class="hr-pdf-download" id="hrStatsPdfBtn" title="Download dashboard statistics as a PDF file">
+            <button type="button" class="hr-stats-download" id="hrStatsDownloadBtn" title="Download dashboard statistics">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-                Download PDF
+                Download Stats
             </button>
             <!-- Notification bell: your recent activity (the Admin sees the same lines) + completed screenings to review -->
             <div class="notif-wrap">

@@ -2220,7 +2220,7 @@ html:where([data-page="dashboardadmin"])[data-theme="dark"] .stat-icon { backgro
     font-weight: 700;
 }
 
-/* Download PDF button (top right of the Questionnaires Statistics card) */
+/* Download stats button (top right of the Questionnaires Statistics card) */
 :where(html[data-page="dashboardadmin"]) .stats-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; }
 
 :where(html[data-page="dashboardadmin"]) .stats-download {

@@ -4293,8 +4293,8 @@ document.addEventListener('DOMContentLoaded', () => {
         requestAnimationFrame(() => requestAnimationFrame(() => list.classList.add('is-grown')));
     }
 
-    /* ---------- Download PDF: dashboard statistics (Recent Activities are intentionally excluded) ---------- */
-    const pdfBtn = document.getElementById('statsPdfBtn');
+    /* ---------- Download stats: dashboard statistics (Recent Activities are intentionally excluded) ---------- */
+    const pdfBtn = document.getElementById('statsDownloadBtn');
     if (pdfBtn) {
         pdfBtn.addEventListener('click', () => {
             if (!window.DashboardPdf || !window.DashboardPdf.recordDownload) {
