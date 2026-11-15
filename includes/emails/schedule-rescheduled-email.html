@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="x-apple-disable-message-reformatting">
+<title>New interview schedule | Expertise</title>
+<!--
+  EMAIL TEMPLATE (design only). Tables + inline styles on purpose: Gmail/Outlook ignore most CSS.
+  Same design as email.html (brand stripe, logo, Plus Jakarta Sans, red button, maroon footer).
+  The backend replaces:
+    {{FULL_NAME}}      -> applicant's full name
+    {{DATE}}            -> the NEW date, e.g. Tuesday, October 21, 2026
+    {{TIME}}            -> the NEW time, e.g. 2:00 PM
+    {{INTERVIEW_TYPE}}  -> e.g. Face-to-face
+    {{LOCATION}}        -> interview venue
+    {{LINK}}            -> link to applicant/application-status.php   (used twice)
+    {{YEAR}}            -> current year
+  Font: Plus Jakarta Sans, same as the system. It loads in Apple Mail, iOS Mail and most
+  mobile apps; Gmail and Outlook fall back to Segoe UI / Arial, which is expected.
+  The logo src is a relative path so this file previews in the browser. In the real email use
+  a full public URL, or attach it inline and use  src="cid:expertise_logo".
+  The HR contact at the bottom is a placeholder: change it to the real address.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  @media only screen and (max-width:620px) {
+    .px { padding-left:24px !important; padding-right:24px !important; }
+    .h1 { font-size:26px !important; }
+    .btn a { display:block !important; }
+    .otp { font-size:30px !important; letter-spacing:8px !important; padding-left:8px !important; }
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:'Plus Jakarta Sans','Segoe UI',Helvetica,Arial,sans-serif;-webkit-text-size-adjust:100%;">
+
+<!-- preheader (the preview text next to the subject line) -->
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f4f4f5;font-size:1px;line-height:1px;">
+    That date is not available, so we set a new schedule for your interview.
+</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f4f5;">
+<tr><td align="center" style="padding:32px 12px;">
+
+    <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.08);">
+
+        <!-- brand stripe -->
+        <tr><td style="height:6px;line-height:6px;font-size:0;background:#d1122a;">&nbsp;</td></tr>
+
+        <!-- logo -->
+        <tr><td class="px" align="left" style="padding:30px 44px 0 44px;">
+            <img src="../../assets/images/expertise.png" alt="Expertise" height="44" style="display:block;height:44px;width:auto;border:0;">
+        </td></tr>
+
+        <!-- heading -->
+        <tr><td class="px" style="padding:30px 44px 0 44px;">
+            <p style="margin:0 0 10px 0;font-size:13px;font-weight:700;letter-spacing:.3px;color:#d1122a;">Interview update</p>
+            <h1 class="h1" style="margin:0;font-size:30px;line-height:1.25;font-weight:800;color:#1f1f23;">We have a new schedule for you</h1>
+        </td></tr>
+
+        <!-- message -->
+        <tr><td class="px" style="padding:22px 44px 0 44px;color:#3a3d44;font-size:15px;line-height:1.7;font-weight:500;">
+            <p style="margin:0 0 14px 0;color:#1f1f23;font-weight:700;">Hi {{FULL_NAME}},</p>
+            <p style="margin:0;">Thank you for choosing a schedule. Unfortunately, that date and time is not available, so we set a new one for your interview.</p>
+        </td></tr>
+
+        <tr><td class="px" style="padding:26px 44px 0 44px;"><p style="margin:0;font-size:13px;font-weight:700;color:#d1122a;">Your new schedule</p></td></tr>
+
+        <!-- schedule details -->
+        <tr><td class="px" style="padding:10px 44px 0 44px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8f8f9;border:1px solid #e6e7ea;border-radius:12px;">
+                <tr><td style="padding:10px 22px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                    <td style="padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;">Date</td>
+                    <td style="padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;">{{DATE}}</td>
+                </tr>
+                <tr>
+                    <td style="padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;border-top:1px solid #e6e7ea;">Time</td>
+                    <td style="padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;border-top:1px solid #e6e7ea;">{{TIME}}</td>
+                </tr>
+                <tr>
+                    <td style="padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;border-top:1px solid #e6e7ea;">Interview Type</td>
+                    <td style="padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;border-top:1px solid #e6e7ea;">{{INTERVIEW_TYPE}}</td>
+                </tr>
+                <tr>
+                    <td style="padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;border-top:1px solid #e6e7ea;">Location</td>
+                    <td style="padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;border-top:1px solid #e6e7ea;">{{LOCATION}}</td>
+                </tr>
+                    </table>
+                </td></tr>
+            </table>
+        </td></tr>
+
+        <tr><td class="px" style="padding:26px 44px 0 44px;color:#3a3d44;font-size:13.5px;line-height:1.65;font-weight:500;">
+            <p style="margin:0 0 4px 0;font-weight:700;color:#1f1f23;">Does this not work for you?</p>
+            <p style="margin:0;">Please reply to our team and we will find another time. Please arrive 15 minutes early and bring a valid ID.</p>
+        </td></tr>
+
+        <!-- button -->
+        <tr><td class="px btn" align="left" style="padding:28px 44px 0 44px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+                <td align="center" bgcolor="#d1122a" style="border-radius:8px;">
+                    <a href="{{LINK}}" target="_blank" style="display:inline-block;padding:15px 40px;font-family:'Plus Jakarta Sans','Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:8px;background:#d1122a;">View my interview schedule</a>
+                </td>
+            </tr></table>
+        </td></tr>
+
+        <tr><td class="px" style="padding:22px 44px 0 44px;color:#3a3d44;font-size:13.5px;line-height:1.65;font-weight:500;">
+            <p style="margin:0 0 4px 0;font-weight:700;color:#1f1f23;">Good to know</p>
+            <p style="margin:0;">The link opens your application status page. You will be asked to verify your email with a one-time code first.</p>
+        </td></tr>
+
+        <!-- fallback link -->
+        <tr><td class="px" style="padding:20px 44px 30px 44px;color:#6a6a70;font-size:12.5px;line-height:1.6;font-weight:500;">
+            Button not working? Copy and paste this link into your browser:<br>
+            <a href="{{LINK}}" target="_blank" style="color:#a3081e;word-break:break-all;">{{LINK}}</a>
+        </td></tr>
+
+        <tr><td class="px" style="padding:0 44px;"><div style="height:1px;background:#e6e7ea;line-height:1px;font-size:0;">&nbsp;</div></td></tr>
+
+        <!-- sign-off -->
+        <tr><td class="px" style="padding:22px 44px 28px 44px;color:#3a3d44;font-size:13.5px;line-height:1.65;font-weight:500;">
+            Best regards,<br>
+            <strong style="color:#1f1f23;">Expertise BPO Recruitment Team</strong>
+        </td></tr>
+
+        <!-- footer -->
+        <tr><td class="px" align="center" style="padding:20px 44px;background:#59000b;color:#e9c5cb;font-size:12px;line-height:1.7;font-weight:500;">
+            Need help? <a href="mailto:hr@expertise.example" style="color:#ffffff;font-weight:600;">Contact HR</a><br>
+            This is an automated message, please do not reply.<br>
+            &copy; {{YEAR}} Expertise BPO. All rights reserved.
+        </td></tr>
+
+    </table>
+
+</td></tr>
+</table>
+</body>
+</html>

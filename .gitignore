@@ -1,0 +1,24 @@
+# Environment files containing secrets
+.env.local
+.env.*.local
+
+# Composer
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+error_log
+
+# XAMPP / local
+*.tmp
+*.bak

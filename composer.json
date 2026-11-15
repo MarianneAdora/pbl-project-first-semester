@@ -1,0 +1,8 @@
+{
+    "require": {
+        "smalot/pdfparser": "*"
+    },
+    "scripts": {
+        "audit-deps": "php scripts/audit-deps.php"
+    }
+}

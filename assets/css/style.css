@@ -1,0 +1,498 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+:root {
+    --ease-stripe: cubic-bezier(0.76, 0, 0.24, 1);   /* stripes: smooth ease-in-out */
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);      /* elements entering */
+    --ease-in: cubic-bezier(0.55, 0, 0.8, 0.3);      /* elements leaving */
+    --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);   /* hover pop (slight overshoot) */
+    --reveal-count: 7;                               /* highest --i used on the page */
+}
+
+body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: url('../images/Ad BG.png') no-repeat center center/cover;
+}
+
+/* ==========================================================================
+   Page Transition Overlay
+   ========================================================================== */
+.page-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    pointer-events: none;
+    overflow: hidden;              /* stripes can't create scrollbars while sliding */
+    display: flex;
+    flex-direction: column;
+
+    /* Tune the feel here */
+    --sweep-duration: 0.5s;
+    --sweep-ease: var(--ease-stripe);
+}
+
+.page-overlay .overlay-stripe {
+    flex: 1;
+    width: 100%;
+    margin-bottom: -1px;           /* hides hairline gaps between stripes */
+    padding-bottom: 1px;
+    transform: translate3d(-100%, 0, 0);
+    will-change: transform;
+    backface-visibility: hidden;
+}
+
+/* Red gradient palette */
+.page-overlay .stripe-1 { background-color: #59000b; }
+.page-overlay .stripe-2 { background-color: #7a0010; }
+.page-overlay .stripe-3 { background-color: #920618; }
+.page-overlay .stripe-4 { background-color: #a3081e; }
+.page-overlay .stripe-5 { background-color: #bb0d24; }
+.page-overlay .stripe-6 { background-color: #d1122a; }
+.page-overlay .stripe-7 { background-color: #e61d36; }
+.page-overlay .stripe-8 { background-color: #f7314a; }
+
+/* Solid state: applied by the <head> script before first paint */
+html.is-transitioning .page-overlay .overlay-stripe {
+    transform: translate3d(0, 0, 0);
+}
+
+.page-overlay.sweep-in .overlay-stripe {
+    animation: sweepIn var(--sweep-duration) var(--sweep-ease) forwards;
+}
+
+.page-overlay.sweep-out .overlay-stripe {
+    animation: sweepOut var(--sweep-duration) var(--sweep-ease) forwards;
+}
+
+/* Racing stagger: the middle stripes lead, the outer ones chase */
+.page-overlay .stripe-4 { animation-delay: 0s; }
+.page-overlay .stripe-5 { animation-delay: 0.02s; }
+.page-overlay .stripe-3 { animation-delay: 0.06s; }
+.page-overlay .stripe-6 { animation-delay: 0.08s; }
+.page-overlay .stripe-2 { animation-delay: 0.12s; }
+.page-overlay .stripe-7 { animation-delay: 0.15s; }
+.page-overlay .stripe-1 { animation-delay: 0.19s; }
+.page-overlay .stripe-8 { animation-delay: 0.22s; }
+
+@keyframes sweepIn {
+    from { transform: translate3d(-100%, 0, 0); }
+    to   { transform: translate3d(0, 0, 0); }
+}
+
+@keyframes sweepOut {
+    from { transform: translate3d(0, 0, 0); }
+    to   { transform: translate3d(100%, 0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .page-overlay { --sweep-duration: 0.01s; }
+    .page-overlay .overlay-stripe { animation-delay: 0s !important; }
+    html.js.is-ready .reveal,
+    html.js.is-ready.is-leaving .reveal { animation: none !important; opacity: 1; }
+}
+
+/* ==========================================================================
+   Entrance / Exit animations for page elements
+   ========================================================================== */
+/* Hidden until the page is ready (only when JS is running) */
+html.js .reveal {
+    opacity: 0;
+}
+
+/* Entrance: elements rise in one after another, top to bottom */
+html.js.is-ready .reveal {
+    opacity: 1;
+    animation: revealIn 0.65s var(--ease-out) backwards;
+    animation-delay: calc(var(--reveal-base, 0.05s) + var(--i, 0) * 70ms);
+}
+
+/* Exit: elements lift away bottom to top while the stripes sweep in */
+html.js.is-ready.is-leaving .reveal {
+    animation: revealOut 0.38s var(--ease-in) forwards;
+    animation-delay: calc((var(--reveal-count) - var(--i, 0)) * 35ms);
+}
+
+@keyframes revealIn {
+    from { opacity: 0; transform: translate3d(0, 22px, 0); }
+    to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes revealOut {
+    from { opacity: 1; transform: translate3d(0, 0, 0); }
+    to   { opacity: 0; transform: translate3d(0, -14px, 0); }
+}
+
+/* ==========================================================================
+   Portal Layout & Form Styling
+   ========================================================================== */
+.portal-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: 380px;
+    transform: translateY(-40px);
+}
+
+.logo-container {
+    text-align: center;
+    margin-bottom: 18px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;                     /* real spacing between logo and title */
+}
+
+.logo-crop {
+    display: inline-block;
+    line-height: 0;
+}
+
+.logo-crop img {
+    width: 210px;
+    height: auto;
+    display: block;
+    object-fit: contain;
+    pointer-events: none;
+}
+
+.portal-title {
+    font-size: 13.5px;
+    font-weight: 800;
+    color: #1a1a1a;
+    letter-spacing: 1.2px;
+    margin-top: 0;                 /* was -24px (caused the overlap) */
+    text-transform: uppercase;
+}
+
+.login-card {
+    background: #f7f7f8;
+    width: 100%;
+    border-radius: 20px;
+    padding: 34px 32px 30px 32px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15), 0 5px 15px rgba(0, 0, 0, 0.05);
+    text-align: center;
+    position: relative;
+    transition: transform 0.35s var(--ease-pop), box-shadow 0.3s var(--ease-out);
+}
+
+.login-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 22px 46px rgba(0, 0, 0, 0.2), 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+.card-header h2 {
+    color: #d1122a;
+    font-size: 24px;
+    font-weight: 800;
+    margin-bottom: 4px;
+    letter-spacing: -0.3px;
+}
+
+.card-header p {
+    color: #555555;
+    font-size: 11.5px;
+    font-weight: 500;
+    margin-bottom: 22px;
+}
+
+.form-group {
+    text-align: left;
+    margin-bottom: 14px;
+    position: relative;
+}
+
+.form-group label {
+    display: block;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #222222;
+    margin-bottom: 6px;
+}
+
+.input-wrapper {
+    position: relative;
+}
+
+.form-control {
+    width: 100%;
+    height: 40px;
+    border: 1px solid #dcdcdc;
+    border-radius: 6px;
+    padding: 0 36px 0 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #333333;
+    background-color: #ffffff;
+    outline: none;
+    transition: transform 0.3s var(--ease-pop),
+                border-color 0.2s ease,
+                box-shadow 0.2s ease;
+}
+
+.form-control:hover {
+    border-color: #b0b0b0;
+    transform: translateY(-2px) scale(1.015);
+}
+
+.form-control:focus {
+    border-color: #d1122a;
+    transform: translateY(-2px) scale(1.015);
+    box-shadow: 0 0 0 3px rgba(209, 18, 42, 0.12);
+}
+
+.form-control[aria-invalid="true"],
+.form-control[aria-invalid="true"]:focus {
+    border-color: #d1122a;
+    box-shadow: 0 0 0 3px rgba(209, 18, 42, 0.12);
+}
+
+.field-error {
+    display: none;
+    align-items: center;
+    gap: 7px;
+    margin: 7px 0 0;
+    color: #b50e23;
+    font-size: 11px;
+    font-weight: 700;
+    animation: field-error-in 0.18s ease-out;
+}
+
+.field-error::before {
+    content: "!";
+    display: grid;
+    flex: 0 0 16px;
+    height: 16px;
+    place-items: center;
+    border-radius: 50%;
+    background-color: #d1122a;
+    color: #ffffff;
+    font-size: 10px;
+    line-height: 1;
+}
+
+@keyframes field-error-in {
+    from {
+        opacity: 0;
+        transform: translateY(-3px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.eye-icon {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    fill: #d1122a;
+    transition: transform 0.3s var(--ease-pop), fill 0.2s ease;
+}
+
+.eye-icon:hover {
+    transform: translateY(-50%) scale(1.3);
+    fill: #b50e23;
+}
+
+.eye-icon:active {
+    transform: translateY(-50%) scale(0.95);
+}
+
+.remember-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    width: 100%;
+    margin-top: 8px;
+    margin-bottom: 24px;
+}
+
+.remember-label {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: 12px;
+    color: #d1122a;
+    font-weight: 700;
+    user-select: none;
+    gap: 6px;
+    transition: transform 0.3s var(--ease-pop), opacity 0.2s ease;
+}
+
+.remember-label:hover {
+    transform: translateY(-2px) scale(1.06);
+    opacity: 1;
+}
+
+.remember-label input[type="checkbox"] {
+    accent-color: #d1122a;
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    transition: transform 0.3s var(--ease-pop);
+}
+
+.remember-label:hover input[type="checkbox"] {
+    transform: scale(1.15);
+}
+
+.remember-label:active input[type="checkbox"] {
+    transform: scale(0.95);
+}
+
+.btn-submit {
+    width: 100%;
+    height: 42px;
+    background-color: #d1122a;
+    color: #ffffff;
+    border: none;
+    border-radius: 21px;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    cursor: pointer;
+    transition: transform 0.3s var(--ease-pop),
+                background-color 0.2s ease,
+                box-shadow 0.2s ease;
+    box-shadow: 0 4px 12px rgba(209, 18, 42, 0.25);
+}
+
+.btn-submit:hover {
+    background-color: #b50e23;
+    transform: translateY(-3px) scale(1.04);
+    box-shadow: 0 10px 22px rgba(209, 18, 42, 0.4);
+}
+
+.btn-submit:active {
+    transform: translateY(0) scale(0.98);
+    box-shadow: 0 2px 6px rgba(209, 18, 42, 0.2);
+}
+
+.btn-submit:disabled {
+    opacity: 0.7;
+    cursor: wait;
+}
+
+.error-message {
+    background-color: #ffe6e6;
+    color: #d1122a;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 6px;
+    margin-bottom: 14px;
+    display: none;
+    border: 1px solid #ffcccc;
+}
+
+.success-message {
+    background-color: #e7f4ea;
+    color: #2e7d32;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 6px;
+    margin-bottom: 14px;
+    display: none;
+    border: 1px solid #b7dfc4;
+}
+
+.forgot-link {
+    margin-top: 16px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #d1122a;
+    text-align: center;
+}
+.forgot-link a {
+    color: #d1122a;
+    text-decoration: none;
+}
+.forgot-link a:hover {
+    text-decoration: underline;
+}
+
+/* ==========================================================================
+   Reset password form (reset-password.php) — Update Password modal look
+   ========================================================================== */
+.reset-field { margin-bottom: 14px; }
+.reset-field > label { display: block; font-size: 13px; font-weight: 700; color: #222222; margin-bottom: 6px; }
+.reset-input { position: relative; height: 46px; border: 1px solid #dcdcdc; border-radius: 6px; background: #ffffff; display: grid; grid-template-columns: 32px 1fr; align-items: center; }
+.reset-input input { width: 100%; height: 100%; border: none; background: transparent; padding: 0 40px 0 10px; font-size: 13px; color: #333333; outline: none; grid-column: 2; }
+.reset-input input::placeholder { color: #8a8a8a; }
+.reset-input .input-icon { grid-column: 1; justify-self: center; width: 20px; height: 20px; fill: #8a8a8a; pointer-events: none; }
+.eye-reset { position: absolute; right: 10px; width: 30px; height: 30px; border: none; border-radius: 50%; background: transparent; cursor: pointer; display: grid; place-items: center; padding: 0; }
+.eye-reset svg { width: 20px; height: 20px; fill: #8a8a8a; }
+.eye-reset .eye-off { display: none; }
+.eye-reset[aria-pressed="true"] .eye-on { display: none; }
+.eye-reset[aria-pressed="true"] .eye-off { display: block; }
+.meter { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; }
+.meter i { height: 6px; border-radius: 3px; background: #dcdcdc; transition: background-color 0.3s ease; }
+.meter-label { margin-top: 5px; font-size: 12px; font-weight: 700; color: #6a6a70; min-height: 16px; }
+.pw-rules.reset-rules { list-style: none; padding: 0; margin: 10px 0 4px 0; display: flex; flex-direction: column; gap: 4px; }
+.pw-rules.reset-rules li { display: flex; align-items: center; font-size: 12px; color: #6a6a70; }
+.pw-rules.reset-rules li .dot { width: 6px; height: 6px; border-radius: 50%; background: #dcdcdc; margin-right: 8px; flex-shrink: 0; }
+.pw-rules.reset-rules li.ok { color: #2e7d32; }
+.pw-rules.reset-rules li.ok .dot { background: #2e7d32; }
+.set-error.reset-error { color: #d1122a; font-size: 11px; margin-top: 4px; display: block; }
+.reset-actions { display: flex; gap: 10px; margin-top: 6px; }
+.reset-btn-cancel { flex: 1; height: 42px; background: #f2f2f2; border: none; border-radius: 21px; color: #333333; font-size: 13px; font-weight: 700; cursor: pointer; }
+.reset-btn-cancel:hover { background: #e6e6e6; }
+.reset-btn-reset { flex: 1; height: 42px; background: #d1122a; border: none; border-radius: 21px; color: #ffffff; font-size: 13px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(209, 18, 42, 0.25); }
+.reset-btn-reset:hover { background: #b50e23; }
+.reset-btn-reset:disabled { opacity: 0.6; cursor: wait; }
+
+/* ==========================================================================
+   Mobile / responsive base (auth pages)
+   ========================================================================== */
+@media (max-width: 767px) {
+    body {
+        width: 100%;
+        overflow-x: hidden;
+        overflow-y: auto;
+        height: auto;
+        min-height: 100dvh;
+        align-items: center;
+        justify-content: flex-start;
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+    .portal-wrapper {
+        width: 100%;
+        max-width: 460px;
+        padding: 20px 16px 32px;
+        margin-inline: auto;
+        transform: none;
+        box-sizing: border-box;
+    }
+    .login-card {
+        width: 100%;
+        padding: 24px clamp(16px, 5vw, 28px) 26px;
+        border-radius: 16px;
+    }
+    .logo-crop img { width: 160px; }
+    .form-control { height: 46px; font-size: 16px; } /* 16px prevents iOS zoom */
+    .btn-submit { height: 48px; font-size: 15px; }
+    .reset-input { height: 46px; }
+    .reset-input input { font-size: 16px; }
+    .reset-actions { flex-direction: column; gap: 8px; }
+    .reset-btn-cancel, .reset-btn-reset { width: 100%; }
+}

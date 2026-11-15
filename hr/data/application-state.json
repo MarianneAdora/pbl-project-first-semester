@@ -1,0 +1,2485 @@
+{
+    "applicants": [
+        {
+            "id": 101,
+            "name": "Juan Dela Cruz",
+            "email": "juandelacruz@gmail.com",
+            "contact": "091234567891",
+            "status": "Pending",
+            "result": null,
+            "updated": "2026-10-05 08:15",
+            "archived_at": null,
+            "invited_at": "2026-10-05 08:15"
+        },
+        {
+            "id": 102,
+            "name": "Bruce Wayne",
+            "email": "brucewayne@gmail.com",
+            "contact": "091234567854",
+            "status": "In Progress",
+            "result": null,
+            "updated": "2026-10-04 11:05",
+            "archived_at": null,
+            "invited_at": "2026-10-03 13:05"
+        },
+        {
+            "id": 103,
+            "name": "Clark Kent",
+            "email": "clarkkent@gmail.com",
+            "contact": "091234567817",
+            "status": "Completed",
+            "result": "Passed",
+            "updated": "2026-10-05 10:52",
+            "archived_at": null,
+            "invited_at": "2026-10-05 01:52",
+            "submitted_at": "2026-10-05 10:52",
+            "passed_at": "2026-10-05 10:52"
+        },
+        {
+            "id": 104,
+            "name": "Diana Prince",
+            "email": "dianaprince@gmail.com",
+            "contact": "091234567780",
+            "status": "Completed",
+            "result": "Rejected",
+            "updated": "2026-10-04 16:30",
+            "archived_at": null,
+            "invited_at": "2026-10-03 10:30",
+            "submitted_at": "2026-10-04 16:30"
+        },
+        {
+            "id": 105,
+            "name": "Maria Clara Santos",
+            "email": "mariaclarasantos@gmail.com",
+            "contact": "091234567743",
+            "status": "Pending",
+            "result": null,
+            "updated": "2026-10-01 13:00",
+            "archived_at": null,
+            "invited_at": "2026-10-01 13:00"
+        },
+        {
+            "id": 106,
+            "name": "Jose Protacio Rizal Mercado y Alonso Realonda",
+            "email": "joseprotaciorizalmercadoyalonsorealonda@gmail.com",
+            "contact": "091234567706",
+            "status": "Completed",
+            "result": "Passed",
+            "updated": "2026-09-29 10:00",
+            "archived_at": null,
+            "invited_at": "2026-09-28 16:00",
+            "submitted_at": "2026-09-29 10:00",
+            "passed_at": "2026-09-29 10:00"
+        },
+        {
+            "id": 107,
+            "name": "Peter Parker",
+            "email": "peterparker@gmail.com",
+            "contact": "091234567669",
+            "status": "In Progress",
+            "result": null,
+            "updated": "2026-10-02 09:10",
+            "archived_at": null,
+            "invited_at": "2026-10-01 06:10"
+        },
+        {
+            "id": 108,
+            "name": "Tony Stark",
+            "email": "tonystark@gmail.com",
+            "contact": "091234567632",
+            "status": "Completed",
+            "result": "Passed",
+            "updated": "2026-10-02 17:45",
+            "archived_at": null,
+            "invited_at": "2026-10-01 15:45",
+            "submitted_at": "2026-10-02 17:45",
+            "passed_at": "2026-10-02 17:45"
+        },
+        {
+            "id": 109,
+            "name": "Natasha Romanoff",
+            "email": "natasharomanoff@gmail.com",
+            "contact": "091234567595",
+            "status": "Completed",
+            "result": "Rejected",
+            "updated": "2026-09-30 15:25",
+            "archived_at": null,
+            "invited_at": "2026-09-28 23:25",
+            "submitted_at": "2026-09-30 15:25"
+        },
+        {
+            "id": 110,
+            "name": "Steve Rogers",
+            "email": "steverogers@gmail.com",
+            "contact": "091234567558",
+            "status": "Pending",
+            "result": null,
+            "updated": "2026-10-03 14:20",
+            "archived_at": null,
+            "invited_at": "2026-10-03 14:20"
+        },
+        {
+            "id": 111,
+            "name": "Barry Allen",
+            "email": "barryallen@gmail.com",
+            "contact": "091234567521",
+            "status": "Completed",
+            "result": "Passed",
+            "updated": "2026-09-28 16:40",
+            "archived_at": null,
+            "invited_at": "2026-09-26 12:40",
+            "submitted_at": "2026-09-28 16:40",
+            "passed_at": "2026-09-28 16:40"
+        },
+        {
+            "id": 112,
+            "name": "Hal Jordan",
+            "email": "haljordan@gmail.com",
+            "contact": "091234567484",
+            "status": "Pending",
+            "result": null,
+            "updated": "2026-09-28 09:05",
+            "archived_at": null,
+            "invited_at": "2026-09-28 09:05"
+        },
+        {
+            "id": 113,
+            "name": "Arthur Curry",
+            "email": "arthurcurry@gmail.com",
+            "contact": "091234567447",
+            "status": "In Progress",
+            "result": null,
+            "updated": "2026-09-27 14:30",
+            "archived_at": null,
+            "invited_at": "2026-09-26 05:30"
+        },
+        {
+            "id": 114,
+            "name": "Victor Stone",
+            "email": "victorstone@gmail.com",
+            "contact": "091234567410",
+            "status": "Completed",
+            "result": "Passed",
+            "updated": "2026-09-27 10:15",
+            "archived_at": null,
+            "invited_at": "2026-09-26 13:15",
+            "submitted_at": "2026-09-27 10:15",
+            "passed_at": "2026-09-27 10:15"
+        },
+        {
+            "id": 115,
+            "name": "Selina Kyle",
+            "email": "selinakyle@gmail.com",
+            "contact": "091234567373",
+            "status": "Pending",
+            "result": null,
+            "updated": "2026-09-26 15:50",
+            "archived_at": null,
+            "invited_at": "2026-09-26 15:50"
+        },
+        {
+            "id": 116,
+            "name": "Oliver Queen",
+            "email": "oliverqueen@gmail.com",
+            "contact": "091234567336",
+            "status": "Completed",
+            "result": "Rejected",
+            "updated": "2026-09-26 11:20",
+            "archived_at": null,
+            "invited_at": "2026-09-25 01:20",
+            "submitted_at": "2026-09-26 11:20"
+        },
+        {
+            "id": 117,
+            "name": "Kara Danvers",
+            "email": "karadanvers@gmail.com",
+            "contact": "091234567299",
+            "status": "Pending",
+            "result": null,
+            "updated": "2026-09-25 13:45",
+            "archived_at": null,
+            "invited_at": "2026-09-25 13:45"
+        },
+        {
+            "id": 118,
+            "name": "Bruce Banner",
+            "email": "brucebanner@gmail.com",
+            "contact": "091234567262",
+            "status": "In Progress",
+            "result": null,
+            "updated": "2026-09-25 09:30",
+            "archived_at": null,
+            "invited_at": "2026-09-23 19:30"
+        },
+        {
+            "id": 119,
+            "name": "Wanda Maximoff",
+            "email": "wandamaximoff@gmail.com",
+            "contact": "091234567225",
+            "status": "Completed",
+            "result": "Passed",
+            "updated": "2026-09-24 16:10",
+            "archived_at": null,
+            "invited_at": "2026-09-22 18:10",
+            "submitted_at": "2026-09-24 16:10",
+            "passed_at": "2026-09-24 16:10"
+        },
+        {
+            "id": 120,
+            "name": "Stephen Strange",
+            "email": "stephenstrange@gmail.com",
+            "contact": "091234567188",
+            "status": "Pending",
+            "result": null,
+            "updated": "2026-09-24 10:00",
+            "archived_at": null,
+            "invited_at": "2026-09-24 10:00"
+        },
+        {
+            "id": 121,
+            "name": "Carol Danvers",
+            "email": "caroldanvers@gmail.com",
+            "contact": "091234567151",
+            "status": "Completed",
+            "result": "Passed",
+            "updated": "2026-09-23 14:25",
+            "archived_at": null,
+            "invited_at": "2026-09-21 02:25",
+            "submitted_at": "2026-09-23 14:25",
+            "passed_at": "2026-09-23 14:25"
+        },
+        {
+            "id": 122,
+            "name": "Scott Lang",
+            "email": "scottlang@gmail.com",
+            "contact": "091234567114",
+            "status": "Pending",
+            "result": null,
+            "updated": "2026-09-23 09:40",
+            "archived_at": null,
+            "invited_at": "2026-09-23 09:40"
+        },
+        {
+            "id": 123,
+            "name": "Hope Van Dyne",
+            "email": "hopevandyne@gmail.com",
+            "contact": "091234567077",
+            "status": "In Progress",
+            "result": null,
+            "updated": "2026-09-22 15:35",
+            "archived_at": null,
+            "invited_at": "2026-09-22 02:35"
+        },
+        {
+            "id": 124,
+            "name": "Sam Wilson",
+            "email": "samwilson@gmail.com",
+            "contact": "091234567040",
+            "status": "Completed",
+            "result": "Rejected",
+            "updated": "2026-09-22 11:10",
+            "archived_at": null,
+            "invited_at": "2026-09-20 21:10",
+            "submitted_at": "2026-09-22 11:10"
+        },
+        {
+            "id": 125,
+            "name": "Bucky Barnes",
+            "email": "buckybarnes@gmail.com",
+            "contact": "091234567003",
+            "status": "Pending",
+            "result": null,
+            "updated": "2026-09-21 13:00",
+            "archived_at": null,
+            "invited_at": "2026-09-21 13:00"
+        },
+        {
+            "id": 126,
+            "name": "Matt Murdock",
+            "email": "mattmurdock@gmail.com",
+            "contact": "091234566966",
+            "status": "Completed",
+            "result": "Passed",
+            "updated": "2026-09-21 09:20",
+            "archived_at": null,
+            "invited_at": "2026-09-20 18:20",
+            "submitted_at": "2026-09-21 09:20",
+            "passed_at": "2026-09-21 09:20"
+        },
+        {
+            "id": 127,
+            "name": "Jessica Jones",
+            "email": "jessicajones@gmail.com",
+            "contact": "091234566929",
+            "status": "Pending",
+            "result": null,
+            "updated": "2026-09-20 16:45",
+            "archived_at": null,
+            "invited_at": "2026-09-20 16:45"
+        },
+        {
+            "id": 128,
+            "name": "Luke Cage",
+            "email": "lukecage@gmail.com",
+            "contact": "091234566892",
+            "status": "In Progress",
+            "result": null,
+            "updated": "2026-09-20 10:30",
+            "archived_at": null,
+            "invited_at": "2026-09-19 16:30"
+        },
+        {
+            "id": 129,
+            "name": "Danny Rand",
+            "email": "dannyrand@gmail.com",
+            "contact": "091234566855",
+            "status": "Completed",
+            "result": "Passed",
+            "updated": "2026-09-19 14:05",
+            "archived_at": null,
+            "invited_at": "2026-09-16 08:05",
+            "submitted_at": "2026-09-19 14:05",
+            "passed_at": "2026-09-19 14:05"
+        },
+        {
+            "id": 130,
+            "name": "Kate Bishop",
+            "email": "katebishop@gmail.com",
+            "contact": "091234566818",
+            "status": "Pending",
+            "result": null,
+            "updated": "2026-09-19 09:15",
+            "archived_at": null,
+            "invited_at": "2026-09-19 09:15"
+        },
+        {
+            "id": 131,
+            "name": "Clint Barton",
+            "email": "clintbarton@gmail.com",
+            "contact": "091234566781",
+            "status": "Completed",
+            "result": "Rejected",
+            "updated": "2026-09-18 15:55",
+            "archived_at": null,
+            "invited_at": "2026-09-14 11:55",
+            "submitted_at": "2026-09-18 15:55"
+        },
+        {
+            "id": 132,
+            "name": "Pepper Potts",
+            "email": "pepperpotts@gmail.com",
+            "contact": "091234566744",
+            "status": "Pending",
+            "result": null,
+            "updated": "2026-09-18 11:25",
+            "archived_at": null,
+            "invited_at": "2026-09-18 11:25"
+        },
+        {
+            "id": 133,
+            "name": "Maria Hill",
+            "email": "mariahill@gmail.com",
+            "contact": "091234566707",
+            "status": "In Progress",
+            "result": null,
+            "updated": "2026-09-17 13:35",
+            "archived_at": null,
+            "invited_at": "2026-09-16 14:35"
+        },
+        {
+            "id": 134,
+            "name": "Nick Fury",
+            "email": "nickfury@gmail.com",
+            "contact": "091234566670",
+            "status": "Pending",
+            "result": null,
+            "updated": "2026-09-17 09:50",
+            "archived_at": null,
+            "invited_at": "2026-09-17 09:50"
+        },
+        {
+            "id": 135,
+            "name": "Gabriel Antonio Dela Rosa Villanueva",
+            "email": "gabrielantoniodelarosavillanueva@gmail.com",
+            "contact": "091234566633",
+            "status": "Completed",
+            "result": "Passed",
+            "updated": "2026-09-16 14:15",
+            "archived_at": null,
+            "invited_at": "2026-09-10 18:15",
+            "submitted_at": "2026-09-16 14:15",
+            "passed_at": "2026-09-16 14:15"
+        },
+        {
+            "id": 136,
+            "name": "Markie Jelo Matre",
+            "email": "mjmatre24@gmail.com",
+            "contact": "09062233414",
+            "status": "Pending",
+            "result": null,
+            "updated": "2026-10-07 13:37",
+            "archived_at": null,
+            "invited_at": "2026-10-07 13:37"
+        },
+        {
+            "id": 137,
+            "name": "Cristina Mae Dalumay",
+            "email": "dalumay@gmail.com",
+            "contact": "098765432",
+            "status": "Pending",
+            "result": null,
+            "updated": "2026-10-08 10:23",
+            "archived_at": null,
+            "invited_at": "2026-10-08 10:23"
+        },
+        {
+            "id": 138,
+            "name": "Carlo S. Hilario",
+            "email": "carlohilario@gmail.com",
+            "contact": "09784783232",
+            "status": "Pending",
+            "result": null,
+            "updated": "2026-10-08 11:13",
+            "archived_at": "2026-10-13 19:11:30",
+            "invited_at": "2026-10-08 11:13"
+        },
+        {
+            "id": 139,
+            "name": "Carlo Hilario",
+            "email": "carlohilario77@gmail.com",
+            "contact": "0974374673",
+            "status": "Pending",
+            "result": null,
+            "updated": "2026-10-08 12:18",
+            "archived_at": "2026-10-13 19:11:30",
+            "invited_at": "2026-10-08 12:18"
+        },
+        {
+            "id": 140,
+            "name": "MARKIE JELO MATRE",
+            "email": "mmatre.8804@umak.edu.ph",
+            "contact": "09876543212",
+            "status": "Pending",
+            "result": null,
+            "updated": "2026-10-12 19:20",
+            "cv": {
+                "name": "Anylogic - Agent Based Modeling Phase 123.pdf",
+                "size": 3716277,
+                "file": "140.pdf"
+            },
+            "archived_at": "2026-10-13 19:11:30",
+            "invited_at": "2026-10-12 19:20"
+        },
+        {
+            "id": 141,
+            "name": "Sungchan",
+            "email": "sungchan@gmail.com",
+            "contact": "098765432",
+            "status": "Pending",
+            "result": null,
+            "updated": "2026-10-13 09:36",
+            "cv": {
+                "name": "Anylogic - Agent Based Modeling Phase 123.pdf",
+                "size": 3716277,
+                "file": "141.pdf"
+            },
+            "archived_at": "2026-10-13 19:11:30",
+            "invited_at": "2026-10-13 09:36"
+        },
+        {
+            "id": 142,
+            "name": "Test Applicant",
+            "first_name": "Test",
+            "middle_name": "",
+            "last_name": "Applicant",
+            "email": "test.applicant.1793553886@example.com",
+            "contact": "09123456789",
+            "position_id": 1,
+            "position": "Customer Service Representative",
+            "status": "Pending",
+            "result": null,
+            "updated": "2026-11-02 01:24",
+            "invited_at": "2026-11-02 01:24",
+            "submitted_at": null,
+            "passed_at": null,
+            "archived_at": null
+        }
+    ],
+    "submissions": [
+        {
+            "reference": "SCR-2026-00001",
+            "applicant_id": null,
+            "name": "Andrea Nicole Villanueva",
+            "email": "ebsmi.screening@gmail.com",
+            "answers": {
+                "q1": "Yes",
+                "q2": "Yes",
+                "q3": "Yes",
+                "q4": "Yes",
+                "q5": 5,
+                "q6": "2026-11-25",
+                "q7": "Yes",
+                "q7:follow": "3 to 4 weeks (30 days)",
+                "q8": "Yes",
+                "q9": "Yes",
+                "q10": "Yes",
+                "q11": "Yes",
+                "q12": "lkshdhsahdsahkdaljdlsjkdjsalkjdlkajlkdjlksajdlkjlksjdlksajdlkjlkdjlksajdlkjsalkdlksa",
+                "q13": "Yes"
+            },
+            "timing": {
+                "q1": 1965,
+                "q2": 1193,
+                "q3": 1061,
+                "q4": 1200,
+                "q5": 1970,
+                "q6": 1882,
+                "q7": 3480,
+                "q8": 1210,
+                "q9": 1234,
+                "q10": 1081,
+                "q11": 1087,
+                "q12": 8436,
+                "q13": 4761
+            },
+            "device": "b0506234e3339a4608535491e8764909",
+            "ip": "::1",
+            "otp": {
+                "failed": 0,
+                "requests": [],
+                "locked": false
+            },
+            "video": {
+                "name": "Recording 2026-10-22 143059.mp4",
+                "size": 1607213,
+                "seconds": 9.8,
+                "source": "upload",
+                "hash": "b25088c4e4724334a708943f79ddb376a37c4e8d4bad42077f20233a1484038f"
+            },
+            "submitted_at": "2026-10-25 07:33"
+        },
+        {
+            "reference": "SCR-2026-00006",
+            "applicant_id": 6,
+            "name": "Carlo Miguel Tan",
+            "email": "ebsmi.screening@gmail.com",
+            "answers": {
+                "q1": "Yes",
+                "q2": "Yes",
+                "q3": "Yes",
+                "q4": "Yes",
+                "q5": 5,
+                "q6": "2026-11-25",
+                "q7": "Yes",
+                "q7:follow": "More than 2 months",
+                "q8": "Yes",
+                "q9": "Yes",
+                "q10": "Yes",
+                "q11": "Yes",
+                "q12": "hskjhdahdahkjdhajhdkjahkjdhakjdhkjahdkjhakjdhakjhdkjhakjdhakjhdkahdks",
+                "q13": "Yes"
+            },
+            "timing": {
+                "q1": 1933,
+                "q2": 1191,
+                "q3": 958,
+                "q4": 1024,
+                "q5": 1707,
+                "q6": 2465,
+                "q7": 3030,
+                "q8": 1407,
+                "q9": 1275,
+                "q10": 1035,
+                "q11": 1129,
+                "q12": 5787,
+                "q13": 3495
+            },
+            "device": "b0506234e3339a4608535491e8764909",
+            "ip": "::1",
+            "otp": {
+                "failed": 0,
+                "requests": [],
+                "locked": false
+            },
+            "video": {
+                "name": "Recording 2026-10-22 143210.mp4",
+                "size": 5604893,
+                "seconds": 8.3,
+                "source": "upload",
+                "hash": "738d880c7963bd2899c0a36267ef744a5c59de4fde919c663f1151e2c88ebf60"
+            },
+            "submitted_at": "2026-10-25 12:25"
+        },
+        {
+            "reference": "SCR-2026-00007",
+            "applicant_id": 7,
+            "name": "Andrea Nicole Villanueva",
+            "email": "ebsmi.screening@gmail.com",
+            "answers": {
+                "q1": "Yes",
+                "q2": "Yes",
+                "q3": "Yes",
+                "q4": "Yes",
+                "q5": 5,
+                "q6": "2026-11-25",
+                "q7": "Yes",
+                "q7:follow": "1 to 2 months",
+                "q8": "Yes",
+                "q9": "Yes",
+                "q10": "Yes",
+                "q11": "Yes",
+                "q12": "kjkjahskjdahjkhdkjahkjdahkjdhkjahdkjakcmashdayoiusyduaydiahkdhakjhdkjahdkjha",
+                "q13": "Yes"
+            },
+            "timing": {
+                "q1": 2447,
+                "q2": 1353,
+                "q3": 1065,
+                "q4": 963,
+                "q5": 1950,
+                "q6": 2160,
+                "q7": 2960,
+                "q8": 1374,
+                "q9": 1035,
+                "q10": 1415,
+                "q11": 1118,
+                "q12": 6466,
+                "q13": 1674
+            },
+            "device": "b0506234e3339a4608535491e8764909",
+            "ip": "::1",
+            "otp": {
+                "failed": 0,
+                "requests": [],
+                "locked": false
+            },
+            "video": {
+                "name": "Recording 2026-10-22 143210.mp4",
+                "size": 5604893,
+                "seconds": 8.3,
+                "source": "upload",
+                "hash": "738d880c7963bd2899c0a36267ef744a5c59de4fde919c663f1151e2c88ebf60"
+            },
+            "submitted_at": "2026-10-25 14:12"
+        },
+        {
+            "reference": "SCR-2026-00008",
+            "applicant_id": 8,
+            "name": "Paolo Gabriel Rivera",
+            "email": "ebsmi.screening@gmail.com",
+            "answers": {
+                "q1": "Yes",
+                "q2": "Yes",
+                "q3": "Yes",
+                "q4": "Yes",
+                "q5": 5,
+                "q6": "2026-11-25",
+                "q7": "Yes",
+                "q7:follow": "More than 2 months",
+                "q8": "Yes",
+                "q9": "Yes",
+                "q10": "Yes",
+                "q11": "Yes",
+                "q12": "yufujyyutyutyutyuyughjghjghjfhgfgdfdtrdtrdyrfygihjlkkjljkljklkjlk",
+                "q13": "Yes"
+            },
+            "timing": {
+                "q1": 3315,
+                "q2": 931,
+                "q3": 937,
+                "q4": 1013,
+                "q5": 2124,
+                "q6": 2200,
+                "q7": 3409,
+                "q8": 1057,
+                "q9": 1005,
+                "q10": 953,
+                "q11": 1027,
+                "q12": 7509,
+                "q13": 1648
+            },
+            "device": "b0506234e3339a4608535491e8764909",
+            "ip": "::1",
+            "otp": {
+                "failed": 0,
+                "requests": [],
+                "locked": false
+            },
+            "video": {
+                "name": "Recording 2026-10-22 143059.mp4",
+                "size": 1607213,
+                "seconds": 9.8,
+                "source": "upload",
+                "hash": "b25088c4e4724334a708943f79ddb376a37c4e8d4bad42077f20233a1484038f"
+            },
+            "submitted_at": "2026-10-25 14:36"
+        },
+        {
+            "reference": "SCR-2026-00009",
+            "applicant_id": 9,
+            "name": "Marianne Angela U. Adora",
+            "email": "marianneaadora@gmail.com",
+            "answers": {
+                "q1": "Yes",
+                "q2": "Yes",
+                "q3": "Yes",
+                "q4": "Yes",
+                "q5": 5,
+                "q6": "2026-11-25",
+                "q7": "Yes",
+                "q7:follow": "3 to 4 weeks (30 days)",
+                "q8": "Yes",
+                "q9": "Yes",
+                "q10": "Yes",
+                "q11": "Yes",
+                "q12": "gkjaishdjahjdhakhdkjhaiudsaiuhdiuahdoihadhadhkahdkja",
+                "q13": "Yes"
+            },
+            "timing": {
+                "q1": 2095,
+                "q2": 1005,
+                "q3": 1567,
+                "q4": 875,
+                "q5": 1619,
+                "q6": 1864,
+                "q7": 3548,
+                "q8": 1147,
+                "q9": 1072,
+                "q10": 967,
+                "q11": 961,
+                "q12": 5008,
+                "q13": 1547
+            },
+            "device": "b0506234e3339a4608535491e8764909",
+            "ip": "::1",
+            "otp": {
+                "failed": 0,
+                "requests": [],
+                "locked": false
+            },
+            "video": {
+                "name": "Recording 2026-10-22 143059.mp4",
+                "size": 1607213,
+                "seconds": 9.8,
+                "source": "upload",
+                "hash": "b25088c4e4724334a708943f79ddb376a37c4e8d4bad42077f20233a1484038f"
+            },
+            "submitted_at": "2026-10-25 15:28"
+        },
+        {
+            "reference": "SCR-2026-00010",
+            "applicant_id": 10,
+            "name": "Marianne Angela U. Adora",
+            "email": "marianneaadora@gmail.com",
+            "answers": {
+                "q1": "Yes",
+                "q2": "Yes",
+                "q3": "Yes",
+                "q4": "Yes",
+                "q5": 5,
+                "q6": "2026-11-25",
+                "q7": "Yes",
+                "q7:follow": "1 to 2 months",
+                "q8": "Yes",
+                "q9": "Yes",
+                "q10": "Yes",
+                "q11": "Yes",
+                "q12": "dahkjdhkjadkjhajdhahdjahjdhakjhkjashjdhakjdhkadhkjahdkjahjdhka",
+                "q13": "Yes"
+            },
+            "timing": {
+                "q1": 1801,
+                "q2": 955,
+                "q3": 1432,
+                "q4": 2129,
+                "q5": 2827,
+                "q6": 2250,
+                "q7": 3437,
+                "q8": 1175,
+                "q9": 1036,
+                "q10": 1192,
+                "q11": 1447,
+                "q12": 5606,
+                "q13": 1475
+            },
+            "device": "b0506234e3339a4608535491e8764909",
+            "ip": "::1",
+            "otp": {
+                "failed": 0,
+                "requests": [],
+                "locked": false
+            },
+            "video": {
+                "name": "Recording 2026-10-22 143059.mp4",
+                "size": 1607213,
+                "seconds": 9.8,
+                "source": "upload",
+                "hash": "b25088c4e4724334a708943f79ddb376a37c4e8d4bad42077f20233a1484038f"
+            },
+            "submitted_at": "2026-10-25 16:39"
+        }
+    ],
+    "evaluations": [
+        {
+            "reference": "",
+            "email": "ebsmi.screening@gmail.com",
+            "points": 2,
+            "band": "Low",
+            "auto_high": [],
+            "outcome": "passed",
+            "factors": [
+                {
+                    "label": "Failed OTP attempts",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "0 wrong code(s). Typos are normal."
+                },
+                {
+                    "label": "OTP requests in 10 minutes",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "0 code request(s). Email delays make this normal."
+                },
+                {
+                    "label": "Questionnaire speed",
+                    "points": 2,
+                    "max": 3,
+                    "reason": "Finished in 31 seconds; 54% of the items were answered in under 1.5 seconds."
+                },
+                {
+                    "label": "Same email or phone as another record",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No other record shares the email or phone number."
+                },
+                {
+                    "label": "Re-applying after a failed screening",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "No recent failed screening."
+                },
+                {
+                    "label": "Same device or IP as other applicants",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No suspicious sharing (a shared IP alone is not scored)."
+                },
+                {
+                    "label": "Contradictory logistics answers",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "The logistics answers agree with each other."
+                },
+                {
+                    "label": "Time on the video page",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "Not scored, because applicants can upload a file instead of recording live."
+                },
+                {
+                    "label": "Video matches another applicant",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No other applicant sent this video."
+                }
+            ],
+            "knockouts": [
+                {
+                    "id": "q2",
+                    "question": "Are you willing to work on the schedule as advertised?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q3",
+                    "question": "Are you willing to work on-site in BGC, Taguig?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q4",
+                    "question": "Are you willing to go through the assessment and interviews?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q8",
+                    "question": "Do you have access to a reliable internet connection and a device suitable for completing the assessment and virtual steps?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q9",
+                    "question": "Are you willing to undergo a background check as part of the hiring process?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q10",
+                    "question": "Can you provide required pre-employment documents (e.g. NBI clearance, TIN, SSS) upon request?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q11",
+                    "question": "This role involves handling sensitive client information. Do you agree to comply with confidentiality and data protection requirements?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                }
+            ],
+            "evaluated_at": "2026-10-25 07:33"
+        },
+        {
+            "reference": "",
+            "email": "ebsmi.screening@gmail.com",
+            "points": 3,
+            "band": "Low",
+            "auto_high": [],
+            "outcome": "passed",
+            "factors": [
+                {
+                    "label": "Failed OTP attempts",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "0 wrong code(s). Typos are normal."
+                },
+                {
+                    "label": "OTP requests in 10 minutes",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "0 code request(s). Email delays make this normal."
+                },
+                {
+                    "label": "Questionnaire speed",
+                    "points": 2,
+                    "max": 3,
+                    "reason": "Finished in 26 seconds; 54% of the items were answered in under 1.5 seconds."
+                },
+                {
+                    "label": "Same email or phone as another record",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No other record shares the email or phone number."
+                },
+                {
+                    "label": "Re-applying after a failed screening",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "No recent failed screening."
+                },
+                {
+                    "label": "Same device or IP as other applicants",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No suspicious sharing (a shared IP alone is not scored)."
+                },
+                {
+                    "label": "Contradictory logistics answers",
+                    "points": 1,
+                    "max": 3,
+                    "reason": "The earliest start date is sooner than the notice period."
+                },
+                {
+                    "label": "Time on the video page",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "Not scored, because applicants can upload a file instead of recording live."
+                },
+                {
+                    "label": "Video matches another applicant",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No other applicant sent this video."
+                }
+            ],
+            "knockouts": [
+                {
+                    "id": "q2",
+                    "question": "Are you willing to work on the schedule as advertised?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q3",
+                    "question": "Are you willing to work on-site in BGC, Taguig?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q4",
+                    "question": "Are you willing to go through the assessment and interviews?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q8",
+                    "question": "Do you have access to a reliable internet connection and a device suitable for completing the assessment and virtual steps?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q9",
+                    "question": "Are you willing to undergo a background check as part of the hiring process?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q10",
+                    "question": "Can you provide required pre-employment documents (e.g. NBI clearance, TIN, SSS) upon request?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q11",
+                    "question": "This role involves handling sensitive client information. Do you agree to comply with confidentiality and data protection requirements?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                }
+            ],
+            "evaluated_at": "2026-10-25 12:25"
+        },
+        {
+            "reference": "",
+            "email": "ebsmi.screening@gmail.com",
+            "points": 2,
+            "band": "Low",
+            "auto_high": [],
+            "outcome": "passed",
+            "factors": [
+                {
+                    "label": "Failed OTP attempts",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "0 wrong code(s). Typos are normal."
+                },
+                {
+                    "label": "OTP requests in 10 minutes",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "0 code request(s). Email delays make this normal."
+                },
+                {
+                    "label": "Questionnaire speed",
+                    "points": 2,
+                    "max": 3,
+                    "reason": "Finished in 26 seconds; 54% of the items were answered in under 1.5 seconds."
+                },
+                {
+                    "label": "Same email or phone as another record",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No other record shares the email or phone number."
+                },
+                {
+                    "label": "Re-applying after a failed screening",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "No recent failed screening."
+                },
+                {
+                    "label": "Same device or IP as other applicants",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No suspicious sharing (a shared IP alone is not scored)."
+                },
+                {
+                    "label": "Contradictory logistics answers",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "The logistics answers agree with each other."
+                },
+                {
+                    "label": "Time on the video page",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "Not scored, because applicants can upload a file instead of recording live."
+                },
+                {
+                    "label": "Video matches another applicant",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No other applicant sent this video."
+                }
+            ],
+            "knockouts": [
+                {
+                    "id": "q2",
+                    "question": "Are you willing to work on the schedule as advertised?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q3",
+                    "question": "Are you willing to work on-site in BGC, Taguig?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q4",
+                    "question": "Are you willing to go through the assessment and interviews?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q8",
+                    "question": "Do you have access to a reliable internet connection and a device suitable for completing the assessment and virtual steps?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q9",
+                    "question": "Are you willing to undergo a background check as part of the hiring process?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q10",
+                    "question": "Can you provide required pre-employment documents (e.g. NBI clearance, TIN, SSS) upon request?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q11",
+                    "question": "This role involves handling sensitive client information. Do you agree to comply with confidentiality and data protection requirements?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                }
+            ],
+            "evaluated_at": "2026-10-25 14:12"
+        },
+        {
+            "reference": "",
+            "email": "ebsmi.screening@gmail.com",
+            "points": 3,
+            "band": "Low",
+            "auto_high": [],
+            "outcome": "passed",
+            "factors": [
+                {
+                    "label": "Failed OTP attempts",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "0 wrong code(s). Typos are normal."
+                },
+                {
+                    "label": "OTP requests in 10 minutes",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "0 code request(s). Email delays make this normal."
+                },
+                {
+                    "label": "Questionnaire speed",
+                    "points": 2,
+                    "max": 3,
+                    "reason": "Finished in 27 seconds; 54% of the items were answered in under 1.5 seconds."
+                },
+                {
+                    "label": "Same email or phone as another record",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No other record shares the email or phone number."
+                },
+                {
+                    "label": "Re-applying after a failed screening",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "No recent failed screening."
+                },
+                {
+                    "label": "Same device or IP as other applicants",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No suspicious sharing (a shared IP alone is not scored)."
+                },
+                {
+                    "label": "Contradictory logistics answers",
+                    "points": 1,
+                    "max": 3,
+                    "reason": "The earliest start date is sooner than the notice period."
+                },
+                {
+                    "label": "Time on the video page",
+                    "points": 0,
+                    "max": 2,
+                    "reason": "Not scored, because applicants can upload a file instead of recording live."
+                },
+                {
+                    "label": "Video matches another applicant",
+                    "points": 0,
+                    "max": 3,
+                    "reason": "No other applicant sent this video."
+                }
+            ],
+            "knockouts": [
+                {
+                    "id": "q2",
+                    "question": "Are you willing to work on the schedule as advertised?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q3",
+                    "question": "Are you willing to work on-site in BGC, Taguig?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q4",
+                    "question": "Are you willing to go through the assessment and interviews?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q8",
+                    "question": "Do you have access to a reliable internet connection and a device suitable for completing the assessment and virtual steps?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q9",
+                    "question": "Are you willing to undergo a background check as part of the hiring process?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q10",
+                    "question": "Can you provide required pre-employment documents (e.g. NBI clearance, TIN, SSS) upon request?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                },
+                {
+                    "id": "q11",
+                    "question": "This role involves handling sensitive client information. Do you agree to comply with confidentiality and data protection requirements?",
+                    "expected": "Yes",
+                    "given": "Yes",
+                    "met": true,
+                    "reason": ""
+                }
+            ],
+            "evaluated_at": "2026-10-16 14:16"
+        }
+    ],
+    "interviews": {
+        "103": {
+            "status": "rescheduled",
+            "preferred_date": "2026-10-16",
+            "preferred_time": "15:00",
+            "type": "On Site Interview",
+            "date": "2026-10-16",
+            "time": "14:00",
+            "source": "sample",
+            "updated": "2026-10-10 21:24"
+        },
+        "106": {
+            "status": "rescheduled",
+            "preferred_date": "2026-10-14",
+            "preferred_time": "10:00",
+            "type": "On Site Interview",
+            "date": "2026-10-16",
+            "time": "13:00",
+            "source": "sample",
+            "updated": "2026-10-13 19:13"
+        },
+        "108": {
+            "status": "rescheduled",
+            "preferred_date": "2026-10-16",
+            "preferred_time": "13:00",
+            "type": "On Site Interview",
+            "date": "2026-10-15",
+            "time": "09:00",
+            "source": "sample",
+            "updated": "2026-10-10 21:12"
+        },
+        "129": {
+            "status": "confirmed",
+            "preferred_date": "2026-10-19",
+            "preferred_time": "13:00",
+            "type": "On Site Interview",
+            "date": "2026-10-19",
+            "time": "13:00",
+            "source": "sample",
+            "updated": "2026-11-01 10:52"
+        },
+        "135": {
+            "status": "confirmed",
+            "preferred_date": "2026-10-13",
+            "preferred_time": "11:00",
+            "type": "On Site Interview",
+            "date": "2026-10-13",
+            "time": "11:00",
+            "source": "sample",
+            "updated": "2026-10-10 21:25"
+        },
+        "121": {
+            "status": "confirmed",
+            "preferred_date": "2026-10-14",
+            "preferred_time": "11:00",
+            "type": "On Site Interview",
+            "date": "2026-10-14",
+            "time": "11:00",
+            "source": "sample",
+            "updated": "2026-10-10 21:31"
+        },
+        "114": {
+            "status": "confirmed",
+            "preferred_date": "2026-10-20",
+            "preferred_time": "11:00",
+            "type": "On Site Interview",
+            "date": "2026-10-20",
+            "time": "11:00",
+            "source": "sample",
+            "updated": "2026-10-13 09:38"
+        },
+        "111": {
+            "status": "confirmed",
+            "preferred_date": "2026-10-05",
+            "preferred_time": "16:00",
+            "type": "On Site Interview",
+            "date": "2026-10-05",
+            "time": "16:00",
+            "source": "sample",
+            "updated": "2026-10-01 15:40",
+            "answered_at": "2026-10-01 15:40"
+        },
+        "126": {
+            "status": "confirmed",
+            "preferred_date": "2026-11-05",
+            "preferred_time": "09:00",
+            "type": "On Site Interview",
+            "date": "2026-11-05",
+            "time": "09:00",
+            "source": "sample",
+            "updated": "2026-11-01 10:53"
+        }
+    },
+    "outbox": [
+        {
+            "applicant_id": 103,
+            "kind": "confirmed",
+            "to": "clarkkent@gmail.com",
+            "subject": "Your interview is confirmed | Expertise",
+            "html": "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head><body style=\"margin:0;padding:0;background:#f4f4f5;font-family:'Plus Jakarta Sans','Segoe UI',Helvetica,Arial,sans-serif;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f4f4f5;\"><tr><td align=\"center\" style=\"padding:28px 12px;\"><table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;\"><tr><td style=\"height:6px;line-height:6px;font-size:0;background:#d1122a;\">&nbsp;</td></tr><tr><td style=\"padding:28px 40px 0 40px;font-size:26px;font-weight:800;color:#a3081e;letter-spacing:.3px;\">Expertise</td></tr><tr><td style=\"padding:26px 40px 0 40px;\"><p style=\"margin:0 0 8px 0;font-size:13px;font-weight:700;color:#d1122a;\">Interview update</p><h1 style=\"margin:0;font-size:26px;line-height:1.25;font-weight:800;color:#1f1f23;\">Your interview is confirmed</h1></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:15px;line-height:1.7;\"><p style=\"margin:0 0 12px 0;color:#1f1f23;font-weight:700;\">Hi Clark,</p><p style=\"margin:0;\">Good news! The schedule you chose is available. Your interview is now confirmed.</p></td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f8f8f9;border:1px solid #e6e7ea;border-radius:12px;\"><tr><td style=\"padding:12px 22px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Date</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">October 16, 2026</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Time</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">03:00 PM</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Interview Type</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">On Site Interview</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Location</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">Expertise Office, BGC, Taguig</td></tr></table></td></tr></table></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:14px;line-height:1.7;\">Please arrive 15 minutes early and bring a valid ID. If you can no longer make it, reply to this email as soon as possible.</td></tr><tr><td style=\"padding:26px 40px 30px 40px;color:#8a8f96;font-size:12px;line-height:1.6;border-top:0;\">Thank you,<br><strong style=\"color:#1f1f23;\">Expertise HR Team</strong></td></tr></table></td></tr></table></body></html>",
+            "sent_at": "2026-10-10 17:52:33"
+        },
+        {
+            "applicant_id": 103,
+            "kind": "rescheduled",
+            "to": "clarkkent@gmail.com",
+            "subject": "New interview schedule | Expertise",
+            "html": "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head><body style=\"margin:0;padding:0;background:#f4f4f5;font-family:'Plus Jakarta Sans','Segoe UI',Helvetica,Arial,sans-serif;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f4f4f5;\"><tr><td align=\"center\" style=\"padding:28px 12px;\"><table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;\"><tr><td style=\"height:6px;line-height:6px;font-size:0;background:#d1122a;\">&nbsp;</td></tr><tr><td style=\"padding:28px 40px 0 40px;font-size:26px;font-weight:800;color:#a3081e;letter-spacing:.3px;\">Expertise</td></tr><tr><td style=\"padding:26px 40px 0 40px;\"><p style=\"margin:0 0 8px 0;font-size:13px;font-weight:700;color:#d1122a;\">Interview update</p><h1 style=\"margin:0;font-size:26px;line-height:1.25;font-weight:800;color:#1f1f23;\">We have a new schedule for you</h1></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:15px;line-height:1.7;\"><p style=\"margin:0 0 12px 0;color:#1f1f23;font-weight:700;\">Hi Clark,</p><p style=\"margin:0;\">Thank you for choosing a schedule. Unfortunately, that date and time is not available, so we set a new one for your interview.</p></td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f8f8f9;border:1px solid #e6e7ea;border-radius:12px;\"><tr><td style=\"padding:12px 22px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Date</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">October 30, 2026</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Time</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">04:00 PM</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Interview Type</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">On Site Interview</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Location</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">Expertise Office, BGC, Taguig</td></tr></table></td></tr></table></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:14px;line-height:1.7;\">If this schedule does not work for you, please reply to this email and we will find another time. Please arrive 15 minutes early and bring a valid ID.</td></tr><tr><td style=\"padding:26px 40px 30px 40px;color:#8a8f96;font-size:12px;line-height:1.6;border-top:0;\">Thank you,<br><strong style=\"color:#1f1f23;\">Expertise HR Team</strong></td></tr></table></td></tr></table></body></html>",
+            "sent_at": "2026-10-10 17:52:56"
+        },
+        {
+            "applicant_id": 103,
+            "kind": "rescheduled",
+            "to": "clarkkent@gmail.com",
+            "subject": "New interview schedule | Expertise",
+            "html": "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head><body style=\"margin:0;padding:0;background:#f4f4f5;font-family:'Plus Jakarta Sans','Segoe UI',Helvetica,Arial,sans-serif;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f4f4f5;\"><tr><td align=\"center\" style=\"padding:28px 12px;\"><table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;\"><tr><td style=\"height:6px;line-height:6px;font-size:0;background:#d1122a;\">&nbsp;</td></tr><tr><td style=\"padding:28px 40px 0 40px;font-size:26px;font-weight:800;color:#a3081e;letter-spacing:.3px;\">Expertise</td></tr><tr><td style=\"padding:26px 40px 0 40px;\"><p style=\"margin:0 0 8px 0;font-size:13px;font-weight:700;color:#d1122a;\">Interview update</p><h1 style=\"margin:0;font-size:26px;line-height:1.25;font-weight:800;color:#1f1f23;\">We have a new schedule for you</h1></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:15px;line-height:1.7;\"><p style=\"margin:0 0 12px 0;color:#1f1f23;font-weight:700;\">Hi Clark,</p><p style=\"margin:0;\">Thank you for choosing a schedule. Unfortunately, that date and time is not available, so we set a new one for your interview.</p></td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f8f8f9;border:1px solid #e6e7ea;border-radius:12px;\"><tr><td style=\"padding:12px 22px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Date</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">October 16, 2026</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Time</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">01:00 PM</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Interview Type</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">On Site Interview</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Location</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">Expertise Office, BGC, Taguig</td></tr></table></td></tr></table></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:14px;line-height:1.7;\">If this schedule does not work for you, please reply to this email and we will find another time. Please arrive 15 minutes early and bring a valid ID.</td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><a href=\"http://localhost/pbl-project-first-semester/applicant/application-status.php\" style=\"display:inline-block;padding:13px 26px;background:#d1122a;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;border-radius:10px;\">View my interview schedule</a></td></tr><tr><td style=\"padding:12px 40px 0 40px;color:#8a8f96;font-size:12px;line-height:1.6;\">The link opens your application status page. You will be asked to verify your email with a one-time code first.</td></tr><tr><td style=\"padding:26px 40px 30px 40px;color:#8a8f96;font-size:12px;line-height:1.6;border-top:0;\">Thank you,<br><strong style=\"color:#1f1f23;\">Expertise HR Team</strong></td></tr></table></td></tr></table></body></html>",
+            "sent_at": "2026-10-10 20:58:38"
+        },
+        {
+            "applicant_id": 108,
+            "kind": "rescheduled",
+            "to": "tonystark@gmail.com",
+            "subject": "New interview schedule | Expertise",
+            "html": "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head><body style=\"margin:0;padding:0;background:#f4f4f5;font-family:'Plus Jakarta Sans','Segoe UI',Helvetica,Arial,sans-serif;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f4f4f5;\"><tr><td align=\"center\" style=\"padding:28px 12px;\"><table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;\"><tr><td style=\"height:6px;line-height:6px;font-size:0;background:#d1122a;\">&nbsp;</td></tr><tr><td style=\"padding:28px 40px 0 40px;font-size:26px;font-weight:800;color:#a3081e;letter-spacing:.3px;\">Expertise</td></tr><tr><td style=\"padding:26px 40px 0 40px;\"><p style=\"margin:0 0 8px 0;font-size:13px;font-weight:700;color:#d1122a;\">Interview update</p><h1 style=\"margin:0;font-size:26px;line-height:1.25;font-weight:800;color:#1f1f23;\">We have a new schedule for you</h1></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:15px;line-height:1.7;\"><p style=\"margin:0 0 12px 0;color:#1f1f23;font-weight:700;\">Hi Tony,</p><p style=\"margin:0;\">Thank you for choosing a schedule. Unfortunately, that date and time is not available, so we set a new one for your interview.</p></td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f8f8f9;border:1px solid #e6e7ea;border-radius:12px;\"><tr><td style=\"padding:12px 22px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Date</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">October 15, 2026</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Time</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">09:00 AM</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Interview Type</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">On Site Interview</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Location</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">Expertise Office, BGC, Taguig</td></tr></table></td></tr></table></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:14px;line-height:1.7;\">If this schedule does not work for you, please reply to this email and we will find another time. Please arrive 15 minutes early and bring a valid ID.</td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><a href=\"http://localhost/pbl-project-first-semester/applicant/application-status.php\" style=\"display:inline-block;padding:13px 26px;background:#d1122a;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;border-radius:10px;\">View my interview schedule</a></td></tr><tr><td style=\"padding:12px 40px 0 40px;color:#8a8f96;font-size:12px;line-height:1.6;\">The link opens your application status page. You will be asked to verify your email with a one-time code first.</td></tr><tr><td style=\"padding:26px 40px 30px 40px;color:#8a8f96;font-size:12px;line-height:1.6;border-top:0;\">Thank you,<br><strong style=\"color:#1f1f23;\">Expertise HR Team</strong></td></tr></table></td></tr></table></body></html>",
+            "sent_at": "2026-10-10 21:12:31"
+        },
+        {
+            "applicant_id": 103,
+            "kind": "rescheduled",
+            "to": "clarkkent@gmail.com",
+            "subject": "New interview schedule | Expertise",
+            "html": "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head><body style=\"margin:0;padding:0;background:#f4f4f5;font-family:'Plus Jakarta Sans','Segoe UI',Helvetica,Arial,sans-serif;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f4f4f5;\"><tr><td align=\"center\" style=\"padding:28px 12px;\"><table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;\"><tr><td style=\"height:6px;line-height:6px;font-size:0;background:#d1122a;\">&nbsp;</td></tr><tr><td style=\"padding:28px 40px 0 40px;font-size:26px;font-weight:800;color:#a3081e;letter-spacing:.3px;\">Expertise</td></tr><tr><td style=\"padding:26px 40px 0 40px;\"><p style=\"margin:0 0 8px 0;font-size:13px;font-weight:700;color:#d1122a;\">Interview update</p><h1 style=\"margin:0;font-size:26px;line-height:1.25;font-weight:800;color:#1f1f23;\">We have a new schedule for you</h1></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:15px;line-height:1.7;\"><p style=\"margin:0 0 12px 0;color:#1f1f23;font-weight:700;\">Hi Clark,</p><p style=\"margin:0;\">Thank you for choosing a schedule. Unfortunately, that date and time is not available, so we set a new one for your interview.</p></td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f8f8f9;border:1px solid #e6e7ea;border-radius:12px;\"><tr><td style=\"padding:12px 22px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Date</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">October 16, 2026</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Time</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">02:00 PM</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Interview Type</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">On Site Interview</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Location</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">Expertise Office, BGC, Taguig</td></tr></table></td></tr></table></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:14px;line-height:1.7;\">If this schedule does not work for you, please reply to this email and we will find another time. Please arrive 15 minutes early and bring a valid ID.</td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><a href=\"http://localhost/pbl-project-first-semester/applicant/application-status.php\" style=\"display:inline-block;padding:13px 26px;background:#d1122a;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;border-radius:10px;\">View my interview schedule</a></td></tr><tr><td style=\"padding:12px 40px 0 40px;color:#8a8f96;font-size:12px;line-height:1.6;\">The link opens your application status page. You will be asked to verify your email with a one-time code first.</td></tr><tr><td style=\"padding:26px 40px 30px 40px;color:#8a8f96;font-size:12px;line-height:1.6;border-top:0;\">Thank you,<br><strong style=\"color:#1f1f23;\">Expertise HR Team</strong></td></tr></table></td></tr></table></body></html>",
+            "sent_at": "2026-10-10 21:24:43"
+        },
+        {
+            "applicant_id": 135,
+            "kind": "confirmed",
+            "to": "gabrielantoniodelarosavillanueva@gmail.com",
+            "subject": "Your interview is confirmed | Expertise",
+            "html": "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head><body style=\"margin:0;padding:0;background:#f4f4f5;font-family:'Plus Jakarta Sans','Segoe UI',Helvetica,Arial,sans-serif;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f4f4f5;\"><tr><td align=\"center\" style=\"padding:28px 12px;\"><table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;\"><tr><td style=\"height:6px;line-height:6px;font-size:0;background:#d1122a;\">&nbsp;</td></tr><tr><td style=\"padding:28px 40px 0 40px;font-size:26px;font-weight:800;color:#a3081e;letter-spacing:.3px;\">Expertise</td></tr><tr><td style=\"padding:26px 40px 0 40px;\"><p style=\"margin:0 0 8px 0;font-size:13px;font-weight:700;color:#d1122a;\">Interview update</p><h1 style=\"margin:0;font-size:26px;line-height:1.25;font-weight:800;color:#1f1f23;\">Your interview is confirmed</h1></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:15px;line-height:1.7;\"><p style=\"margin:0 0 12px 0;color:#1f1f23;font-weight:700;\">Hi Gabriel,</p><p style=\"margin:0;\">Good news! The schedule you chose is available. Your interview is now confirmed.</p></td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f8f8f9;border:1px solid #e6e7ea;border-radius:12px;\"><tr><td style=\"padding:12px 22px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Date</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">October 13, 2026</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Time</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">11:00 AM</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Interview Type</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">On Site Interview</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Location</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">Expertise Office, BGC, Taguig</td></tr></table></td></tr></table></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:14px;line-height:1.7;\">Please arrive 15 minutes early and bring a valid ID. If you can no longer make it, reply to this email as soon as possible.</td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><a href=\"http://localhost/pbl-project-first-semester/applicant/application-status.php\" style=\"display:inline-block;padding:13px 26px;background:#d1122a;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;border-radius:10px;\">View my interview schedule</a></td></tr><tr><td style=\"padding:12px 40px 0 40px;color:#8a8f96;font-size:12px;line-height:1.6;\">The link opens your application status page. You will be asked to verify your email with a one-time code first.</td></tr><tr><td style=\"padding:26px 40px 30px 40px;color:#8a8f96;font-size:12px;line-height:1.6;border-top:0;\">Thank you,<br><strong style=\"color:#1f1f23;\">Expertise HR Team</strong></td></tr></table></td></tr></table></body></html>",
+            "sent_at": "2026-10-10 21:25:07"
+        },
+        {
+            "applicant_id": 106,
+            "kind": "rescheduled",
+            "to": "joseprotaciorizalmercadoyalonsorealonda@gmail.com",
+            "subject": "New interview schedule | Expertise",
+            "html": "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head><body style=\"margin:0;padding:0;background:#f4f4f5;font-family:'Plus Jakarta Sans','Segoe UI',Helvetica,Arial,sans-serif;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f4f4f5;\"><tr><td align=\"center\" style=\"padding:28px 12px;\"><table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;\"><tr><td style=\"height:6px;line-height:6px;font-size:0;background:#d1122a;\">&nbsp;</td></tr><tr><td style=\"padding:28px 40px 0 40px;font-size:26px;font-weight:800;color:#a3081e;letter-spacing:.3px;\">Expertise</td></tr><tr><td style=\"padding:26px 40px 0 40px;\"><p style=\"margin:0 0 8px 0;font-size:13px;font-weight:700;color:#d1122a;\">Interview update</p><h1 style=\"margin:0;font-size:26px;line-height:1.25;font-weight:800;color:#1f1f23;\">We have a new schedule for you</h1></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:15px;line-height:1.7;\"><p style=\"margin:0 0 12px 0;color:#1f1f23;font-weight:700;\">Hi Jose,</p><p style=\"margin:0;\">Thank you for choosing a schedule. Unfortunately, that date and time is not available, so we set a new one for your interview.</p></td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f8f8f9;border:1px solid #e6e7ea;border-radius:12px;\"><tr><td style=\"padding:12px 22px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Date</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">October 15, 2026</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Time</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">01:00 PM</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Interview Type</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">On Site Interview</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Location</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">Expertise Office, BGC, Taguig</td></tr></table></td></tr></table></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:14px;line-height:1.7;\">If this schedule does not work for you, please reply to this email and we will find another time. Please arrive 15 minutes early and bring a valid ID.</td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><a href=\"http://localhost/pbl-project-first-semester/applicant/application-status.php\" style=\"display:inline-block;padding:13px 26px;background:#d1122a;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;border-radius:10px;\">View my interview schedule</a></td></tr><tr><td style=\"padding:12px 40px 0 40px;color:#8a8f96;font-size:12px;line-height:1.6;\">The link opens your application status page. You will be asked to verify your email with a one-time code first.</td></tr><tr><td style=\"padding:26px 40px 30px 40px;color:#8a8f96;font-size:12px;line-height:1.6;border-top:0;\">Thank you,<br><strong style=\"color:#1f1f23;\">Expertise HR Team</strong></td></tr></table></td></tr></table></body></html>",
+            "sent_at": "2026-10-10 21:31:00"
+        },
+        {
+            "applicant_id": 121,
+            "kind": "confirmed",
+            "to": "caroldanvers@gmail.com",
+            "subject": "Your interview is confirmed | Expertise",
+            "html": "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head><body style=\"margin:0;padding:0;background:#f4f4f5;font-family:'Plus Jakarta Sans','Segoe UI',Helvetica,Arial,sans-serif;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f4f4f5;\"><tr><td align=\"center\" style=\"padding:28px 12px;\"><table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;\"><tr><td style=\"height:6px;line-height:6px;font-size:0;background:#d1122a;\">&nbsp;</td></tr><tr><td style=\"padding:28px 40px 0 40px;font-size:26px;font-weight:800;color:#a3081e;letter-spacing:.3px;\">Expertise</td></tr><tr><td style=\"padding:26px 40px 0 40px;\"><p style=\"margin:0 0 8px 0;font-size:13px;font-weight:700;color:#d1122a;\">Interview update</p><h1 style=\"margin:0;font-size:26px;line-height:1.25;font-weight:800;color:#1f1f23;\">Your interview is confirmed</h1></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:15px;line-height:1.7;\"><p style=\"margin:0 0 12px 0;color:#1f1f23;font-weight:700;\">Hi Carol,</p><p style=\"margin:0;\">Good news! The schedule you chose is available. Your interview is now confirmed.</p></td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f8f8f9;border:1px solid #e6e7ea;border-radius:12px;\"><tr><td style=\"padding:12px 22px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Date</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">October 14, 2026</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Time</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">11:00 AM</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Interview Type</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">On Site Interview</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Location</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">Expertise Office, BGC, Taguig</td></tr></table></td></tr></table></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:14px;line-height:1.7;\">Please arrive 15 minutes early and bring a valid ID. If you can no longer make it, reply to this email as soon as possible.</td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><a href=\"http://localhost/pbl-project-first-semester/applicant/application-status.php\" style=\"display:inline-block;padding:13px 26px;background:#d1122a;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;border-radius:10px;\">View my interview schedule</a></td></tr><tr><td style=\"padding:12px 40px 0 40px;color:#8a8f96;font-size:12px;line-height:1.6;\">The link opens your application status page. You will be asked to verify your email with a one-time code first.</td></tr><tr><td style=\"padding:26px 40px 30px 40px;color:#8a8f96;font-size:12px;line-height:1.6;border-top:0;\">Thank you,<br><strong style=\"color:#1f1f23;\">Expertise HR Team</strong></td></tr></table></td></tr></table></body></html>",
+            "sent_at": "2026-10-10 21:31:33"
+        },
+        {
+            "applicant_id": 0,
+            "kind": "hr_credentials",
+            "to": "hr@expertise.com",
+            "subject": "Your login credentials were updated | Expertise",
+            "html": "<p>Hello HR,</p><p>Your login credentials were updated by the Admin. Log in to the Expertise HR portal with this email and the password the Admin gave you.</p>",
+            "sent_at": "2026-10-12 19:01:41"
+        },
+        {
+            "applicant_id": 0,
+            "kind": "hr_credentials",
+            "to": "hr@expertise.com",
+            "subject": "Your login credentials were updated | Expertise",
+            "html": "<p>Hello HR,</p><p>Your login credentials were updated by the Admin. Log in to the Expertise HR portal with this email and the password the Admin gave you.</p>",
+            "sent_at": "2026-10-12 19:02:09"
+        },
+        {
+            "applicant_id": 0,
+            "kind": "hr_credentials",
+            "to": "mjmatre@gmail.com",
+            "subject": "Your HR account is ready | Expertise",
+            "html": "<p>Hello Markie,</p><p>An HR account was created for you. Log in to the Expertise HR portal with this email and the password the Admin gave you.</p>",
+            "sent_at": "2026-10-12 19:03:31"
+        },
+        {
+            "applicant_id": 0,
+            "kind": "hr_credentials",
+            "to": "mjmatre@gmail.com",
+            "subject": "Your login credentials were updated | Expertise",
+            "html": "<p>Hello Markie,</p><p>Your login credentials were updated by the Admin. Log in to the Expertise HR portal with this email and the password the Admin gave you.</p>",
+            "sent_at": "2026-10-12 19:24:06"
+        },
+        {
+            "applicant_id": 0,
+            "kind": "hr_credentials",
+            "to": "mjmatre@gmail.com",
+            "subject": "Your login credentials were updated | Expertise",
+            "html": "<p>Hello Markie,</p><p>Your login credentials were updated by the Admin. Log in to the Expertise HR portal with this email and the password the Admin gave you.</p>",
+            "sent_at": "2026-10-12 20:08:06"
+        },
+        {
+            "applicant_id": 0,
+            "kind": "hr_credentials",
+            "to": "mjmatre@gmail.com",
+            "subject": "Your login credentials were updated | Expertise",
+            "html": "<p>Hello Markie,</p><p>Your login credentials were updated by the Admin. Log in to the Expertise HR portal with this email and the password the Admin gave you.</p>",
+            "sent_at": "2026-10-12 20:18:20"
+        },
+        {
+            "applicant_id": 0,
+            "kind": "hr_credentials",
+            "to": "hr@expertise.com",
+            "subject": "Your login credentials were updated | Expertise",
+            "html": "<p>Hello HR,</p><p>Your login credentials were updated by the Admin. Log in to the Expertise HR portal with this email and the password the Admin gave you.</p>",
+            "sent_at": "2026-10-13 09:33:56"
+        },
+        {
+            "applicant_id": 114,
+            "kind": "confirmed",
+            "to": "victorstone@gmail.com",
+            "subject": "Your interview is confirmed | Expertise",
+            "html": "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head><body style=\"margin:0;padding:0;background:#f4f4f5;font-family:'Plus Jakarta Sans','Segoe UI',Helvetica,Arial,sans-serif;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f4f4f5;\"><tr><td align=\"center\" style=\"padding:28px 12px;\"><table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;\"><tr><td style=\"height:6px;line-height:6px;font-size:0;background:#d1122a;\">&nbsp;</td></tr><tr><td style=\"padding:28px 40px 0 40px;font-size:26px;font-weight:800;color:#a3081e;letter-spacing:.3px;\">Expertise</td></tr><tr><td style=\"padding:26px 40px 0 40px;\"><p style=\"margin:0 0 8px 0;font-size:13px;font-weight:700;color:#d1122a;\">Interview update</p><h1 style=\"margin:0;font-size:26px;line-height:1.25;font-weight:800;color:#1f1f23;\">Your interview is confirmed</h1></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:15px;line-height:1.7;\"><p style=\"margin:0 0 12px 0;color:#1f1f23;font-weight:700;\">Hi Victor,</p><p style=\"margin:0;\">Good news! The schedule you chose is available. Your interview is now confirmed.</p></td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f8f8f9;border:1px solid #e6e7ea;border-radius:12px;\"><tr><td style=\"padding:12px 22px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Date</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">October 20, 2026</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Time</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">11:00 AM</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Interview Type</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">On Site Interview</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Location</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">Expertise Office, BGC, Taguig</td></tr></table></td></tr></table></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:14px;line-height:1.7;\">Please arrive 15 minutes early and bring a valid ID. If you can no longer make it, reply to this email as soon as possible.</td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><a href=\"http://localhost/pbl-project-first-semester/applicant/application-status.php\" style=\"display:inline-block;padding:13px 26px;background:#d1122a;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;border-radius:10px;\">View my interview schedule</a></td></tr><tr><td style=\"padding:12px 40px 0 40px;color:#8a8f96;font-size:12px;line-height:1.6;\">The link opens your application status page. You will be asked to verify your email with a one-time code first.</td></tr><tr><td style=\"padding:26px 40px 30px 40px;color:#8a8f96;font-size:12px;line-height:1.6;border-top:0;\">Thank you,<br><strong style=\"color:#1f1f23;\">Expertise HR Team</strong></td></tr></table></td></tr></table></body></html>",
+            "sent_at": "2026-10-13 09:38:00"
+        },
+        {
+            "applicant_id": 0,
+            "kind": "hr_credentials",
+            "to": "hr@expertise.com",
+            "subject": "Your login credentials were updated | Expertise",
+            "html": "<p>Hello HR,</p><p>Your login credentials were updated by the Admin. Log in to the Expertise HR portal with this email and the password the Admin gave you.</p>",
+            "sent_at": "2026-10-13 09:39:19"
+        },
+        {
+            "applicant_id": 0,
+            "kind": "hr_credentials",
+            "to": "hr@expertise.com",
+            "subject": "Your login credentials were updated | Expertise",
+            "html": "<p>Hello HR,</p><p>Your login credentials were updated by the Admin. Log in to the Expertise HR portal with this email and the password the Admin gave you.</p>",
+            "sent_at": "2026-10-13 09:39:35"
+        },
+        {
+            "applicant_id": 0,
+            "kind": "hr_credentials",
+            "to": "mmatre.8804@umak.edu.ph",
+            "subject": "Your HR account is ready | Expertise",
+            "html": "<p>Hello MARKIE JELO MATRE,</p><p>An HR account was created for you. Log in to the Expertise HR portal with this email and the password the Admin gave you.</p>",
+            "sent_at": "2026-10-13 09:39:55"
+        },
+        {
+            "applicant_id": 106,
+            "kind": "rescheduled",
+            "to": "joseprotaciorizalmercadoyalonsorealonda@gmail.com",
+            "subject": "New interview schedule | Expertise",
+            "html": "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head><body style=\"margin:0;padding:0;background:#f4f4f5;font-family:'Plus Jakarta Sans','Segoe UI',Helvetica,Arial,sans-serif;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f4f4f5;\"><tr><td align=\"center\" style=\"padding:28px 12px;\"><table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;\"><tr><td style=\"height:6px;line-height:6px;font-size:0;background:#d1122a;\">&nbsp;</td></tr><tr><td style=\"padding:28px 40px 0 40px;font-size:26px;font-weight:800;color:#a3081e;letter-spacing:.3px;\">Expertise</td></tr><tr><td style=\"padding:26px 40px 0 40px;\"><p style=\"margin:0 0 8px 0;font-size:13px;font-weight:700;color:#d1122a;\">Interview update</p><h1 style=\"margin:0;font-size:26px;line-height:1.25;font-weight:800;color:#1f1f23;\">We have a new schedule for you</h1></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:15px;line-height:1.7;\"><p style=\"margin:0 0 12px 0;color:#1f1f23;font-weight:700;\">Hi Jose,</p><p style=\"margin:0;\">Thank you for choosing a schedule. Unfortunately, that date and time is not available, so we set a new one for your interview.</p></td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f8f8f9;border:1px solid #e6e7ea;border-radius:12px;\"><tr><td style=\"padding:12px 22px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Date</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">October 16, 2026</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Time</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">01:00 PM</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Interview Type</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">On Site Interview</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Location</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">Expertise Office, BGC, Taguig</td></tr></table></td></tr></table></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:14px;line-height:1.7;\">If this schedule does not work for you, please reply to this email and we will find another time. Please arrive 15 minutes early and bring a valid ID.</td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><a href=\"http://localhost/pbl-project-first-semester/applicant/application-status.php\" style=\"display:inline-block;padding:13px 26px;background:#d1122a;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;border-radius:10px;\">View my interview schedule</a></td></tr><tr><td style=\"padding:12px 40px 0 40px;color:#8a8f96;font-size:12px;line-height:1.6;\">The link opens your application status page. You will be asked to verify your email with a one-time code first.</td></tr><tr><td style=\"padding:26px 40px 30px 40px;color:#8a8f96;font-size:12px;line-height:1.6;border-top:0;\">Thank you,<br><strong style=\"color:#1f1f23;\">Expertise HR Team</strong></td></tr></table></td></tr></table></body></html>",
+            "sent_at": "2026-10-13 19:13:11"
+        },
+        {
+            "applicant_id": 129,
+            "kind": "confirmed",
+            "to": "dannyrand@gmail.com",
+            "subject": "Your interview is confirmed | Expertise",
+            "html": "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head><body style=\"margin:0;padding:0;background:#f4f4f5;font-family:'Plus Jakarta Sans','Segoe UI',Helvetica,Arial,sans-serif;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f4f4f5;\"><tr><td align=\"center\" style=\"padding:28px 12px;\"><table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;\"><tr><td style=\"height:6px;line-height:6px;font-size:0;background:#d1122a;\">&nbsp;</td></tr><tr><td style=\"padding:28px 40px 0 40px;font-size:26px;font-weight:800;color:#a3081e;letter-spacing:.3px;\">Expertise</td></tr><tr><td style=\"padding:26px 40px 0 40px;\"><p style=\"margin:0 0 8px 0;font-size:13px;font-weight:700;color:#d1122a;\">Interview update</p><h1 style=\"margin:0;font-size:26px;line-height:1.25;font-weight:800;color:#1f1f23;\">Your interview is confirmed</h1></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:15px;line-height:1.7;\"><p style=\"margin:0 0 12px 0;color:#1f1f23;font-weight:700;\">Hi Danny,</p><p style=\"margin:0;\">Good news! The schedule you chose is available. Your interview is now confirmed.</p></td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f8f8f9;border:1px solid #e6e7ea;border-radius:12px;\"><tr><td style=\"padding:12px 22px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Date</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">October 19, 2026</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Time</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">01:00 PM</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Interview Type</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">On Site Interview</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Location</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">Expertise Office, BGC, Taguig</td></tr></table></td></tr></table></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:14px;line-height:1.7;\">Please arrive 15 minutes early and bring a valid ID. If you can no longer make it, reply to this email as soon as possible.</td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><a href=\"http://localhost/pbl-project-first-semester/applicant/application-status.php\" style=\"display:inline-block;padding:13px 26px;background:#d1122a;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;border-radius:10px;\">View my interview schedule</a></td></tr><tr><td style=\"padding:12px 40px 0 40px;color:#8a8f96;font-size:12px;line-height:1.6;\">The link opens your application status page. You will be asked to verify your email with a one-time code first.</td></tr><tr><td style=\"padding:26px 40px 30px 40px;color:#8a8f96;font-size:12px;line-height:1.6;border-top:0;\">Thank you,<br><strong style=\"color:#1f1f23;\">Expertise HR Team</strong></td></tr></table></td></tr></table></body></html>",
+            "sent_at": "2026-11-01 10:52:52"
+        },
+        {
+            "applicant_id": 126,
+            "kind": "confirmed",
+            "to": "mattmurdock@gmail.com",
+            "subject": "Your interview is confirmed | Expertise",
+            "html": "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head><body style=\"margin:0;padding:0;background:#f4f4f5;font-family:'Plus Jakarta Sans','Segoe UI',Helvetica,Arial,sans-serif;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f4f4f5;\"><tr><td align=\"center\" style=\"padding:28px 12px;\"><table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;\"><tr><td style=\"height:6px;line-height:6px;font-size:0;background:#d1122a;\">&nbsp;</td></tr><tr><td style=\"padding:28px 40px 0 40px;font-size:26px;font-weight:800;color:#a3081e;letter-spacing:.3px;\">Expertise</td></tr><tr><td style=\"padding:26px 40px 0 40px;\"><p style=\"margin:0 0 8px 0;font-size:13px;font-weight:700;color:#d1122a;\">Interview update</p><h1 style=\"margin:0;font-size:26px;line-height:1.25;font-weight:800;color:#1f1f23;\">Your interview is confirmed</h1></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:15px;line-height:1.7;\"><p style=\"margin:0 0 12px 0;color:#1f1f23;font-weight:700;\">Hi Matt,</p><p style=\"margin:0;\">Good news! The schedule you chose is available. Your interview is now confirmed.</p></td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f8f8f9;border:1px solid #e6e7ea;border-radius:12px;\"><tr><td style=\"padding:12px 22px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Date</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">November 5, 2026</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Time</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">09:00 AM</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Interview Type</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">On Site Interview</td></tr><tr><td style=\"padding:9px 0;width:130px;font-size:13px;font-weight:700;color:#5b5f66;\">Location</td><td style=\"padding:9px 0;font-size:15px;font-weight:700;color:#1f1f23;\">Expertise Office, BGC, Taguig</td></tr></table></td></tr></table></td></tr><tr><td style=\"padding:20px 40px 0 40px;color:#3a3d44;font-size:14px;line-height:1.7;\">Please arrive 15 minutes early and bring a valid ID. If you can no longer make it, reply to this email as soon as possible.</td></tr><tr><td style=\"padding:22px 40px 0 40px;\"><a href=\"http://localhost/pbl-project-first-semester/applicant/application-status.php\" style=\"display:inline-block;padding:13px 26px;background:#d1122a;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;border-radius:10px;\">View my interview schedule</a></td></tr><tr><td style=\"padding:12px 40px 0 40px;color:#8a8f96;font-size:12px;line-height:1.6;\">The link opens your application status page. You will be asked to verify your email with a one-time code first.</td></tr><tr><td style=\"padding:26px 40px 30px 40px;color:#8a8f96;font-size:12px;line-height:1.6;border-top:0;\">Thank you,<br><strong style=\"color:#1f1f23;\">Expertise HR Team</strong></td></tr></table></td></tr></table></body></html>",
+            "sent_at": "2026-11-01 10:53:17"
+        }
+    ],
+    "hr_accounts": [
+        {
+            "id": 1,
+            "name": "Edward Nashton",
+            "email": "hr@expertise.com",
+            "role": "HR Staff",
+            "status": "Active",
+            "created": "2026-08-03 09:00",
+            "archived_at": null,
+            "avatar": "https://res.cloudinary.com/y0s0brvb/image/private/s--_gAHhkYe--/v1793688646/ebsmi-user-profiles/avatar-1-avatar.jpg",
+            "hash": "$2y$10$Q7OyZfjLPSdGUh7VVRbCBeqvdUX.h7k32eInaPU.sEAYrhYr0Jr.2"
+        },
+        {
+            "id": 2,
+            "name": "Markie",
+            "email": "mjmatre@gmail.com",
+            "role": "HR Staff",
+            "hash": "$2y$10$STQDNyttoLywTXaHv3QTVevJ/ABwaA5FY/qXS0q/5etGTPu4M6r9y",
+            "status": "Inactive",
+            "created": "2026-10-12 19:03",
+            "archived_at": "2026-10-12 20:20:41"
+        },
+        {
+            "id": 3,
+            "name": "MARKIE JELO MATRE",
+            "email": "mmatre.8804@umak.edu.ph",
+            "role": "HR Staff",
+            "hash": "$2y$10$QEJhENaRT/L4jPqTgPmOKO3goXrnqrop6ns7t83DvWMZ2.4ci0X.6",
+            "status": "Active",
+            "created": "2026-10-13 09:39",
+            "archived_at": "2026-10-13 09:40:07"
+        }
+    ],
+    "activity": [
+        {
+            "at": "2026-10-01 13:00",
+            "activity": "Added An Applicant",
+            "details": "Maria Clara Santos",
+            "by": "HR",
+            "admin_seen_at": "2026-10-16 14:05:54"
+        },
+        {
+            "at": "2026-10-03 14:20",
+            "activity": "Added An Applicant",
+            "details": "Steve Rogers",
+            "by": "HR",
+            "admin_seen_at": "2026-10-16 14:05:54"
+        },
+        {
+            "at": "2026-10-05 08:15",
+            "activity": "Added An Applicant",
+            "details": "Juan Dela Cruz",
+            "by": "HR",
+            "admin_seen_at": "2026-10-16 14:05:54"
+        },
+        {
+            "at": "2026-10-08 11:45",
+            "activity": "Questionnaires Edited",
+            "details": "Q5 · Consent & readiness",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 19:31:01"
+        },
+        {
+            "at": "2026-10-12 18:58",
+            "activity": "HR Account Deleted",
+            "details": "HR (HR)",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 19:31:01"
+        },
+        {
+            "at": "2026-10-12 18:58",
+            "activity": "HR Account Restored",
+            "details": "HR (HR)",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 19:31:01"
+        },
+        {
+            "at": "2026-10-12 19:01",
+            "activity": "HR Account Deactivated",
+            "details": "HR (HR)",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 19:31:01"
+        },
+        {
+            "at": "2026-10-12 19:02",
+            "activity": "HR Account Activated",
+            "details": "HR (HR)",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 19:31:01"
+        },
+        {
+            "at": "2026-10-12 19:03",
+            "activity": "HR Account Added",
+            "details": "Markie (HR)",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 19:31:01"
+        },
+        {
+            "at": "2026-10-12 19:20:20",
+            "activity": "Added An Applicant",
+            "details": "MARKIE JELO MATRE",
+            "by": "HR",
+            "admin_seen_at": "2026-10-12 19:31:01"
+        },
+        {
+            "at": "2026-10-12 19:21:57",
+            "activity": "Applicant Deleted",
+            "details": "Juan Dela Cruz",
+            "by": "HR",
+            "admin_seen_at": "2026-10-12 19:31:01"
+        },
+        {
+            "at": "2026-10-12 19:24:06",
+            "activity": "HR Account Deactivated",
+            "details": "Markie (HR)",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 19:31:01"
+        },
+        {
+            "at": "2026-10-12 19:24:50",
+            "activity": "Applicant Restored",
+            "details": "Juan Dela Cruz",
+            "by": "HR",
+            "admin_seen_at": "2026-10-12 19:31:01"
+        },
+        {
+            "at": "2026-10-12 19:31:40",
+            "activity": "Applicant Deleted",
+            "details": "MARKIE JELO MATRE",
+            "by": "HR",
+            "admin_seen_at": "2026-10-12 19:31:49"
+        },
+        {
+            "at": "2026-10-12 19:32:12",
+            "activity": "Applicant Restored",
+            "details": "MARKIE JELO MATRE",
+            "by": "HR",
+            "admin_seen_at": "2026-10-12 19:32:17"
+        },
+        {
+            "at": "2026-10-12 20:00:45",
+            "activity": "Questionnaires Added",
+            "details": "Q14 · Consent & readiness",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 20:00:51"
+        },
+        {
+            "at": "2026-10-12 20:01:35",
+            "activity": "Questionnaires Deleted",
+            "details": "Q14 · Consent & readiness",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 20:01:41"
+        },
+        {
+            "at": "2026-10-12 20:07:25",
+            "activity": "Questionnaires Added",
+            "details": "Q15 · Data Protection",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 20:08:28"
+        },
+        {
+            "at": "2026-10-12 20:07:33",
+            "activity": "Questionnaires Deleted",
+            "details": "Q15 · Data Protection",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 20:08:28"
+        },
+        {
+            "at": "2026-10-12 20:08:06",
+            "activity": "HR Account Activated",
+            "details": "Markie (HR)",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 20:08:28"
+        },
+        {
+            "at": "2026-10-12 20:18:20",
+            "activity": "HR Account Deactivated",
+            "details": "Markie (HR)",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 20:21:10"
+        },
+        {
+            "at": "2026-10-12 20:19:45",
+            "activity": "Questionnaires Added",
+            "details": "Q16 · Consent & readiness",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 20:21:10"
+        },
+        {
+            "at": "2026-10-12 20:20:26",
+            "activity": "Questionnaires Deleted",
+            "details": "Q16 · Consent & readiness",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 20:21:10"
+        },
+        {
+            "at": "2026-10-12 20:20:41",
+            "activity": "HR Account Deleted",
+            "details": "Markie (HR)",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 20:21:10"
+        },
+        {
+            "at": "2026-10-12 20:20:55",
+            "activity": "Questionnaires Deleted Forever",
+            "details": "Q14 · Consent & readiness",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-12 20:21:10"
+        },
+        {
+            "at": "2026-10-12 20:21:18",
+            "activity": "Applicant Deleted",
+            "details": "MARKIE JELO MATRE",
+            "by": "HR",
+            "admin_seen_at": "2026-10-12 20:21:35"
+        },
+        {
+            "at": "2026-10-13 09:33:56",
+            "activity": "HR Account Edited",
+            "details": "HR (HR)",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-13 09:38:30"
+        },
+        {
+            "at": "2026-10-13 09:34:05",
+            "activity": "HR Account Deleted",
+            "details": "HR (HR)",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-13 09:38:30"
+        },
+        {
+            "at": "2026-10-13 09:34:12",
+            "activity": "HR Account Restored",
+            "details": "HR (HR)",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-13 09:38:30"
+        },
+        {
+            "at": "2026-10-13 09:36:17",
+            "activity": "Added An Applicant",
+            "details": "Sungchan",
+            "by": "HR",
+            "admin_seen_at": "2026-10-13 09:38:30"
+        },
+        {
+            "at": "2026-10-13 09:36:40",
+            "activity": "Applicant Deleted",
+            "details": "Sungchan",
+            "by": "HR",
+            "admin_seen_at": "2026-10-13 09:38:30"
+        },
+        {
+            "at": "2026-10-13 09:38:00",
+            "activity": "Interview Confirmed",
+            "details": "Victor Stone · October 20, 2026, 11:00 AM",
+            "by": "HR",
+            "admin_seen_at": "2026-10-13 09:38:30"
+        },
+        {
+            "at": "2026-10-13 09:39:19",
+            "activity": "HR Account Deactivated",
+            "details": "HR (HR)",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-13 09:40:26"
+        },
+        {
+            "at": "2026-10-13 09:39:35",
+            "activity": "HR Account Activated",
+            "details": "HR (HR)",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-13 09:40:26"
+        },
+        {
+            "at": "2026-10-13 09:39:55",
+            "activity": "HR Account Added",
+            "details": "MARKIE JELO MATRE (HR)",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-13 09:40:26"
+        },
+        {
+            "at": "2026-10-13 09:40:07",
+            "activity": "HR Account Deleted",
+            "details": "MARKIE JELO MATRE (HR)",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-13 09:40:26"
+        },
+        {
+            "at": "2026-10-13 09:40:24",
+            "activity": "Questionnaires Edited",
+            "details": "Q1 · Consent & readiness",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-13 09:40:26"
+        },
+        {
+            "at": "2026-10-13 09:40:40",
+            "activity": "Questionnaires Edited",
+            "details": "Q1 · Consent & readiness",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-13 09:40:47"
+        },
+        {
+            "at": "2026-10-13 09:40:46",
+            "activity": "Questionnaires Edited",
+            "details": "Q1 · Consent & readiness",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-13 09:40:47"
+        },
+        {
+            "at": "2026-10-13 09:41:07",
+            "activity": "Questionnaires Edited",
+            "details": "Q1 · Consent & readiness",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-13 09:41:27"
+        },
+        {
+            "at": "2026-10-13 09:41:25",
+            "activity": "Questionnaires Added",
+            "details": "Q17 · Consent & readiness",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-13 09:41:27"
+        },
+        {
+            "at": "2026-10-13 09:42:15",
+            "activity": "Questionnaires Deleted",
+            "details": "Q17 · Consent & readiness",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-13 09:44:31"
+        },
+        {
+            "at": "2026-10-13 09:44:48",
+            "activity": "Questionnaires Deleted Forever",
+            "details": "Q17 · Consent & readiness",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-13 09:44:49"
+        },
+        {
+            "at": "2026-10-13 09:58:37",
+            "activity": "Added An Applicant",
+            "details": "Ian Dick",
+            "by": "HR",
+            "admin_seen_at": "2026-10-13 10:00:09"
+        },
+        {
+            "at": "2026-10-13 09:58:58",
+            "activity": "Applicant Deleted",
+            "details": "Ian Dick",
+            "by": "HR",
+            "admin_seen_at": "2026-10-13 10:00:09"
+        },
+        {
+            "at": "2026-10-13 09:59:21",
+            "activity": "Applicant Deleted Forever",
+            "details": "Ian Dick",
+            "by": "HR",
+            "admin_seen_at": "2026-10-13 10:00:09"
+        },
+        {
+            "at": "2026-10-13 10:01:34",
+            "activity": "Questionnaires Added",
+            "details": "Q17 · Consent & readiness",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-13 10:01:37"
+        },
+        {
+            "at": "2026-10-13 10:04:24",
+            "activity": "Questionnaires Deleted",
+            "details": "Q17 · Consent & readiness",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-13 10:10:51"
+        },
+        {
+            "at": "2026-10-13 19:11:12",
+            "activity": "Applicant Deleted",
+            "details": "Juan Dela Cruz, Bruce Wayne +36 more",
+            "by": "HR",
+            "admin_seen_at": "2026-10-13 19:11:52"
+        },
+        {
+            "at": "2026-10-13 19:11:18",
+            "activity": "Applicant Restored",
+            "details": "Juan Dela Cruz, Bruce Wayne +39 more",
+            "by": "HR",
+            "admin_seen_at": "2026-10-13 19:11:52"
+        },
+        {
+            "at": "2026-10-13 19:11:30",
+            "activity": "Applicant Deleted",
+            "details": "Carlo S. Hilario, Carlo Hilario +2 more",
+            "by": "HR",
+            "admin_seen_at": "2026-10-13 19:11:52"
+        },
+        {
+            "at": "2026-10-13 19:13:11",
+            "activity": "Interview Rescheduled",
+            "details": "Jose Protacio Rizal Mercado y Alonso Realonda · October 16, 2026, 01:00 PM",
+            "by": "HR",
+            "admin_seen_at": "2026-10-13 19:16:22"
+        },
+        {
+            "at": "2026-10-17 11:44:49",
+            "activity": "Questionnaires Deleted",
+            "details": "Q1 · Consent & readiness",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-25 12:29:16"
+        },
+        {
+            "at": "2026-10-17 11:44:57",
+            "activity": "Questionnaires Restored",
+            "details": "Q1 · Consent & readiness",
+            "by": "Admin",
+            "admin_seen_at": "2026-10-25 12:29:16"
+        },
+        {
+            "at": "2026-11-01 10:39:44",
+            "activity": "Profile Picture Changed",
+            "details": "Profile picture changed",
+            "by": "HR",
+            "kind": "profile",
+            "owner": 1,
+            "changes": [
+                {
+                    "field": "Profile picture",
+                    "from": "None",
+                    "to": "New photo"
+                }
+            ],
+            "admin_seen_at": "2026-11-01 10:40:02"
+        },
+        {
+            "at": "2026-11-01 10:50:16",
+            "activity": "Password Change Requested",
+            "details": "HR (HR)",
+            "by": "HR",
+            "kind": "pw_request",
+            "ref": 1,
+            "owner": 1,
+            "admin_seen_at": "2026-11-01 10:50:43"
+        },
+        {
+            "at": "2026-11-01 10:51:26",
+            "activity": "Password Change Rejected",
+            "details": "HR (HR)",
+            "by": "Admin",
+            "kind": "pw_result",
+            "ref": 1,
+            "owner": 1,
+            "reason": "sorry no update",
+            "admin_seen_at": "2026-11-01 10:54:51"
+        },
+        {
+            "at": "2026-11-01 10:52:52",
+            "activity": "Interview Confirmed",
+            "details": "Danny Rand · October 19, 2026, 01:00 PM",
+            "by": "HR",
+            "admin_seen_at": "2026-11-01 10:54:51"
+        },
+        {
+            "at": "2026-11-01 10:53:17",
+            "activity": "Interview Confirmed",
+            "details": "Matt Murdock · November 5, 2026, 09:00 AM",
+            "by": "HR",
+            "admin_seen_at": "2026-11-01 10:54:51"
+        },
+        {
+            "at": "2026-11-01 10:55:25",
+            "activity": "Password Change Requested",
+            "details": "HR (HR)",
+            "by": "HR",
+            "kind": "pw_request",
+            "ref": 2,
+            "owner": 1,
+            "admin_seen_at": "2026-11-01 10:55:32"
+        },
+        {
+            "at": "2026-11-01 10:55:49",
+            "activity": "Password Change Approved",
+            "details": "HR (HR)",
+            "by": "Admin",
+            "kind": "pw_result",
+            "ref": 2,
+            "owner": 1,
+            "admin_seen_at": "2026-11-01 11:05:06"
+        },
+        {
+            "at": "2026-11-01 11:27:23",
+            "activity": "Password Change Requested",
+            "details": "HR (HR)",
+            "by": "HR",
+            "kind": "pw_request",
+            "ref": 3,
+            "owner": 1,
+            "admin_seen_at": "2026-11-01 11:27:36"
+        },
+        {
+            "at": "2026-11-01 11:27:28",
+            "activity": "Profile Picture Changed",
+            "details": "Profile picture changed",
+            "by": "HR",
+            "kind": "profile",
+            "owner": 1,
+            "changes": [
+                {
+                    "field": "Profile picture",
+                    "from": "Photo",
+                    "to": "New photo"
+                }
+            ],
+            "admin_seen_at": "2026-11-01 11:27:36"
+        },
+        {
+            "at": "2026-11-01 11:27:50",
+            "activity": "Password Change Approved",
+            "details": "HR (HR)",
+            "by": "Admin",
+            "kind": "pw_result",
+            "ref": 3,
+            "owner": 1,
+            "admin_seen_at": "2026-11-01 11:28:06"
+        },
+        {
+            "at": "2026-11-02 01:24:46",
+            "activity": "Added An Applicant",
+            "details": "Test Applicant",
+            "by": "HR",
+            "admin_seen_at": "2026-11-03 05:02:02"
+        },
+        {
+            "at": "2026-11-03 14:50:04",
+            "activity": "Profile Picture Changed",
+            "details": "Profile picture changed",
+            "by": "HR",
+            "kind": "profile",
+            "owner": 1,
+            "changes": [
+                {
+                    "field": "Profile picture",
+                    "from": "Photo",
+                    "to": "New photo"
+                }
+            ],
+            "admin_seen_at": "2026-11-03 14:53:53"
+        },
+        {
+            "at": "2026-11-03 14:50:45",
+            "activity": "Profile Picture Changed",
+            "details": "Profile picture changed",
+            "by": "HR",
+            "kind": "profile",
+            "owner": 1,
+            "changes": [
+                {
+                    "field": "Profile picture",
+                    "from": "Photo",
+                    "to": "New photo"
+                }
+            ],
+            "admin_seen_at": "2026-11-03 14:53:53"
+        },
+        {
+            "at": "2026-11-03 14:53:03",
+            "activity": "Name Changed",
+            "details": "Name: HR → Edward Nashton",
+            "by": "HR",
+            "kind": "profile",
+            "owner": 1,
+            "changes": [
+                {
+                    "field": "Name",
+                    "from": "HR",
+                    "to": "Edward Nashton"
+                }
+            ],
+            "admin_seen_at": "2026-11-03 14:53:53"
+        },
+        {
+            "at": "2026-11-03 14:56:53",
+            "activity": "Name Changed",
+            "details": "Name: Edward Nashton → The Riddler",
+            "by": "HR",
+            "kind": "profile",
+            "owner": 1,
+            "changes": [
+                {
+                    "field": "Name",
+                    "from": "Edward Nashton",
+                    "to": "The Riddler"
+                }
+            ],
+            "admin_seen_at": "2026-11-03 14:57:12"
+        },
+        {
+            "at": "2026-11-03 15:00:02",
+            "activity": "Name Changed",
+            "details": "Name: The Riddler → Edward Nashton",
+            "by": "HR",
+            "kind": "profile",
+            "owner": 1,
+            "changes": [
+                {
+                    "field": "Name",
+                    "from": "The Riddler",
+                    "to": "Edward Nashton"
+                }
+            ],
+            "admin_seen_at": "2026-11-03 15:00:31"
+        },
+        {
+            "at": "2026-11-06 09:45:39",
+            "activity": "Job Position Deleted",
+            "details": "Customer Service Representative",
+            "by": "HR",
+            "admin_seen_at": "2026-11-06 09:58:28"
+        },
+        {
+            "at": "2026-11-06 09:45:49",
+            "activity": "Job Position Deleted",
+            "details": "Technical Support Representative",
+            "by": "HR",
+            "admin_seen_at": "2026-11-06 09:58:28"
+        },
+        {
+            "at": "2026-11-06 09:57:00",
+            "activity": "Job Position Deleted",
+            "details": "Back Office Associate",
+            "by": "HR",
+            "admin_seen_at": "2026-11-06 09:58:28"
+        }
+    ],
+    "questions": [
+        {
+            "id": "q1",
+            "section_no": 1,
+            "section": "Consent & readiness",
+            "type": "yesno",
+            "text": "Have you read the {link} thoroughly?",
+            "status": "Active",
+            "created": "2026-08-03 09:00",
+            "no_note": "Please read the job description first. The link above opens it in a new tab.",
+            "link": {
+                "text": "job description",
+                "url": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+            },
+            "archived_at": null,
+            "knockout": false
+        },
+        {
+            "id": "q2",
+            "section_no": 1,
+            "section": "Consent & readiness",
+            "type": "yesno",
+            "text": "Are you willing to work on the schedule as advertised?",
+            "archived_at": null,
+            "status": "Active",
+            "created": "2026-08-03 09:00",
+            "knockout": true,
+            "pass_answer": "Yes"
+        },
+        {
+            "id": "q3",
+            "section_no": 1,
+            "section": "Consent & readiness",
+            "type": "yesno",
+            "text": "Are you willing to work on-site in BGC, Taguig?",
+            "archived_at": null,
+            "status": "Active",
+            "created": "2026-08-03 09:00",
+            "knockout": true,
+            "pass_answer": "Yes"
+        },
+        {
+            "id": "q4",
+            "section_no": 1,
+            "section": "Consent & readiness",
+            "type": "yesno",
+            "text": "Are you willing to go through the assessment and interviews?",
+            "archived_at": null,
+            "status": "Active",
+            "created": "2026-08-03 09:00",
+            "knockout": true,
+            "pass_answer": "Yes"
+        },
+        {
+            "id": "q5",
+            "section_no": 1,
+            "section": "Consent & readiness",
+            "type": "scale",
+            "text": "Rate your interest level in pursuing your application.",
+            "max": 5,
+            "labels": [
+                "Not very interested",
+                "Extremely interested"
+            ],
+            "archived_at": null,
+            "status": "Active",
+            "created": "2026-08-03 09:00",
+            "knockout": false
+        },
+        {
+            "id": "q16",
+            "section_no": 1,
+            "section": "Consent & readiness",
+            "type": "scale",
+            "text": "Pogi Bako?",
+            "status": "Active",
+            "created": "2026-10-12 20:19",
+            "max": 5,
+            "labels": [
+                "LIAR",
+                "NICE"
+            ],
+            "archived_at": "2026-10-12 20:20:26",
+            "knockout": false
+        },
+        {
+            "id": "q17",
+            "section_no": 1,
+            "section": "Consent & readiness",
+            "type": "text",
+            "text": "IAN GAe",
+            "status": "Active",
+            "created": "2026-10-13 10:01",
+            "placeholder": "Type your answer here...",
+            "min_chars": 0,
+            "max_chars": 500,
+            "archived_at": "2026-10-13 10:04:24",
+            "knockout": false
+        },
+        {
+            "id": "q6",
+            "section_no": 2,
+            "section": "Logistics & compliance",
+            "type": "date",
+            "text": "When is your earliest possible start date?",
+            "hint": "Choose a date",
+            "archived_at": null,
+            "status": "Active",
+            "created": "2026-08-03 09:00",
+            "knockout": false
+        },
+        {
+            "id": "q7",
+            "section_no": 2,
+            "section": "Logistics & compliance",
+            "type": "yesno_select",
+            "text": "Are you currently employed? If yes, what is your notice period?",
+            "followup": {
+                "when": "Yes",
+                "label": "Your notice period",
+                "options": [
+                    "Less than 1 week",
+                    "1 to 2 weeks",
+                    "3 to 4 weeks (30 days)",
+                    "1 to 2 months",
+                    "More than 2 months"
+                ]
+            },
+            "archived_at": null,
+            "status": "Active",
+            "created": "2026-08-03 09:00",
+            "knockout": false
+        },
+        {
+            "id": "q8",
+            "section_no": 2,
+            "section": "Logistics & compliance",
+            "type": "yesno",
+            "text": "Do you have access to a reliable internet connection and a device suitable for completing the assessment and virtual steps?",
+            "no_note": "A stable connection and a working device are needed for the assessment and the virtual steps.",
+            "archived_at": null,
+            "status": "Active",
+            "created": "2026-08-03 09:00",
+            "knockout": true,
+            "pass_answer": "Yes"
+        },
+        {
+            "id": "q9",
+            "section_no": 2,
+            "section": "Logistics & compliance",
+            "type": "yesno",
+            "text": "Are you willing to undergo a background check as part of the hiring process?",
+            "archived_at": null,
+            "status": "Active",
+            "created": "2026-08-03 09:00",
+            "knockout": true,
+            "pass_answer": "Yes"
+        },
+        {
+            "id": "q10",
+            "section_no": 2,
+            "section": "Logistics & compliance",
+            "type": "yesno",
+            "text": "Can you provide required pre-employment documents (e.g. NBI clearance, TIN, SSS) upon request?",
+            "archived_at": null,
+            "status": "Active",
+            "created": "2026-08-03 09:00",
+            "knockout": true,
+            "pass_answer": "Yes"
+        },
+        {
+            "id": "q11",
+            "section_no": 3,
+            "section": "Confidentiality acknowledgment",
+            "type": "yesno",
+            "text": "This role involves handling sensitive client information. Do you agree to comply with confidentiality and data protection requirements?",
+            "no_note": "Complying with confidentiality and data protection requirements is required for this role.",
+            "archived_at": null,
+            "status": "Active",
+            "created": "2026-08-03 09:00",
+            "knockout": true,
+            "pass_answer": "Yes"
+        },
+        {
+            "id": "q12",
+            "section_no": 4,
+            "section": "Comprehension",
+            "type": "text",
+            "text": "In 2-3 sentences, describe what you understand this role to involve based on the job posting.",
+            "hint": "Write it in your own words.",
+            "placeholder": "Type your answer here...",
+            "min_chars": 30,
+            "max_chars": 500,
+            "archived_at": null,
+            "status": "Active",
+            "created": "2026-08-03 09:00",
+            "knockout": false
+        },
+        {
+            "id": "q13",
+            "section_no": 5,
+            "section": "Data Protection",
+            "type": "consent",
+            "text": "Please read and accept the data protection statement.",
+            "body": [
+                "By submitting your application, you agree that Expertise Company will use your data by collecting, processing, storing, and using your personal information for legitimate recruitment and employment purposes only, including applicant screening, assessment, interview scheduling, and communication. Your information will be kept confidential and secure and will only be accessed by authorized personnel or disclosed when required or permitted by law.",
+                "You have the right to access, correct, and request the deletion or restriction of your personal information, subject to applicable laws and regulations.",
+                "In accordance with the Data Privacy Act of 2012 (Republic Act No. 10173), The Company is committed to protecting the privacy and confidentiality of your personal information. Rest assured that Expertise will not use your personal information for purposes unrelated to recruitment without obtaining the appropriate consent or having another lawful basis for such processing.",
+                "To keep the screening fair and secure, we also collect technical information such as your device identifier and IP address, and how you move through the screening (for example, the time spent on each question). This information is used only to protect the integrity of the screening and is reviewed by authorized personnel."
+            ],
+            "checkbox": "I have read and agree to the data protection statement.",
+            "archived_at": null,
+            "status": "Active",
+            "created": "2026-08-03 09:00",
+            "knockout": false
+        },
+        {
+            "id": "q15",
+            "section_no": 5,
+            "section": "Data Protection",
+            "type": "yesno",
+            "text": "huh",
+            "status": "Active",
+            "created": "2026-10-12 20:07",
+            "archived_at": "2026-10-12 20:07:33",
+            "knockout": false
+        }
+    ],
+    "timeline_seeded": true,
+    "admin_account": {
+        "name": "Administrator",
+        "email": "admin@expertise.com",
+        "avatar": "admin-7978d8f0a326.jpg",
+        "hash": "$2y$10$TggIZEgjf8zgB.We1aEKe.3O8MCiEYMRT00bM/d0P7MbyLZSuT77."
+    },
+    "password_requests": [
+        {
+            "id": 1,
+            "account_id": 1,
+            "name": "HR",
+            "email": "hr@expertise.com",
+            "status": "rejected",
+            "requested_at": "2026-11-01 10:50:16",
+            "decided_at": "2026-11-01 10:51:26",
+            "decided_by": "Admin",
+            "reason": "sorry no update"
+        },
+        {
+            "id": 2,
+            "account_id": 1,
+            "name": "HR",
+            "email": "hr@expertise.com",
+            "status": "approved",
+            "requested_at": "2026-11-01 10:55:25",
+            "decided_at": "2026-11-01 10:55:49",
+            "decided_by": "Admin",
+            "reason": ""
+        },
+        {
+            "id": 3,
+            "account_id": 1,
+            "name": "HR",
+            "email": "hr@expertise.com",
+            "status": "approved",
+            "requested_at": "2026-11-01 11:27:23",
+            "decided_at": "2026-11-01 11:27:50",
+            "decided_by": "Admin",
+            "reason": ""
+        }
+    ]
+}
