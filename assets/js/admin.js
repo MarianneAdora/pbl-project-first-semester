@@ -4137,6 +4137,17 @@ if (document.documentElement.getAttribute('data-page') === 'dashboardadmin') {
 document.addEventListener('DOMContentLoaded', () => {
     const data = window.ADMIN_DASH || { stats: { sections: [], questions: [], submissions: 0 }, activity: [] };
     const esc = ADMIN.esc;
+    const BELL_SEEN_KEY = 'admin_notification_seen';
+    let bellSeenAt;
+    try {
+        bellSeenAt = localStorage.getItem(BELL_SEEN_KEY);
+        if (bellSeenAt === null) {
+            bellSeenAt = localStorage.getItem('admin_activity_seen') || '';
+            localStorage.setItem(BELL_SEEN_KEY, bellSeenAt);
+        }
+    } catch (err) {
+        bellSeenAt = '';
+    }
 
     /* ---------- 0. Scroll hand-off: at the end of a scrollable card, the wheel scrolls the page ---------- */
     const pageScroll = document.querySelector('.main-content');
@@ -4405,15 +4416,26 @@ document.addEventListener('DOMContentLoaded', () => {
         let fresh = new Set();
         let lastCount = -1;
 
-        const readSeen = () => { try { return localStorage.getItem(SEEN_KEY) || ''; } catch (e) { return ''; }; };
-        const newestOf = (rows) => rows.reduce((a, r) => (String(r.at || '') > a ? String(r.at) : a), '');
-        const newActivity = () => data.activity.filter(r => String(r.at || '') > readSeen() && String(r.by).toLowerCase() !== 'admin');
+        const serverUnseen = () => (window.ADMIN_NOTIFY && Array.isArray(window.ADMIN_NOTIFY.activity) ? window.ADMIN_NOTIFY.activity : [])
+            .filter(at => String(at) > bellSeenAt);
+        const newActivity = () => {
+            const unseenAt = new Set(serverUnseen().map(String));
+            const serverRows = data.activity.filter(r => unseenAt.has(String(r.at)) && String(r.by).toLowerCase() !== 'admin');
+            const hrRows = window.HRREQ ? HRREQ.adminUnread() : [];
+            return serverRows.concat(hrRows);
+        };
         const unreadPw = () => Object.values(pwReqs).filter(r => r.status === 'pending');
 
+        function markBellSeen() {
+            bellSeenAt = serverUnseen().reduce((seen, at) => String(at) > seen ? String(at) : seen, bellSeenAt);
+            try { localStorage.setItem(BELL_SEEN_KEY, bellSeenAt); } catch (err) { /* storage unavailable */ }
+        }
+
         function paintBadge() {
-            const total = newActivity().length + unreadPw().length;
+            const total = serverUnseen().length + ADMIN.notify.unreadChanges() + unreadPw().length;
             abadge.textContent = total > 99 ? '99+' : String(total);
             abadge.hidden = total <= 0;
+            abell.classList.toggle('has-notifications', total > 0);
             abell.setAttribute('aria-label', total > 0 ? 'Notifications, ' + total + ' new' : 'Notifications');
             abell.title = total > 0 ? total + ' new notification' + (total === 1 ? '' : 's') : 'Notifications';
             if (total > lastCount && lastCount >= 0) {
@@ -4426,7 +4448,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         function paintList() {
-            const acts = data.activity.slice(0, 20);
+            const localRows = window.HRREQ ? HRREQ.activity().filter(r => String(r.by).toLowerCase() !== 'admin') : [];
+            const keys = new Set(data.activity.map(r => String(r.at) + '|' + rowActivityKey(r)));
+            const acts = data.activity.concat(localRows.filter(r => !keys.has(String(r.at) + '|' + rowActivityKey(r))))
+                .sort((a, b) => String(b.at).localeCompare(String(a.at)))
+                .slice(0, 20);
             let html = '';
             acts.forEach(row => {
                 const l = look(row.activity);
@@ -4465,6 +4491,7 @@ document.addEventListener('DOMContentLoaded', () => {
             fresh = new Set(newActivity().map(r => String(r.at) + '|' + rowActivityKey(r)));
             apanel.hidden = false;
             abell.setAttribute('aria-expanded', 'true');
+            markBellSeen();
             markActivitySeen();
             paintList();
         }
@@ -4485,6 +4512,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (amarkAll) {
             amarkAll.addEventListener('click', () => {
+                fresh = new Set();
+                markBellSeen();
                 markActivitySeen();
                 paintList();
             });
@@ -4519,12 +4548,19 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Refresh when something changes elsewhere (another tab decided a request)
+        function refreshBell() {
+            if (!apanel.hidden) newActivity().forEach(r => fresh.add(String(r.at) + '|' + rowActivityKey(r)));
+            paintList();
+        }
+
+        // Refresh when something changes elsewhere or a new server notification arrives.
         document.addEventListener('storage', (e) => {
-            if (e.key === SEEN_KEY || e.key === 'ebsmi_activity_extra' || e.key === 'ebsmi_change_requests') paintList();
+            if (e.key === BELL_SEEN_KEY) bellSeenAt = e.newValue || '';
+            if (e.key === SEEN_KEY || e.key === BELL_SEEN_KEY || e.key === 'ebsmi_activity_extra' || e.key === 'ebsmi_change_requests') refreshBell();
         });
-        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') paintList(); });
-        window.addEventListener('pageshow', (ev) => { if (ev.persisted) paintList(); });
+        document.addEventListener('admin:badges', refreshBell);
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshBell(); });
+        window.addEventListener('pageshow', (ev) => { if (ev.persisted) refreshBell(); });
 
         paintList();
         if (!abadge.hidden && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {

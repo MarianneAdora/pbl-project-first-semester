@@ -4287,21 +4287,27 @@ html:where([data-page="settingsadmin"])[data-theme="dark"] .tile-face { backgrou
 :where(html[data-page="dashboardadmin"]) .content-header.has-bell .header-text { min-width: 0; }
 :where(html[data-page="dashboardadmin"]) .notif-wrap { position: relative; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 :where(html[data-page="dashboardadmin"]) .notif-bell {
-    width: 42px; height: 42px; border: 2px solid var(--edge, #d6d9de); border-radius: 50%;
+    width: 46px; height: 46px; border: 1px solid var(--edge, #d6d9de); border-radius: 14px;
     background: var(--surface, #ffffff); color: var(--ink, #1a1a1a); cursor: pointer;
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-    transition: border-color 0.2s ease, color 0.2s ease, transform 0.1s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    transition: border-color 0.2s ease, color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
 }
 :where(html[data-page="dashboardadmin"]) .notif-bell svg { width: 20px; height: 20px; fill: currentColor; }
 :where(html[data-page="dashboardadmin"]) .notif-bell:hover { border-color: #f0586e; color: #f0586e; }
 :where(html[data-page="dashboardadmin"]) .notif-bell:active { transform: translateY(0) scale(0.96); }
 :where(html[data-page="dashboardadmin"]) .notif-bell:focus-visible { outline: 2px solid #f0586e; outline-offset: 3px; }
 :where(html[data-page="dashboardadmin"]) .notif-bell[aria-expanded="true"] { border-color: #f0586e; color: #f0586e; }
+:where(html[data-page="dashboardadmin"]) .notif-bell.has-notifications {
+    border-color: #f0586e; color: #f0586e; box-shadow: 0 4px 15px rgba(240, 88, 110, 0.22);
+}
 :where(html[data-page="dashboardadmin"]) .notif-bell.ring svg { animation: bellRing 1.1s ease 0.5s 1; }
 :where(html[data-page="dashboardadmin"]) .notif-count {
-    position: absolute; top: -2px; right: -2px; min-width: 18px; height: 18px; padding: 0 5px;
-    border-radius: 9px; background: #f0586e; color: #fff; font-size: 11px; font-weight: 800;
+    position: absolute; top: -6px; right: -6px; min-width: 24px; height: 24px; padding: 0 6px;
+    border-radius: 999px; background: #f0586e; color: #fff; font-size: 12px; font-weight: 800;
     display: flex; align-items: center; justify-content: center; line-height: 1;
+    white-space: nowrap; font-variant-numeric: tabular-nums;
+    box-shadow: 0 0 0 2px var(--surface, #ffffff);
 }
 :where(html[data-page="dashboardadmin"]) .notif-count[hidden] { display: none; }
 :where(html[data-page="dashboardadmin"]) .notif-count.pop { animation: badgePop 0.55s var(--ease-pop); }
