@@ -696,14 +696,9 @@ function static_add_applicant(array $in, ?array $cvUpload = null): array
         $encodedBy = $u->fetchColumn() !== false ? (int) $_SESSION['user_id'] : null;
     }
 
-    // Replace any older UNVERIFIED invitation with the same email / name / CV (same as repo_add_applicant).
-    if ($cvHash !== null && $cvHash !== '') {
-        $pdo->prepare('DELETE FROM applicant WHERE verified_at IS NULL AND (email_normalized = :e OR name_normalized = :n OR cv_hash = :h)')
-            ->execute([':e' => $emailNorm, ':n' => $nameNorm, ':h' => $cvHash]);
-    } else {
-        $pdo->prepare('DELETE FROM applicant WHERE verified_at IS NULL AND (email_normalized = :e OR name_normalized = :n)')
-            ->execute([':e' => $emailNorm, ':n' => $nameNorm]);
-    }
+    // Replace any older UNVERIFIED invitation with the same email / name.
+    $pdo->prepare('DELETE FROM applicant WHERE verified_at IS NULL AND (email_normalized = :e OR name_normalized = :n)')
+        ->execute([':e' => $emailNorm, ':n' => $nameNorm]);
 
     $stmt = $pdo->prepare("
         INSERT INTO applicant (reference_code, secure_token, encoded_by_user_id,
@@ -740,7 +735,6 @@ function static_add_applicant(array $in, ?array $cvUpload = null): array
         // The unique indexes are the final guard (e.g. two HR users at the same moment).
         if ((string) $e->getCode() === '23505') {
             $m = $e->getMessage();
-            if (stripos($m, 'cv_hash') !== false)         throw new DuplicateApplicantException('This CV was already uploaded for another applicant. Each CV can only be used once.', 'cv');
             if (stripos($m, 'name_normalized') !== false) throw new DuplicateApplicantException('An applicant named "' . $name . '" already exists. Each applicant can only be added once.', 'name');
             throw new DuplicateApplicantException('This email address already belongs to an applicant. Each email can only be used once.', 'email');
         }

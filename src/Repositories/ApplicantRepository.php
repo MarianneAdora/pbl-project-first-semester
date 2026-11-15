@@ -133,31 +133,6 @@ function repo_assert_not_duplicate(string $email, ?string $cvHash, ?PDO $pdo = n
         }
     }
 
-    if ($cvHash !== null && $cvHash !== '') {
-        $st = $pdo->prepare("SELECT deleted_at FROM applicant WHERE cv_hash = :h AND verified_at IS NOT NULL LIMIT 1");
-        $st->execute([':h' => $cvHash]);
-        $row = $st->fetch();
-        if ($row) {
-            throw new DuplicateApplicantException(
-                'This CV was already uploaded for another applicant'
-                . (!empty($row['deleted_at']) ? ' (currently in the Archive).' : '.')
-                . ' Each CV can only be used once.',
-                'cv'
-            );
-        }
-
-        $st = $pdo->prepare(
-            "SELECT 1 FROM deleted_applicant_fingerprints" .
-            " WHERE fingerprint_type = 'cv' AND fingerprint_hash = :h LIMIT 1"
-        );
-        $st->execute([':h' => $cvHash]);
-        if ($st->fetchColumn()) {
-            throw new DuplicateApplicantException(
-                'This CV was previously uploaded for another applicant. Each CV can only be used once.',
-                'cv'
-            );
-        }
-    }
 }
 
 /** Remove invitations nobody verified within INVITE_LIFETIME_DAYS (keeps the table lean). */
@@ -217,16 +192,11 @@ function repo_add_applicant(string $first, string $middle, string $last, string 
     repo_purge_stale_invitations($pdo);
     repo_assert_not_duplicate($email, $cvHash, $pdo, $name);
 
-    // Replace any older unverified invitation for this email / CV.
+    // Replace any older unverified invitation for this email / name.
     $norm = repo_normalize_email($email);
     $nameKey = repo_normalize_name($name);
-    if ($cvHash !== null && $cvHash !== '') {
-        $st = $pdo->prepare("DELETE FROM applicant WHERE verified_at IS NULL AND (email_normalized = :e OR name_normalized = :n OR cv_hash = :h)");
-        $st->execute([':e' => $norm, ':n' => $nameKey, ':h' => $cvHash]);
-    } else {
-        $st = $pdo->prepare("DELETE FROM applicant WHERE verified_at IS NULL AND (email_normalized = :e OR name_normalized = :n)");
-        $st->execute([':e' => $norm, ':n' => $nameKey]);
-    }
+    $st = $pdo->prepare("DELETE FROM applicant WHERE verified_at IS NULL AND (email_normalized = :e OR name_normalized = :n)");
+    $st->execute([':e' => $norm, ':n' => $nameKey]);
 
     $ref = repo_generate_reference_code($pdo);
     for ($i = 0; $i < 5; $i++) {
@@ -251,9 +221,6 @@ function repo_add_applicant(string $first, string $middle, string $last, string 
         // Two HR users submitting at the same moment: the unique index is the final guard.
         if ((string) $e->getCode() === '23505') {
             $msg = $e->getMessage();
-            if (stripos($msg, 'cv_hash') !== false) {
-                throw new DuplicateApplicantException('This CV was already uploaded for another applicant. Each CV can only be used once.', 'cv');
-            }
             if (stripos($msg, 'name_normalized') !== false) {
                 throw new DuplicateApplicantException('An applicant named "' . $name . '" already exists. Each applicant can only be added once.', 'name');
             }
