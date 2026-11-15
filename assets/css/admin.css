@@ -2755,6 +2755,7 @@ html:where([data-page="dashboardadmin"])[data-theme="dark"] .vol-chart { --vc: #
 
 /* scrollable list: fills the card edge to edge, the header stays put, the rows scroll (latest 10) */
 :where(html[data-page="dashboardadmin"]) .activity-card .table-responsive {
+    width: auto;
     max-height: 340px;
     margin: 0 -20px 0;
     overflow-x: hidden;
@@ -4370,13 +4371,14 @@ html:where([data-page="dashboardadmin"])[data-motion="off"] .notif-bell.ring svg
 :where(html[data-page="dashboardadmin"]) .notif-list::-webkit-scrollbar-thumb { background: var(--edge, #d6d9de); border-radius: 6px; }
 
 :where(html[data-page="dashboardadmin"]) .notif-item {
+    position: relative;
     display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--surface-2, #f4f5f7);
     cursor: default;
 }
 :where(html[data-page="dashboardadmin"]) .notif-item.is-new { background: rgba(240, 88, 110, 0.09); }
 :where(html[data-page="dashboardadmin"]) .notif-item.is-new::after {
-    content: ''; position: absolute; inset: 0; pointer-events: none;
-    border-radius: 10px; box-shadow: inset 3px 0 0 #f0586e; z-index: 0;
+    content: ''; position: absolute; top: 14px; right: 12px; width: 8px; height: 8px;
+    border-radius: 50%; background: #e60000; pointer-events: none; z-index: 2;
 }
 :where(html[data-page="dashboardadmin"]) .notif-item * { position: relative; z-index: 1; }
 :where(html[data-page="dashboardadmin"]) .notif-ico {
@@ -4790,7 +4792,7 @@ html:where([data-page="dashboardadmin"])[data-motion="off"] .notif-bell.ring svg
     .main-content {
         width: 100%;
         margin-left: 0;
-        padding: 76px 16px 32px;
+        padding: calc(max(12px, env(safe-area-inset-top)) + 48px) 16px 32px;
         overflow-x: hidden;
     }
 
@@ -4825,7 +4827,17 @@ html:where([data-page="dashboardadmin"])[data-motion="off"] .notif-bell.ring svg
     /* page / form headers stack on mobile */
     .page-head, .form-head { flex-direction: column; align-items: stretch; gap: 10px; }
     .page-head .btn, .form-head .btn, .back-link { width: 100%; justify-content: center; }
-    .content-header h1 { font-size: 22px; white-space: normal; overflow: visible; text-overflow: clip; }
+    .content-header h1 { font-size: 24px; white-space: normal; overflow: visible; text-overflow: clip; }
+    html.js.is-ready:not(.is-leaving) .main-content .content-header.reveal,
+    html.js.is-ready:not(.is-leaving) main .content-header.reveal,
+    html.js.is-ready:not(.is-leaving) .main-content > .page-head.reveal,
+    html.js.is-ready:not(.is-leaving) .main-content > .form-head.reveal,
+    html.js.is-ready:not(.is-leaving) main > .page-head.reveal,
+    html.js.is-ready:not(.is-leaving) main > .form-head.reveal {
+        animation: mobileHeaderEntrance 0.65s var(--ease-out) backwards;
+        animation-delay: calc(var(--reveal-base, 0.05s) + var(--i, 0) * 70ms);
+        opacity: 1;
+    }
 
     /* toolbar: stack search + filter full width */
     .toolbar { flex-direction: column; align-items: stretch; gap: 10px; }
@@ -4886,9 +4898,15 @@ html:where([data-page="dashboardadmin"])[data-motion="off"] .notif-bell.ring svg
 
     :where(html[data-page="dashboardadmin"]) .content-header.has-bell { flex-direction: column; align-items: stretch; gap: 12px; }
     :where(html[data-page="dashboardadmin"]) .content-header .header-text { width: 100%; }
-    :where(html[data-page="dashboardadmin"]) .header-tools { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 46px; align-items: center; gap: 10px; }
-    :where(html[data-page="dashboardadmin"]) .stats-download { width: 100%; min-width: 0; height: 44px; justify-content: center; padding: 0 12px; }
+    :where(html[data-page="dashboardadmin"]) .header-tools { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 48px; align-items: center; gap: 10px; }
+    :where(html[data-page="dashboardadmin"]) .stats-download { width: 100%; min-width: 0; height: 48px; justify-content: center; padding: 0 12px; }
+    :where(html[data-page="dashboardadmin"]) .notif-bell { width: 48px; height: 48px; }
     :where(html[data-page="dashboardadmin"]) .header-tools .notif-wrap { justify-self: end; }
+}
+
+@keyframes mobileHeaderEntrance {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 @media (max-width: 800px) {
@@ -4897,7 +4915,7 @@ html:where([data-page="dashboardadmin"])[data-motion="off"] .notif-bell.ring svg
     :where(html[data-page="dashboardadmin"]) .dash-card,
     :where(html[data-page="dashboardadmin"]) .insight-card { padding: 16px; }
 
-    :where(html[data-page="hrlist"], html[data-page="questionlist"]) .page-head { flex-direction: row; align-items: center; gap: 12px; }
+    :where(html[data-page="hrlist"], html[data-page="questionlist"]) .page-head { flex-direction: row; align-items: center; gap: 12px; margin-bottom: 16px; }
     :where(html[data-page="hrlist"], html[data-page="questionlist"]) .page-head .content-header { min-width: 0; flex: 1 1 auto; margin: 0; }
     :where(html[data-page="hrlist"], html[data-page="questionlist"]) .toolbar {
         display: grid;

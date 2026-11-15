@@ -7795,7 +7795,7 @@ html[data-motion="off"] .spinner {              /* a loading spinner still has t
     main {
         width: 100%;
         margin-left: 0;
-        padding: 76px 16px 32px;
+        padding: calc(max(12px, env(safe-area-inset-top)) + 48px) 16px 32px;
         overflow-x: hidden;
     }
 
@@ -7828,7 +7828,17 @@ html[data-motion="off"] .spinner {              /* a loading spinner still has t
 
     .page-head, .form-head { flex-direction: column; align-items: stretch; gap: 10px; }
     .page-head .btn, .form-head .btn { width: 100%; justify-content: center; }
-    .content-header h1 { font-size: 22px; white-space: normal; overflow: visible; text-overflow: clip; }
+    .content-header h1 { font-size: 24px; white-space: normal; overflow: visible; text-overflow: clip; }
+    html.js.is-ready:not(.is-leaving) .main-content .content-header.reveal,
+    html.js.is-ready:not(.is-leaving) main .content-header.reveal,
+    html.js.is-ready:not(.is-leaving) .main-content > .page-head.reveal,
+    html.js.is-ready:not(.is-leaving) .main-content > .form-head.reveal,
+    html.js.is-ready:not(.is-leaving) main > .page-head.reveal,
+    html.js.is-ready:not(.is-leaving) main > .form-head.reveal {
+        animation: mobileHeaderEntrance 0.65s var(--ease-out) backwards;
+        animation-delay: calc(var(--reveal-base, 0.05s) + var(--i, 0) * 70ms);
+        opacity: 1;
+    }
 
     .toolbar { flex-direction: column; align-items: stretch; gap: 10px; }
     .search-field { width: 100%; }
@@ -7867,9 +7877,15 @@ html[data-motion="off"] .spinner {              /* a loading spinner still has t
 
     :where(html[data-page="dashboardhr"]) .content-header.has-bell { flex-direction: column; align-items: stretch; gap: 12px; }
     :where(html[data-page="dashboardhr"]) .content-header .header-start { width: 100%; }
-    :where(html[data-page="dashboardhr"]) .header-tools { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 46px; align-items: center; gap: 10px; }
-    :where(html[data-page="dashboardhr"]) .hr-stats-download { width: 100%; min-width: 0; height: 44px; justify-content: center; padding: 0 12px; }
+    :where(html[data-page="dashboardhr"]) .header-tools { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 48px; align-items: center; gap: 10px; }
+    :where(html[data-page="dashboardhr"]) .hr-stats-download { width: 100%; min-width: 0; height: 48px; justify-content: center; padding: 0 12px; }
+    :where(html[data-page="dashboardhr"]) .notif-bell { width: 48px; height: 48px; }
     :where(html[data-page="dashboardhr"]) .header-tools .notif-wrap { justify-self: end; }
+}
+
+@keyframes mobileHeaderEntrance {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 @media (max-width: 1000px) {
