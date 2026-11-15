@@ -3185,6 +3185,8 @@ html:where([data-page="archiveadmin"],[data-page="hrlist"],[data-page="questionl
 
 @container tbl (max-width: 760px) {
     :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table col.c-role, :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table th:nth-child(4), :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table td:nth-child(4) { display: none; }
+    :where(html[data-page="archiveadmin"]) .hr-table.a-table col.c-date { display: none; }
+    :where(html[data-page="questionlist"]) .hr-table.q-table col.c-date { display: none; }
 }
 
 @container tbl (max-width: 600px) {
@@ -3377,7 +3379,7 @@ html:where([data-page="archiveadmin"],[data-page="hrlist"],[data-page="questionl
 :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .page-gap { min-width: 20px; text-align: center; color: var(--ink-soft); font-weight: 700; }
 
-@media (max-width: 760px) {
+@media (max-width: 800px) {
     :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .toolbar .dropdown { width: 100%; }
     :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .page-head .btn-add span { display: none; }
 }
@@ -4728,7 +4730,9 @@ html:where([data-page="dashboardadmin"])[data-motion="off"] .notif-bell.ring svg
    MOBILE / responsive base (all admin pages)
    Sidebar becomes a slide-in drawer, body scrolls, touch-friendly targets
    ========================================================================== */
-@media (max-width: 767px) {
+.mobile-nav-toggle { display: none; }
+
+@media (max-width: 800px) {
     /* let the page scroll instead of being locked to 100vh */
     body {
         overflow-y: auto;
@@ -4742,7 +4746,9 @@ html:where([data-page="dashboardadmin"])[data-motion="off"] .notif-bell.ring svg
     .drawer-backdrop {
         position: fixed;
         inset: 0;
-        background: rgba(0, 0, 0, 0.4);
+        background: rgba(18, 22, 30, 0.24);
+        -webkit-backdrop-filter: blur(4px);
+        backdrop-filter: blur(4px);
         z-index: 150;
         opacity: 0;
         pointer-events: none;
@@ -4753,31 +4759,61 @@ html:where([data-page="dashboardadmin"])[data-motion="off"] .notif-bell.ring svg
     /* sidebar: slide-in drawer from the left */
     .sidebar {
         position: fixed;
-        inset: 0 0 0 auto;
-        width: 280px;
-        max-width: 88vw;
-        height: 100vh;
+        inset: 0 auto 0 0;
+        width: min(270px, calc(100vw - 72px));
+        max-width: none;
+        height: 100dvh;
         z-index: 200;
         transform: translateX(-100%);
         overflow-y: auto;
         overflow-x: hidden;
+        overscroll-behavior: contain;
         box-shadow: 10px 0 35px rgba(0, 0, 0, 0.4);
     }
     html.drawer-open .sidebar { transform: translateX(0); }
 
-    /* don't collapse to icons-only inside the drawer */
-    .sidebar.collapsed { width: 280px; }
+    /* A saved desktop collapse must not turn the mobile drawer into an icon rail. */
+    .sidebar.collapsed { width: min(270px, calc(100vw - 72px)); }
     .sidebar.collapsed .nav-text { opacity: 1; display: block; }
     .sidebar.collapsed .brand-container { max-width: none; opacity: 1; }
     .sidebar.collapsed .sidebar-header { justify-content: flex-start; padding: 0 16px; }
+    .sidebar .sidebar-header { justify-content: flex-start; padding: 0 16px; }
+    .sidebar .brand-container { max-width: 180px; opacity: 1; }
+    .sidebar .nav-text { opacity: 1; display: block; }
+    .sidebar .toggle-btn { display: none; }
+    .sidebar .profile-meta { display: flex; }
+    .sidebar .profile-chip.sidebar-profile { justify-content: flex-start; gap: 10px; padding: 10px 12px; }
+    .sidebar.collapsed .profile-meta { display: flex; }
+    .sidebar.collapsed .profile-chip.sidebar-profile { justify-content: flex-start; padding: 10px 12px; }
 
     /* main content: full width on mobile */
     .main-content {
         width: 100%;
         margin-left: 0;
-        padding: 16px 16px 32px;
+        padding: 76px 16px 32px;
         overflow-x: hidden;
     }
+
+    .mobile-nav-toggle {
+        position: fixed;
+        top: max(12px, env(safe-area-inset-top));
+        right: max(12px, env(safe-area-inset-right));
+        z-index: 250;
+        width: 88px;
+        height: 48px;
+        display: grid;
+        place-items: center;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 12px;
+        background: var(--red, #a3081e);
+        color: #ffffff;
+        box-shadow: 0 5px 16px rgba(0, 0, 0, 0.2);
+        cursor: pointer;
+    }
+
+    .mobile-nav-toggle img { width: 70px; max-height: 30px; object-fit: contain; }
+    .mobile-nav-toggle svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+    .mobile-nav-toggle:focus-visible { outline: 3px solid var(--blue, #00a2ff); outline-offset: 3px; }
 
     /* touch-friendly tap targets (44px min prevents iOS zoom + is finger-friendly) */
     .btn, .modal-btn, .pg-btn, .icon-btn, .dots-btn, .nav-item, .toggle-btn {
@@ -4793,6 +4829,7 @@ html:where([data-page="dashboardadmin"])[data-motion="off"] .notif-bell.ring svg
 
     /* toolbar: stack search + filter full width */
     .toolbar { flex-direction: column; align-items: stretch; gap: 10px; }
+    .toolbar .search-box { flex: none; height: 46px; }
     .search-field { width: 100%; }
     .select-field { width: 100%; }
 
@@ -4806,6 +4843,8 @@ html:where([data-page="dashboardadmin"])[data-motion="off"] .notif-bell.ring svg
     /* modals: full width, stacked actions */
     .modal-card { width: 92%; max-width: 92vw; margin: 0 4vw; padding: 24px 20px; }
     .modal-actions { flex-direction: column; }
+    #logoutModal .modal-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    #logoutModal .modal-actions button { width: 100%; min-width: 0; min-height: 44px; padding: 0 10px; white-space: normal; }
     .modal-btn { width: 100%; }
 
     /* tables: allow horizontal scroll, wrap text */
@@ -4836,4 +4875,71 @@ html:where([data-page="dashboardadmin"])[data-motion="off"] .notif-bell.ring svg
     .avatar-edit { flex-direction: column; align-items: flex-start; gap: 10px; }
     .avatar-actions { flex-direction: column; }
     .avatar-btn { width: 100%; justify-content: center; }
+
+    .stat-card, .dash-card, .insight-card, .form-card, .table-card,
+    .chart-card, .funnel-card, .hist-card, .recent-card, .quick-action-card {
+        box-sizing: border-box;
+        min-width: 0;
+        max-width: 100%;
+    }
+    .btn, .modal-actions button, .avatar-btn { max-width: 100%; min-width: 0; white-space: normal; line-height: 1.35; }
+
+    :where(html[data-page="dashboardadmin"]) .content-header.has-bell { flex-direction: column; align-items: stretch; gap: 12px; }
+    :where(html[data-page="dashboardadmin"]) .content-header .header-text { width: 100%; }
+    :where(html[data-page="dashboardadmin"]) .header-tools { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 46px; align-items: center; gap: 10px; }
+    :where(html[data-page="dashboardadmin"]) .stats-download { width: 100%; min-width: 0; height: 44px; justify-content: center; padding: 0 12px; }
+    :where(html[data-page="dashboardadmin"]) .header-tools .notif-wrap { justify-self: end; }
+}
+
+@media (max-width: 800px) {
+    .main-content { padding-right: 12px; padding-left: 12px; }
+    :where(html[data-page="dashboardadmin"]) .stat-card { padding: 14px 16px; }
+    :where(html[data-page="dashboardadmin"]) .dash-card,
+    :where(html[data-page="dashboardadmin"]) .insight-card { padding: 16px; }
+
+    :where(html[data-page="hrlist"], html[data-page="questionlist"]) .page-head { flex-direction: row; align-items: center; gap: 12px; }
+    :where(html[data-page="hrlist"], html[data-page="questionlist"]) .page-head .content-header { min-width: 0; flex: 1 1 auto; margin: 0; }
+    :where(html[data-page="hrlist"], html[data-page="questionlist"]) .toolbar {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 48px;
+        align-items: center;
+        gap: 8px;
+    }
+    :where(html[data-page="hrlist"], html[data-page="questionlist"]) .toolbar .search-box { grid-column: 1; width: 100%; min-width: 0; }
+    :where(html[data-page="hrlist"], html[data-page="questionlist"]) .toolbar .btn-add {
+        width: 48px;
+        min-width: 48px;
+        height: 48px;
+        flex: none;
+        grid-column: 2;
+        grid-row: 1;
+        margin: 0;
+        padding: 0;
+        border-radius: 12px;
+    }
+    :where(html[data-page="hrlist"], html[data-page="questionlist"]) .toolbar .btn-add svg { width: 24px; height: 24px; }
+    :where(html[data-page="hrlist"], html[data-page="questionlist"]) .toolbar .dropdown { grid-column: 1 / -1; width: 100%; }
+}
+
+@media (max-width: 1100px) {
+    :where(html[data-page="hrlist"], html[data-page="questionlist"]) .toolbar {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 48px;
+        align-items: center;
+        gap: 8px;
+    }
+    :where(html[data-page="hrlist"], html[data-page="questionlist"]) .toolbar .search-box { grid-column: 1; width: 100%; min-width: 0; }
+    :where(html[data-page="hrlist"], html[data-page="questionlist"]) .toolbar .btn-add {
+        width: 48px;
+        min-width: 48px;
+        height: 48px;
+        grid-column: 2;
+        grid-row: 1;
+        margin: 0;
+        padding: 0;
+        border-radius: 12px;
+    }
+    :where(html[data-page="hrlist"], html[data-page="questionlist"]) .toolbar .btn-add span { display: none; }
+    :where(html[data-page="hrlist"], html[data-page="questionlist"]) .toolbar .btn-add svg { width: 24px; height: 24px; }
+    :where(html[data-page="hrlist"], html[data-page="questionlist"]) .toolbar .dropdown { grid-column: 1 / -1; width: 100%; }
 }

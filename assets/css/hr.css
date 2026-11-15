@@ -7739,7 +7739,9 @@ html[data-motion="off"] .spinner {              /* a loading spinner still has t
    MOBILE / responsive base (all HR pages)
    Sidebar becomes a slide-in drawer, body scrolls, touch-friendly targets
    ========================================================================== */
-@media (max-width: 767px) {
+.mobile-nav-toggle { display: none; }
+
+@media (max-width: 800px) {
     body {
         overflow-y: auto;
         height: auto;
@@ -7751,7 +7753,9 @@ html[data-motion="off"] .spinner {              /* a loading spinner still has t
     .drawer-backdrop {
         position: fixed;
         inset: 0;
-        background: rgba(0, 0, 0, 0.4);
+        background: rgba(18, 22, 30, 0.24);
+        -webkit-backdrop-filter: blur(4px);
+        backdrop-filter: blur(4px);
         z-index: 150;
         opacity: 0;
         pointer-events: none;
@@ -7761,30 +7765,60 @@ html[data-motion="off"] .spinner {              /* a loading spinner still has t
 
     .sidebar {
         position: fixed;
-        inset: 0 0 0 auto;
-        width: 280px;
-        max-width: 88vw;
-        height: 100vh;
+        inset: 0 auto 0 0;
+        width: min(270px, calc(100vw - 72px));
+        max-width: none;
+        height: 100dvh;
         z-index: 200;
         transform: translateX(-100%);
         overflow-y: auto;
         overflow-x: hidden;
+        overscroll-behavior: contain;
         box-shadow: 10px 0 35px rgba(0, 0, 0, 0.4);
     }
     html.drawer-open .sidebar { transform: translateX(0); }
 
-    .sidebar.collapsed { width: 280px; }
+    .sidebar.collapsed { width: min(270px, calc(100vw - 72px)); }
     .sidebar.collapsed .nav-text { opacity: 1; display: block; }
     .sidebar.collapsed .brand-container { max-width: none; opacity: 1; }
     .sidebar.collapsed .sidebar-header { justify-content: flex-start; padding: 0 16px; }
+
+    .sidebar .sidebar-header { justify-content: flex-start; padding: 0 16px; }
+    .sidebar .brand-container { max-width: 180px; opacity: 1; }
+    .sidebar .nav-text { opacity: 1; display: block; }
+    .sidebar .nav-group .dropdown-arrow-btn { display: flex; }
+    .sidebar .nav-group .sub-menu { display: flex; }
+    .sidebar .profile-chip.sidebar-profile .profile-meta { display: flex; }
+    .sidebar .profile-chip.sidebar-profile { justify-content: flex-start; gap: 10px; padding: 10px 12px; }
 
     .main-content,
     main {
         width: 100%;
         margin-left: 0;
-        padding: 16px 16px 32px;
+        padding: 76px 16px 32px;
         overflow-x: hidden;
     }
+
+    .mobile-nav-toggle {
+        position: fixed;
+        top: max(12px, env(safe-area-inset-top));
+        right: max(12px, env(safe-area-inset-right));
+        z-index: 250;
+        width: 88px;
+        height: 48px;
+        display: grid;
+        place-items: center;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 12px;
+        background: #a3081e;
+        color: #ffffff;
+        box-shadow: 0 5px 16px rgba(0, 0, 0, 0.2);
+        cursor: pointer;
+    }
+
+    .mobile-nav-toggle img { width: 70px; max-height: 30px; object-fit: contain; }
+    .mobile-nav-toggle svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+    .mobile-nav-toggle:focus-visible { outline: 3px solid #00a2ff; outline-offset: 3px; }
 
     .btn, .modal-btn, .pg-btn, .icon-btn, .dots-btn, .nav-item, .toggle-btn {
         min-height: 44px;
@@ -7807,6 +7841,8 @@ html[data-motion="off"] .spinner {              /* a loading spinner still has t
 
     .modal-card { width: 92%; max-width: 92vw; margin: 0 4vw; padding: 24px 20px; }
     .modal-actions { flex-direction: column; }
+    #logoutModal .modal-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    #logoutModal .modal-actions button { width: 100%; min-width: 0; min-height: 44px; padding: 0 10px; white-space: normal; }
     .modal-btn { width: 100%; }
 
     .table-responsive, .table-scroll, .panel-scroll { overflow-x: auto; }
@@ -7820,4 +7856,83 @@ html[data-motion="off"] .spinner {              /* a loading spinner still has t
     .avatar-edit { flex-direction: column; align-items: flex-start; gap: 10px; }
     .avatar-actions { flex-direction: column; }
     .avatar-btn { width: 100%; justify-content: center; }
+
+    .stat-card, .chart-card, .funnel-card, .hist-card, .ta-card,
+    .quick-action-card, .recent-card, .table-card, .form-card {
+        box-sizing: border-box;
+        min-width: 0;
+        max-width: 100%;
+    }
+    .btn, .modal-actions button, .avatar-btn { max-width: 100%; min-width: 0; white-space: normal; line-height: 1.35; }
+
+    :where(html[data-page="dashboardhr"]) .content-header.has-bell { flex-direction: column; align-items: stretch; gap: 12px; }
+    :where(html[data-page="dashboardhr"]) .content-header .header-start { width: 100%; }
+    :where(html[data-page="dashboardhr"]) .header-tools { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 46px; align-items: center; gap: 10px; }
+    :where(html[data-page="dashboardhr"]) .hr-stats-download { width: 100%; min-width: 0; height: 44px; justify-content: center; padding: 0 12px; }
+    :where(html[data-page="dashboardhr"]) .header-tools .notif-wrap { justify-self: end; }
+}
+
+@media (max-width: 1000px) {
+    :where(html[data-page="archive"]) .toolbar {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 46px 46px;
+        align-items: center;
+        gap: 8px;
+    }
+    :where(html[data-page="archive"]) .toolbar .search-box { grid-column: 1; width: 100%; min-width: 0; }
+    :where(html[data-page="archive"]) .toolbar .select-swap { grid-column: 2; grid-row: 1; width: 46px !important; height: 46px; }
+    :where(html[data-page="archive"]) .toolbar .select-all-btn { width: 46px; min-width: 46px; height: 46px; padding: 0; justify-content: center; }
+    :where(html[data-page="archive"]) .toolbar .select-all-btn span { display: none; }
+    :where(html[data-page="archive"]) .toolbar .filter-toggle { grid-column: 3; grid-row: 1; width: 46px; height: 46px; }
+    :where(html[data-page="archive"]) .toolbar .dropdown { grid-column: 1 / -1; width: 100%; }
+
+    :where(html[data-page="archive"]) .toolbar.is-selecting { grid-template-columns: minmax(0, 1fr) 46px; }
+    :where(html[data-page="archive"]) .toolbar.is-selecting .search-box { grid-column: 1 / -1; }
+    :where(html[data-page="archive"]) .toolbar.is-selecting .select-swap { grid-column: 1; grid-row: 2; width: 100% !important; }
+    :where(html[data-page="archive"]) .toolbar.is-selecting .select-actions {
+        position: relative;
+        top: auto;
+        right: auto;
+        width: 100%;
+        gap: 8px;
+    }
+    :where(html[data-page="archive"]) .toolbar.is-selecting .select-actions button { min-width: 0; flex: 1 1 0; padding: 0 10px; }
+    :where(html[data-page="archive"]) .toolbar.is-selecting .filter-toggle { grid-column: 2; grid-row: 2; }
+    :where(html[data-page="archive"]) .toolbar.is-selecting #typeDropdown { grid-column: 1 / -1; grid-row: 3; }
+    :where(html[data-page="archive"]) .toolbar.is-selecting #leftDropdown { grid-column: 1 / -1; grid-row: 4; }
+
+    :where(html[data-page="screeninglist"]) .toolbar {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 46px 46px;
+        align-items: center;
+        gap: 8px;
+    }
+    :where(html[data-page="screeninglist"]) .toolbar .search-box { grid-column: 1; width: 100%; min-width: 0; }
+    :where(html[data-page="screeninglist"]) .toolbar .select-swap { grid-column: 2; grid-row: 1; width: 46px !important; height: 46px; }
+    :where(html[data-page="screeninglist"]) .toolbar .select-all-btn { width: 46px; min-width: 46px; height: 46px; padding: 0; justify-content: center; }
+    :where(html[data-page="screeninglist"]) .toolbar .select-all-btn span { display: none; }
+    :where(html[data-page="screeninglist"]) .toolbar .filter-toggle { grid-column: 3; grid-row: 1; width: 46px; height: 46px; }
+
+    :where(html[data-page="screeninglist"]) .toolbar.is-selecting { grid-template-columns: minmax(0, 1fr) 46px; }
+    :where(html[data-page="screeninglist"]) .toolbar.is-selecting .search-box { grid-column: 1 / -1; }
+    :where(html[data-page="screeninglist"]) .toolbar.is-selecting .select-swap { grid-column: 1; grid-row: 2; width: 100% !important; }
+    :where(html[data-page="screeninglist"]) .toolbar.is-selecting .select-actions {
+        position: relative;
+        top: auto;
+        right: auto;
+        width: 100%;
+        gap: 8px;
+    }
+    :where(html[data-page="screeninglist"]) .toolbar.is-selecting .select-actions button { min-width: 0; flex: 1 1 0; padding: 0 10px; }
+    :where(html[data-page="screeninglist"]) .toolbar.is-selecting .filter-toggle { grid-column: 2; grid-row: 2; }
+
+}
+
+@media (max-width: 600px) {
+    .main-content, main { padding-right: 12px; padding-left: 12px; }
+    :where(html[data-page="dashboardhr"]) .stat-card,
+    :where(html[data-page="dashboardhr"]) .chart-card,
+    :where(html[data-page="dashboardhr"]) .funnel-card,
+    :where(html[data-page="dashboardhr"]) .hist-card,
+    :where(html[data-page="dashboardhr"]) .recent-card { padding: 16px; }
 }

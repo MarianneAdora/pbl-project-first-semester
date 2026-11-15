@@ -673,6 +673,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelLogout = document.getElementById('cancelLogout');
     const confirmLogout = document.getElementById('confirmLogout');
     const pageOverlay = document.getElementById('pageOverlay');
+    let mobileNavToggle = null;
+
+    if (sidebar) {
+        mobileNavToggle = document.createElement('button');
+        mobileNavToggle.type = 'button';
+        mobileNavToggle.className = 'mobile-nav-toggle';
+        mobileNavToggle.setAttribute('aria-label', 'Open navigation');
+        mobileNavToggle.setAttribute('aria-expanded', 'false');
+        mobileNavToggle.innerHTML = '<img src="../assets/images/expertise2.png" alt="">';
+        document.body.appendChild(mobileNavToggle);
+    }
+
+    const setDrawerOpen = (open) => {
+        root.classList.toggle('drawer-open', open);
+        document.body.classList.toggle('noscroll', open);
+        if (mobileNavToggle) {
+            mobileNavToggle.setAttribute('aria-expanded', String(open));
+            mobileNavToggle.setAttribute('aria-label', open ? 'Close navigation' : 'Open navigation');
+            mobileNavToggle.innerHTML = open
+                ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>'
+                : '<img src="../assets/images/expertise2.png" alt="">';
+        }
+    };
 
     // The sidebar state (collapsed / expanded) is remembered across every admin page
     const SIDEBAR_KEY = 'admin_sidebar_collapsed';
@@ -682,9 +705,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveSidebar = () => {
         try { localStorage.setItem(SIDEBAR_KEY, sidebar.classList.contains('collapsed') ? '1' : '0'); } catch (err) { /* storage unavailable */ }
     };
+    const applySidebarPreference = () => {
+        if (!sidebar) return;
+        const collapsed = sidebarSaved() && !window.matchMedia('(max-width: 800px)').matches;
+        sidebar.classList.toggle('collapsed', collapsed);
+    };
 
     // Normally the small inline script under the <aside> has already done this before the first paint
-    if (sidebar && sidebarSaved()) sidebar.classList.add('collapsed');
+    applySidebarPreference();
 
     // 1. Page entrance
     const params = new URLSearchParams(window.location.search);
@@ -717,11 +745,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2. Sidebar collapse / expand (and remember it)
     if (sidebarToggle && sidebar) {
         sidebarToggle.addEventListener('click', () => {
-            const isMobile = window.matchMedia('(max-width: 767px)').matches;
+            const isMobile = window.matchMedia('(max-width: 800px)').matches;
             if (isMobile) {
                 const wasOpen = root.classList.contains('drawer-open');
-                root.classList.toggle('drawer-open');
                 if (!wasOpen) ensureDrawerBackdrop();
+                setDrawerOpen(!wasOpen);
             } else {
                 sidebar.classList.toggle('collapsed');
                 saveSidebar();
@@ -729,9 +757,22 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    if (mobileNavToggle) {
+        mobileNavToggle.addEventListener('click', () => {
+            const opening = !root.classList.contains('drawer-open');
+            if (opening) ensureDrawerBackdrop();
+            setDrawerOpen(opening);
+        });
+    }
+
     // Escape closes the mobile drawer
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') root.classList.remove('drawer-open');
+        if (e.key === 'Escape' && root.classList.contains('drawer-open')) setDrawerOpen(false);
+    });
+
+    window.addEventListener('resize', () => {
+        applySidebarPreference();
+        if (!window.matchMedia('(max-width: 800px)').matches) setDrawerOpen(false);
     });
 
     // Create (once) the drawer backdrop and wire its close + nav-link close behaviour
@@ -741,9 +782,9 @@ document.addEventListener('DOMContentLoaded', () => {
             b = document.createElement('div');
             b.className = 'drawer-backdrop';
             document.body.appendChild(b);
-            b.addEventListener('click', () => root.classList.remove('drawer-open'));
-            sidebar.querySelectorAll('.nav-item').forEach((item) => {
-                item.addEventListener('click', () => root.classList.remove('drawer-open'));
+            b.addEventListener('click', () => setDrawerOpen(false));
+            sidebar.querySelectorAll('.nav-item, .sub-item').forEach((item) => {
+                item.addEventListener('click', () => setDrawerOpen(false));
             });
         }
     }
@@ -806,7 +847,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!event.persisted) return;
         ADMIN.settings.apply();
         ADMIN.notify.refresh();
-        if (sidebar) sidebar.classList.toggle('collapsed', sidebarSaved());
+        applySidebarPreference();
         if (!pageOverlay) return;
         root.classList.remove('is-leaving', 'is-transitioning');
         pageOverlay.classList.remove('sweep-in', 'sweep-out');

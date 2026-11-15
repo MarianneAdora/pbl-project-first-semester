@@ -465,24 +465,27 @@ html.js.is-ready.is-leaving .reveal {
    ========================================================================== */
 @media (max-width: 767px) {
     body {
+        width: 100%;
+        overflow-x: hidden;
         overflow-y: auto;
         height: auto;
         min-height: 100dvh;
-        align-items: flex-start;
+        align-items: center;
         justify-content: flex-start;
         padding-top: env(safe-area-inset-top);
         padding-bottom: env(safe-area-inset-bottom);
     }
     .portal-wrapper {
         width: 100%;
-        max-width: 100%;
-        padding: 0 16px;
+        max-width: 460px;
+        padding: 20px 16px 32px;
+        margin-inline: auto;
         transform: none;
         box-sizing: border-box;
     }
     .login-card {
         width: 100%;
-        padding: 24px 16px 26px;
+        padding: 24px clamp(16px, 5vw, 28px) 26px;
         border-radius: 16px;
     }
     .logo-crop img { width: 160px; }
