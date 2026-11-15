@@ -2226,11 +2226,12 @@ html:where([data-page="dashboardadmin"])[data-theme="dark"] .stat-icon { backgro
 :where(html[data-page="dashboardadmin"]) .stats-download {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 7px;
-    height: 32px;
-    padding: 0 15px 0 12px;
+    height: 46px;
+    padding: 0 14px;
     border: none;
-    border-radius: 16px;
+    border-radius: 14px;
     background: var(--brand);
     color: #ffffff;
     font-size: 11.5px;
@@ -2778,7 +2779,7 @@ html:where([data-page="dashboardadmin"])[data-theme="dark"] .vol-chart { --vc: #
 :where(html[data-page="dashboardadmin"]) .activity-card .data-table td:first-child { padding-left: 20px; }
 :where(html[data-page="dashboardadmin"]) .activity-card .data-table th:last-child, :where(html[data-page="dashboardadmin"]) .activity-card .data-table td:last-child { padding-right: 20px; }
 
-/* an activity HR did since the Admin last opened the Dashboard */
+/* activities recorded since the Admin last opened the Dashboard */
 :where(html[data-page="dashboardadmin"]) .activity-card .data-table tbody tr.is-new { background-color: color-mix(in srgb, var(--red-bright) 6%, transparent); }
 :where(html[data-page="dashboardadmin"]) .activity-card .data-table tbody tr.is-new td strong { font-weight: 800; }
 :where(html[data-page="dashboardadmin"]) .activity-card .data-table tbody tr.is-new:hover { background-color: color-mix(in srgb, var(--red-bright) 11%, transparent); }

@@ -267,6 +267,10 @@ $greeting     = 'Hello, ' . $display_name . '!';
                 <h1 id="greeting" title="<?php echo htmlspecialchars($greeting, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($greeting, ENT_QUOTES, 'UTF-8'); ?></h1>
             </div>
             <div class="header-tools">
+                <button type="button" class="stats-download" id="statsPdfBtn" title="Download dashboard statistics as a PDF file">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                    Download PDF
+                </button>
                 <div class="notif-wrap">
                     <button type="button" class="notif-bell" id="notifBell" aria-haspopup="true" aria-expanded="false" aria-controls="notifPanel" aria-label="Notifications" title="Notifications">
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
@@ -352,10 +356,6 @@ $greeting     = 'Hello, ' . $display_name . '!';
                     </div>
                     <div class="stats-tools">
                         <span class="stats-unit">Bar = % of applicants who chose the top answer</span>
-                        <button type="button" class="stats-download" id="statsPdfBtn" title="Download dashboard statistics as a PDF file">
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-                            Download PDF
-                        </button>
                     </div>
                 </div>
 
