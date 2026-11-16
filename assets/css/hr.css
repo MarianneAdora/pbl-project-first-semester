@@ -2206,6 +2206,16 @@ html.js.is-ready.is-leaving .reveal {
     background: #b3bac2;
 }
 
+@media (max-width: 900px) {
+    :where(html[data-page="dashboardhr"]) .recent-card .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    :where(html[data-page="dashboardhr"]) .recent-card .table-responsive::-webkit-scrollbar { height: 6px; }
+    :where(html[data-page="dashboardhr"]) .applicants-table { min-width: 620px; }
+}
+
 :where(html[data-page="dashboardhr"]) .applicants-table {
     width: 100%;
     border-collapse: collapse;
@@ -4037,8 +4047,10 @@ html:where([data-page="details"])[data-theme="dark"] .email-card iframe { border
     :where(html[data-page="details"]) .overview-grid { grid-template-columns: minmax(0, 1fr); gap: 30px; }
     :where(html[data-page="details"]) .ov-col:first-child { padding-right: 0; border-right: none; }
     :where(html[data-page="details"]) .ov-col:last-child { padding-left: 0; }
-    :where(html[data-page="details"]) .profile-card { flex-wrap: wrap; padding: 22px; }
-    :where(html[data-page="details"]) .profile-status { flex-direction: row; align-items: center; }
+    :where(html[data-page="details"]) .profile-card { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 16px; padding: 22px; }
+    :where(html[data-page="details"]) .profile-info { grid-column: 2; grid-row: 1; }
+    :where(html[data-page="details"]) .profile-status { grid-column: 1 / -1; justify-content: flex-start; flex-direction: row; align-items: center; }
+    :where(html[data-page="details"]) .details-sticky.is-compact .profile-card { grid-template-columns: 44px minmax(0, 1fr); }
     :where(html[data-page="details"]) .iv-fields, :where(html[data-page="details"]) .why-cols { grid-template-columns: minmax(0, 1fr); }
     :where(html[data-page="details"]) .q-row { grid-template-columns: minmax(0, 1fr); gap: 8px; }
     :where(html[data-page="details"]) .q-row:not(.is-wide) .q-answer { justify-content: flex-start; text-align: left; }
@@ -4586,6 +4598,27 @@ html:where([data-page="details"])[data-theme="dark"] .tab-ink { background: #ff6
 /* The header changes size while you scroll. Without this, Chrome "helps" by moving the scroll position when
    it does, which pushed the page back over the threshold and made the header flicker open and shut. */
 :where(html[data-page="details"]) .main-content.details { overflow-anchor: none; }
+
+@media (max-width: 800px) {
+    :where(html[data-page="details"]) body { display: block; }
+    :where(html[data-page="details"]) .main-content.details {
+        display: block;
+        flex: none;
+        min-height: 0;
+        overflow: visible;
+        padding: calc(max(12px, env(safe-area-inset-top)) + 48px) 16px 32px;
+    }
+    :where(html[data-page="details"]) .details-sticky {
+        position: static;
+        top: auto;
+        margin: 0;
+        padding: 0;
+        background: transparent;
+    }
+    :where(html[data-page="details"]) .profile-card { grid-template-columns: 72px minmax(0, 1fr); }
+    :where(html[data-page="details"]) .profile-card .avatar { width: 72px; height: 72px; }
+    :where(html[data-page="details"]) .profile-card .avatar svg { width: 48px; height: 48px; }
+}
 
 /* ==========================================================================
    PAGE : screeninglist.css

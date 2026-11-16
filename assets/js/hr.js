@@ -3418,7 +3418,10 @@ if (document.documentElement.getAttribute('data-page') === 'details') {
         moveInk(false);
         if (!silent) {                                  // every tab opens from its very top, never from the old scroll spot
             var sc = $('details');
-            if (sc && sc.scrollTop > 0) {
+            if (window.matchMedia('(max-width: 800px)').matches && window.scrollY > 0) {
+                window.scrollTo(0, 0);
+                wrapReset();
+            } else if (sc && sc.scrollTop > 0) {
                 sc.style.scrollBehavior = 'auto';       // jump at once (a smooth glide would be cut short by the header changing size)
                 sc.scrollTop = 0;
                 sc.style.scrollBehavior = '';
@@ -3464,8 +3467,7 @@ if (document.documentElement.getAttribute('data-page') === 'details') {
     window.addEventListener('resize', function () { moveInk(true); });
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { moveInk(true); });
 
-    // The top part (title, applicant card, tabs) stays put while the page scrolls; once the page has
-    // scrolled it shrinks to a slim bar so the content keeps most of the screen.
+    // On desktop the top part shrinks to a slim bar as the main content scrolls; mobile uses page scrolling.
     (function () {
         var wrap = $('detailsSticky');
         var scroller = $('details');                   // <main class="main-content details"> is what scrolls
@@ -3476,6 +3478,12 @@ if (document.documentElement.getAttribute('data-page') === 'details') {
 
         function update() {
             queued = false;
+            var mobilePageScroll = window.matchMedia('(max-width: 800px)').matches;
+            if (mobilePageScroll) {
+                compact = false;
+                wrap.classList.remove('is-compact', 'is-stuck');
+                return;
+            }
             var y = scroller.scrollTop;
             var room = scroller.scrollHeight - scroller.clientHeight;
             wrap.classList.toggle('is-stuck', y > 4);
@@ -3493,9 +3501,12 @@ if (document.documentElement.getAttribute('data-page') === 'details') {
             window.setTimeout(update, 500);            // look again once the header has settled
         }
 
-        scroller.addEventListener('scroll', function () {
+        function queueUpdate() {
             if (!queued) { queued = true; window.requestAnimationFrame(update); }
-        }, { passive: true });
+        }
+        scroller.addEventListener('scroll', queueUpdate, { passive: true });
+        window.addEventListener('scroll', queueUpdate, { passive: true });
+        window.addEventListener('resize', queueUpdate, { passive: true });
         update();
     })();
 
