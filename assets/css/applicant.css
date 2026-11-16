@@ -463,10 +463,60 @@ html:where([data-page="application-status"]).js.is-ready .step.is-current .step_
 
 /* ===== Phones: allowed to scroll ===== */
 @media (max-width: 800px) {
-    :where(html[data-page="application-status"]) .page { align-items: flex-start; padding: 6rem 1.25rem 2rem; }
-    :where(html[data-page="application-status"]) .big-check, :where(html[data-page="application-status"]) .eval-spin { width: 6rem; height: 6rem; }
-    :where(html[data-page="application-status"]) .status__title { font-size: 2rem; }
-    :where(html[data-page="application-status"]) .status__text { font-size: 1.1rem; }
+    :where(html[data-page="application-status"]) .page {
+        align-items: center;
+        padding: 5.5rem 1rem 2rem;
+    }
+
+    :where(html[data-page="application-status"]) .corner-logo {
+        position: absolute;
+        top: 1.25rem;
+        left: 1.25rem;
+        width: 8.5rem;
+        margin: 0;
+    }
+
+    :where(html[data-page="application-status"]) .status {
+        width: min(100%, 32rem);
+        margin: 0 auto;
+    }
+
+    :where(html[data-page="application-status"]) .big-check,
+    :where(html[data-page="application-status"]) .eval-spin {
+        width: 6rem;
+        height: 6rem;
+    }
+
+    :where(html[data-page="application-status"]) .status__title {
+        font-size: clamp(2rem, 7vw, 2.7rem);
+        line-height: 1.1;
+    }
+
+    :where(html[data-page="application-status"]) .status__text {
+        max-width: 22rem;
+        font-size: 1.1rem;
+    }
+
+    :where(html[data-page="application-status"]) .panel,
+    :where(html[data-page="application-status"]) .schedule,
+    :where(html[data-page="application-status"]) .btn--wide {
+        width: min(100%, 32rem);
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    :where(html[data-page="application-status"]) .schedule {
+        gap: 0.7rem;
+    }
+
+    :where(html[data-page="application-status"]) .panel__title {
+        font-size: 1.4rem;
+        line-height: 1.2;
+    }
+
+    :where(html[data-page="application-status"]) .panel__sub {
+        font-size: 1rem;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
