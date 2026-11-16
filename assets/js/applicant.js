@@ -1527,11 +1527,9 @@ if (document.documentElement.getAttribute('data-page') === 'upload-video') {
    The rules (seconds, MB, formats) are NOT written here: they come from window.SCREENING.video,
    printed by upload-video.php from hr-data.php (later: the database / settings).
 
-   BACKEND: the real upload is already written (realUpload below). It sends the video to
-   api/upload-file.php (Cloudinary) as the form field "video" and expects JSON back:
-       { "status": "success", "url": "https://res.cloudinary.com/..." }
-       { "status": "error",   "message": "..." }
-   Until then upload-video.php prints  simulateUpload: true  and the progress bar is pretend.
+   BACKEND: realUpload below sends sequential chunks to api/upload-file.php. The endpoint
+   reassembles them and forwards the complete video to Cloudinary. Intermediate responses use
+   status "chunk_received"; the final response uses "success" with the Cloudinary URL.
    ========================================================================== */
 document.addEventListener('DOMContentLoaded', function () {
     var cfg = window.SCREENING || {};
@@ -1775,25 +1773,86 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // the real upload (see the BACKEND note at the top of this file)
     function realUpload(file, onProgress) {
-        var xhr = new XMLHttpRequest();
-        var promise = new Promise(function (resolve, reject) {
-            xhr.open('POST', cfg.uploadUrl);
-            xhr.withCredentials = true;
-            xhr.upload.onprogress = function (e) { if (e.lengthComputable) onProgress(e.loaded / e.total * 100); };
-            xhr.onload = function () {
-                var data;
-                try { data = JSON.parse(xhr.responseText); } catch (e) { reject(new Error('The server did not answer correctly. Please try again.')); return; }
-                if (xhr.status >= 200 && xhr.status < 300 && data.status === 'success') resolve({ url: data.url || '' });
-                else reject(new Error(data.message || 'The upload did not finish. Please try again.'));
-            };
-            xhr.onerror = function () { reject(new Error('Could not reach the server. Please check your connection and try again.')); };
-            xhr.onabort = function () { reject({ cancelled: true }); };
-            var fd = new FormData();
-            fd.append('video', file, file.name);
-            fd.append('csrf_token', applicantCsrfToken());
-            xhr.send(fd);
-        });
-        return { promise: promise, cancel: function () { xhr.abort(); } };
+        var chunkSize = 900 * 1024;
+        var chunkCount = Math.ceil(file.size / chunkSize);
+        var randomBytes = new Uint8Array(16);
+        if (window.crypto && window.crypto.getRandomValues) window.crypto.getRandomValues(randomBytes);
+        else for (var b = 0; b < randomBytes.length; b++) randomBytes[b] = Math.floor(Math.random() * 256);
+        var uploadId = Array.prototype.map.call(randomBytes, function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+        var xhr = null;
+        var cancelled = false;
+
+        var promise = (async function () {
+            for (var index = 0; index < chunkCount; index++) {
+                if (cancelled) throw { cancelled: true };
+                var start = index * chunkSize;
+                var end = Math.min(file.size, start + chunkSize);
+                var chunk = file.slice(start, end);
+
+                var result = await new Promise(function (resolve, reject) {
+                    var request = new XMLHttpRequest();
+                    xhr = request;
+                    request.open('POST', cfg.uploadUrl);
+                    request.withCredentials = true;
+                    request.upload.onprogress = function (e) {
+                        if (e.lengthComputable) {
+                            onProgress((start + Math.min(e.loaded, chunk.size)) / file.size * 100);
+                        }
+                    };
+                    request.onload = function () {
+                        var data;
+                        try {
+                            data = JSON.parse(request.responseText);
+                        } catch (e) {
+                            reject(new Error(request.status === 413
+                                ? 'The server rejected an upload chunk. Please try again.'
+                                : 'The server did not answer correctly. Please try again.'));
+                            return;
+                        }
+                        if (request.status >= 200 && request.status < 300
+                            && index < chunkCount - 1 && data.status === 'chunk_received') {
+                            resolve(data);
+                        } else if (request.status >= 200 && request.status < 300
+                            && index === chunkCount - 1 && data.status === 'success') {
+                            onProgress(100);
+                            resolve(data);
+                        } else {
+                            reject(new Error(data.message || 'The upload did not finish. Please try again.'));
+                        }
+                    };
+                    request.onerror = function () { reject(new Error('Could not reach the server. Please check your connection and try again.')); };
+                    request.onabort = function () { reject({ cancelled: true }); };
+
+                    var fd = new FormData();
+                    fd.append('video', chunk, file.name);
+                    fd.append('csrf_token', applicantCsrfToken());
+                    fd.append('upload_id', uploadId);
+                    fd.append('chunk_index', String(index));
+                    fd.append('chunk_count', String(chunkCount));
+                    fd.append('file_name', file.name);
+                    request.send(fd);
+                });
+                if (index === chunkCount - 1) return { url: result.url || '' };
+            }
+
+            return { url: '' };
+        })();
+
+        return {
+            promise: promise,
+            cancel: function () {
+                cancelled = true;
+                if (xhr && xhr.readyState !== 4) xhr.abort();
+                var fd = new FormData();
+                fd.append('action', 'cancel');
+                fd.append('upload_id', uploadId);
+                fd.append('csrf_token', applicantCsrfToken());
+                var cleanup = new XMLHttpRequest();
+                cleanup.open('POST', cfg.uploadUrl);
+                cleanup.withCredentials = true;
+                cleanup.send(fd);
+            }
+        };
     }
 
     function startUpload() {
@@ -1811,6 +1870,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }, function (err) {
             if (job !== mine || (err && err.cancelled)) return;
             job = null;
+            mine.cancel();
             setStatus('error', 'Upload failed');
             showMsg((err && err.message) || 'The upload did not finish. Please try again.');
         });

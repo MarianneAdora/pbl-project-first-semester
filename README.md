@@ -27,6 +27,9 @@ Other secrets (Brevo, Cloudinary, Gemini) are also configured in `.env`.
 The root `.user.ini` configures PHP to accept video uploads up to the 50 MB
 limit shown to applicants. Azure App Service applies these PHP-FPM settings
 automatically; allow a few minutes after deployment for PHP to reload them.
+The browser sends video in 900 KiB chunks so each request stays below Azure's
+Nginx request-body limit; the upload endpoint reassembles the chunks before
+forwarding the video to Cloudinary.
 
 ## Existing database updates
 
