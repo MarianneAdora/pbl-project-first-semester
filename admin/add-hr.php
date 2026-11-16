@@ -201,7 +201,6 @@ $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
         <div class="form-head reveal" style="--i:1">
             <header class="content-header">
                 <h1><?php echo $isEdit ? 'Edit HR Account' : 'Create HR Account'; ?></h1>
-                <p><?php echo $isEdit ? 'Edit existing account for HR screening staff' : 'Create an account for HR screening staff'; ?></p>
             </header>
             <a href="hr-list.php" class="back-link" id="backLink">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>

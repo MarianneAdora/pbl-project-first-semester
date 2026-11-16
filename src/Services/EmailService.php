@@ -124,9 +124,8 @@ class EmailService {
 
     public function sendInviteEmail($toEmail, $toName, $secureToken) {
         // $toName is the applicant's full name.
-        // 1. Build the personal link using the secure token
-        // NOTE: Change 'localhost' to your real domain when you deploy
-        $link = "http://localhost/pbl-project-first-semester/applicant/opening.php?token=" . $secureToken;
+        // Build the personal link from the app's public URL and secure token.
+        $link = self::applicationBaseUrl() . '/applicant/opening.php?token=' . rawurlencode((string) $secureToken);
 
         // 2. Load the HTML template from project root
         $htmlContent = $this->loadTemplate('shortlist-email.html');
@@ -145,6 +144,20 @@ class EmailService {
         ];
 
         return $this->brevoSend($data, false);
+    }
+
+    private static function applicationBaseUrl(): string
+    {
+        if (defined('APP_URL') && trim((string) APP_URL) !== '') {
+            return rtrim((string) APP_URL, '/');
+        }
+
+        $https = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+        $host = (string) ($_SERVER['HTTP_HOST'] ?? 'localhost');
+        $script = (string) ($_SERVER['SCRIPT_NAME'] ?? '/hr/hr-data.php');
+        $root = rtrim(str_replace('\\', '/', dirname(dirname($script))), '/');
+
+        return ($https ? 'https://' : 'http://') . $host . $root;
     }
 
     public function sendPasswordResetEmail($toEmail, $toName, string $token): bool
