@@ -24,6 +24,10 @@ The legacy `getDbConnection()` in `src/Helpers/functions.php` now delegates to
 
 Other secrets (Brevo, Cloudinary, Gemini) are also configured in `.env`.
 
+The root `.user.ini` configures PHP to accept video uploads up to the 50 MB
+limit shown to applicants. Azure App Service applies these PHP-FPM settings
+automatically; allow a few minutes after deployment for PHP to reload them.
+
 ## Existing database updates
 
 For databases created before activity actor names were added, run this once:

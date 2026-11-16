@@ -22,15 +22,35 @@ if (empty($_SESSION['otp_verified']) || empty($_SESSION['applicant_id'])) {
 }
 $applicantId = (int) $_SESSION['applicant_id'];
 
+$postMax = trim((string) ini_get('post_max_size'));
+$postMaxUnit = strtolower(substr($postMax, -1));
+$postMaxMultiplier = ['k' => 1024, 'm' => 1048576, 'g' => 1073741824][$postMaxUnit] ?? 1;
+$postMaxBytes = (int) $postMax * $postMaxMultiplier;
+$contentLength = (int) ($_SERVER['CONTENT_LENGTH'] ?? 0);
+if ($postMaxBytes > 0 && $contentLength > $postMaxBytes) {
+    $respond(['status' => 'error', 'message' => 'The upload is too large for the server to receive. Please use a video of 50 MB or smaller.'], 413);
+}
+
 // CSRF protection
 $csrfIn = (string) ($_POST['csrf_token'] ?? '');
-    if (!csrf_verify($csrfIn)) {
-        $respond(['status' => 'error', 'message' => 'Invalid CSRF token. Please refresh and try again.'], 403);
-    }
+if (!csrf_verify($csrfIn)) {
+    $respond(['status' => 'error', 'message' => 'Invalid CSRF token. Please refresh and try again.'], 403);
+}
 
 $file = isset($_FILES['video']) && is_array($_FILES['video']) ? $_FILES['video'] : null;
-if (!$file || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+if (!$file) {
     $respond(['status' => 'error', 'message' => 'Choose a video file first.'], 422);
+}
+if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+    $uploadError = (int) $file['error'];
+    if ($uploadError === UPLOAD_ERR_INI_SIZE || $uploadError === UPLOAD_ERR_FORM_SIZE) {
+        $respond(['status' => 'error', 'message' => 'The video must be 50 MB or smaller.'], 413);
+    }
+    if ($uploadError === UPLOAD_ERR_NO_FILE) {
+        $respond(['status' => 'error', 'message' => 'Choose a video file first.'], 422);
+    }
+    error_log('upload-file PHP upload error: ' . $uploadError);
+    $respond(['status' => 'error', 'message' => 'The video could not be received. Please try again.'], 400);
 }
 
 // Extension check
