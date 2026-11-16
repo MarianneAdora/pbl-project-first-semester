@@ -3,10 +3,8 @@
 TRUNCATE TABLE activity_log, score, schedule, response, otp_request_log, otp, question_config, applicant, users RESTART IDENTITY CASCADE;
 
 -- USERS
+-- Seed users are in database/seed-users.sql (gitignored). Run that separately.
 -- Passwords are bcrypt hashes. Regenerate with generate_hash.php if they change.
-INSERT INTO users (role, name, email, email_normalized, password_hash, status) VALUES
-    ('admin', 'System Admin', 'admin@expertise.com', 'admin@expertise.com', '$2y$10$oOC0r1YyU3QOURWLlWQ26./BSESWAUkAfop0Dv2zSjgDaNFMePYnG', 'Active'),
-    ('hr',    'HR Staff',     'hr@expertise.com',    'hr@expertise.com',          '$2y$10$KSG4v4z3WMhknlDs8LZf3.d066DL98eITbXnpPboAXQ5P6es4fFuy', 'Active');
 
 -- QUESTIONS
 -- 13 questions across 5 sections.
