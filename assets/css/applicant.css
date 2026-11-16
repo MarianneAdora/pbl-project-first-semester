@@ -16,9 +16,8 @@
    Applicant pages: shared base + entrance animation.
    Link this file BEFORE the page's own css.   Used by: opening, instruction, verify-otp
 
-   The pages never scroll on a computer: everything is sized in rem and the root font size
-   follows the window (a short window = a slightly smaller page), so it always fits.
-   Phones (under 800px) are allowed to scroll.
+   The shared root font size scales within a readable range. Short screens and phones can scroll
+   instead of shrinking or clipping the screening content.
 
    Folders (same as the HR side):   project/assets/images/expertise.png   project/assets/images/Short BG.png
    This file lives in project/assets/css/, so the images folder is  ../images/
@@ -60,10 +59,9 @@
 
 [hidden] { display: none !important; }
 
-/* 1rem follows the window (about 20px on a 1080p screen, up to 26px), so the page is sized
-   like the wireframe and always fits. The background image is on <html> itself. */
+/* Keep desktop sizing fluid, but prevent small viewports and large displays from extreme scaling. */
 html {
-    font-size: clamp(11px, min(1.95vh, 1.4vw), 26px);
+    font-size: clamp(14px, min(1.2vw, 1.8vh), 20px);
     background: #f4f4f5 url("../images/Short%20BG.png") no-repeat right center / cover;
     background-attachment: fixed;
 }
@@ -82,7 +80,8 @@ body {
 .stage {
     position: relative;
     min-height: 100dvh;
-    overflow: clip;              /* entrance animations never create a scrollbar */
+    overflow-x: clip;            /* keep entrance animations from creating horizontal scroll */
+    overflow-y: visible;
 }
 
 /* ---------- Logo: always above left ---------- */
@@ -4720,4 +4719,124 @@ html:where([data-page="verify-otp"]).js.is-ready .verify__icon {
     }
     input, textarea, select { font-size: 16px; } /* prevents iOS zoom on focus */
     .stage { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+/* ===== Shared responsive layout for every screening page ===== */
+@media (max-width: 800px) {
+    html { font-size: clamp(15px, 4vw, 16px); }
+
+    body {
+        width: 100%;
+        overflow-x: clip;
+    }
+
+    .stage {
+        width: 100%;
+        height: auto;
+        min-height: 100svh;
+        overflow-x: clip;
+        overflow-y: visible;
+        padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    }
+
+    :where(html[data-page]) .page {
+        width: 100%;
+        min-width: 0;
+        padding-left: max(clamp(0.75rem, 4vw, 1.25rem), env(safe-area-inset-left));
+        padding-right: max(clamp(0.75rem, 4vw, 1.25rem), env(safe-area-inset-right));
+    }
+
+    :where(html[data-page]) .page > *,
+    :where(html[data-page]) .wrap,
+    :where(html[data-page]) .main,
+    :where(html[data-page]) .glass,
+    :where(html[data-page]) .qcard,
+    :where(html[data-page]) .invite__content,
+    :where(html[data-page]) .verify,
+    :where(html[data-page]) .status,
+    :where(html[data-page]) .schedule,
+    :where(html[data-page]) .panel {
+        min-width: 0;
+    }
+
+    :where(html[data-page]) .stepper {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        --dot: clamp(1.8rem, 8vw, 2.2rem);
+    }
+
+    :where(html[data-page]) .step {
+        min-width: 0;
+    }
+
+    :where(html[data-page]) .step__label {
+        max-width: 100%;
+        font-size: clamp(0.58rem, 2.7vw, 0.72rem);
+        line-height: 1.2;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    :where(html[data-page]) .step:not(.is-current) .step__label {
+        visibility: hidden;
+    }
+
+    :where(html[data-page]) .topbar {
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    :where(html[data-page]) img,
+    :where(html[data-page]) video,
+    :where(html[data-page]) button,
+    :where(html[data-page]) input,
+    :where(html[data-page]) textarea,
+    :where(html[data-page]) select {
+        max-width: 100%;
+    }
+
+    :where(html[data-page]) .filecard__name,
+    :where(html[data-page]) .verify__email,
+    :where(html[data-page]) .status__text,
+    :where(html[data-page]) .detail__value,
+    :where(html[data-page]) .intro__instruction,
+    :where(html[data-page]) .q__text,
+    :where(html[data-page]) .requirement__desc {
+        overflow-wrap: anywhere;
+    }
+}
+
+@media (max-width: 360px) {
+    :where(html[data-page="questionnaire"]) .qcard {
+        padding-left: 0.85rem;
+        padding-right: 0.85rem;
+    }
+
+    :where(html[data-page="questionnaire"]) .scale {
+        --dot: 2.65rem;
+    }
+
+    :where(html[data-page="questionnaire"]) .scale__labels {
+        gap: 0.4rem;
+        font-size: 0.8rem;
+    }
+
+    :where(html[data-page="verify-otp"]) .otp__boxes {
+        gap: 0.55rem;
+    }
+}
+
+/* Keep forms reachable on short desktop/tablet viewports rather than clipping their lower content. */
+@media (min-width: 801px) and (max-height: 760px) {
+    body { overflow-y: auto; }
+
+    .stage {
+        height: auto;
+        min-height: 100dvh;
+        overflow-x: clip;
+        overflow-y: visible;
+    }
+
+    :where(html[data-page]) .page { min-height: 100dvh; }
 }
