@@ -66,7 +66,7 @@ $reminders = [
     <!-- applicant.css = shared applicant styles + every applicant page (this page is picked by data-page="instruction" on <html>) -->
     <link rel="stylesheet" href="../assets/css/applicant.css?v=<?= @filemtime(__DIR__ . '/../assets/css/applicant.css') ?>">
     <style>
-        .privacy-modal { width:min(960px, calc(100vw - 32px)); height:min(90vh, 900px); max-width:none; max-height:none; padding:0; border:0; border-radius:14px; box-shadow:0 24px 80px #1117; }
+        .privacy-modal { position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:min(960px, calc(100vw - 32px)); height:min(90vh, 900px); max-width:none; max-height:none; margin:0; padding:0; overflow:hidden; border:0; border-radius:14px; box-shadow:0 24px 80px #1117; }
         .privacy-modal::backdrop { background:rgba(15, 20, 32, .62); }
         .privacy-modal__head { height:54px; display:flex; align-items:center; justify-content:space-between; padding:0 18px; background:#fff; border-bottom:1px solid #e4e4e8; font:600 16px/1.2 "Plus Jakarta Sans","Segoe UI",sans-serif; }
         .privacy-modal__close { width:34px; height:34px; border:0; border-radius:50%; background:#f1f1f3; color:#222; font-size:24px; cursor:pointer; }
