@@ -489,7 +489,13 @@ function q_dropdown(string $id, string $labelId, array $options, string $selecte
 
     <!-- Pass PHP variables to JavaScript -->
     <script>
-        window.ADMIN_NOTIFY = <?php echo json_encode(repo_admin_notify(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+        window.ADMIN_NOTIFY = <?php
+            try { echo json_encode(repo_admin_notify(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); }
+            catch (Throwable $e) {
+                error_log('add-question.php DB notification error: ' . $e->getMessage());
+                echo json_encode(['activity' => [], 'recent' => [], 'expiring' => 0, 'days' => 7]);
+            }
+        ?>;
         window.ADMIN_QFORM = <?php echo json_encode([
             'mode'     => $isEdit ? 'edit' : 'create',
             'question' => $isEdit ? $editing : null,
