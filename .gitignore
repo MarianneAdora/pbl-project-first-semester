@@ -1,4 +1,5 @@
 # Environment files containing secrets
+.env
 .env.local
 .env.*.local
 
@@ -14,6 +15,10 @@ vendor/
 # OS
 .DS_Store
 Thumbs.db
+.user.ini
+
+# Database seed files with credentials
+database/seed-users.sql
 
 # Logs
 *.log
