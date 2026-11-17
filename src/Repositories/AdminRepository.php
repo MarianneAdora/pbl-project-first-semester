@@ -92,6 +92,36 @@ function repo_admin_questions_list(?PDO $pdo = null): array
             }
         }
         if (!empty($cfg['link'])) $q['link'] = $cfg['link'];
+
+        // Fields the Create/Edit Questionnaire form reads back (window.ADMIN_QFORM).
+        $q['no_note'] = (string) ($r['reminder_text'] ?? ($cfg['no_note'] ?? ''));
+        if ($type === 'yesno') {
+            $q['favorable'] = (string) ($cfg['favorable'] ?? 'Yes');
+        }
+        if (isset($cfg['followup_when']) || isset($cfg['followup_label']) || isset($cfg['followup_options'])) {
+            $q['followup'] = [
+                'when'    => (string) ($cfg['followup_when']    ?? 'Yes'),
+                'label'   => (string) ($cfg['followup_label']   ?? ''),
+                'options' => (array)  ($cfg['followup_options'] ?? []),
+            ];
+        }
+        if ($type === 'scale') {
+            if (isset($cfg['max']))    $q['max']    = (int) $cfg['max'];
+            if (isset($cfg['labels'])) $q['labels'] = (array) $cfg['labels'];
+        }
+        if ($type === 'date' && isset($cfg['hint'])) {
+            $q['hint'] = (string) $cfg['hint'];
+        }
+        if ($type === 'text') {
+            if (isset($cfg['hint']))        $q['hint']        = (string) $cfg['hint'];
+            if (isset($cfg['placeholder'])) $q['placeholder'] = (string) $cfg['placeholder'];
+            if (isset($cfg['min_chars']))   $q['min_chars']   = (int) $cfg['min_chars'];
+            if (isset($cfg['max_chars']))   $q['max_chars']   = (int) $cfg['max_chars'];
+        }
+        if ($type === 'consent') {
+            if (isset($cfg['body']))     $q['body']     = (array) $cfg['body'];
+            if (isset($cfg['checkbox'])) $q['checkbox'] = (string) $cfg['checkbox'];
+        }
         $out[] = $q;
     }
     return $out;
