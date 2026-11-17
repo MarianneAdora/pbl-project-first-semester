@@ -279,6 +279,7 @@ try {
             if ($pos === null) admin_respond(['status' => 'error', 'message' => 'That question was not found. It may have been deleted.'], 404);
 
             $oldRow = null;
+            $pdo = db();
             $stmt = $pdo->prepare("SELECT * FROM question_config WHERE question_id = :id");
             $stmt->execute([':id' => $id]);
             foreach ($stmt->fetchAll() as $r) { $oldRow = $r; }
@@ -326,7 +327,6 @@ try {
                 admin_respond(['status' => 'error', 'message' => 'At least one question has to stay Active.'], 422);
             }
 
-            $pdo = db();
             $answerConfig = isset($new['answer_config']) && is_array($new['answer_config']) ? $new['answer_config'] : null;
             $passing = isset($new['passing_answer']) && is_array($new['passing_answer']) ? $new['passing_answer'] : null;
 
