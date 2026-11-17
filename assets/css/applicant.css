@@ -1614,6 +1614,102 @@ html:where([data-page="instruction"]).js.is-ready .requirement__icon {
     opacity: 0.8;
 }
 
+:where(html[data-page="instruction"]) .start__consent {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    padding: 0.75rem 0.9rem;
+    border: 1px solid rgba(37, 45, 59, 0.14);
+    border-radius: 0.75rem;
+    background: rgba(255, 255, 255, 0.82);
+    color: var(--text);
+    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+:where(html[data-page="instruction"]) .start__consent.is-error {
+    border-color: var(--red);
+    background: #fff1f3;
+    box-shadow: 0 0 0 4px rgba(227, 24, 55, 0.13);
+    animation: consent-row-highlight 0.42s ease-out;
+}
+
+:where(html[data-page="instruction"]) .start__consent input {
+    width: 1.1rem;
+    height: 1.1rem;
+    margin: 0 0.25rem 0 0;
+    accent-color: var(--red);
+}
+
+:where(html[data-page="instruction"]) .start__consent input.is-error {
+    outline: 2px solid var(--red-dark);
+    outline-offset: 3px;
+    box-shadow: 0 0 0 3px rgba(227, 24, 55, 0.2);
+}
+
+:where(html[data-page="instruction"]) .start__consent a {
+    color: var(--red-dark);
+    font-weight: 600;
+    text-underline-offset: 0.15em;
+}
+
+:where(html[data-page="instruction"]) .start__consent-error {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    margin: -0.35rem 0 0;
+    padding: 0.8rem 0.95rem;
+    border: 1px solid rgba(196, 18, 45, 0.2);
+    border-left: 4px solid var(--red-dark);
+    border-radius: 0.65rem;
+    background: #fff4f5;
+    color: var(--red-dark);
+    font-size: 0.94rem;
+    font-weight: 600;
+    line-height: 1.45;
+    box-shadow: 0 0.35rem 1rem rgba(120, 15, 35, 0.08);
+}
+
+:where(html[data-page="instruction"]) .start__consent-error[hidden] {
+    display: none;
+}
+
+:where(html[data-page="instruction"]) .start__consent-error svg {
+    flex: 0 0 1.15rem;
+    width: 1.15rem;
+    height: 1.15rem;
+    margin-top: 0.08rem;
+    fill: currentColor;
+    stroke: #fff;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+@keyframes consent-error {
+    0% { opacity: 0; transform: translateY(-0.45rem); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes consent-row-highlight {
+    0% { transform: scale(0.99); }
+    60% { transform: scale(1.015); }
+    100% { transform: scale(1); }
+}
+
+:where(html[data-page="instruction"]) .start__consent-error.is-animated {
+    animation: consent-error 0.35s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :where(html[data-page="instruction"]) .start__consent-error.is-animated {
+        animation: none;
+    }
+    :where(html[data-page="instruction"]) .start__consent.is-error {
+        animation: none;
+    }
+}
+
 /* ===== Tablet ===== */
 @media (max-width: 1100px) {
     :root:where([data-page="instruction"]) {

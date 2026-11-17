@@ -3,16 +3,15 @@ session_start();
 require_once __DIR__ . '/../src/Helpers/security.php';
 $csrf = csrf_token();
 date_default_timezone_set('Asia/Manila');
+$scriptDirectory = str_replace('\\', '/', dirname((string) ($_SERVER['SCRIPT_NAME'] ?? '/privacy.php')));
+$projectBasePath = preg_replace('~/applicant$~', '', rtrim($scriptDirectory, '/'));
+$applicantBasePath = rtrim((string) $projectBasePath, '/') . '/applicant';
 
 header('Cache-Control: no-store, no-cache, must-revalidate');
 header('Pragma: no-cache');
 
-if (empty($_SESSION['otp_verified'])) {
-    header('Location: /applicant/opening.php');
-    exit;
-}
 if (!empty($_SESSION['screening_submitted'])) {
-    header('Location: /applicant/application-status.php');
+    header('Location: ' . $applicantBasePath . '/application-status.php');
     exit;
 }
 
@@ -20,19 +19,24 @@ require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
 try {
     if (repo_has_submitted((int) ($_SESSION['applicant_id'] ?? 0))) {
         $_SESSION['screening_submitted'] = true;
-        header('Location: /applicant/application-status.php');
+        header('Location: ' . $applicantBasePath . '/application-status.php');
         exit;
     }
 } catch (Throwable $e) {
     error_log('privacy page submitted check error: ' . $e->getMessage());
 }
 
+$canConsent = !empty($_SESSION['otp_verified']);
 $alreadyAccepted = !empty($_SESSION['screening_privacy_accepted_at']);
+$embedded = (string) ($_GET['embed'] ?? '') === '1';
 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $csrfIn = (string) ($_POST['csrf_token'] ?? '');
-    if (!csrf_verify($csrfIn)) {
+    if (!$canConsent) {
+        http_response_code(403);
+        $error = 'Please complete applicant verification before agreeing to the privacy policy.';
+    } elseif (!csrf_verify($csrfIn)) {
         http_response_code(403);
         $error = 'Your session expired. Refresh the page and try again.';
     } elseif (($_POST['privacy_ack'] ?? '') !== '1') {
@@ -43,6 +47,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         if (!$alreadyAccepted) {
             $_SESSION['screening_privacy_accepted_at'] = date('Y-m-d H:i:s');
+        }
+        if ($embedded) {
+            header('Content-Type: text/html; charset=utf-8');
+            ?>
+            <!DOCTYPE html>
+            <html lang="en">
+            <head><meta charset="utf-8"><title>Privacy Policy Accepted</title></head>
+            <body>
+                <p role="status">Your agreement has been recorded. You may close this window.</p>
+                <script>window.parent.postMessage({ type: 'privacy-policy-accepted' }, window.location.origin);</script>
+            </body>
+            </html>
+            <?php
+            exit;
         }
         header('Location: /applicant/questionnaire.php');
         exit;
@@ -142,28 +160,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <h2>Minors</h2>
     <p>This screening is for applicants aged 18 and above. We do not knowingly collect information from anyone under 18.</p>
 
-    <div class="box"><strong>Questions?</strong> Contact us at <a href="mailto:ebsmi.screening@gmail.com">ebsmi.screening@gmail.com</a>.</div>
-
-    <form class="consent" method="post" target="_top">
-        <input type="hidden" name="csrf_token" value="<?= attr($csrf) ?>">
-        <?php if ($error !== ''): ?><p class="error" role="alert"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p><?php endif; ?>
-        <label>
-            <input type="checkbox" name="privacy_ack" value="1" required <?= $alreadyAccepted ? 'checked' : '' ?>>
-            <span>I have read and agree to this privacy policy.</span>
-        </label>
-        <div class="actions">
-            <a href="/applicant/instruction.php" target="_top">Back to instructions</a>
-            <?php if ($alreadyAccepted): ?>
-                <a class="continue" href="/applicant/questionnaire.php" target="_top">Continue to Questionnaire</a>
-            <?php else: ?>
-                <button type="submit" class="continue">Agree &amp; Begin Screening</button>
-            <?php endif; ?>
+    <?php if ($canConsent): ?>
+        <form class="consent" method="post">
+            <input type="hidden" name="csrf_token" value="<?= attr($csrf) ?>">
+            <?php if ($error !== ''): ?><p class="error" role="alert"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p><?php endif; ?>
+            <label>
+                <input type="checkbox" name="privacy_ack" value="1" required <?= $alreadyAccepted ? 'checked' : '' ?>>
+                <span>I have read and agree to this privacy policy.</span>
+            </label>
+            <div class="actions">
+                <?php if (!$embedded): ?><a href="<?= attr($applicantBasePath) ?>/instruction.php">Back to instructions</a><?php endif; ?>
+                <?php if ($alreadyAccepted && !$embedded): ?>
+                    <a class="continue" href="<?= attr($applicantBasePath) ?>/questionnaire.php" target="_top">Continue to Questionnaire</a>
+                <?php elseif ($embedded && $alreadyAccepted): ?>
+                    <button type="button" class="continue" id="closeEmbeddedPrivacy">Close</button>
+                <?php else: ?>
+                    <button type="submit" class="continue">Agree &amp; Begin Screening</button>
+                <?php endif; ?>
+            </div>
+        </form>
+    <?php else: ?>
+        <div class="consent">
+            <p>Please complete applicant verification before you can agree to this policy.</p>
+            <div class="actions">
+                <a class="continue" href="<?= attr($applicantBasePath) ?>/opening.php" target="_top">Continue to Verification</a>
+            </div>
         </div>
-    </form>
+    <?php endif; ?>
+
+    <div class="box">Contact us at <a href="mailto:ebsmi.screening@gmail.com">ebsmi.screening@gmail.com</a>.</div>
 </main>
 
 <footer>
     <div class="wrap">&copy; <?= date('Y') ?> Expertise BPO Services Manila, Inc.</div>
 </footer>
+<?php if ($embedded && $alreadyAccepted): ?>
+<script>
+    document.getElementById('closeEmbeddedPrivacy').addEventListener('click', function () {
+        window.parent.postMessage({ type: 'privacy-policy-close' }, window.location.origin);
+    });
+</script>
+<?php endif; ?>
 </body>
 </html>

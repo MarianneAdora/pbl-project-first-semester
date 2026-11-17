@@ -459,15 +459,83 @@ document.addEventListener("DOMContentLoaded", function () {
     var privacyModal = document.getElementById("privacyModal");
     var privacyFrame = document.getElementById("privacyFrame");
     var closePrivacy = document.getElementById("closePrivacy");
-    if (privacyModal && privacyFrame && typeof privacyModal.showModal === "function") {
+    var privacyCheckbox = document.getElementById("privacyAgreement");
+    var privacyLink = document.getElementById("privacyLink");
+    var privacyError = document.getElementById("privacyError");
+    var privacyConsent = privacyCheckbox && privacyCheckbox.closest(".start__consent");
+    var privacyAccepted = privacyCheckbox && privacyCheckbox.dataset.accepted === "true";
+
+    function showPrivacyError() {
+        privacyError.hidden = false;
+        privacyError.classList.remove("is-animated");
+        void privacyError.offsetWidth;
+        privacyError.classList.add("is-animated");
+        privacyCheckbox.classList.add("is-error");
+        if (privacyConsent) {
+            privacyConsent.classList.remove("is-error");
+            void privacyConsent.offsetWidth;
+            privacyConsent.classList.add("is-error");
+        }
+        privacyCheckbox.focus();
+    }
+
+    function clearPrivacyError() {
+        privacyError.hidden = true;
+        privacyCheckbox.classList.remove("is-error");
+        if (privacyConsent) privacyConsent.classList.remove("is-error");
+    }
+
+    function openPrivacy() {
+        if (!privacyModal || !privacyFrame || typeof privacyModal.showModal !== "function") {
+            window.location.href = privacyLink.href;
+            return;
+        }
+        if (!privacyFrame.getAttribute("src")) {
+            privacyFrame.src = privacyLink.href + "?embed=1";
+        }
+        privacyModal.showModal();
+    }
+
+    if (privacyCheckbox && privacyLink && privacyError) {
+        privacyCheckbox.addEventListener("change", function () {
+            clearPrivacyError();
+            if (privacyCheckbox.checked && !privacyAccepted) openPrivacy();
+        });
+        privacyLink.addEventListener("click", function (event) {
+            event.preventDefault();
+            clearPrivacyError();
+            openPrivacy();
+        });
+    }
+
+    if (privacyModal && privacyFrame && privacyCheckbox) {
+        window.addEventListener("message", function (event) {
+            if (event.origin !== window.location.origin || event.source !== privacyFrame.contentWindow) return;
+            if (!event.data || (event.data.type !== "privacy-policy-accepted" && event.data.type !== "privacy-policy-close")) return;
+            if (event.data.type === "privacy-policy-accepted") {
+                privacyAccepted = true;
+                privacyCheckbox.checked = true;
+                privacyCheckbox.disabled = true;
+                clearPrivacyError();
+                privacyFrame.src = privacyLink.href + "?embed=1";
+            }
+            privacyModal.close();
+        });
+
         beginBtn.addEventListener("click", function (event) {
             event.preventDefault();
-            if (!privacyFrame.getAttribute("src")) privacyFrame.src = beginBtn.href;
-            privacyModal.showModal();
+            if (!privacyAccepted) {
+                showPrivacyError();
+                return;
+            }
+            Applicant.go("questionnaire.php");
         });
         if (closePrivacy) closePrivacy.addEventListener("click", function () { privacyModal.close(); });
         privacyModal.addEventListener("click", function (event) {
             if (event.target === privacyModal) privacyModal.close();
+        });
+        privacyModal.addEventListener("close", function () {
+            if (!privacyAccepted) privacyCheckbox.checked = false;
         });
     }
 
