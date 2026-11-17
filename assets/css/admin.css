@@ -5228,6 +5228,7 @@ html:where([data-page="dashboardadmin"])[data-motion="off"] .notif-bell.ring svg
         white-space: normal;
         overflow-wrap: anywhere;
         line-height: 1.3;
+        font-size: clamp(0.875rem, 3.4vw, 0.9375rem);
     }
 
     html[data-page] button span,

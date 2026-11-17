@@ -5019,4 +5019,28 @@ html:where([data-page="verify-otp"]).js.is-ready .verify__icon {
         white-space: normal;
         overflow-wrap: anywhere;
     }
+
+    html[data-page] button:not(.scale__dot):not(.cal__nav):not(.cal__day):not(.pcal__nav):not(.pcal__day):not(.vmodal__close),
+    html[data-page] input[type="submit"],
+    html[data-page] input[type="button"],
+    html[data-page] input[type="reset"],
+    html[data-page] [role="button"],
+    html[data-page] .btn,
+    html[data-page] a[class*="btn"],
+    html[data-page] a.back-link,
+    html[data-page] a.continue {
+        font-size: clamp(0.875rem, 3.4vw, 0.9375rem);
+    }
+
+    html[data-page] button.scale__dot,
+    html[data-page] button.cal__nav,
+    html[data-page] button.cal__day,
+    html[data-page] button.pcal__nav,
+    html[data-page] button.pcal__day,
+    html[data-page] button.vmodal__close {
+        min-width: 0;
+        min-height: 0;
+        height: auto;
+        aspect-ratio: 1;
+    }
 }
