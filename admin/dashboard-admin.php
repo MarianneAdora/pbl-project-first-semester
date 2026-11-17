@@ -63,7 +63,7 @@ $recent   = array_values(array_filter(
 ));
 foreach ($requests as $request) {
     $recent[] = [
-        'at'       => $request['requested_at'] ? date('Y-m-d H:i:s', strtotime($request['requested_at'])) : '',
+        'at'       => repo_activity_format_timestamp($request['requested_at'] ?? null),
         'activity' => 'Password Change Requested',
         'details'  => $request['name'] . ' (HR) · ' . $request['email'],
         'by'       => 'HR',

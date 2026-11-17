@@ -7,11 +7,20 @@
 
 require_once __DIR__ . '/../Helpers/db.php';
 
+function repo_activity_format_timestamp(?string $timestamp): string
+{
+    if ($timestamp === null || $timestamp === '') return '';
+
+    return (new DateTimeImmutable($timestamp, new DateTimeZone('UTC')))
+        ->setTimezone(new DateTimeZone('Asia/Manila'))
+        ->format('Y-m-d H:i:s');
+}
+
 function repo_activity_format(array $row): array
 {
     return [
         'id'         => (int) ($row['log_id'] ?? $row['id'] ?? 0),
-        'at'         => $row['created_at'] ? date('Y-m-d H:i:s', strtotime((string) $row['created_at'])) : '',
+        'at'         => repo_activity_format_timestamp(isset($row['created_at']) ? (string) $row['created_at'] : null),
         'activity'   => (string) $row['activity'],
         'details'    => (string) $row['details'],
         'by'         => (string) $row['actor'],
@@ -35,7 +44,7 @@ function repo_log_activity(string $activity, string $details = '-', ?string $act
     try {
         $st = $pdo->prepare(
             "INSERT INTO activity_log (actor, actor_name, activity, details, created_at)
-             VALUES (:a, :an, :act, :d, NOW())
+             VALUES (:a, :an, :act, :d, NOW() AT TIME ZONE 'UTC')
              RETURNING log_id, actor, actor_name, activity, details, created_at"
         );
         $st->execute([':a' => $actor, ':an' => $actorName, ':act' => $activity, ':d' => $details]);
