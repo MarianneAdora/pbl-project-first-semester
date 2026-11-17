@@ -91,7 +91,7 @@ class EmailService {
 
         // 2. Prepare the email data
         $data = [
-            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@gmail.com"],
+            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@12495524.brevosend.com"],
             "to" => [["email" => $toEmail, "name" => "Test Applicant"]],
             "subject" => "Testing Brevo Integration",
             "htmlContent" => "<h1>It works!</h1><p>Your PHP code successfully connected to Brevo.</p>"
@@ -113,7 +113,7 @@ class EmailService {
         $htmlContent = str_replace('{{YEAR}}', date('Y'), $htmlContent);
 
         $data = [
-            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@gmail.com"],
+            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@12495524.brevosend.com"],
             "to" => [["email" => $toEmail, "name" => $toName]],
             "subject" => "Your Screening Verification Code",
             "htmlContent" => $htmlContent
@@ -137,7 +137,7 @@ class EmailService {
 
         // 4. Prepare Brevo payload
         $data = [
-            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@gmail.com"], // USE YOUR VERIFIED SENDER
+            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@12495524.brevosend.com"],
             "to" => [["email" => $toEmail, "name" => (string) $toName]],
             "subject" => "You've been shortlisted | Expertise",
             "htmlContent" => $htmlContent
@@ -170,7 +170,7 @@ class EmailService {
         $htmlContent = str_replace('{{YEAR}}', date('Y'), $htmlContent);
 
         $data = [
-            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@gmail.com"],
+            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@12495524.brevosend.com"],
             "to" => [["email" => $toEmail, "name" => (string) $toName]],
             "subject" => "Reset your password | Expertise",
             "htmlContent" => $htmlContent
@@ -203,7 +203,7 @@ class EmailService {
         $htmlContent = str_replace('{{YEAR}}', date('Y'), $htmlContent);
 
         $data = [
-            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@gmail.com"],
+            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@12495524.brevosend.com"],
             "to" => [["email" => $toEmail, "name" => $fullName]],
             "subject" => "Your interview is confirmed | Expertise",
             "htmlContent" => $htmlContent
@@ -223,7 +223,7 @@ class EmailService {
         $htmlContent = str_replace('{{YEAR}}', date('Y'), $htmlContent);
 
         $data = [
-            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@gmail.com"],
+            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@12495524.brevosend.com"],
             "to" => [["email" => $toEmail, "name" => $fullName]],
             "subject" => "New interview schedule | Expertise",
             "htmlContent" => $htmlContent
@@ -240,7 +240,7 @@ class EmailService {
         $htmlContent = str_replace('{{YEAR}}', date('Y'), $htmlContent);
 
         $data = [
-            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@gmail.com"],
+            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@12495524.brevosend.com"],
             "to" => [["email" => $toEmail, "name" => (string) $toName]],
             "subject" => "Your Expertise HR account credentials",
             "htmlContent" => $htmlContent
@@ -252,7 +252,7 @@ class EmailService {
     public function sendEmail(string $toEmail, string $subject, string $html, string $toName = ''): bool
     {
         $data = [
-            'sender'      => ['name' => 'Expertise BPO', 'email' => 'ebsmi.screening@gmail.com'],
+            'sender'      => ['name' => 'Expertise BPO', 'email' => 'ebsmi.screening@12495524.brevosend.com'],
             'to'          => [['email' => $toEmail, 'name' => $toName !== '' ? $toName : $toEmail]],
             'subject'     => $subject,
             'htmlContent' => $html,
@@ -274,7 +274,7 @@ class EmailService {
         $htmlContent = str_replace('{{YEAR}}', date('Y'), $htmlContent);
 
         $data = [
-            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@gmail.com"],
+            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@12495524.brevosend.com"],
             "to" => [["email" => $toEmail, "name" => $fullName]],
             "subject" => "Your application update | Expertise",
             "htmlContent" => $htmlContent
