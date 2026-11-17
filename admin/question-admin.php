@@ -177,6 +177,9 @@ function static_admin_clean_question(array $in, array $all, ?array $old = null):
             if ($note !== '') $q['no_note'] = $note;
             // which answer counts as good in the Questionnaires Statistics (Yes unless the Admin says otherwise)
             if (($in['favorable'] ?? 'Yes') === 'No') $q['favorable'] = 'No';
+            else $q['favorable'] = 'Yes';
+            $q['answer_config'] = ['favorable' => $q['favorable']];
+            if ($note !== '') $q['answer_config']['no_note'] = $note;
             break;
 
         case 'yesno_select':
