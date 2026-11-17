@@ -161,7 +161,7 @@ try {
             <h1>Archive</h1>
         </header>
 
-        <!-- Search + type filter (HR account / questionnaire) + time left filter -->
+        <!-- Search + filter toggle -->
         <div class="toolbar reveal" id="toolbar" style="--i:2">
             <label class="search-box" for="searchInput">
                 <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
@@ -171,13 +171,29 @@ try {
                 </button>
             </label>
 
-            <div class="dropdown" id="typeDropdown">
-                <button type="button" class="dropdown-btn" aria-haspopup="listbox" aria-expanded="false" aria-label="Filter by type" aria-labelledby="typeDropdownValue">
+            <button type="button" class="filter-toggle" id="filterToggle" aria-expanded="true" aria-controls="filterPanel" title="Show or hide filters">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.25 5.61C6.27 8.2 10 13 10 13v6c0 .55.45 1 1 1h2c.55 0 1-.45 1-1v-6s3.72-4.8 5.74-7.39A.998.998 0 0 0 18.95 4H5.04c-.83 0-1.3.95-.79 1.61z"/></svg>
+                <span class="filter-dot" id="filterDot" hidden></span>
+                <span class="sr-only">Toggle filters</span>
+            </button>
+        </div>
+
+        <div class="filter-panel reveal is-settled" id="filterPanel" style="--i:3">
+            <div class="filter-panel-inner">
+                <div class="filter-card" id="typeCard">
+                    <div class="filter-head">
+                        <span class="filter-label" id="typeLabel">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v3H4zm0 6h16v3H4zm0 6h10v3H4z"/></svg>Type
+                        </span>
+                        <button type="button" class="filter-reset" data-filter-reset hidden>Reset</button>
+                    </div>
+                    <div class="dropdown" id="typeDropdown">
+                <button type="button" class="dropdown-btn" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="typeLabel typeDropdownValue">
                     <span class="dot"></span>
                     <span class="dropdown-value" id="typeDropdownValue">All Types</span>
                     <svg class="dropdown-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
                 </button>
-                <ul class="dropdown-menu" role="listbox" aria-label="Filter by type" tabindex="-1">
+                <ul class="dropdown-menu" role="listbox" aria-labelledby="typeLabel" tabindex="-1">
                     <li class="dropdown-option" role="option" data-value="all" data-dot="#c5c9ce" aria-selected="true" style="--k:0">
                         <span class="dot"></span><span class="opt-label">All Types</span><span class="opt-count">0</span>
                         <svg class="opt-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>
@@ -191,14 +207,22 @@ try {
                         <svg class="opt-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>
                     </li>
                 </ul>
-            </div>
-            <div class="dropdown" id="leftDropdown">
-                <button type="button" class="dropdown-btn" aria-haspopup="listbox" aria-expanded="false" aria-label="Filter by time left" aria-labelledby="leftDropdownValue">
+                    </div>
+                </div>
+                <div class="filter-card" id="leftCard">
+                    <div class="filter-head">
+                        <span class="filter-label" id="leftLabel">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2v6h.01L6 8.01 10 12l-4 4 .01.01H6V22h12v-5.99h-.01L18 16l-4-4 4-3.99-.01-.01H18V2H6zm10 14.5V20H8v-3.5l4-4 4 4zm-4-5-4-4V4h8v3.5l-4 4z"/></svg>Time left
+                        </span>
+                        <button type="button" class="filter-reset" data-filter-reset hidden>Reset</button>
+                    </div>
+                    <div class="dropdown" id="leftDropdown">
+                <button type="button" class="dropdown-btn" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="leftLabel leftDropdownValue">
                     <span class="dot"></span>
                     <span class="dropdown-value" id="leftDropdownValue">Any time left</span>
                     <svg class="dropdown-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
                 </button>
-                <ul class="dropdown-menu" role="listbox" aria-label="Filter by time left" tabindex="-1">
+                <ul class="dropdown-menu" role="listbox" aria-labelledby="leftLabel" tabindex="-1">
                     <li class="dropdown-option" role="option" data-value="all" data-dot="#c5c9ce" aria-selected="true" style="--k:0">
                         <span class="dot"></span><span class="opt-label">Any time left</span><span class="opt-count">0</span>
                         <svg class="opt-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>
@@ -212,11 +236,13 @@ try {
                         <svg class="opt-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>
                     </li>
                 </ul>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Table -->
-        <section class="table-card reveal" style="--i:3">
+        <section class="table-card reveal" style="--i:4">
             <div class="table-scroll" id="tableScroll">
                 <table class="hr-table a-table" id="archiveTable">
                     <colgroup>
@@ -240,7 +266,7 @@ try {
             </div>
         </section>
 
-        <footer class="list-footer reveal" style="--i:4">
+        <footer class="list-footer reveal" style="--i:5">
             <p class="showing" id="showingText" aria-live="polite"></p>
             <nav class="pagination" id="pagination" aria-label="Pagination"></nav>
         </footer>

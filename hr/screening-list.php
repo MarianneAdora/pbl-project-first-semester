@@ -146,23 +146,11 @@ foreach ($archived_rows as $a) {
                 <span class="nav-text">Dashboard</span>
             </a>
 
-            <!-- Applicants section: open, and highlighted because this page belongs to it -->
-            <div class="nav-group active current reveal" id="applicantsGroup" style="--i:2">
-                <div class="nav-dropdown-wrapper">
-                    <a href="screening-list.php" class="nav-item nav-main-link" id="applicantsMainLink">
-                        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
-                        <span class="nav-text">Applicants</span>
-                        <span class="nav-badge" id="applicantsBadge" hidden>0</span>
-                    </a>
-                    <button class="dropdown-arrow-btn" id="arrowToggleBtn" title="Toggle Menu">
-                        <svg class="arrow-icon" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
-                    </button>
-                </div>
-                <div class="sub-menu" id="applicantsSubMenu">
-                    <a href="screening-list.php" class="sub-item active" aria-current="page"><span class="sub-text">Screening List</span><span class="nav-badge alert mini" id="screeningBadge" hidden>0</span></a>
-                    <a href="add-applicants.php" class="sub-item"><span class="sub-text">Add Applicant</span></a>
-                </div>
-            </div>
+            <a href="screening-list.php" class="nav-item active reveal" id="applicantsMainLink" style="--i:2" aria-current="page">
+                <svg class="nav-icon" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                <span class="nav-text">Applicants</span>
+                <span class="nav-badge" id="applicantsBadge" hidden>0</span>
+            </a>
 
             <!-- Archive -->
             <a href="archive.php" id="archiveLink" class="nav-item reveal" style="--i:3">
@@ -205,11 +193,16 @@ foreach ($archived_rows as $a) {
                 </button>
             </label>
 
+            <a href="add-applicants.php" class="btn-add-applicant" title="Add applicant" aria-label="Add applicant">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                <span>Add Applicant</span>
+            </a>
+
             <!-- Select all  <->  Cancel / Delete: one slot, so nothing else in the toolbar jumps -->
             <div class="select-swap" id="selectSwap">
                 <!-- Normal mode: Select all -->
                 <button type="button" class="tool-btn select-all-btn" id="selectAllBtn" title="Select every applicant in the list (or press and hold a row)">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h2V3c-1.1 0-2 .9-2 2zm0 8h2v-2H3v2zm4 8h2v-2H7v2zM3 9h2V7H3v2zm10-6h-2v2h2V3zm6 0v2h2c0-1.1-.9-2-2-2zM5 21v-2H3c0 1.1.9 2 2 2zm-2-4h2v-2H3v2zM9 3H7v2h2V3zm2 18h2v-2h-2v2zm8-8h2v-2h-2v2zm0 8c1.1 0 2-.9 2-2h-2v2zm0-12h2V7h-2v2zm0 8h2v-2h-2v2zm-4 4h2v-2h-2v2zm0-16h2V3h-2v2zM9 17h6V9H9v8zm2-6h2v4h-2v-4z"/></svg>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 7h-9v2h9V7zm0 4h-9v2h9v-2zm0 4h-9v2h9v-2zM5.5 9.5 3.75 7.75 2.5 9l3 3 5-5-1.25-1.25-3.75 3.75zm0 8L3.75 15.75 2.5 18l3 3 5-5-1.25-1.25-3.75 3.75z"/></svg>
                     <span>Select all</span>
                 </button>
 

@@ -11,7 +11,7 @@
    HR common behaviour: shared by every HR page
    Part 1: window.HR helpers (archive storage, sidebar badge, toast)
    Part 2: entrance animation, sidebar (collapsed state is remembered),
-           Applicants dropdown, logout confirmation + stripe sweep-in
+           Applicants navigation, logout confirmation + stripe sweep-in
    Load this file BEFORE the page's own script.
    ========================================================================== */
 
@@ -385,18 +385,7 @@ window.HR = (function () {
                 link.appendChild(main);
             }
         }
-        let sub = document.getElementById('screeningBadge');
-        if (!sub) {
-            const item = document.querySelector('.sub-menu a.sub-item[href$="screening-list.php"]');
-            if (item) {
-                sub = document.createElement('span');
-                sub.className = 'nav-badge alert mini';
-                sub.id = 'screeningBadge';
-                sub.hidden = true;
-                item.appendChild(sub);
-            }
-        }
-        return [main, sub].filter(Boolean);
+        return main ? [main] : [];
     }
 
     let lastNewCount = -1;
@@ -578,8 +567,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const root = document.documentElement;
     const sidebar = document.getElementById('sidebar');
     const sidebarToggle = document.getElementById('sidebarToggle');
-    const arrowToggleBtn = document.getElementById('arrowToggleBtn');
-    const applicantsGroup = document.getElementById('applicantsGroup');
     const logoutBtn = document.getElementById('logoutBtn');
     const logoutModal = document.getElementById('logoutModal');
     const cancelLogout = document.getElementById('cancelLogout');
@@ -696,21 +683,10 @@ document.addEventListener('DOMContentLoaded', () => {
             b.className = 'drawer-backdrop';
             document.body.appendChild(b);
             b.addEventListener('click', () => setDrawerOpen(false));
-            sidebar.querySelectorAll('.nav-item, .sub-item').forEach((item) => {
+            sidebar.querySelectorAll('.nav-item').forEach((item) => {
                 item.addEventListener('click', () => setDrawerOpen(false));
             });
         }
-    }
-
-    // 3. Applicants dropdown (arrow only)
-    if (arrowToggleBtn && applicantsGroup && sidebar) {
-        arrowToggleBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            if (!sidebar.classList.contains('collapsed')) {
-                applicantsGroup.classList.toggle('active');
-            }
-        });
     }
 
     // 4. Logout: confirm, then elements lift away while the stripes sweep in
@@ -1118,9 +1094,8 @@ document.addEventListener('DOMContentLoaded', () => {
        listed at the top of opening.php (applicant_name, applicant_email). */
     /* Real request: saves the applicant through add-applicants.php (it is the endpoint too),
        so the Screening List, Dashboard cards and Recent Applicants all show the new person.
-       The CV file (if chosen) is uploaded flat to ebsmi-shortlist-applicant-cvs as cv-{id}-{filename}
-       (PDFs = previewable image type) and its URL is saved as cv_file_url.
-       Invitation email still not sent. */
+       The CV file (if chosen) is uploaded flat to ebsmi-shortlist-applicant-cvs and its URL is saved
+       as cv_file_url. hr-data.php sends the screening invitation through the email service. */
     async function sendInvitation(formData) {
         formData.set('action', 'add'); // hr-data.php routes on this; without it the server answers "Unknown action."
         const res = await fetch('../hr/hr-data.php', { method: 'POST', body: formData, credentials: 'same-origin' });
@@ -2948,12 +2923,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /* ==========================================================================
    Notification bell (HR Dashboard header)
-   Lists what HR did (the same lines the Admin sees under Recent Activities) plus completed
-   screenings that nobody has opened yet. The number on the bell counts the lines that are new since
-   the bell was last opened. Opening it marks them as read (they stay highlighted while it is open).
+   Lists recent activity, Admin decisions and completed screenings. Read state is stored per account.
+   Opening the panel does not mark notifications as read; clicking an item does.
    Settings > Notifications (the master switch) hides the number; Settings changes are never listed.
    Data: window.HR_ACTIVITY, printed by dashboard-hr.php (and refreshed through hr-data.php, action 'activity').
-   The "last read" time is kept in this browser for now; with the database it becomes a column on the user.
    ========================================================================== */
 document.addEventListener('DOMContentLoaded', () => {
     const bell = document.getElementById('notifBell');
@@ -2963,7 +2936,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const markAllBtn = document.getElementById('notifMarkAll');
     if (!bell || !panel || !badge || !listEl) return;
 
-    const SEEN_KEY = 'hr_activity_seen';              // the time of the newest line HR has already read
     const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const ICONS = {
         add:     'M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z',
@@ -2979,37 +2951,77 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     let feed = Array.isArray(window.HR_ACTIVITY) ? window.HR_ACTIVITY : [];
-    let fresh = new Set();                            // lines that were new when the bell was opened (highlighted while it is open)
     let lastCount = -1;
+    const readKeys = new Set();
+    const expandedKeys = new Set();
 
     // The Admin's answers to HR's email / password requests (window.HR_ACCOUNT is printed by dashboard-hr.php).
-    // Unread ones count on the bell and stay highlighted until the bell is opened (or Settings > "Got it").
     const accountId = Number((window.HR_ACCOUNT || {}).id) || 0;
-    let freshDecisions = new Set();                   // answers that were unread when the bell was opened
     const decisions = () => (window.HRREQ && accountId ? HRREQ.hrNotices(accountId) : []);
-    const unreadDecisions = () => decisions().filter(n => !n.read);
-    function readDecisions() {
-        if (window.HRREQ && accountId) HRREQ.markHrRead(accountId);
-        if (window.HR && HR.refreshSettingsBadge) HR.refreshSettingsBadge();
-    }
+    const completedApplicantIds = Array.isArray(window.HR_COMPLETED_IDS)
+        ? window.HR_COMPLETED_IDS.map(Number).filter(id => Number.isSafeInteger(id) && id > 0)
+        : [];
+    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    const csrfToken = csrfMeta ? csrfMeta.content : '';
 
     const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    const keyOf = (row) => row.at + '|' + row.activity + '|' + row.details;
-
-    function readSeen() { try { return localStorage.getItem(SEEN_KEY) || ''; } catch (e) { return ''; } }
-    function writeSeen(v) { try { localStorage.setItem(SEEN_KEY, v); } catch (e) { /* storage unavailable */ } }
-    function newest() { return feed.reduce((a, r) => (r.at > a ? r.at : a), ''); }
-
-    // The very first visit starts "all read", so the old sample lines do not count as news
-    if (readSeen() === '' && feed.length) writeSeen(newest());
+    const safeId = (id) => String(id == null ? '' : id).replace(/[^A-Za-z0-9_-]/g, '');
+    function activityKey(row) {
+        if (row && row.id != null && safeId(row.id)) return 'activity:' + safeId(row.id);
+        const value = [row && row.at, row && row.activity, row && row.details, row && row.by].join('|');
+        let hash = 2166136261;
+        for (let i = 0; i < value.length; i++) hash = Math.imul(hash ^ value.charCodeAt(i), 16777619);
+        return 'activity:h' + (hash >>> 0).toString(36);
+    }
+    const decisionKey = (row) => 'hr-decision:' + safeId(row.id);
+    const completedKey = (id) => 'completed:' + Number(id);
 
     // Settings > Notifications master switch (the bell itself always stays; only the number is hidden)
     function notifyOn() {
         try { return !(window.HR && HR.settings) || HR.settings.get().notifications !== false; } catch (e) { return true; }
     }
 
-    const unread = () => feed.filter(r => r.at > readSeen());
-    const completedLeft = () => (window.HR && HR.unseenCompleted ? HR.unseenCompleted().length : 0);
+    function completedNotificationsOn() {
+        try { return !(window.HR && HR.settings) || HR.settings.get().notifyCompleted !== false; } catch (e) { return true; }
+    }
+
+    const unreadActivity = () => feed.slice(0, 20).filter(row => !readKeys.has(activityKey(row)));
+    const unreadDecisions = () => decisions().slice(0, 10).filter(row => !readKeys.has(decisionKey(row)));
+    const unreadCompletedIds = () => completedNotificationsOn()
+        ? completedApplicantIds.filter(id => !readKeys.has(completedKey(id)))
+        : [];
+    const notificationKeys = () => decisions().slice(0, 10).map(decisionKey)
+        .concat(feed.slice(0, 20).map(activityKey), completedApplicantIds.map(completedKey));
+
+    async function notificationRequest(action, keys) {
+        const response = await fetch('../api/notification-read.php', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ action: action, keys: keys, csrf_token: csrfToken })
+        });
+        const data = await response.json().catch(() => { throw new Error('The server did not answer correctly. Please try again.'); });
+        if (!response.ok || data.status !== 'success') throw new Error(data.message || 'Notification state could not be saved.');
+        return data;
+    }
+
+    async function syncReadState() {
+        if (!accountId) throw new Error('Could not identify your HR account. Please log in again.');
+        const keys = Array.from(new Set(notificationKeys()));
+        for (let i = 0; i < keys.length; i += 500) {
+            const data = await notificationRequest('state', keys.slice(i, i + 500));
+            (data.read_keys || []).forEach(key => readKeys.add(key));
+        }
+    }
+
+    async function markRead(keys) {
+        const unique = Array.from(new Set(keys));
+        for (let i = 0; i < unique.length; i += 500) {
+            const data = await notificationRequest('mark_many', unique.slice(i, i + 500));
+            (data.read_keys || []).forEach(key => readKeys.add(key));
+        }
+        paint();
+    }
 
     function when(at) {
         const m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(String(at || ''));
@@ -3046,33 +3058,53 @@ document.addEventListener('DOMContentLoaded', () => {
     const svg = (d) => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + d + '"/></svg>';
 
     function paintList() {
-        const done = completedLeft();
+        const done = unreadCompletedIds();
         let html = '';
         decisions().slice(0, 10).forEach(n => {
             const ok = n.status === 'approved';
-            html += '<li><a class="notif-item' + (freshDecisions.has(n.id) ? ' is-new' : '') + '" href="setting-hr.php">' +
+            const key = decisionKey(n);
+            const expanded = expandedKeys.has(key);
+            html += '<li class="notif-entry' + (expanded ? ' is-expanded' : '') + '">' +
+                '<button type="button" class="notif-item' + (readKeys.has(key) ? '' : ' is-new') + (expanded ? ' is-expanded' : '') +
+                '" data-notification-key="' + esc(key) + '" data-notification-type="single" aria-expanded="' + String(expanded) + '">' +
                 '<span class="notif-ico ' + (ok ? 'tone-green' : 'tone-red') + '">' + svg(ok ? ICONS.done : ICONS.cancel) + '</span>' +
                 '<span class="notif-text"><strong>' + esc(n.title) + '</strong>' +
                 '<span class="notif-detail">' + esc(n.detail) + '</span>' +
-                '<span class="notif-time">' + esc(when(n.at)) + '</span></span></a></li>';
+                '<span class="notif-time">' + esc(when(n.at)) + '</span></span></button>' +
+                (expanded ? '<a class="notif-open" href="setting-hr.php">Open Settings</a>' : '') + '</li>';
         });
-        if (done > 0) {
-            html += '<li><a class="notif-item is-new" href="screening-list.php?status=Completed">' +
+        const completedKey = 'completed:summary';
+        const completedExpanded = expandedKeys.has(completedKey);
+        if (done.length > 0 || completedExpanded) {
+            const count = done.length || completedApplicantIds.length;
+            html += '<li class="notif-entry' + (completedExpanded ? ' is-expanded' : '') + '">' +
+                '<button type="button" class="notif-item' + (completedExpanded ? ' is-expanded' : '') +
+                '" data-notification-key="' + completedKey + '" data-notification-type="completed" aria-expanded="' + String(completedExpanded) + '">' +
                 '<span class="notif-ico tone-green">' + svg(ICONS.done) + '</span>' +
-                '<span class="notif-text"><strong>' + done + ' completed screening' + (done === 1 ? '' : 's') + ' to review</strong>' +
-                '<span class="notif-detail">Open the Screening List to see who finished.</span></span></a></li>';
+                '<span class="notif-text"><strong>' + (done.length
+                    ? done.length + ' completed screening' + (done.length === 1 ? '' : 's') + ' to review'
+                    : 'Completed screenings') + '</strong>' +
+                '<span class="notif-detail">' + (done.length
+                    ? 'There are ' + done.length + ' applicants waiting for screening review.'
+                    : 'This notification has been read. Open the Screening List to review completed applicants.') +
+                '</span></span></button>' +
+                (completedExpanded ? '<a class="notif-open" href="screening-list.php?status=Completed">Open Screening List (' + count + ')</a>' : '') + '</li>';
         }
         html += feed.slice(0, 20).map(row => {
             const l = look(row.activity);
-            return '<li class="notif-item' + (fresh.has(keyOf(row)) ? ' is-new' : '') + '">' +
+            const key = activityKey(row);
+            const expanded = expandedKeys.has(key);
+            return '<li class="notif-entry' + (expanded ? ' is-expanded' : '') + '">' +
+                '<button type="button" class="notif-item' + (readKeys.has(key) ? '' : ' is-new') + (expanded ? ' is-expanded' : '') +
+                '" data-notification-key="' + esc(key) + '" data-notification-type="single" aria-expanded="' + String(expanded) + '">' +
                 '<span class="notif-ico ' + l.tone + '">' + svg(l.icon) + '</span>' +
                 '<span class="notif-text"><strong>' + esc(row.activity) + '</strong>' +
                 '<span class="notif-detail">' + esc(row.details) + '</span>' +
-                '<span class="notif-time">' + esc(when(row.at)) + '</span></span></li>';
+                '<span class="notif-time">' + esc(when(row.at)) + '</span></span></button></li>';
         }).join('');
         if (!html) html = '<li class="notif-empty">Nothing yet. When you add, delete or restore an applicant, answer an interview schedule or change your profile, it shows up here.</li>';
         listEl.innerHTML = html;
-        if (markAllBtn) markAllBtn.disabled = fresh.size === 0 && unread().length === 0 && freshDecisions.size === 0 && unreadDecisions().length === 0;
+        if (markAllBtn) markAllBtn.disabled = unreadActivity().length === 0 && unreadDecisions().length === 0 && done.length === 0;
     }
 
     function paintRecentApplicants(applicants) {
@@ -3123,7 +3155,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function paintBadge() {
-        const total = notifyOn() ? unread().length + completedLeft() + unreadDecisions().length : 0;
+        const total = notifyOn() ? unreadActivity().length + unreadCompletedIds().length + unreadDecisions().length : 0;
         badge.textContent = total > 99 ? '99+' : String(total);
         badge.hidden = total <= 0;
         bell.classList.toggle('has-notifications', total > 0);
@@ -3147,26 +3179,15 @@ document.addEventListener('DOMContentLoaded', () => {
     function paint() { paintBadge(); if (!panel.hidden) paintList(); }
 
     function openPanel() {
-        fresh = new Set(unread().map(keyOf));      // highlighted while the panel is open
-        freshDecisions = new Set(unreadDecisions().map(n => n.id));
-        writeSeen(newest() || readSeen());          // opening counts as reading them
-        readDecisions();
-        // Mark any unseen completed screenings as read so the badge clears
-        if (window.HR && window.HR.unseenCompleted) {
-            window.HR.unseenCompleted().forEach(id => window.HR.markSeen(id));
-        }
         panel.hidden = false;
         bell.setAttribute('aria-expanded', 'true');
         paintList();
-        paintBadge();
-        refreshFeed();                              // pick up anything done since the page loaded
+        refreshFeed();
     }
 
     function closePanel() {
         if (panel.hidden) return;
         panel.hidden = true;
-        fresh = new Set();
-        freshDecisions = new Set();
         bell.setAttribute('aria-expanded', 'false');
         paintBadge();
     }
@@ -3176,52 +3197,72 @@ document.addEventListener('DOMContentLoaded', () => {
         if (panel.hidden) openPanel(); else closePanel();
     });
     panel.addEventListener('click', (e) => e.stopPropagation());
+    listEl.addEventListener('click', async (e) => {
+        const button = e.target.closest('button[data-notification-key]');
+        if (!button) return;
+        const key = button.dataset.notificationKey;
+        const type = button.dataset.notificationType;
+        const keys = type === 'completed'
+            ? unreadCompletedIds().map(completedKey)
+            : [key];
+        const isExpanded = expandedKeys.has(key);
+        if (isExpanded) expandedKeys.delete(key);
+        else expandedKeys.add(key);
+        paintList();
+        if (!isExpanded) {
+            try {
+                await markRead(keys);
+            } catch (err) {
+                HR.toast(err.message || 'Could not mark this notification as read.', { error: true, duration: 6000 });
+            }
+        }
+    });
     document.addEventListener('click', closePanel);
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && !panel.hidden) { closePanel(); bell.focus(); }
     });
 
     if (markAllBtn) {
-        markAllBtn.addEventListener('click', () => {
-            writeSeen(newest() || readSeen());
-            readDecisions();
-            // Mark all unseen completed screenings as read so the badge clears
-            if (window.HR && window.HR.unseenCompleted) {
-                window.HR.unseenCompleted().forEach(id => window.HR.markSeen(id));
+        markAllBtn.addEventListener('click', async () => {
+            markAllBtn.disabled = true;
+            try {
+                await markRead(notificationKeys());
+            } catch (err) {
+                HR.toast(err.message || 'Could not mark notifications as read.', { error: true, duration: 6000 });
+                paintList();
             }
-            fresh = new Set();
-            freshDecisions = new Set();
-            paint();
         });
     }
 
-    // Latest lines from the server (the page may be old: restored from the cache, or the tab was in the background)
-    function refreshFeed() {
-        fetch('hr-data.php', {
+    // Refresh the server activity and account-specific read state, including changes made in other tabs.
+    async function refreshFeed() {
+        try {
+            const response = await fetch('hr-data.php', {
             method: 'POST',
             credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body: JSON.stringify({ action: 'activity' })
-        })
-            .then(res => res.json())
-            .then(data => {
-                if (!data || data.status !== 'success' || !Array.isArray(data.activity)) return;
-                paintRecentApplicants(data.recent_applicants);
-                if (!panel.hidden) {
-                    // lines that arrived while the panel is open count as read, but show highlighted
-                    const known = new Set(feed.map(keyOf));
-                    data.activity.forEach(r => { if (!known.has(keyOf(r))) fresh.add(keyOf(r)); });
-                    feed = data.activity;
-                    writeSeen(newest() || readSeen());
-                } else {
-                    feed = data.activity;
-                }
-                paint();
             })
-            .catch(() => { /* offline: keep what the page already has */ });
+            ;
+            const data = await response.json();
+            if (!response.ok || !data || data.status !== 'success' || !Array.isArray(data.activity)) {
+                throw new Error(data && data.message ? data.message : 'Could not refresh notifications.');
+            }
+            feed = data.activity;
+            paintRecentApplicants(data.recent_applicants);
+            await syncReadState();
+            paint();
+        } catch (err) {
+            console.error('Could not refresh HR notifications.', err);
+            if (!panel.hidden) HR.toast(err.message || 'Could not refresh notifications.', { error: true, duration: 6000 });
+        }
     }
 
     paint();
+    syncReadState().then(paint).catch(err => {
+        console.error('Could not load HR notification read state.', err);
+        HR.toast(err.message || 'Could not load notification read state.', { error: true, duration: 6000 });
+    });
     if (!badge.hidden && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         bell.classList.add('ring');
         bell.addEventListener('animationend', () => bell.classList.remove('ring'), { once: true, capture: true });
@@ -3233,14 +3274,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (document.visibilityState === 'visible') refreshFeed();
     }, 15000);
     window.addEventListener('storage', (e) => {
-        if (e.key === SEEN_KEY || e.key === 'hr_settings') paint();
-        if (e.key === 'ebsmi_activity_extra' || e.key === 'ebsmi_change_requests') {     // the Admin just answered (other tab)
-            if (!panel.hidden) {                       // panel is open: the answer counts as read, but shows highlighted
-                unreadDecisions().forEach(n => freshDecisions.add(n.id));
-                readDecisions();
-            }
-            paint();
-        }
+        if (e.key === 'hr_settings') paint();
+        if (e.key === 'ebsmi_activity_extra' || e.key === 'ebsmi_change_requests') refreshFeed();
     });
     document.addEventListener('hr:settings-changed', paint);
 });

@@ -1,5 +1,12 @@
 <?php
 class EmailService {
+    private ?string $lastFailure = null;
+
+    public function lastFailure(): ?string
+    {
+        return $this->lastFailure;
+    }
+
     private function brevoApiKey(): string
     {
         require_once __DIR__ . '/../Helpers/env.php';
@@ -45,8 +52,10 @@ class EmailService {
 
     private function brevoSend(array $data, bool $echoError = true): bool
     {
+        $this->lastFailure = null;
         $apiKey = $this->brevoApiKey();
         if (empty($apiKey)) {
+            $this->lastFailure = 'missing_api_key';
             error_log('Brevo: BREVO_API_KEY is missing from your .env file.');
             return false;
         }
@@ -68,6 +77,7 @@ class EmailService {
         ]);
         $response = @file_get_contents($url, false, $context);
         if ($response === false) {
+            $this->lastFailure = 'transport';
             $err = error_get_last();
             error_log('Brevo request failed: ' . ($err['message'] ?? 'unknown error'));
             if ($echoError) echo "<strong>Brevo API Error:</strong> Request failed.<br>";
@@ -78,6 +88,7 @@ class EmailService {
             if (preg_match('/^HTTP\/[\d.]+\s+(\d+)/i', $header, $m)) $httpCode = (int) $m[1];
         }
         if ($httpCode === 201) return true;
+        $this->lastFailure = $httpCode === 401 ? 'unauthorized' : 'rejected';
         error_log("Brevo API error (HTTP $httpCode): " . $response);
         if ($echoError) echo "<strong>Brevo API Error:</strong> " . $response . "<br>";
         return false;
