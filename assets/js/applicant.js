@@ -490,9 +490,7 @@ document.addEventListener("DOMContentLoaded", function () {
             window.location.href = privacyLink.href;
             return;
         }
-        if (!privacyFrame.getAttribute("src")) {
-            privacyFrame.src = privacyLink.href + "?embed=1";
-        }
+        privacyFrame.src = privacyLink.href + "?embed=1&refresh=" + Date.now();
         privacyModal.showModal();
     }
 
@@ -517,7 +515,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 privacyCheckbox.checked = true;
                 privacyCheckbox.disabled = true;
                 clearPrivacyError();
-                privacyFrame.src = privacyLink.href + "?embed=1";
+                privacyFrame.src = privacyLink.href + "?embed=1&refresh=" + Date.now();
             }
             privacyModal.close();
         });

@@ -175,7 +175,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?php elseif ($embedded && $alreadyAccepted): ?>
                     <button type="button" class="continue" id="closeEmbeddedPrivacy">Close</button>
                 <?php else: ?>
-                    <button type="submit" class="continue">Agree &amp; Begin Screening</button>
+                    <button type="submit" class="continue">Agree</button>
                 <?php endif; ?>
             </div>
         </form>
