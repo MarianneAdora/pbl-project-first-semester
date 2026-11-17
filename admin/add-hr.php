@@ -347,7 +347,13 @@ $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
 
     <!-- Pass PHP variables to JavaScript -->
     <script>
-        window.ADMIN_NOTIFY = <?php echo json_encode(repo_admin_notify(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+        window.ADMIN_NOTIFY = <?php
+            try { echo json_encode(repo_admin_notify(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); }
+            catch (Throwable $e) {
+                error_log('add-hr.php DB notification error: ' . $e->getMessage());
+                echo json_encode(['activity' => [], 'recent' => [], 'expiring' => 0, 'days' => 7]);
+            }
+        ?>;
         window.ADMIN_HR_FORM = <?php echo json_encode([
             'mode'    => $isEdit ? 'edit' : 'create',
             'account' => $isEdit ? ['id' => (int) $editing['id'], 'name' => $editing['name'], 'email' => $editing['email'], 'role' => $editing['role'], 'status' => $editing['status']] : null
