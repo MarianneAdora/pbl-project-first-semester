@@ -3120,19 +3120,28 @@ document.addEventListener('DOMContentLoaded', () => {
             rejected: 'status-failed'
         })[String(value || '').trim().toLowerCase()] || 'status-default';
 
+        const todayParts = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'Asia/Manila',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        }).formatToParts(new Date());
+        const today = {};
+        todayParts.forEach(part => { if (part.type !== 'literal') today[part.type] = part.value; });
+        const todayKey = today.year + '-' + today.month + '-' + today.day;
+        const yesterdayKey = new Date(Date.UTC(Number(today.year), Number(today.month) - 1, Number(today.day) - 1))
+            .toISOString().slice(0, 10);
+
         const dateLabel = (value) => {
             const match = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(String(value || ''));
             if (!match) return String(value || '');
-            const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-            const now = new Date();
-            const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-            const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-            const label = MONTHS[date.getMonth()] + ' ' + date.getDate() + ', ' + match[1];
+            const dateKey = match[1] + '-' + match[2] + '-' + match[3];
+            const label = MONTHS[Number(match[2]) - 1] + ' ' + Number(match[3]) + ', ' + match[1];
             if (!match[4]) return label;
             const hour = Number(match[4]);
             const time = (hour % 12 || 12) + ':' + match[5] + ' ' + (hour >= 12 ? 'PM' : 'AM');
-            if (sameDay(date, now)) return 'Today, ' + time;
-            if (sameDay(date, yesterday)) return 'Yesterday, ' + time;
+            if (dateKey === todayKey) return 'Today, ' + time;
+            if (dateKey === yesterdayKey) return 'Yesterday, ' + time;
             return label;
         };
 
