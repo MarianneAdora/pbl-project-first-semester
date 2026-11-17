@@ -4,7 +4,7 @@ require_once __DIR__ . '/../src/Helpers/security.php';
 $csrf = csrf_token();
 
 // ---- Settings ---------------------------------------------------------------
-$nextPage      = 'questionnaire.php';
+$nextPage      = '../privacy.php';
 $estimatedTime = '15–20 minutes';
 
 // Already sent the screening (checked in the database, not just the session): no second try.
@@ -65,6 +65,13 @@ $reminders = [
 
     <!-- applicant.css = shared applicant styles + every applicant page (this page is picked by data-page="instruction" on <html>) -->
     <link rel="stylesheet" href="../assets/css/applicant.css?v=<?= @filemtime(__DIR__ . '/../assets/css/applicant.css') ?>">
+    <style>
+        .privacy-modal { width:min(960px, calc(100vw - 32px)); height:min(90vh, 900px); max-width:none; max-height:none; padding:0; border:0; border-radius:14px; box-shadow:0 24px 80px #1117; }
+        .privacy-modal::backdrop { background:rgba(15, 20, 32, .62); }
+        .privacy-modal__head { height:54px; display:flex; align-items:center; justify-content:space-between; padding:0 18px; background:#fff; border-bottom:1px solid #e4e4e8; font:600 16px/1.2 "Plus Jakarta Sans","Segoe UI",sans-serif; }
+        .privacy-modal__close { width:34px; height:34px; border:0; border-radius:50%; background:#f1f1f3; color:#222; font-size:24px; cursor:pointer; }
+        .privacy-modal iframe { display:block; width:100%; height:calc(100% - 54px); border:0; background:#f8f8f9; }
+    </style>
 </head>
 <body>
 
@@ -124,7 +131,7 @@ $reminders = [
                     Estimated Time: <?= htmlspecialchars($estimatedTime) ?>
                 </p>
 
-                <a href="<?= $nextPage ?>" class="start__btn reveal" id="beginBtn" data-leave style="--i:15.5">
+                <a href="<?= $nextPage ?>" class="start__btn reveal" id="beginBtn" style="--i:15.5">
                     <span class="start__btn-label">Begin Screening</span>
                     <span class="start__btn-arrow" aria-hidden="true">&rarr;</span>
                 </a>
@@ -133,6 +140,14 @@ $reminders = [
         </div>
     </div>
 </main>
+
+<dialog class="privacy-modal" id="privacyModal" aria-label="Privacy policy">
+    <div class="privacy-modal__head">
+        <span>Privacy Policy</span>
+        <button type="button" class="privacy-modal__close" id="closePrivacy" aria-label="Close privacy policy">&times;</button>
+    </div>
+    <iframe id="privacyFrame" title="Privacy policy and consent"></iframe>
+</dialog>
 
 <script src="../assets/js/applicant.js?v=<?= @filemtime(__DIR__ . '/../assets/js/applicant.js') ?>"></script>
 </body>

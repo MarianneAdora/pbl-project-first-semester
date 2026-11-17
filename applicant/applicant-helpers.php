@@ -389,6 +389,9 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
     if (empty($_SESSION['otp_verified'])) {
         applicant_helpers_respond(['status' => 'error', 'message' => 'Your session has ended. Please open the link in your email again.'], 403);
     }
+    if (empty($_SESSION['screening_privacy_accepted_at'])) {
+        applicant_helpers_respond(['status' => 'error', 'message' => 'Please review and accept the privacy statement before beginning screening.'], 403);
+    }
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         applicant_helpers_respond(['status' => 'error', 'message' => 'Invalid request.'], 405);
     }

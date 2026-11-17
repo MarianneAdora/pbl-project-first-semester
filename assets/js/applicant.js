@@ -456,11 +456,27 @@ document.addEventListener("DOMContentLoaded", function () {
     var beginBtn = document.getElementById("beginBtn");
     if (!beginBtn) return;
 
+    var privacyModal = document.getElementById("privacyModal");
+    var privacyFrame = document.getElementById("privacyFrame");
+    var closePrivacy = document.getElementById("closePrivacy");
+    if (privacyModal && privacyFrame && typeof privacyModal.showModal === "function") {
+        beginBtn.addEventListener("click", function (event) {
+            event.preventDefault();
+            if (!privacyFrame.getAttribute("src")) privacyFrame.src = beginBtn.href;
+            privacyModal.showModal();
+        });
+        if (closePrivacy) closePrivacy.addEventListener("click", function () { privacyModal.close(); });
+        privacyModal.addEventListener("click", function (event) {
+            if (event.target === privacyModal) privacyModal.close();
+        });
+    }
+
     var label = beginBtn.querySelector(".start__btn-label");
     var originalText = label.textContent;
 
-    // Loading feedback while the page fades out (the link itself is handled by data-leave)
+    // Keep loading feedback for browsers without native dialog support.
     beginBtn.addEventListener("click", function () {
+        if (privacyModal && typeof privacyModal.showModal === "function") return;
         if (beginBtn.classList.contains("is-loading")) return;
         beginBtn.classList.add("is-loading");
         label.textContent = "Loading...";

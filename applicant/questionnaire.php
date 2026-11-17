@@ -22,6 +22,7 @@ header('Pragma: no-cache');
 if ($requireVerification) {
     if (empty($_SESSION['otp_verified']))         { header('Location: opening.php');            exit; }
     if (!empty($_SESSION['screening_submitted'])) { header('Location: application-status.php'); exit; }   // already sent: no second try
+    if (empty($_SESSION['screening_privacy_accepted_at'])) { header('Location: ../privacy.php'); exit; }
 }
 
 // Already sent the screening (checked in the database, not just the session): no second try.

@@ -20,6 +20,9 @@ $respond = function (array $data, int $code = 200): void {
 if (empty($_SESSION['otp_verified']) || empty($_SESSION['applicant_id'])) {
     $respond(['status' => 'error', 'message' => 'Your session has ended. Please open your invite link again.'], 403);
 }
+if (empty($_SESSION['screening_privacy_accepted_at'])) {
+    $respond(['status' => 'error', 'message' => 'Please review and accept the privacy statement before continuing screening.'], 403);
+}
 $applicantId = (int) $_SESSION['applicant_id'];
 
 $postMax = trim((string) ini_get('post_max_size'));
