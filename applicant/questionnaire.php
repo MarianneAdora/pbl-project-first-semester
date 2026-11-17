@@ -9,7 +9,7 @@ $csrf = csrf_token();
 $requireVerification = true;      // TODO: keep true in production
 
 $nextPage = 'upload-video.php';   // the video step
-$backPage = 'instruction.php';    // "Previous" on the first question
+$backPage = '../privacy.php';     // revisit the privacy agreement before the first question
 
 // Stepper (same as the other applicant pages): 0 = Verification, 1 = Instructions, 2 = Questionnaires, 3 = Video, 4 = Submit
 $currentStep = 2;

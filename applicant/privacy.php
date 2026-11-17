@@ -27,10 +27,7 @@ try {
     error_log('privacy page submitted check error: ' . $e->getMessage());
 }
 
-if (!empty($_SESSION['screening_privacy_accepted_at'])) {
-    header('Location: /applicant/questionnaire.php');
-    exit;
-}
+$alreadyAccepted = !empty($_SESSION['screening_privacy_accepted_at']);
 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -44,7 +41,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         http_response_code(403);
         $error = 'Your session expired. Refresh the page and try again.';
     } else {
-        $_SESSION['screening_privacy_accepted_at'] = date('Y-m-d H:i:s');
+        if (!$alreadyAccepted) {
+            $_SESSION['screening_privacy_accepted_at'] = date('Y-m-d H:i:s');
+        }
         header('Location: /applicant/questionnaire.php');
         exit;
     }
@@ -149,12 +148,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <input type="hidden" name="csrf_token" value="<?= attr($csrf) ?>">
         <?php if ($error !== ''): ?><p class="error" role="alert"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p><?php endif; ?>
         <label>
-            <input type="checkbox" name="privacy_ack" value="1" required>
+            <input type="checkbox" name="privacy_ack" value="1" required <?= $alreadyAccepted ? 'checked' : '' ?>>
             <span>I have read and agree to this privacy policy.</span>
         </label>
         <div class="actions">
             <a href="/applicant/instruction.php" target="_top">Back to instructions</a>
-            <button type="submit" class="continue">Agree &amp; Begin Screening</button>
+            <button type="submit" class="continue"><?= $alreadyAccepted ? 'Continue to Questionnaire' : 'Agree &amp; Begin Screening' ?></button>
         </div>
     </form>
 </main>
