@@ -77,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .consent input { margin-top:6px; accent-color:var(--red); }
         .error { margin:0 0 12px; color:#b00020; font-weight:600; }
         .actions { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-top:18px; }
-        .continue { border:0; border-radius:8px; background:var(--red); color:#fff; padding:13px 22px; font:600 16px/1.2 "Segoe UI",system-ui,sans-serif; cursor:pointer; }
+        .continue { display:inline-flex; align-items:center; justify-content:center; border:0; border-radius:8px; background:var(--red); color:#fff; padding:13px 22px; font:600 16px/1.2 "Segoe UI",system-ui,sans-serif; text-decoration:none; cursor:pointer; }
         .continue:hover { background:#c4122d; }
         footer { border-top:1px solid var(--line); padding:18px 0 28px; color:var(--muted); font-size:.9rem; }
         @media (max-width:560px) { .actions { align-items:stretch; flex-direction:column-reverse; } .continue { width:100%; } }
@@ -153,7 +153,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </label>
         <div class="actions">
             <a href="/applicant/instruction.php" target="_top">Back to instructions</a>
-            <button type="submit" class="continue"><?= $alreadyAccepted ? 'Continue to Questionnaire' : 'Agree &amp; Begin Screening' ?></button>
+            <?php if ($alreadyAccepted): ?>
+                <a class="continue" href="/applicant/questionnaire.php" target="_top">Continue to Questionnaire</a>
+            <?php else: ?>
+                <button type="submit" class="continue">Agree &amp; Begin Screening</button>
+            <?php endif; ?>
         </div>
     </form>
 </main>
