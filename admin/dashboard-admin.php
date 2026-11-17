@@ -496,6 +496,7 @@ $greeting     = 'Hello, ' . $display_name . '!';
             catch (Throwable $e) { echo json_encode(['activity' => [], 'recent' => [], 'expiring' => 0, 'days' => 7]); }
         ?>;
         window.ADMIN_DASH = <?php echo json_encode([
+            'account_id' => (int) ($_SESSION['user_id'] ?? 0),
             'stats' => $stats,
             'overview' => ['hr_active' => $overview['hr_active'], 'questions' => $overview['questions'], 'sections' => $overview['sections']],
             'failure' => $failure,

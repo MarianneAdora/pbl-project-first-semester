@@ -10,6 +10,7 @@ require_once __DIR__ . '/../Helpers/db.php';
 function repo_activity_format(array $row): array
 {
     return [
+        'id'         => (int) ($row['log_id'] ?? $row['id'] ?? 0),
         'at'         => $row['created_at'] ? date('Y-m-d H:i:s', strtotime((string) $row['created_at'])) : '',
         'activity'   => (string) $row['activity'],
         'details'    => (string) $row['details'],
@@ -35,7 +36,7 @@ function repo_log_activity(string $activity, string $details = '-', ?string $act
         $st = $pdo->prepare(
             "INSERT INTO activity_log (actor, actor_name, activity, details, created_at)
              VALUES (:a, :an, :act, :d, NOW())
-             RETURNING actor, actor_name, activity, details, created_at"
+             RETURNING log_id, actor, actor_name, activity, details, created_at"
         );
         $st->execute([':a' => $actor, ':an' => $actorName, ':act' => $activity, ':d' => $details]);
         $row = $st->fetch();
@@ -51,7 +52,7 @@ function repo_recent_activity(?PDO $pdo = null, int $limit = 10): array
 {
     $pdo = $pdo ?: db();
     $st = $pdo->prepare(
-        "SELECT actor, actor_name, activity, details, created_at FROM activity_log
+        "SELECT log_id, actor, actor_name, activity, details, created_at FROM activity_log
          WHERE actor IN ('HR', 'Admin')
          ORDER BY created_at DESC, log_id DESC LIMIT :lim"
     );

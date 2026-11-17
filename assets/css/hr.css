@@ -297,6 +297,19 @@ html.js.is-ready.is-leaving .reveal {
     width: 78px;
 }
 
+html.js[data-page="addapplicants"]:not(.is-ready) .sidebar {
+    transition: none;
+}
+
+html.js[data-page="addapplicants"]:not(.is-ready) .sidebar * {
+    transition: none;
+}
+
+html.js[data-page="addapplicants"] .sidebar .reveal {
+    opacity: 1;
+    animation: none;
+}
+
 .sidebar-header {
     display: flex;
     align-items: center;
@@ -870,6 +883,57 @@ html.js.is-ready.is-leaving .reveal {
 
 :where(html[data-page="addapplicants"]) .main-content {
     padding: 28px 40px 56px;
+}
+
+:where(html[data-page="addapplicants"]) .main-content > .form-head {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    flex-shrink: 0;
+    margin-bottom: 24px;
+}
+
+:where(html[data-page="addapplicants"]) .form-head .content-header {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+}
+
+:where(html[data-page="addapplicants"]) .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+    margin-top: 8px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    color: var(--red);
+    font-size: 15px;
+    font-weight: 800;
+    text-decoration: none;
+    transition: background-color 0.2s ease, transform 0.3s var(--ease-pop);
+}
+
+:where(html[data-page="addapplicants"]) .back-link svg {
+    width: 24px;
+    height: 24px;
+    fill: currentColor;
+    transition: transform 0.3s var(--ease-out);
+}
+
+:where(html[data-page="addapplicants"]) .back-link:hover {
+    background: color-mix(in srgb, var(--red) 10%, transparent);
+}
+
+:where(html[data-page="addapplicants"]) .back-link:hover svg {
+    transform: translateX(-5px);
+}
+
+:where(html[data-page="addapplicants"]) .back-link:focus-visible {
+    outline: 3px solid var(--blue);
+    outline-offset: 3px;
 }
 
 /* ---------- Card ---------- */
@@ -3067,15 +3131,32 @@ html:where([data-page="dashboardhr"])[data-motion="off"] .notif-bell.ring svg { 
     display: flex;
     align-items: flex-start;
     gap: 12px;
+    width: 100%;
     padding: 10px 10px;
     border-radius: 12px;
     color: inherit;
     text-decoration: none;
+    font: inherit;
+    text-align: left;
+    border: 0;
+    background: transparent;
     transition: background-color 0.2s ease;
 }
 
-:where(html[data-page="dashboardhr"]) a.notif-item { cursor: pointer; }
-:where(html[data-page="dashboardhr"]) a.notif-item:hover { background: var(--surface-2, #f4f5f7); }
+:where(html[data-page="dashboardhr"]) button.notif-item { cursor: pointer; }
+:where(html[data-page="dashboardhr"]) button.notif-item:hover,
+:where(html[data-page="dashboardhr"]) button.notif-item:focus-visible { background: var(--surface-2, #f4f5f7); }
+:where(html[data-page="dashboardhr"]) .notif-entry.is-expanded .notif-item { background: var(--surface-2, #f4f5f7); }
+:where(html[data-page="dashboardhr"]) .notif-item:focus-visible { outline: 2px solid #f0586e; outline-offset: -2px; }
+:where(html[data-page="dashboardhr"]) .notif-open {
+    display: inline-flex;
+    margin: 0 10px 8px 56px;
+    color: #e3475c;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+}
+:where(html[data-page="dashboardhr"]) .notif-open:hover { text-decoration: underline; }
 
 /* not read yet */
 :where(html[data-page="dashboardhr"]) .notif-item.is-new { background: rgba(240, 88, 110, 0.09); }
@@ -4720,6 +4801,71 @@ html:where([data-page="details"])[data-theme="dark"] .tab-ink { background: #ff6
     transform: scale(1.12);
 }
 
+:where(html[data-page="screeninglist"]) .btn-add-applicant {
+    width: auto;
+    min-width: 46px;
+    height: 46px;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 14px;
+    background: #00a2ff;
+    border: 1px solid #00a2ff;
+    border-radius: 12px;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 800;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background-color 0.2s ease, box-shadow 0.25s var(--ease-out), transform 0.3s var(--ease-pop);
+}
+
+:where(html[data-page="screeninglist"]) .btn-add-applicant svg {
+    width: 23px;
+    height: 23px;
+    fill: #ffffff;
+    flex: 0 0 auto;
+    transition: transform 0.3s var(--ease-pop);
+}
+
+:where(html[data-page="screeninglist"]) .btn-add-applicant span {
+    line-height: 1;
+}
+
+:where(html[data-page="screeninglist"]) .btn-add-applicant:hover svg {
+    transform: rotate(90deg);
+}
+
+:where(html[data-page="screeninglist"]) .btn-add-applicant:hover {
+    background: #008edb;
+    border-color: #008edb;
+    transform: translateY(-3px) scale(1.04);
+    box-shadow: 0 8px 18px rgba(0, 162, 255, 0.35);
+}
+
+:where(html[data-page="screeninglist"]) .btn-add-applicant:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 162, 255, 0.25);
+}
+
+:where(html[data-page="screeninglist"]) .toolbar.is-selecting .btn-add-applicant {
+    display: none;
+}
+
+@media (max-width: 1100px) {
+    :where(html[data-page="screeninglist"]) .btn-add-applicant {
+        width: 46px;
+        min-width: 46px;
+        padding: 0;
+    }
+
+    :where(html[data-page="screeninglist"]) .btn-add-applicant span {
+        display: none;
+    }
+}
+
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-toggle {
     position: relative;
     width: 46px;
@@ -5646,6 +5792,29 @@ html:where([data-page="details"])[data-theme="dark"] .tab-ink { background: #ff6
 }
 
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .tool-btn:active { transform: scale(0.96); }
+
+.select-all-btn {
+    background: #fff3f5;
+    border-color: #efc3c9;
+    color: #a3081e;
+    box-shadow: 0 2px 8px rgba(163, 8, 30, 0.1);
+}
+
+.select-all-btn svg {
+    fill: currentColor;
+}
+
+.select-all-btn:hover {
+    background: #a3081e;
+    border-color: #a3081e;
+    color: #ffffff;
+    box-shadow: 0 8px 18px rgba(163, 8, 30, 0.25);
+}
+
+.select-all-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(163, 8, 30, 0.2), 0 2px 8px rgba(163, 8, 30, 0.1);
+}
 
 /* selecting: "Select all" fades out to the right ... */
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .toolbar.is-selecting .select-all-btn {
@@ -7119,6 +7288,20 @@ html[data-theme="dark"] {
 :where(html[data-theme="dark"]) .tool-btn {
     color: var(--ink);
 }
+:where(html[data-theme="dark"]) .select-all-btn {
+    background: rgba(255, 107, 128, 0.14);
+    border-color: rgba(255, 107, 128, 0.45);
+    color: #ff8a9b;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+:where(html[data-theme="dark"]) .select-all-btn:hover {
+    background: #ff6b80;
+    border-color: #ff6b80;
+    color: #17191d;
+}
+:where(html[data-theme="dark"]) .select-all-btn:focus-visible {
+    box-shadow: 0 0 0 3px rgba(255, 107, 128, 0.25), 0 2px 8px rgba(0, 0, 0, 0.2);
+}
 :where(html[data-theme="dark"]) .dropdown-btn:hover {
     background: var(--surface-2);
     border-color: #5a626d;
@@ -7996,15 +8179,16 @@ html[data-motion="off"] .spinner {              /* a loading spinner still has t
 
     :where(html[data-page="screeninglist"]) .toolbar {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) 46px 46px;
+        grid-template-columns: minmax(0, 1fr) 46px 46px 46px;
         align-items: center;
         gap: 8px;
     }
     :where(html[data-page="screeninglist"]) .toolbar .search-box { grid-column: 1; width: 100%; min-width: 0; }
-    :where(html[data-page="screeninglist"]) .toolbar .select-swap { grid-column: 2; grid-row: 1; width: 46px !important; height: 46px; }
+    :where(html[data-page="screeninglist"]) .toolbar .btn-add-applicant { grid-column: 2; grid-row: 1; }
+    :where(html[data-page="screeninglist"]) .toolbar .select-swap { grid-column: 3; grid-row: 1; width: 46px !important; min-width: 0; height: 46px; }
     :where(html[data-page="screeninglist"]) .toolbar .select-all-btn { width: 46px; min-width: 46px; height: 46px; padding: 0; justify-content: center; }
     :where(html[data-page="screeninglist"]) .toolbar .select-all-btn span { display: none; }
-    :where(html[data-page="screeninglist"]) .toolbar .filter-toggle { grid-column: 3; grid-row: 1; width: 46px; height: 46px; }
+    :where(html[data-page="screeninglist"]) .toolbar .filter-toggle { grid-column: 4; grid-row: 1; width: 46px; height: 46px; }
 
     :where(html[data-page="screeninglist"]) .toolbar.is-selecting { grid-template-columns: minmax(0, 1fr) 46px; }
     :where(html[data-page="screeninglist"]) .toolbar.is-selecting .search-box { grid-column: 1 / -1; }
@@ -8019,6 +8203,47 @@ html[data-motion="off"] .spinner {              /* a loading spinner still has t
     :where(html[data-page="screeninglist"]) .toolbar.is-selecting .select-actions button { min-width: 0; flex: 1 1 0; padding: 0 10px; }
     :where(html[data-page="screeninglist"]) .toolbar.is-selecting .filter-toggle { grid-column: 2; grid-row: 2; }
 
+}
+
+@media (max-width: 800px) {
+    :where(html[data-page="addapplicants"]) .main-content > .form-head {
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+
+    :where(html[data-page="addapplicants"]) .form-head .content-header {
+        flex: 1 1 auto;
+        min-width: 0;
+        margin: 0;
+    }
+
+    :where(html[data-page="addapplicants"]) .form-head .content-header h1 {
+        font-size: clamp(20px, 6vw, 24px);
+        line-height: 1.2;
+        white-space: normal;
+    }
+
+    :where(html[data-page="addapplicants"]) .form-head .back-link {
+        flex: 0 0 auto;
+        width: auto;
+        min-width: 44px;
+        margin: 0;
+        padding: 8px 10px;
+        justify-content: center;
+        white-space: nowrap;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    :where(html[data-page="addapplicants"]) .form-head .back-link:hover,
+    :where(html[data-page="addapplicants"]) .form-head .back-link:active {
+        background: transparent;
+    }
+
+    :where(html[data-page="addapplicants"]) .form-head .back-link:focus:not(:focus-visible) {
+        outline: none;
+    }
 }
 
 @media (max-width: 600px) {

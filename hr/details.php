@@ -174,23 +174,11 @@ $pageData = [
                 <span class="nav-text">Dashboard</span>
             </a>
 
-            <!-- Applicants section: open, and highlighted because this page belongs to it -->
-            <div class="nav-group active current reveal" id="applicantsGroup" style="--i:2">
-                <div class="nav-dropdown-wrapper">
-                    <a href="screening-list.php" class="nav-item nav-main-link" id="applicantsMainLink">
-                        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
-                        <span class="nav-text">Applicants</span>
-                        <span class="nav-badge" id="applicantsBadge" hidden>0</span>
-                    </a>
-                    <button class="dropdown-arrow-btn" id="arrowToggleBtn" title="Toggle Menu">
-                        <svg class="arrow-icon" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
-                    </button>
-                </div>
-                <div class="sub-menu" id="applicantsSubMenu">
-                    <a href="screening-list.php" class="sub-item active" aria-current="page"><span class="sub-text">Screening List</span><span class="nav-badge alert mini" id="screeningBadge" hidden>0</span></a>
-                    <a href="add-applicants.php" class="sub-item"><span class="sub-text">Add Applicant</span></a>
-                </div>
-            </div>
+            <a href="screening-list.php" class="nav-item active reveal" id="applicantsMainLink" style="--i:2">
+                <svg class="nav-icon" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                <span class="nav-text">Applicants</span>
+                <span class="nav-badge" id="applicantsBadge" hidden>0</span>
+            </a>
 
             <!-- Archive -->
             <a href="archive.php" id="archiveLink" class="nav-item reveal" style="--i:3">

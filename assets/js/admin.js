@@ -3862,17 +3862,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const esc = ADMIN.esc;
     const SEEN_KEY = 'admin_activity_seen';
     const DASH_SEEN_KEY = 'admin_dashboard_last_seen_at';
-    const BELL_SEEN_KEY = 'admin_notification_seen_v2';
-    let bellSeenAt;
-    try {
-        bellSeenAt = localStorage.getItem(BELL_SEEN_KEY);
-        if (bellSeenAt === null) {
-            bellSeenAt = '';
-            localStorage.setItem(BELL_SEEN_KEY, bellSeenAt);
-        }
-    } catch (err) {
-        bellSeenAt = '';
-    }
 
     /* ---------- 0. Scroll hand-off: at the end of a scrollable card, the wheel scrolls the page ---------- */
     const pageScroll = document.querySelector('.main-content');
@@ -4166,11 +4155,25 @@ document.addEventListener('DOMContentLoaded', () => {
             return { icon: ICONS.sync, tone: 'tone-blue' };
         };
         const svg = (d) => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + d + '"/></svg>';
-        const SEEN_KEY = 'admin_activity_seen';
         const pwReqs = {};                          // id -> request (pending pw changes)
         (Array.isArray(data.pw_requests) ? data.pw_requests : []).forEach(r => { pwReqs[r.id] = r; });
-        let fresh = new Set();
         let lastCount = -1;
+        const accountId = Number(data.account_id) || 0;
+        const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        const csrfToken = csrfMeta ? csrfMeta.content : '';
+        const readKeys = new Set();
+        const expandedKeys = new Set();
+
+        function rowActivityKey(row) {
+            if (row && row.id != null) return String(row.id);
+            const value = [row && row.at, row && row.activity, row && row.details, row && row.by].join('|');
+            let hash = 2166136261;
+            for (let i = 0; i < value.length; i++) hash = Math.imul(hash ^ value.charCodeAt(i), 16777619);
+            return 'h' + (hash >>> 0).toString(36);
+        }
+
+        const activityKey = row => 'activity:' + rowActivityKey(row).replace(/[^A-Za-z0-9_-]/g, '');
+        const passwordKey = request => 'password-request:' + Number(request.id);
 
         const activityRows = () => {
             const serverRows = window.ADMIN_NOTIFY && Array.isArray(window.ADMIN_NOTIFY.recent) ? window.ADMIN_NOTIFY.recent : [];
@@ -4178,22 +4181,49 @@ document.addEventListener('DOMContentLoaded', () => {
             const rows = data.activity.concat(serverRows, hrRows);
             const seen = new Set();
             return rows.filter(row => {
-                const key = String(row.at) + '|' + rowActivityKey(row) + '|' + String(row.by).toLowerCase();
+                const key = activityKey(row);
                 if (seen.has(key)) return false;
                 seen.add(key);
                 return true;
             }).sort((a, b) => String(b.at).localeCompare(String(a.at)));
         };
-        const newActivity = () => activityRows().slice(0, 20).filter(row => String(row.at) > bellSeenAt);
-        const unreadPw = () => Object.values(pwReqs).filter(r => r.status === 'pending');
+        const unreadActivity = () => activityRows().slice(0, 20).filter(row => !readKeys.has(activityKey(row)));
+        const unreadPw = () => Object.values(pwReqs).filter(r => r.status === 'pending' && !readKeys.has(passwordKey(r)));
+        const notificationKeys = () => activityRows().slice(0, 20).map(activityKey)
+            .concat(Object.values(pwReqs).filter(r => r.status === 'pending').map(passwordKey));
 
-        function markBellSeen() {
-            bellSeenAt = activityRows().reduce((seen, row) => String(row.at) > seen ? String(row.at) : seen, bellSeenAt);
-            try { localStorage.setItem(BELL_SEEN_KEY, bellSeenAt); } catch (err) { /* storage unavailable */ }
+        async function notificationRequest(action, keys) {
+            const response = await fetch('../api/notification-read.php', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({ action: action, keys: keys, csrf_token: csrfToken })
+            });
+            const result = await response.json().catch(() => { throw new Error('The server did not answer correctly. Please try again.'); });
+            if (!response.ok || result.status !== 'success') throw new Error(result.message || 'Notification state could not be saved.');
+            return result;
+        }
+
+        async function syncReadState() {
+            if (!accountId) throw new Error('Could not identify your admin account. Please log in again.');
+            const keys = Array.from(new Set(notificationKeys()));
+            for (let i = 0; i < keys.length; i += 500) {
+                const result = await notificationRequest('state', keys.slice(i, i + 500));
+                (result.read_keys || []).forEach(key => readKeys.add(key));
+            }
+        }
+
+        async function markRead(keys) {
+            const unique = Array.from(new Set(keys));
+            for (let i = 0; i < unique.length; i += 500) {
+                const result = await notificationRequest('mark_many', unique.slice(i, i + 500));
+                (result.read_keys || []).forEach(key => readKeys.add(key));
+            }
+            paintList();
         }
 
         function paintBadge() {
-            const total = newActivity().length + unreadPw().length;
+            const total = unreadActivity().length + unreadPw().length;
             abadge.textContent = total > 99 ? '99+' : String(total);
             abadge.hidden = total <= 0;
             abell.classList.toggle('has-notifications', total > 0);
@@ -4213,12 +4243,17 @@ document.addEventListener('DOMContentLoaded', () => {
             let html = '';
             acts.forEach(row => {
                 const l = look(row.activity);
-                const isNew = fresh.has(String(row.at) + '|' + rowActivityKey(row));
-                html += '<li class="notif-item' + (isNew ? ' is-new' : '') + '">' +
+                const key = activityKey(row);
+                const expanded = expandedKeys.has(key);
+                html += '<li class="notif-entry' + (expanded ? ' is-expanded' : '') + '"><button type="button" class="notif-item' +
+                    (readKeys.has(key) ? '' : ' is-new') + (expanded ? ' is-expanded' : '') +
+                    '" data-notification-key="' + esc(key) + '" aria-expanded="' + String(expanded) + '">' +
                     '<span class="notif-ico ' + l.tone + '">' + svg(l.icon) + '</span>' +
                     '<span class="notif-text"><strong>' + esc(row.activity) + '</strong>' +
                     '<span class="notif-detail">' + esc(row.details) + '</span>' +
-                    '<span class="notif-time">' + esc(when(row.at)) + '</span></span></li>';
+                    '<span class="notif-time">' + esc(when(row.at)) + '</span>' +
+                    (expanded ? '<span class="notif-expanded-detail">Recorded by ' + esc(row.actor_name || row.by || 'the system') + '</span>' : '') +
+                    '</span></button></li>';
             });
             if (!acts.length && Object.values(pwReqs).filter(r => r.status === 'pending').length === 0) {
                 html = '<li class="notif-empty">Nothing yet. HR activity shows up here.</li>';
@@ -4230,9 +4265,15 @@ document.addEventListener('DOMContentLoaded', () => {
             apwWrap.hidden = pending.length === 0;
             let pwHtml = '';
             pending.forEach(r => {
+                const key = passwordKey(r);
+                const expanded = expandedKeys.has(key);
                 pwHtml += '<li class="pw-item">' +
                     '<span class="notif-ico tone-amber">' + svg(ICONS.lock) + '</span>' +
-                    '<div class="pw-info"><strong>' + esc(r.name) + ' (HR)</strong><small>' + esc(r.email) + ' \u00b7 requested ' + esc(when(r.requested_at)) + '</small></div>' +
+                    '<button type="button" class="pw-info pw-expand notif-item' + (readKeys.has(key) ? '' : ' is-new') +
+                    (expanded ? ' is-expanded' : '') + '" data-notification-key="' + esc(key) + '" aria-expanded="' + String(expanded) + '">' +
+                    '<strong>' + esc(r.name) + ' (HR)</strong><small>' + esc(r.email) + ' \u00b7 requested ' + esc(when(r.requested_at)) + '</small>' +
+                    (expanded ? '<small class="notif-expanded-detail">This password change is awaiting your decision. Use the controls beside this notification to approve or reject it.</small>' : '') +
+                    '</button>' +
                     '<div class="pw-actions">' +
                     '<button type="button" class="pw-btn is-approve" data-id="' + r.id + '" title="Approve">' + esc(ICONS.done ? '\u2713' : 'Approve') + '</button>' +
                     '<button type="button" class="pw-btn is-reject" data-id="' + r.id + '" title="Reject">' + esc('\u2716') + '</button>' +
@@ -4240,41 +4281,64 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             apwList.innerHTML = pwHtml;
             paintBadge();
-            if (amarkAll) {
-                const unreadChanges = window.HRREQ ? HRREQ.adminUnread().length : 0;
-                amarkAll.disabled = fresh.size === 0 && newActivity().length === 0 && unreadChanges === 0;
-            }
+            if (amarkAll) amarkAll.disabled = unreadActivity().length === 0 && unreadPw().length === 0;
             if (apwMarkAll) apwMarkAll.disabled = pending.length === 0;
         }
 
-        function openPanel() {
-            fresh = new Set(newActivity().map(r => String(r.at) + '|' + rowActivityKey(r)));
+        async function openPanel() {
             apanel.hidden = false;
             abell.setAttribute('aria-expanded', 'true');
-            markBellSeen();
+            try {
+                await syncReadState();
+            } catch (err) {
+                ADMIN.toast(err.message || 'Could not load notification read state.', { error: true, duration: 6000 });
+            }
             paintList();
         }
-        function rowActivityKey(r) { return r.activity + '|' + r.details; }
 
         function closePanel() {
             if (apanel.hidden) return;
             apanel.hidden = true;
-            fresh = new Set();
             abell.setAttribute('aria-expanded', 'false');
             paintBadge();
         }
 
         abell.addEventListener('click', (e) => { e.stopPropagation(); if (apanel.hidden) openPanel(); else closePanel(); });
         apanel.addEventListener('click', (e) => e.stopPropagation());
+        async function expandNotification(button) {
+            const key = button.dataset.notificationKey;
+            const isExpanded = expandedKeys.has(key);
+            if (isExpanded) expandedKeys.delete(key);
+            else expandedKeys.add(key);
+            paintList();
+            if (!isExpanded) {
+                try {
+                    await markRead([key]);
+                } catch (err) {
+                    ADMIN.toast(err.message || 'Could not mark this notification as read.', { error: true, duration: 6000 });
+                }
+            }
+        }
+        alist.addEventListener('click', (e) => {
+            const button = e.target.closest('button[data-notification-key]');
+            if (button) expandNotification(button);
+        });
+        apwList.addEventListener('click', (e) => {
+            const button = e.target.closest('button.pw-expand[data-notification-key]');
+            if (button) expandNotification(button);
+        });
         document.addEventListener('click', closePanel);
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !apanel.hidden) { closePanel(); abell.focus(); } });
 
         if (amarkAll) {
-            amarkAll.addEventListener('click', () => {
-                fresh = new Set();
-                markBellSeen();
-                ADMIN.notify.markSeen();
-                paintList();
+            amarkAll.addEventListener('click', async () => {
+                amarkAll.disabled = true;
+                try {
+                    await markRead(notificationKeys());
+                } catch (err) {
+                    ADMIN.toast(err.message || 'Could not mark notifications as read.', { error: true, duration: 6000 });
+                    paintList();
+                }
             });
         }
         if (apwMarkAll) {
@@ -4307,21 +4371,29 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        function refreshBell() {
-            if (!apanel.hidden) newActivity().forEach(r => fresh.add(String(r.at) + '|' + rowActivityKey(r)));
-            paintList();
+        async function refreshBell() {
+            try {
+                await syncReadState();
+                paintList();
+            } catch (err) {
+                console.error('Could not refresh admin notification read state.', err);
+                if (!apanel.hidden) ADMIN.toast(err.message || 'Could not refresh notifications.', { error: true, duration: 6000 });
+            }
         }
 
         // Refresh when something changes elsewhere or a new server notification arrives.
         document.addEventListener('storage', (e) => {
-            if (e.key === BELL_SEEN_KEY) bellSeenAt = e.newValue || '';
-            if (e.key === SEEN_KEY || e.key === BELL_SEEN_KEY || e.key === 'ebsmi_activity_extra' || e.key === 'ebsmi_change_requests') refreshBell();
+            if (e.key === 'ebsmi_activity_extra' || e.key === 'ebsmi_change_requests') refreshBell();
         });
         document.addEventListener('admin:badges', refreshBell);
         document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshBell(); });
         window.addEventListener('pageshow', (ev) => { if (ev.persisted) refreshBell(); });
 
         paintList();
+        syncReadState().then(paintList).catch(err => {
+            console.error('Could not load admin notification read state.', err);
+            ADMIN.toast(err.message || 'Could not load notification read state.', { error: true, duration: 6000 });
+        });
         if (!abadge.hidden && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
             abell.classList.add('ring');
             abell.addEventListener('animationend', () => abell.classList.remove('ring'), { once: true, capture: true });
@@ -4735,3 +4807,59 @@ window.HRREQ = (function () {
     };
     return api;
 })();
+
+if (['archiveadmin', 'hrlist', 'questionlist'].includes(document.documentElement.getAttribute('data-page'))) {
+    document.addEventListener('DOMContentLoaded', () => {
+        const filterToggle = document.getElementById('filterToggle');
+        const filterPanel = document.getElementById('filterPanel');
+        const filterDot = document.getElementById('filterDot');
+        if (!filterToggle || !filterPanel || !filterDot) return;
+
+        const updateFilters = () => {
+            let activeCount = 0;
+            filterPanel.querySelectorAll('.filter-card').forEach((card) => {
+                const dropdown = card.querySelector('.dropdown');
+                const active = !!dropdown && dropdown.classList.contains('is-active');
+                card.classList.toggle('is-active', active);
+                const reset = card.querySelector('[data-filter-reset]');
+                if (reset) reset.hidden = !active;
+                if (active) activeCount++;
+            });
+            filterDot.hidden = activeCount === 0;
+            filterDot.textContent = String(activeCount);
+            filterToggle.title = activeCount ? activeCount + ' filter' + (activeCount === 1 ? '' : 's') + ' active' : 'Show or hide filters';
+        };
+
+        const observer = new MutationObserver(updateFilters);
+        filterPanel.querySelectorAll('.dropdown').forEach((dropdown) => {
+            observer.observe(dropdown, { attributes: true, attributeFilter: ['class'] });
+        });
+        updateFilters();
+
+        filterToggle.addEventListener('click', () => {
+            const willCollapse = !filterPanel.classList.contains('collapsed');
+            filterPanel.classList.remove('is-settled');
+            filterPanel.classList.toggle('collapsed', willCollapse);
+            filterToggle.setAttribute('aria-expanded', String(!willCollapse));
+            filterPanel.inert = willCollapse;
+            if (!willCollapse) {
+                window.setTimeout(() => {
+                    if (!filterPanel.classList.contains('collapsed')) filterPanel.classList.add('is-settled');
+                }, 400);
+            }
+        });
+
+        filterPanel.addEventListener('transitionend', (event) => {
+            if (event.target === filterPanel && event.propertyName === 'grid-template-rows' && !filterPanel.classList.contains('collapsed')) {
+                filterPanel.classList.add('is-settled');
+            }
+        });
+
+        filterPanel.addEventListener('click', (event) => {
+            const reset = event.target.closest('[data-filter-reset]');
+            if (!reset) return;
+            const allOption = reset.closest('.filter-card').querySelector('.dropdown-option[data-value="all"]');
+            if (allOption) allOption.click();
+        });
+    });
+}

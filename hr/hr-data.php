@@ -423,7 +423,7 @@ function static_hr_feed(int $limit = 30): array
     $mine = static_hr_session_id();
     foreach ($rows as $row) {
         $by   = (string) ($row['by'] ?? '');
-        $item = ['at' => (string) ($row['at'] ?? ''), 'activity' => (string) $row['activity'], 'details' => (string) $row['details'], 'by' => $by];
+        $item = ['id' => (int) ($row['id'] ?? 0), 'at' => (string) ($row['at'] ?? ''), 'activity' => (string) $row['activity'], 'details' => (string) $row['details'], 'by' => $by];
 
         // a profile / password line belongs to one HR account: nobody else sees it
         if (isset($row['owner']) && (int) $row['owner'] !== $mine) continue;
@@ -745,9 +745,13 @@ function static_add_applicant(array $in, ?array $cvUpload = null): array
     // Send the screening invitation (personal link with the secure token).
     // If it cannot be sent, remove the row again so HR can simply retry with the same email.
     $sent = false;
+    $emailFailure = null;
     try {
-        $sent = (new EmailService())->sendInviteEmail($email, $name, $token);
+        $emailService = new EmailService();
+        $sent = $emailService->sendInviteEmail($email, $name, $token);
+        $emailFailure = $emailService->lastFailure();
     } catch (Throwable $e) {
+        $emailFailure = 'exception';
         error_log('Invitation email error: ' . $e->getMessage());
     }
     if (!$sent) {
@@ -756,7 +760,14 @@ function static_add_applicant(array $in, ?array $cvUpload = null): array
         } catch (Throwable $e) {
             error_log('Could not roll back applicant after email failure: ' . $e->getMessage());
         }
-        throw new InvalidArgumentException('The invitation email could not be sent. Please check the email address and try again. (Details are in the PHP error log.)');
+        $messages = [
+            'missing_api_key' => 'We could not send the invitation email. Please try again later.',
+            'unauthorized'    => 'We could not send the invitation email. Please try again later.',
+            'transport'       => 'We could not send the invitation email. Please try again later.',
+            'rejected'        => 'We could not send the invitation email. Please check the email address and try again.',
+            'exception'       => 'We could not send the invitation email. Please try again later.'
+        ];
+        throw new InvalidArgumentException($messages[$emailFailure] ?? 'The invitation email could not be sent. Please try again later.');
     }
 
     $applicant = [

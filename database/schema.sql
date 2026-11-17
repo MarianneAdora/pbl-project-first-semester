@@ -282,6 +282,14 @@ CREATE TABLE activity_log (
     created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Notification read state is private to each signed-in account.
+CREATE TABLE notification_reads (
+    user_id          INT          NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    notification_key VARCHAR(255) NOT NULL,
+    read_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, notification_key)
+);
+
 -- ------------------------------------------------------------
 -- PASSWORD CHANGE REQUESTS
 -- HR requests to change their password; the Admin reviews and decides.
