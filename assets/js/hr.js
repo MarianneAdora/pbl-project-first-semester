@@ -3143,11 +3143,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const completed = status.toLowerCase() === 'completed';
             const result = applicant.result ? String(applicant.result) : '';
             const name = esc(applicant.name);
+            const updated = String(applicant.updated || '');
             const statusHtml = '<span class="status-pill ' + badgeClass(status) + '">' + esc(status) + '</span>' +
                 (completed && result ? ' <span class="status-pill ' + badgeClass(result) + '">' + esc(result) + '</span>' : '');
-            return '<tr class="clickable-row" data-id="' + id + '" data-completed="' + (completed ? '1' : '0') + '" data-url="details.php?id=' + id + '">' +
+            return '<tr class="clickable-row" data-id="' + id + '" data-completed="' + (completed ? '1' : '0') + '" data-updated="' + esc(updated) + '" data-url="details.php?id=' + id + '">' +
                 '<td title="' + name + '"><span class="name-cell"><span class="unseen-dot" title="Completed screening, not viewed yet"></span><strong>' + name + '</strong></span></td>' +
-                '<td>' + esc(dateLabel(applicant.updated)) + '</td><td>' + statusHtml + '</td></tr>';
+                '<td>' + esc(dateLabel(updated)) + '</td><td>' + statusHtml + '</td></tr>';
         }).filter(Boolean);
 
         body.innerHTML = rows.length ? rows.join('') : '<tr><td colspan="3" class="empty-row">No applicants yet.</td></tr>';
