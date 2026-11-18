@@ -2075,14 +2075,6 @@ html:where([data-page="addhr"],[data-page="addquestion"])[data-theme="dark"] .in
     background: var(--surface);
 }
 
-:where(html[data-page="dashboardadmin"]) .dashboard-scope p {
-    flex: 1 1 280px;
-    margin: 0;
-    color: var(--ink-soft);
-    font-size: 12px;
-    line-height: 1.4;
-}
-
 :where(html[data-page="dashboardadmin"]) .dashboard-scope-filter {
     display: flex;
     align-items: center;

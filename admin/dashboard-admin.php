@@ -100,12 +100,6 @@ $log_note = 'in the last 7 days';
 $scope_label = $hr_user_id !== null
     ? 'HR account: ' . $hr_actor_name
     : ($hr_only ? 'All HR Accounts' : 'All Activities');
-$scope_note = $hr_user_id !== null
-    ? 'Applicant statistics show applicants added by ' . $hr_actor_name . '; recent activity shows actions by this account.'
-    : ($hr_only
-        ? 'Applicant statistics show HR-added applicants; recent activity includes all HR accounts.'
-        : 'Applicant statistics and recent activity include all accounts.');
-$scope_note .= ' HR account and questionnaire setup totals remain system-wide.';
 $volume_subject = $hr_user_id !== null
     ? 'Applications added by ' . $hr_actor_name
     : ($hr_only ? 'Applications added by HR accounts' : 'Applications received');
@@ -300,7 +294,6 @@ $greeting     = 'Hello, ' . $display_name . '!';
                         <?php endforeach; ?>
                     </select>
                 </form>
-                <p><?= htmlspecialchars($scope_note, ENT_QUOTES, 'UTF-8') ?></p>
             </div>
 
             <!-- Summary boxes (on top, like the HR dashboard) -->
