@@ -6107,6 +6107,23 @@ html:where([data-page="details"])[data-theme="dark"] .tab-ink { background: #ff6
     transform: scale(1.08);
 }
 
+@media (max-width: 600px) {
+    :where(html[data-page="archive"]) .left-pill {
+        box-sizing: border-box;
+        width: 100%;
+        max-width: 112px;
+        min-height: 28px;
+        justify-content: center;
+        gap: 5px;
+        padding: 4px 6px;
+        font-size: 10px;
+    }
+
+    :where(html[data-page="archive"]) .screening-table tbody tr:hover .left-pill {
+        transform: none;
+    }
+}
+
 /* ---- RESTORE button (in every row) ---- */
 :where(html[data-page="archive"]) .btn-restore {
     display: inline-flex;
