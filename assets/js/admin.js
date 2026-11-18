@@ -833,6 +833,15 @@ document.addEventListener('DOMContentLoaded', () => {
         params.delete('transition');
         const qs = params.toString();
         window.history.replaceState({}, document.title, window.location.pathname + (qs ? '?' + qs : ''));
+
+        // Defensive fallback: if a browser suppresses animationend, remove the
+        // transition classes so the red overlay cannot cover the dashboard.
+        setTimeout(() => {
+            root.classList.remove('is-transitioning', 'is-leaving');
+            root.classList.add('is-ready');
+            pageOverlay.classList.remove('sweep-in');
+            pageOverlay.classList.add('sweep-out');
+        }, 1400);
     } else {
         // Normal visit (no stripes): elements rise in right away
         requestAnimationFrame(() => root.classList.add('is-ready'));

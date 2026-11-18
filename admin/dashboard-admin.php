@@ -113,6 +113,18 @@ $greeting     = 'Hello, ' . $display_name . '!';
         } catch (e) {}
         if (new URLSearchParams(location.search).get('transition') === 'out') {
             document.documentElement.classList.add('is-transitioning');
+            // Never leave the page permanently covered if the shared admin script is
+            // slow to load or fails. The normal script removes this flag sooner.
+            window.setTimeout(function () {
+                var root = document.documentElement;
+                var overlay = document.getElementById('pageOverlay');
+                root.classList.remove('is-transitioning');
+                root.classList.add('is-ready');
+                if (overlay) {
+                    overlay.classList.remove('sweep-in');
+                    overlay.classList.add('sweep-out');
+                }
+            }, 1800);
         }
     </script>
 
