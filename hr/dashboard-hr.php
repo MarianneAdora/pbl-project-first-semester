@@ -438,7 +438,6 @@ function status_badge(string $status): string
                         <button type="button" class="notif-markall" id="notifMarkAll">Mark all as read</button>
                     </div>
                     <ul class="notif-list" id="notifList"></ul>
-                    <p class="notif-foot">Your activity, including changes to your name, email and picture, also appears in the Admin's Recent Activities. Theme and display preferences are not included.</p>
                 </div>
             </div>
             </div>

@@ -3225,16 +3225,6 @@ html:where([data-page="dashboardhr"])[data-motion="off"] .notif-bell.ring svg { 
     color: var(--ink-soft, #555555);
 }
 
-:where(html[data-page="dashboardhr"]) .notif-foot {
-    margin: 0;
-    padding: 10px 16px 12px;
-    border-top: 1px solid var(--edge, #eceef1);
-    font-size: 11.5px;
-    font-weight: 500;
-    line-height: 1.4;
-    color: var(--ink-soft, #6b7078);
-}
-
 @media (max-width: 560px) {
     :where(html[data-page="dashboardhr"]) .notif-bell { width: 42px; height: 42px; }
 }
@@ -8921,7 +8911,7 @@ html[data-motion="off"] .spinner {              /* a loading spinner still has t
     html[data-page] .sidebar .notif-panel .notif-detail { font-size: 11px; line-height: 1.35; }
     html[data-page] .sidebar .notif-panel .notif-time { font-size: 10px; }
     html[data-page] .sidebar .notif-panel .notif-empty { padding: 16px; color: var(--ink-soft, #666); font-size: 12px; line-height: 1.4; }
-    html[data-page] .sidebar .notif-panel .notif-foot { padding: 8px 10px; font-size: 10px; line-height: 1.35; }
+
     html[data-page] .sidebar .notif-panel .notif-count { border-radius: 999px; }
     html[data-page] .sidebar .notif-count[hidden] { display: none; }
 
@@ -9233,7 +9223,6 @@ html[data-motion="off"] .sidebar .sidebar-header { animation: none; }
 .nav-notif-panel .notif-detail { font-size: 11px; line-height: 1.35; }
 .nav-notif-panel .notif-time { font-size: 10px; }
 .nav-notif-panel .notif-empty { padding: 16px; color: var(--ink-soft, #666); font-size: 12px; line-height: 1.4; }
-.nav-notif-panel .notif-foot { padding: 8px 10px; font-size: 10px; line-height: 1.35; }
 .nav-notif-panel .pw-wrap { border-top: 1px solid var(--surface-2, #f4f5f7); }
 .nav-notif-panel .pw-item { display: flex; align-items: flex-start; gap: 8px; padding: 8px; }
 .nav-notif-panel .notif-open { display: inline-flex; margin: 0 10px 8px 48px; color: #e3475c; font-size: 11px; font-weight: 700; text-decoration: none; }

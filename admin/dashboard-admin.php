@@ -252,7 +252,6 @@ $greeting     = 'Hello, ' . $display_name . '!';
                             <button type="button" class="notif-markall" id="notifMarkAll">Mark all as read</button>
                         </div>
                         <ul class="notif-list" id="notifList"></ul>
-                        <p class="notif-foot">HR activity, including name, email and picture changes, also appears under Recent Activities.</p>
                     </div>
                 </div>
             </div>
