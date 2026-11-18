@@ -72,6 +72,36 @@ function repo_recent_activity(?PDO $pdo = null, int $limit = 10): array
     return $out;
 }
 
+function repo_admin_activity_feed(?string $hrActorName = null, bool $hrOnly = false, int $limit = 10, ?PDO $pdo = null): array
+{
+    $pdo = $pdo ?: db();
+    $where = "actor IN ('HR', 'Admin')";
+    $params = [];
+    if ($hrActorName !== null) {
+        $where = "actor = 'HR' AND actor_name = :actor_name";
+        $params[':actor_name'] = $hrActorName;
+    } elseif ($hrOnly) {
+        $where = "actor = 'HR'";
+    }
+
+    $count = $pdo->prepare("SELECT COUNT(*) FROM activity_log WHERE $where");
+    $count->execute($params);
+
+    $st = $pdo->prepare(
+        "SELECT log_id, actor, actor_name, activity, details, created_at FROM activity_log
+         WHERE $where
+         ORDER BY created_at DESC, log_id DESC LIMIT :lim"
+    );
+    foreach ($params as $key => $value) $st->bindValue($key, $value, PDO::PARAM_STR);
+    $st->bindValue(':lim', $limit, PDO::PARAM_INT);
+    $st->execute();
+
+    $rows = [];
+    foreach ($st->fetchAll() as $row) $rows[] = repo_activity_format($row);
+
+    return ['rows' => $rows, 'total' => (int) $count->fetchColumn()];
+}
+
 function repo_activities_week(?PDO $pdo = null): int
 {
     $pdo = $pdo ?: db();

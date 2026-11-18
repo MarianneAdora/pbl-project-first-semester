@@ -55,13 +55,30 @@ $profile = static_profile_for_page('../hr/data/avatars/');
 // Every number on this page is queried live from the database.
 $overview = repo_admin_overview();             // the three summary boxes
 $stats    = repo_admin_question_stats();       // Questionnaires Statistics: every question + the answer most applicants chose
+$hr_accounts = repo_admin_accounts();
 $all_log  = repo_recent_activity(null, 1000);
-$recent   = array_values(array_filter(
-    $all_log,
-    static fn(array $row): bool => true
-));
-usort($recent, static fn(array $a, array $b): int => (strtotime($b['at'] ?? '') ?: 0) <=> (strtotime($a['at'] ?? '') ?: 0));
-$recent = array_slice($recent, 0, 10);
+$hr_names = array_values(array_unique(array_filter(array_map(
+    static fn(array $account): string => trim((string) $account['name']),
+    $hr_accounts
+), static fn(string $name): bool => $name !== '')));
+$activity_filter = trim((string) ($_GET['activity_filter'] ?? 'all'));
+$hr_actor_name = null;
+$hr_only = false;
+if ($activity_filter === 'hr') {
+    $hr_only = true;
+} elseif (strpos($activity_filter, 'account:') === 0) {
+    $requested_name = substr($activity_filter, strlen('account:'));
+    if (in_array($requested_name, $hr_names, true)) {
+        $hr_actor_name = $requested_name;
+    } else {
+        $activity_filter = 'all';
+    }
+} else {
+    $activity_filter = 'all';
+}
+$activity_feed = repo_admin_activity_feed($hr_actor_name, $hr_only, 10);
+$recent = $activity_feed['rows'];
+$activity_total = $activity_feed['total'];
 // Total activity count (for the share bar on the summary box).
 $logTotal = count($all_log);
 
@@ -88,7 +105,7 @@ $stats_sub = $q_count . ' question' . ($q_count === 1 ? '' : 's') . ' · ' . (
         ? 'from ' . (int) $stats['submissions'] . ' submitted questionnaire' . ($stats['submissions'] === 1 ? '' : 's')
         : 'no applicant has submitted the questionnaire yet'
 );
-$log_count = $logTotal > 10 ? 'Latest 10 of ' . $logTotal : $logTotal . ' in total';
+$log_count = $activity_total > 10 ? 'Latest 10 of ' . $activity_total : $activity_total . ' in total';
 
 // Admin name from the session (set at login from the users table).
 $display_name = $_SESSION['user_name'] ?? 'Admin';
@@ -419,8 +436,23 @@ $greeting     = 'Hello, ' . $display_name . '!';
             <!-- Recent Activities: the latest 10 things HR and the Admin did in the system -->
             <section class="dash-card activity-card reveal" style="--i:9" id="recentActivities" aria-labelledby="activityTitle">
                 <div class="card-top">
-                    <div class="activity-title">
-                        <h3 id="activityTitle">Recent Activities</h3>
+                    <div class="activity-toolbar">
+                        <div class="activity-title">
+                            <h3 id="activityTitle">Recent Activities</h3>
+                        </div>
+                        <form class="activity-filter" method="get">
+                            <label for="activityFilter">View</label>
+                            <select id="activityFilter" name="activity_filter">
+                                <option value="all" <?= $activity_filter === 'all' ? 'selected' : '' ?>>All Activities</option>
+                                <option value="hr" <?= $activity_filter === 'hr' ? 'selected' : '' ?>>All HR Accounts</option>
+                                <?php foreach ($hr_names as $accountName): ?>
+                                    <option value="<?= htmlspecialchars('account:' . $accountName, ENT_QUOTES, 'UTF-8') ?>" <?= $activity_filter === ('account:' . $accountName) ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($accountName, ENT_QUOTES, 'UTF-8') ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <button type="submit">Apply</button>
+                        </form>
                     </div>
                     <span class="activity-count"><?php echo htmlspecialchars($log_count, ENT_QUOTES, 'UTF-8'); ?></span>
                 </div>
