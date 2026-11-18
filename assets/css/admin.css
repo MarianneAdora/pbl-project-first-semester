@@ -2289,6 +2289,39 @@ html:where([data-page="dashboardadmin"])[data-theme="dark"] .stat-icon { backgro
 :where(html[data-page="dashboardadmin"]) .stats-download.is-busy svg { animation: pdfBob 0.7s ease-in-out infinite; }
 @keyframes pdfBob { 50% { transform: translateY(3px); } }
 
+dialog.dashboard-report-filter {
+    width: min(580px, calc(100vw - 28px));
+    max-width: 580px;
+    max-height: 88vh;
+    padding: 0;
+    border: 1px solid var(--edge);
+    border-radius: 16px;
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+}
+
+dialog.dashboard-report-filter::backdrop { background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(3px); }
+.dashboard-report-filter-content { display: flex; flex-direction: column; max-height: 88vh; padding: 22px; }
+.dashboard-report-filter-content h2 { margin: 0; color: var(--ink); font-size: 18px; font-weight: 800; }
+.dashboard-report-filter-description { margin: 6px 0 16px; color: var(--ink-soft); font-size: 12px; line-height: 1.45; }
+.dashboard-report-filter-groups { display: grid; flex: 1 1 auto; min-height: 0; gap: 14px; overflow-y: auto; padding: 2px 2px 8px; }
+.dashboard-report-filter-group { min-width: 0; margin: 0; padding: 0; border: 0; }
+.dashboard-report-filter-group legend { margin-bottom: 7px; color: var(--ink); font-size: 13px; font-weight: 800; }
+.dashboard-report-filter-option { display: flex; align-items: flex-start; gap: 9px; padding: 7px 8px; border-radius: 8px; color: var(--ink); font-size: 12px; line-height: 1.4; cursor: pointer; }
+.dashboard-report-filter-option:hover { background: var(--surface-2); }
+.dashboard-report-filter-option input { flex: 0 0 auto; margin: 2px 0 0; accent-color: var(--brand); }
+.dashboard-report-filter-actions { display: flex; flex: 0 0 auto; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.dashboard-report-filter-actions button { min-height: 38px; padding: 0 13px; border: 1px solid var(--edge); border-radius: 9px; background: var(--surface-2); color: var(--ink); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.dashboard-report-filter-actions button.is-all,
+.dashboard-report-filter-actions button.is-selected { border-color: var(--brand); background: var(--brand); color: #fff; }
+.dashboard-report-filter-actions button.is-selected:disabled { opacity: 0.5; cursor: not-allowed; }
+
+@media (max-width: 480px) {
+    .dashboard-report-filter-content { padding: 18px; }
+    .dashboard-report-filter-actions button { flex: 1 1 100%; }
+}
+
 /* ---------- Questionnaires Statistics: sideways bars (left to right), scrollable ---------- */
 :where(html[data-page="dashboardadmin"]) .stats-scroll {
     max-height: 380px;                      /* many questions: scrolls up/down inside the card */

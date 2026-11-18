@@ -252,6 +252,115 @@ if (['dashboardadmin', 'dashboardhr'].includes(document.documentElement.getAttri
         return buildAdmin(report, opts);
     }
 
+    function selectRecords(title, groups) {
+        return new Promise((resolve) => {
+            const options = groups.reduce((all, group) => all.concat(group.options), []);
+            if (!options.length) {
+                resolve(null);
+                return;
+            }
+
+            const dialog = document.createElement('dialog');
+            dialog.className = 'dashboard-report-filter';
+            dialog.setAttribute('aria-labelledby', 'dashboardReportFilterTitle');
+
+            const content = document.createElement('div');
+            content.className = 'dashboard-report-filter-content';
+
+            const heading = document.createElement('h2');
+            heading.id = 'dashboardReportFilterTitle';
+            heading.textContent = title;
+            content.appendChild(heading);
+
+            const description = document.createElement('p');
+            description.id = 'dashboardReportFilterDescription';
+            description.className = 'dashboard-report-filter-description';
+            description.textContent = 'Choose which dashboard records to include in the PDF.';
+            dialog.setAttribute('aria-describedby', description.id);
+            content.appendChild(description);
+
+            const fields = document.createElement('div');
+            fields.className = 'dashboard-report-filter-groups';
+            const checkboxes = [];
+            groups.forEach((group) => {
+                if (!group.options.length) return;
+                const fieldset = document.createElement('fieldset');
+                fieldset.className = 'dashboard-report-filter-group';
+                const legend = document.createElement('legend');
+                legend.textContent = group.label;
+                fieldset.appendChild(legend);
+
+                group.options.forEach((option) => {
+                    const label = document.createElement('label');
+                    label.className = 'dashboard-report-filter-option';
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.value = option.id;
+                    checkbox.id = 'dashboardReportFilterOption' + checkboxes.length;
+                    const text = document.createElement('span');
+                    text.textContent = option.label;
+                    label.append(checkbox, text);
+                    fieldset.appendChild(label);
+                    checkboxes.push(checkbox);
+                });
+                fields.appendChild(fieldset);
+            });
+            content.appendChild(fields);
+
+            const actions = document.createElement('div');
+            actions.className = 'dashboard-report-filter-actions';
+            const cancel = document.createElement('button');
+            cancel.type = 'button';
+            cancel.className = 'is-cancel';
+            cancel.textContent = 'Cancel';
+            const all = document.createElement('button');
+            all.type = 'button';
+            all.className = 'is-all';
+            all.textContent = 'Download All';
+            const selected = document.createElement('button');
+            selected.type = 'button';
+            selected.className = 'is-selected';
+            selected.textContent = 'Download Selected';
+            selected.disabled = true;
+            actions.append(cancel, all, selected);
+            content.appendChild(actions);
+            dialog.appendChild(content);
+            document.body.appendChild(dialog);
+
+            let finished = false;
+            const finish = (result) => {
+                if (finished) return;
+                finished = true;
+                if (dialog.open) dialog.close();
+                dialog.remove();
+                resolve(result);
+            };
+            const checkedOptions = () => checkboxes.filter((checkbox) => checkbox.checked);
+
+            checkboxes.forEach((checkbox) => {
+                checkbox.addEventListener('change', () => {
+                    selected.disabled = checkedOptions().length === 0;
+                });
+            });
+            cancel.addEventListener('click', () => finish(null));
+            all.addEventListener('click', () => finish({ include: options.map((option) => option.id), includeAll: true }));
+            selected.addEventListener('click', () => {
+                const chosen = checkedOptions().map((checkbox) => checkbox.value);
+                if (!chosen.length) return;
+                finish({ include: chosen, includeAll: chosen.length === options.length });
+            });
+            dialog.addEventListener('cancel', (event) => {
+                event.preventDefault();
+                finish(null);
+            });
+            dialog.addEventListener('click', (event) => {
+                if (event.target === dialog) finish(null);
+            });
+            dialog.showModal();
+            cancel.focus();
+        });
+    }
+
     function buildAdmin(report, opts) {
         opts = opts || {};
         const stats = report.stats || {};
@@ -259,55 +368,67 @@ if (['dashboardadmin', 'dashboardhr'].includes(document.documentElement.getAttri
         const failure = report.failure || {};
         const risk = report.risk || {};
         const volume = report.volume || {};
-        const questions = Array.isArray(stats.questions) ? stats.questions : [];
-        const sections = Array.isArray(stats.sections) ? stats.sections : [];
+        const allRecords = !Array.isArray(report.include) || report.includeAll === true;
+        const included = (id) => allRecords || report.include.indexOf(id) !== -1;
+        const questions = (Array.isArray(stats.questions) ? stats.questions : [])
+            .filter((question) => included('section:' + question.section_no));
+        const sections = (Array.isArray(stats.sections) ? stats.sections : [])
+            .filter((section) => included('section:' + section.no));
         const subs = Number(stats.submissions) || 0;
         const d = new Doc('Admin Dashboard Statistics');
 
         /* title band */
         addTitleBand(d, 'Admin Dashboard Statistics', 'Admin', Object.assign({}, opts, { scope: overview.scope || opts.scope }));
 
-        drawSummaryCards(d, [
-            { label: 'Active HR accounts', value: Number(overview.hr_active) || 0, color: [28, 138, 219] },
-            { label: 'Questionnaires', value: overview.questions == null ? questions.length : (Number(overview.questions) || 0), color: [21, 154, 67] },
-            { label: 'Sections', value: overview.sections == null ? sections.length : (Number(overview.sections) || 0), color: [246, 196, 83] },
-            { label: 'Submitted questionnaires', value: subs, color: RED }
-        ]);
+        if (allRecords) {
+            drawSummaryCards(d, [
+                { label: 'Active HR accounts', value: Number(overview.hr_active) || 0, color: [28, 138, 219] },
+                { label: 'Questionnaires', value: overview.questions == null ? questions.length : (Number(overview.questions) || 0), color: [21, 154, 67] },
+                { label: 'Sections', value: overview.sections == null ? sections.length : (Number(overview.sections) || 0), color: [246, 196, 83] },
+                { label: 'Submitted questionnaires', value: subs, color: RED }
+            ]);
+        }
 
-        const failureRows = [['Knock-out questions', String(Number(failure.knockouts) || 0)],
-            ['Submitted questionnaires', String(Number(failure.submissions) || 0)]];
-        (Array.isArray(failure.rows) ? failure.rows : []).forEach(row => {
-            const rate = Number(row.rate) || 0;
-            failureRows.push([row.label || row.id || 'Question', (Number(row.failed) || 0) + ' failed / ' +
-                (Number(row.submissions) || 0) + ' submitted (' + pct(rate) + ')', rate, RED]);
-        });
-        drawRows(d, 'Question-Level Failure Rate', failureRows, 'Applicants who did not meet each active knock-out question.', RED);
-
-        const riskRows = [
-            ['Risk flag evaluations', String(Number(risk.evaluations) || 0)],
-            ['Total flags raised', String(Number(risk.total) || 0)]
-        ];
-        (Array.isArray(risk.rows) ? risk.rows : []).forEach(row => {
-            const rowColor = row.color ? rgb(row.color) : [120, 87, 195];
-            riskRows.push([row.label || 'Other factors', (Number(row.count) || 0) + ' flags (' + pct(Number(row.share) || 0) + ')', Number(row.share) || 0, rowColor]);
-        });
-        drawRows(d, 'Risk Flag Breakdown by Factor', riskRows, 'Counts and share of the risk flags recorded.', [120, 87, 195]);
-
-        const volumeRows = [];
-        ['week', 'month'].forEach(period => {
-            const group = volume[period] || {};
-            const labels = Array.isArray(group.labels) ? group.labels : [];
-            const ranges = Array.isArray(group.ranges) ? group.ranges : [];
-            const values = Array.isArray(group.values) ? group.values : [];
-            const max = Math.max(0, ...values.map(value => Number(value) || 0));
-            const rowColor = period === 'week' ? [28, 138, 219] : [21, 154, 67];
-            labels.forEach((label, i) => {
-                const count = Number(values[i]) || 0;
-                volumeRows.push([(period === 'week' ? 'Week ' : 'Month ') + label + (ranges[i] ? ' (' + ranges[i] + ')' : ''),
-                    count + ' applicants', max > 0 ? count / max * 100 : 0, rowColor]);
+        if (included('failure')) {
+            const failureRows = [['Knock-out questions', String(Number(failure.knockouts) || 0)],
+                ['Submitted questionnaires', String(Number(failure.submissions) || 0)]];
+            (Array.isArray(failure.rows) ? failure.rows : []).forEach(row => {
+                const rate = Number(row.rate) || 0;
+                failureRows.push([row.label || row.id || 'Question', (Number(row.failed) || 0) + ' failed / ' +
+                    (Number(row.submissions) || 0) + ' submitted (' + pct(rate) + ')', rate, RED]);
             });
-        });
-        drawRows(d, 'Applicant Volume Over Time', volumeRows, 'Applications received per week and per month.', [21, 154, 67]);
+            drawRows(d, 'Question-Level Failure Rate', failureRows, 'Applicants who did not meet each active knock-out question.', RED);
+        }
+
+        if (included('risk')) {
+            const riskRows = [
+                ['Risk flag evaluations', String(Number(risk.evaluations) || 0)],
+                ['Total flags raised', String(Number(risk.total) || 0)]
+            ];
+            (Array.isArray(risk.rows) ? risk.rows : []).forEach(row => {
+                const rowColor = row.color ? rgb(row.color) : [120, 87, 195];
+                riskRows.push([row.label || 'Other factors', (Number(row.count) || 0) + ' flags (' + pct(Number(row.share) || 0) + ')', Number(row.share) || 0, rowColor]);
+            });
+            drawRows(d, 'Risk Flag Breakdown by Factor', riskRows, 'Counts and share of the risk flags recorded.', [120, 87, 195]);
+        }
+
+        if (included('volume')) {
+            const volumeRows = [];
+            ['week', 'month'].forEach(period => {
+                const group = volume[period] || {};
+                const labels = Array.isArray(group.labels) ? group.labels : [];
+                const ranges = Array.isArray(group.ranges) ? group.ranges : [];
+                const values = Array.isArray(group.values) ? group.values : [];
+                const max = Math.max(0, ...values.map(value => Number(value) || 0));
+                const rowColor = period === 'week' ? [28, 138, 219] : [21, 154, 67];
+                labels.forEach((label, i) => {
+                    const count = Number(values[i]) || 0;
+                    volumeRows.push([(period === 'week' ? 'Week ' : 'Month ') + label + (ranges[i] ? ' (' + ranges[i] + ')' : ''),
+                        count + ' applicants', max > 0 ? count / max * 100 : 0, rowColor]);
+                });
+            });
+            drawRows(d, 'Applicant Volume Over Time', volumeRows, 'Applications received per week and per month.', [21, 154, 67]);
+        }
 
         /* sections table */
         const cols = { name: M + 10, count: M + 290, ans: M + 360, top: M + 440 };
@@ -322,28 +443,27 @@ if (['dashboardadmin', 'dashboardhr'].includes(document.documentElement.getAttri
             d.text('Most answered', cols.top, d.y + 5.5, 8.5, { bold: true });
             d.y += 20;
         };
-        drawSectionsHeader(false);
-        sections.forEach(s => {
-            const pageCount = d.pages.length;
-            d.ensure(20);
-            if (d.pages.length !== pageCount) drawSectionsHeader(true);
-            const qs = questions.filter(q => Number(q.section_no) === Number(s.no));
-            let top = null, sum = 0;
-            qs.forEach(q => { sum += q.answered; if (!top || q.answered > top.answered) top = q; });
-            d.rect(M + 10, d.y + 6, 8, 8, colorOf(s.no));
-            d.text(fit('Section ' + s.no + '  \u2022  ' + s.name, 9, false, 255), M + 24, d.y + 5, 9);
-            d.text(String(qs.length), cols.count, d.y + 5, 9);
-            d.text(String(sum), cols.ans, d.y + 5, 9);
-            d.text(top && top.answered > 0 ? String(top.id).toUpperCase() + ' (' + top.answered + ')' : '-', cols.top, d.y + 5, 9);
-            d.line(M, d.y + 20, PAGE_W - M, d.y + 20, [240, 241, 243], 0.8);
-            d.y += 20;
-        });
-        d.y += 24;
+        if (sections.length) {
+            drawSectionsHeader(false);
+            sections.forEach(s => {
+                const pageCount = d.pages.length;
+                d.ensure(20);
+                if (d.pages.length !== pageCount) drawSectionsHeader(true);
+                const qs = questions.filter(q => Number(q.section_no) === Number(s.no));
+                let top = null, sum = 0;
+                qs.forEach(q => { sum += q.answered; if (!top || q.answered > top.answered) top = q; });
+                d.rect(M + 10, d.y + 6, 8, 8, colorOf(s.no));
+                d.text(fit('Section ' + s.no + '  \u2022  ' + s.name, 9, false, 255), M + 24, d.y + 5, 9);
+                d.text(String(qs.length), cols.count, d.y + 5, 9);
+                d.text(String(sum), cols.ans, d.y + 5, 9);
+                d.text(top && top.answered > 0 ? String(top.id).toUpperCase() + ' (' + top.answered + ')' : '-', cols.top, d.y + 5, 9);
+                d.line(M, d.y + 20, PAGE_W - M, d.y + 20, [240, 241, 243], 0.8);
+                d.y += 20;
+            });
+            d.y += 24;
+        }
 
         /* every section with its questions */
-        if (!questions.length) {
-            d.text('There are no questions yet.', M, d.y, 10, { color: SOFT });
-        }
         sections.forEach(s => {
             const color = colorOf(s.no);
             const qs = questions.filter(q => Number(q.section_no) === Number(s.no));
@@ -434,64 +554,76 @@ if (['dashboardadmin', 'dashboardhr'].includes(document.documentElement.getAttri
         const funnel = report.funnel || {};
         const duration = report.duration || {};
         const turnaround = report.turnaround || {};
+        const allRecords = !Array.isArray(report.include) || report.includeAll === true;
+        const included = (id) => allRecords || report.include.indexOf(id) !== -1;
         const stages = Array.isArray(funnel.stages) ? funnel.stages : [];
         const d = new Doc('HR Dashboard Statistics');
 
         addTitleBand(d, 'HR Dashboard Statistics', 'HR', opts);
-        drawSummaryCards(d, [
-            { label: 'Total applicants', value: Number(stats.total) || 0, color: RED },
-            { label: 'Pending', value: Number(stats.pending) || 0, color: [246, 196, 83] },
-            { label: 'In progress', value: Number(stats.in_progress) || 0, color: [28, 138, 219] },
-            { label: 'Completed', value: Number(stats.completed) || 0, color: [21, 154, 67] }
-        ]);
+        if (allRecords) {
+            drawSummaryCards(d, [
+                { label: 'Total applicants', value: Number(stats.total) || 0, color: RED },
+                { label: 'Pending', value: Number(stats.pending) || 0, color: [246, 196, 83] },
+                { label: 'In progress', value: Number(stats.in_progress) || 0, color: [28, 138, 219] },
+                { label: 'Completed', value: Number(stats.completed) || 0, color: [21, 154, 67] }
+            ]);
+        }
 
-        const funnelColors = ['#1c8adb', '#159a43', '#f0b100', '#f26a1b', '#d1122a'];
-        const funnelRows = stages.map((stage, i) => [
-            stage.label || 'Stage',
-            (Number(stage.count) || 0) + ' (' + (Number(stage.of_applied) || 0) + '% of applicants); ' +
-                (Number(stage.lost) || 0) + ' dropped (' + (Number(stage.lost_pct) || 0) + '%)',
-            Number(stage.of_applied) || 0,
-            rgb(funnelColors[i % funnelColors.length])
-        ]);
-        funnelRows.push(['Reached an interview', (Number(funnel.overall_pct) || 0) + '% of applicants', Number(funnel.overall_pct) || 0, [21, 154, 67]]);
-        if (funnel.biggest) funnelRows.push(['Biggest drop-off', funnel.biggest.from + ' to ' + funnel.biggest.to + ' (' + (Number(funnel.biggest.lost) || 0) + ')', Number(funnel.biggest.pct) || 0, [242, 106, 27]]);
-        drawRows(d, 'Funnel Drop-Off', funnelRows, 'Applicant counts at each screening stage and drop-off from the prior stage.', [28, 138, 219]);
+        if (included('funnel')) {
+            const funnelColors = ['#1c8adb', '#159a43', '#f0b100', '#f26a1b', '#d1122a'];
+            const funnelRows = stages.map((stage, i) => [
+                stage.label || 'Stage',
+                (Number(stage.count) || 0) + ' (' + (Number(stage.of_applied) || 0) + '% of applicants); ' +
+                    (Number(stage.lost) || 0) + ' dropped (' + (Number(stage.lost_pct) || 0) + '%)',
+                Number(stage.of_applied) || 0,
+                rgb(funnelColors[i % funnelColors.length])
+            ]);
+            funnelRows.push(['Reached an interview', (Number(funnel.overall_pct) || 0) + '% of applicants', Number(funnel.overall_pct) || 0, [21, 154, 67]]);
+            if (funnel.biggest) funnelRows.push(['Biggest drop-off', funnel.biggest.from + ' to ' + funnel.biggest.to + ' (' + (Number(funnel.biggest.lost) || 0) + ')', Number(funnel.biggest.pct) || 0, [242, 106, 27]]);
+            drawRows(d, 'Funnel Drop-Off', funnelRows, 'Applicant counts at each screening stage and drop-off from the prior stage.', [28, 138, 219]);
+        }
 
-        const passed = Number(stats.passed) || 0;
-        const rejected = Number(stats.failed) || 0;
-        const screened = passed + rejected;
-        drawRows(d, 'Passed / Rejected', [
-            ['Screened applicants', String(screened)],
-            ['Passed', passed + (screened ? ' (' + pct(passed / screened * 100) + ')' : ''), screened ? passed / screened * 100 : 0, [21, 154, 67]],
-            ['Rejected', rejected + (screened ? ' (' + pct(rejected / screened * 100) + ')' : ''), screened ? rejected / screened * 100 : 0, RED],
-            ['Pass rate', (Number(report.pass_rate) || 0) + '%', Number(report.pass_rate) || 0, [21, 154, 67]]
-        ], 'Results among applicants who completed screening.', [91, 95, 102]);
+        if (included('results')) {
+            const passed = Number(stats.passed) || 0;
+            const rejected = Number(stats.failed) || 0;
+            const screened = passed + rejected;
+            drawRows(d, 'Passed / Rejected', [
+                ['Screened applicants', String(screened)],
+                ['Passed', passed + (screened ? ' (' + pct(passed / screened * 100) + ')' : ''), screened ? passed / screened * 100 : 0, [21, 154, 67]],
+                ['Rejected', rejected + (screened ? ' (' + pct(rejected / screened * 100) + ')' : ''), screened ? rejected / screened * 100 : 0, RED],
+                ['Pass rate', (Number(report.pass_rate) || 0) + '%', Number(report.pass_rate) || 0, [21, 154, 67]]
+            ], 'Results among applicants who completed screening.', [91, 95, 102]);
+        }
 
-        const durationRows = [['Completed screenings with timing data', String(Number(duration.n) || 0)]];
-        const labels = Array.isArray(duration.labels) ? duration.labels : [];
-        const titles = Array.isArray(duration.titles) ? duration.titles : [];
-        const counts = Array.isArray(duration.counts) ? duration.counts : [];
-        labels.forEach((label, i) => {
-            const count = Number(counts[i]) || 0;
-            durationRows.push([titles[i] || label, count + ' screenings', Number(duration.n) > 0 ? count / Number(duration.n) * 100 : 0, [76, 151, 210]]);
-        });
-        durationRows.push(['Median', duration.median || 'No data']);
-        durationRows.push(['Fastest', duration.fastest || 'No data']);
-        durationRows.push(['Slowest', duration.slowest || 'No data']);
-        drawRows(d, 'Time-to-Complete Distribution', durationRows, 'Time from invitation to questionnaire submission.', [76, 151, 210]);
+        if (included('duration')) {
+            const durationRows = [['Completed screenings with timing data', String(Number(duration.n) || 0)]];
+            const labels = Array.isArray(duration.labels) ? duration.labels : [];
+            const titles = Array.isArray(duration.titles) ? duration.titles : [];
+            const counts = Array.isArray(duration.counts) ? duration.counts : [];
+            labels.forEach((label, i) => {
+                const count = Number(counts[i]) || 0;
+                durationRows.push([titles[i] || label, count + ' screenings', Number(duration.n) > 0 ? count / Number(duration.n) * 100 : 0, [76, 151, 210]]);
+            });
+            durationRows.push(['Median', duration.median || 'No data']);
+            durationRows.push(['Fastest', duration.fastest || 'No data']);
+            durationRows.push(['Slowest', duration.slowest || 'No data']);
+            drawRows(d, 'Time-to-Complete Distribution', durationRows, 'Time from invitation to questionnaire submission; all continued pages are included.', [76, 151, 210]);
+        }
 
-        const avg = turnaround.avg;
-        const avgLabel = avg ? (avg.label || ((avg.value || 0) + ' ' + (avg.unit || ''))) : 'No schedules yet';
-        const turnaroundColor = turnaround.state === 'ok' ? [21, 154, 67] : (turnaround.state === 'warn' ? [246, 164, 45] : (turnaround.state === 'slow' ? RED : [91, 95, 102]));
-        const turnaroundRows = [
-            ['Average turnaround', avgLabel, avg ? Number(turnaround.bar_pct) || 0 : null, turnaroundColor],
-            ['Target', turnaround.target_label || '3-day'],
-            ['Scheduled interviews', String(Number(turnaround.n) || 0)],
-            ['Passed, waiting for a schedule', String(Number(turnaround.waiting) || 0)],
-            ['Fastest', turnaround.fastest || 'No data'],
-            ['Slowest', turnaround.slowest || 'No data']
-        ];
-        drawRows(d, 'Scheduling Turnaround Time', turnaroundRows, 'Time between passing screening and HR entering the final interview schedule.', turnaroundColor);
+        if (included('turnaround')) {
+            const avg = turnaround.avg;
+            const avgLabel = avg ? (avg.label || ((avg.value || 0) + ' ' + (avg.unit || ''))) : 'No schedules yet';
+            const turnaroundColor = turnaround.state === 'ok' ? [21, 154, 67] : (turnaround.state === 'warn' ? [246, 164, 45] : (turnaround.state === 'slow' ? RED : [91, 95, 102]));
+            const turnaroundRows = [
+                ['Average turnaround', avgLabel, avg ? Number(turnaround.bar_pct) || 0 : null, turnaroundColor],
+                ['Target', turnaround.target_label || '3-day'],
+                ['Scheduled interviews', String(Number(turnaround.n) || 0)],
+                ['Passed, waiting for a schedule', String(Number(turnaround.waiting) || 0)],
+                ['Fastest', turnaround.fastest || 'No data'],
+                ['Slowest', turnaround.slowest || 'No data']
+            ];
+            drawRows(d, 'Scheduling Turnaround Time', turnaroundRows, 'Time between passing screening and HR entering the final interview schedule.', turnaroundColor);
+        }
 
         return new Blob([d.finish()], { type: 'application/pdf' });
     }
@@ -521,7 +653,7 @@ if (['dashboardadmin', 'dashboardhr'].includes(document.documentElement.getAttri
         });
     }
 
-    window.DashboardPdf = { build: build, download: download, recordDownload: recordDownload };
+    window.DashboardPdf = { build: build, download: download, recordDownload: recordDownload, selectRecords: selectRecords };
 })();
 }
 

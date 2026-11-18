@@ -2574,10 +2574,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const pdfBtn = document.getElementById('hrStatsDownloadBtn');
     if (pdfBtn) {
         pdfBtn.addEventListener('click', async () => {
-            if (!window.DashboardPdf || !window.DashboardPdf.recordDownload || !window.HR_DASH) {
+            if (!window.DashboardPdf || !window.DashboardPdf.recordDownload || !window.DashboardPdf.selectRecords || !window.HR_DASH) {
                 HR.toast('The dashboard PDF could not be loaded. Reload the page and try again.', { error: true, duration: 5000 });
                 return;
             }
+            let selection;
+            try {
+                selection = await window.DashboardPdf.selectRecords('Choose HR PDF records', [{
+                    label: 'HR dashboard records',
+                    options: [
+                        { id: 'funnel', label: 'Funnel Drop-Off' },
+                        { id: 'results', label: 'Passed / Rejected' },
+                        { id: 'duration', label: 'Time-to-Complete Distribution (including continued pages)' },
+                        { id: 'turnaround', label: 'Scheduling Turnaround Time' }
+                    ]
+                }]);
+            } catch (err) {
+                HR.toast(err.message || 'Could not open the report filter.', { error: true, duration: 5000 });
+                return;
+            }
+            if (!selection) return;
+
             pdfBtn.disabled = true;
             pdfBtn.classList.add('is-busy');
             let downloaded = false;
@@ -2593,9 +2610,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     funnel: report.funnel,
                     duration: report.duration,
                     turnaround: report.turnaround,
-                    pass_rate: report.pass_rate
+                    pass_rate: report.pass_rate,
+                    include: selection.include,
+                    includeAll: selection.includeAll
                 }, { generated: now, by: by });
-                window.DashboardPdf.download(blob, 'HR-Dashboard-Statistics-' + day + '.pdf');
+                window.DashboardPdf.download(blob, 'HR-Dashboard-Statistics' + (selection.includeAll ? '' : '-Selected') + '-' + day + '.pdf');
                 downloaded = true;
                 await window.DashboardPdf.recordDownload('hr');
                 HR.toast('PDF downloaded and recorded in Recent Activities.', { duration: 3500 });

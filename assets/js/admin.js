@@ -4679,11 +4679,37 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ---------- Download stats: dashboard statistics (Recent Activities are intentionally excluded) ---------- */
     const pdfBtn = document.getElementById('statsDownloadBtn');
     if (pdfBtn) {
-        pdfBtn.addEventListener('click', () => {
-            if (!window.DashboardPdf || !window.DashboardPdf.recordDownload) {
+        pdfBtn.addEventListener('click', async () => {
+            if (!window.DashboardPdf || !window.DashboardPdf.recordDownload || !window.DashboardPdf.selectRecords) {
                 ADMIN.toast('The PDF maker is missing. Reload the dashboard and try again.', { error: true, duration: 5000 });
                 return;
             }
+            const groups = [
+                {
+                    label: 'Questionnaires Statistics',
+                    options: (Array.isArray(data.stats.sections) ? data.stats.sections : []).map(section => ({
+                        id: 'section:' + section.no,
+                        label: 'Section ' + section.no + ' \u2022 ' + section.name
+                    }))
+                },
+                {
+                    label: 'Other dashboard records',
+                    options: [
+                        { id: 'failure', label: 'Question-Level Failure Rate' },
+                        { id: 'risk', label: 'Risk Flag Breakdown by Factor' },
+                        { id: 'volume', label: 'Applicant Volume Over Time' }
+                    ]
+                }
+            ];
+            let selection;
+            try {
+                selection = await window.DashboardPdf.selectRecords('Choose Admin PDF records', groups);
+            } catch (err) {
+                ADMIN.toast(err.message || 'Could not open the report filter.', { error: true, duration: 5000 });
+                return;
+            }
+            if (!selection) return;
+
             pdfBtn.disabled = true;
             pdfBtn.classList.add('is-busy');
             // a short moment so the button can show it is working
@@ -4698,13 +4724,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         overview: data.overview,
                         failure: data.failure,
                         risk: data.risk,
-                        volume: data.volume
+                        volume: data.volume,
+                        include: selection.include,
+                        includeAll: selection.includeAll
                     }, {
                         generated: now,
                         by: (document.getElementById('greeting') || {}).title ? document.getElementById('greeting').title.replace(/^Hello,\s*|!$/g, '') : 'Admin',
                         scope: data.overview && data.overview.scope
                     });
-                    window.DashboardPdf.download(blob, 'Admin-Dashboard-Statistics-' + day + '.pdf');
+                    window.DashboardPdf.download(blob, 'Admin-Dashboard-Statistics' + (selection.includeAll ? '' : '-Selected') + '-' + day + '.pdf');
                     downloaded = true;
                     const recorded = await window.DashboardPdf.recordDownload('admin');
                     if (recorded && recorded.activity) {
