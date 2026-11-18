@@ -4026,7 +4026,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return true;
         }).sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 20);
     };
-    const allKeys = () => activities().map(activityKey);
 
     async function readRequest(action, keys, retried) {
         const response = await fetch('../api/notification-read.php', {
