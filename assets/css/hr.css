@@ -9523,3 +9523,15 @@ html[data-motion="off"] .nav-notif-panel:not([hidden]) { animation: none; }
         gap: 6px;
     }
 }
+
+@media (max-width: 600px) {
+    :where(html[data-page="archive"]) #leftDropdown .dropdown-menu {
+        left: auto;
+        right: 0;
+        width: min(320px, calc(100vw - 32px));
+    }
+
+    :where(html[data-page="archive"]) #leftDropdown .dropdown-option .opt-label {
+        white-space: nowrap;
+    }
+}
