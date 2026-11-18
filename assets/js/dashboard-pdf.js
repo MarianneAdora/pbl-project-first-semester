@@ -185,7 +185,9 @@ if (['dashboardadmin', 'dashboardhr'].includes(document.documentElement.getAttri
         d.rect(0, 0, PAGE_W, 84, RED);
         d.text('Expertise', M, 20, 11, { bold: true, color: [255, 214, 220] });
         d.text(title, M, 36, 21, { bold: true, color: WHITE });
-        d.text(role + ' report  \u2022  Generated ' + stamp(opts.generated || new Date()) + (opts.by ? '  \u2022  by ' + opts.by : ''), M, 66, 9, { color: [255, 226, 230] });
+        const meta = role + ' report  \u2022  Generated ' + stamp(opts.generated || new Date()) +
+            (opts.scope ? '  \u2022  ' + opts.scope : '') + (opts.by ? '  \u2022  by ' + opts.by : '');
+        d.text(fit(meta, 9, false, CW), M, 66, 9, { color: [255, 226, 230] });
         d.y = 84 + 22;
     }
 
@@ -263,7 +265,7 @@ if (['dashboardadmin', 'dashboardhr'].includes(document.documentElement.getAttri
         const d = new Doc('Admin Dashboard Statistics');
 
         /* title band */
-        addTitleBand(d, 'Admin Dashboard Statistics', 'Admin', opts);
+        addTitleBand(d, 'Admin Dashboard Statistics', 'Admin', Object.assign({}, opts, { scope: overview.scope || opts.scope }));
 
         drawSummaryCards(d, [
             { label: 'Active HR accounts', value: Number(overview.hr_active) || 0, color: [28, 138, 219] },

@@ -102,13 +102,23 @@ function repo_admin_activity_feed(?string $hrActorName = null, bool $hrOnly = fa
     return ['rows' => $rows, 'total' => (int) $count->fetchColumn()];
 }
 
-function repo_activities_week(?PDO $pdo = null): int
+function repo_activities_week(?PDO $pdo = null, ?string $actorName = null, bool $hrOnly = false): int
 {
     $pdo = $pdo ?: db();
-    $st = $pdo->query(
+    $where = "actor IN ('HR', 'Admin')";
+    $params = [];
+    if ($actorName !== null) {
+        $where = "actor = 'HR' AND actor_name = :actor_name";
+        $params[':actor_name'] = $actorName;
+    } elseif ($hrOnly) {
+        $where = "actor = 'HR'";
+    }
+
+    $st = $pdo->prepare(
         "SELECT COUNT(*) FROM activity_log
-         WHERE actor IN ('HR', 'Admin') AND created_at >= (NOW() - INTERVAL '7 days')"
+         WHERE $where AND created_at >= (NOW() - INTERVAL '7 days')"
     );
+    $st->execute($params);
     return (int) $st->fetchColumn();
 }
 

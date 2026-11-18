@@ -52,39 +52,38 @@ require_once __DIR__ . '/../hr/hr-data.php';
 // Profile data for the sidebar picture (clicking it opens Settings)
 $profile = static_profile_for_page('../hr/data/avatars/');
 
-// Every number on this page is queried live from the database.
-$overview = repo_admin_overview();             // the three summary boxes
-$stats    = repo_admin_question_stats();       // Questionnaires Statistics: every question + the answer most applicants chose
 $hr_accounts = repo_admin_accounts();
-$all_log  = repo_recent_activity(null, 1000);
-$hr_names = array_values(array_unique(array_filter(array_map(
-    static fn(array $account): string => trim((string) $account['name']),
-    $hr_accounts
-), static fn(string $name): bool => $name !== '')));
 $activity_filter = trim((string) ($_GET['activity_filter'] ?? 'all'));
 $hr_actor_name = null;
+$hr_user_id = null;
 $hr_only = false;
 if ($activity_filter === 'hr') {
     $hr_only = true;
 } elseif (strpos($activity_filter, 'account:') === 0) {
-    $requested_name = substr($activity_filter, strlen('account:'));
-    if (in_array($requested_name, $hr_names, true)) {
-        $hr_actor_name = $requested_name;
-    } else {
+    $requested_id = filter_var(substr($activity_filter, strlen('account:')), FILTER_VALIDATE_INT);
+    foreach ($hr_accounts as $account) {
+        if ($requested_id !== false && (int) $account['id'] === (int) $requested_id) {
+            $hr_user_id = (int) $account['id'];
+            $hr_actor_name = trim((string) $account['name']);
+            break;
+        }
+    }
+    if ($hr_user_id === null) {
         $activity_filter = 'all';
     }
 } else {
     $activity_filter = 'all';
 }
+
+// Applicant statistics are attributed to the HR account that added each applicant.
+$overview = repo_admin_overview(null, $hr_actor_name, $hr_only);
+$stats    = repo_admin_question_stats(null, $hr_user_id, $hr_only);
+$failure  = repo_admin_failure_rates(20, null, $hr_user_id, $hr_only);
+$risk     = repo_admin_risk_flags(null, $hr_user_id, $hr_only);
+$volume   = repo_admin_volume(null, $hr_user_id, $hr_only);
 $activity_feed = repo_admin_activity_feed($hr_actor_name, $hr_only, 10);
 $recent = $activity_feed['rows'];
 $activity_total = $activity_feed['total'];
-// Total activity count (for the share bar on the summary box).
-$logTotal = count($all_log);
-
-$failure  = repo_admin_failure_rates(20);       // Question-Level Failure Rate (show all knockout questions)
-$risk     = repo_admin_risk_flags();           // Risk Flag Breakdown by Factor
-$volume   = repo_admin_volume();               // Applicant Volume Over Time
 
 // Share of something, used by the little bar on each summary box
 function share(int $part, int $total): int
@@ -93,11 +92,23 @@ function share(int $part, int $total): int
 }
 
 $hr_pct  = share((int) $overview['hr_active'], (int) $overview['hr_total']);
-$log_pct = share((int) $overview['activities_week'], $logTotal);
+$log_pct = share((int) $overview['activities_week'], $activity_total);
 
 $hr_note  = 'out of ' . (int) $overview['hr_total'] . ' HR account' . ($overview['hr_total'] === 1 ? '' : 's');
 $q_note   = 'in ' . (int) $overview['sections'] . ' section' . ($overview['sections'] === 1 ? '' : 's');
 $log_note = 'in the last 7 days';
+$scope_label = $hr_user_id !== null
+    ? 'HR account: ' . $hr_actor_name
+    : ($hr_only ? 'All HR Accounts' : 'All Activities');
+$scope_note = $hr_user_id !== null
+    ? 'Applicant statistics show applicants added by ' . $hr_actor_name . '; recent activity shows actions by this account.'
+    : ($hr_only
+        ? 'Applicant statistics show HR-added applicants; recent activity includes all HR accounts.'
+        : 'Applicant statistics and recent activity include all accounts.');
+$scope_note .= ' HR account and questionnaire setup totals remain system-wide.';
+$volume_subject = $hr_user_id !== null
+    ? 'Applications added by ' . $hr_actor_name
+    : ($hr_only ? 'Applications added by HR accounts' : 'Applications received');
 
 $q_count   = count($stats['questions']);
 $stats_sub = $q_count . ' question' . ($q_count === 1 ? '' : 's') . ' · ' . (
@@ -276,6 +287,22 @@ $greeting     = 'Hello, ' . $display_name . '!';
 
         <div class="admin-dashboard">
 
+            <div class="dashboard-scope">
+                <form class="dashboard-scope-filter" method="get">
+                    <label for="activityFilter">Dashboard view</label>
+                    <select id="activityFilter" name="activity_filter">
+                        <option value="all" <?= $activity_filter === 'all' ? 'selected' : '' ?>>All Activities</option>
+                        <option value="hr" <?= $activity_filter === 'hr' ? 'selected' : '' ?>>All HR Accounts</option>
+                        <?php foreach ($hr_accounts as $account): ?>
+                            <option value="<?= 'account:' . (int) $account['id'] ?>" <?= $hr_user_id === (int) $account['id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars(trim((string) $account['name']) . ' (' . (string) $account['email'] . ')', ENT_QUOTES, 'UTF-8') ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </form>
+                <p><?= htmlspecialchars($scope_note, ENT_QUOTES, 'UTF-8') ?></p>
+            </div>
+
             <!-- Summary boxes (on top, like the HR dashboard) -->
             <div class="admin-metrics">
                 <a class="stat-card tone-blue reveal" style="--i:2" href="hr-list.php" title="Open HR Accounts">
@@ -420,7 +447,7 @@ $greeting     = 'Hello, ' . $display_name . '!';
                     <div class="card-top">
                         <div>
                             <h3 id="volTitle">Applicant Volume Over Time</h3>
-                            <span class="chart-sub" id="volSub">Applications received per week</span>
+                            <span class="chart-sub" id="volSub"><?= htmlspecialchars($volume_subject, ENT_QUOTES, 'UTF-8') ?> per week</span>
                         </div>
                         <div class="vol-toggle" id="volToggle" role="group" aria-label="Group applications by">
                             <button type="button" data-mode="week" aria-pressed="true">Week</button>
@@ -436,23 +463,8 @@ $greeting     = 'Hello, ' . $display_name . '!';
             <!-- Recent Activities: the latest 10 things HR and the Admin did in the system -->
             <section class="dash-card activity-card reveal" style="--i:9" id="recentActivities" aria-labelledby="activityTitle">
                 <div class="card-top">
-                    <div class="activity-toolbar">
-                        <div class="activity-title">
-                            <h3 id="activityTitle">Recent Activities</h3>
-                        </div>
-                        <form class="activity-filter" method="get">
-                            <label for="activityFilter">View</label>
-                            <select id="activityFilter" name="activity_filter">
-                                <option value="all" <?= $activity_filter === 'all' ? 'selected' : '' ?>>All Activities</option>
-                                <option value="hr" <?= $activity_filter === 'hr' ? 'selected' : '' ?>>All HR Accounts</option>
-                                <?php foreach ($hr_names as $accountName): ?>
-                                    <option value="<?= htmlspecialchars('account:' . $accountName, ENT_QUOTES, 'UTF-8') ?>" <?= $activity_filter === ('account:' . $accountName) ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($accountName, ENT_QUOTES, 'UTF-8') ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <button type="submit">Apply</button>
-                        </form>
+                    <div class="activity-title">
+                        <h3 id="activityTitle">Recent Activities</h3>
                     </div>
                     <span class="activity-count"><?php echo htmlspecialchars($log_count, ENT_QUOTES, 'UTF-8'); ?></span>
                 </div>
@@ -489,7 +501,13 @@ $greeting     = 'Hello, ' . $display_name . '!';
         window.ADMIN_DASH = <?php echo json_encode([
             'account_id' => (int) ($_SESSION['user_id'] ?? 0),
             'stats' => $stats,
-            'overview' => ['hr_active' => $overview['hr_active'], 'questions' => $overview['questions'], 'sections' => $overview['sections']],
+            'overview' => [
+                'hr_active' => $overview['hr_active'],
+                'questions' => $overview['questions'],
+                'sections' => $overview['sections'],
+                'scope' => $scope_label,
+            ],
+            'volume_subject' => $volume_subject,
             'failure' => $failure,
             'risk' => $risk,
             'activity' => $recent,

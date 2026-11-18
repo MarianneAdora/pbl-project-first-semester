@@ -4230,6 +4230,11 @@ document.addEventListener('DOMContentLoaded', () => {
     handOff(document.getElementById('statsScroll'));
     handOff(document.querySelector('.activity-card .table-responsive'));
 
+    const activityFilter = document.getElementById('activityFilter');
+    if (activityFilter && activityFilter.form) {
+        activityFilter.addEventListener('change', () => activityFilter.form.submit());
+    }
+
     /* ---------- 1. Summary boxes: numbers count up, the activity box jumps to the list ---------- */
     const base = ADMIN.arrivedViaTransition ? 950 : 550;
     document.querySelectorAll('.card-value[data-count]').forEach((el, i) => {
@@ -4694,7 +4699,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         failure: data.failure,
                         risk: data.risk,
                         volume: data.volume
-                    }, { generated: now, by: (document.getElementById('greeting') || {}).title ? document.getElementById('greeting').title.replace(/^Hello,\s*|!$/g, '') : 'Admin' });
+                    }, {
+                        generated: now,
+                        by: (document.getElementById('greeting') || {}).title ? document.getElementById('greeting').title.replace(/^Hello,\s*|!$/g, '') : 'Admin',
+                        scope: data.overview && data.overview.scope
+                    });
                     window.DashboardPdf.download(blob, 'Admin-Dashboard-Statistics-' + day + '.pdf');
                     downloaded = true;
                     const recorded = await window.DashboardPdf.recordDownload('admin');
@@ -4762,7 +4771,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const vol = data.volume || {};
         const volSub = document.getElementById('volSub');
         const volToggle = document.getElementById('volToggle');
-        const subs = { week: 'Applications received per week', month: 'Applications received per month' };
+        const volumeSubject = data.volume_subject || 'Applications received';
+        const subs = { week: volumeSubject + ' per week', month: volumeSubject + ' per month' };
         let mode = 'week';
         let firstDraw = true;
 

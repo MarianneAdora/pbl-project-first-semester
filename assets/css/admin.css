@@ -2063,6 +2063,53 @@ html:where([data-page="addhr"],[data-page="addquestion"])[data-theme="dark"] .in
     gap: 22px;
 }
 
+:where(html[data-page="dashboardadmin"]) .dashboard-scope {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px 18px;
+    padding: 12px 16px;
+    border: 1px solid var(--edge);
+    border-radius: 12px;
+    background: var(--surface);
+}
+
+:where(html[data-page="dashboardadmin"]) .dashboard-scope p {
+    flex: 1 1 280px;
+    margin: 0;
+    color: var(--ink-soft);
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+:where(html[data-page="dashboardadmin"]) .dashboard-scope-filter {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin: 0;
+}
+
+:where(html[data-page="dashboardadmin"]) .dashboard-scope-filter label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ink-soft);
+}
+
+:where(html[data-page="dashboardadmin"]) .dashboard-scope-filter select {
+    min-height: 34px;
+    padding: 6px 10px;
+    border: 1px solid var(--edge);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
+    font-size: 12px;
+}
+
+:where(html[data-page="dashboardadmin"]) .dashboard-scope-filter select { max-width: min(300px, 56vw); }
+
 /* ---------- Summary boxes ---------- */
 :where(html[data-page="dashboardadmin"]) .admin-metrics {
     display: grid;
@@ -2753,43 +2800,6 @@ html:where([data-page="dashboardadmin"])[data-theme="dark"] .vol-chart { --vc: #
 :where(html[data-page="dashboardadmin"]) .activity-count { font-size: 12px; font-weight: 700; color: var(--ink-soft); }
 
 :where(html[data-page="dashboardadmin"]) .activity-card { scroll-margin-top: 20px; overflow: hidden; }
-
-:where(html[data-page="dashboardadmin"]) .activity-toolbar {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 12px 18px;
-    min-width: 0;
-}
-
-:where(html[data-page="dashboardadmin"]) .activity-filter {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 7px;
-    margin: 0;
-}
-
-:where(html[data-page="dashboardadmin"]) .activity-filter label {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--ink-soft);
-}
-
-:where(html[data-page="dashboardadmin"]) .activity-filter select,
-:where(html[data-page="dashboardadmin"]) .activity-filter button {
-    min-height: 34px;
-    padding: 6px 10px;
-    border: 1px solid var(--edge);
-    border-radius: 8px;
-    background: var(--surface);
-    color: var(--ink);
-    font: inherit;
-    font-size: 12px;
-}
-
-:where(html[data-page="dashboardadmin"]) .activity-filter select { max-width: min(260px, 56vw); }
-:where(html[data-page="dashboardadmin"]) .activity-filter button { cursor: pointer; font-weight: 700; }
 
 /* scrollable list: fills the card edge to edge, the header stays put, the rows scroll (latest 10) */
 :where(html[data-page="dashboardadmin"]) .activity-card .table-responsive {
