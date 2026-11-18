@@ -316,7 +316,7 @@ function repo_applicant_jd_url(int $positionId, ?PDO $pdo = null): string
     if ($positionId <= 0) return '';
     $pdo = $pdo ?: db();
     $read = function () use ($pdo, $positionId): string {
-        $st = $pdo->prepare("SELECT jd_url FROM job_positions WHERE id = :id AND archived_at IS NULL LIMIT 1");
+        $st = $pdo->prepare("SELECT jd_url FROM job_positions WHERE job_id = :id AND archived_at IS NULL LIMIT 1");
         $st->execute([':id' => $positionId]);
         return trim((string) ($st->fetchColumn() ?: ''));
     };
@@ -347,7 +347,7 @@ function repo_jd_key(string $s): string
 function repo_sync_position_jds(?PDO $pdo = null, bool $force = false): int
 {
     $pdo = $pdo ?: db();
-    $rows = $pdo->query("SELECT id, name FROM job_positions WHERE archived_at IS NULL AND (jd_url IS NULL OR jd_url = '') ORDER BY id")->fetchAll();
+    $rows = $pdo->query("SELECT job_id, job_name FROM job_positions WHERE archived_at IS NULL AND (jd_url IS NULL OR jd_url = '') ORDER BY job_id")->fetchAll();
     if (!$rows) return 0;
 
     if (!$force && session_status() === PHP_SESSION_ACTIVE) {
@@ -361,9 +361,9 @@ function repo_sync_position_jds(?PDO $pdo = null, bool $force = false): int
 
     $linked = 0;
     $taken  = [];
-    $upd = $pdo->prepare("UPDATE job_positions SET jd_url = :u, jd_public_id = :p WHERE id = :id AND (jd_url IS NULL OR jd_url = '')");
+    $upd = $pdo->prepare("UPDATE job_positions SET jd_url = :u, jd_public_id = :p WHERE job_id = :id AND (jd_url IS NULL OR jd_url = '')");
     foreach ($rows as $row) {
-        $key = repo_jd_key((string) $row['name']);
+        $key = repo_jd_key((string) $row['job_name']);
         if (strlen($key) < 3) continue;
         $best = null; $bestScore = 0; $tie = false;
         foreach ($assets as $i => $a) {

@@ -14,7 +14,7 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {
 // Keeps the browser copy of the Archive in step with hr-data.php
 require_once __DIR__ . '/hr-data.php';
 
-// The Job Position list (each position has its own job description PDF). BACKEND: SELECT id, name FROM job_positions
+// The Job Position list (each position has its own job description PDF). BACKEND: SELECT job_id, job_name FROM job_positions
 $positions = static_positions();
 ?>
 <!DOCTYPE html>

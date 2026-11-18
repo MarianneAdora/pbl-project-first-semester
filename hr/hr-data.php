@@ -31,7 +31,7 @@ function static_accounts(): array
         $accounts[$email] = [
             'hash'     => (string) $row['password_hash'],
             'role'     => 'hr',
-            'name'     => (string) $row['name'],
+'name' => (string) $row['job_name'],
             'redirect' => 'hr/dashboard-hr.php'
         ];
     }
@@ -473,13 +473,13 @@ function static_applicants(): array
     $rows = $pdo->query("
         SELECT a.applicant_id AS id, a.name, a.first_name, a.middle_name, a.last_name,
                a.email, a.phone_number AS contact, a.position_id,
-               p.name AS position,
+               p.job_name AS position,
                a.status, a.result,
                a.created_at AS updated,
                a.invited_at, a.submitted_at, a.passed_at,
                a.cv_file_url, a.cv_hash
         FROM applicant a
-        LEFT JOIN job_positions p ON p.id = a.position_id AND p.archived_at IS NULL
+        LEFT JOIN job_positions p ON p.job_id = a.position_id AND p.archived_at IS NULL
         WHERE a.deleted_at IS NULL
         ORDER BY a.applicant_id ASC
     ")->fetchAll();
@@ -527,14 +527,14 @@ function static_archived_applicants(): array
     $rows = $pdo->query("
         SELECT a.applicant_id AS id, a.name, a.first_name, a.middle_name, a.last_name,
                a.email, a.phone_number AS contact, a.position_id,
-               p.name AS position,
+               p.job_name AS position,
                a.status, a.result,
                a.created_at AS updated,
                a.invited_at, a.submitted_at, a.passed_at,
                a.deleted_at AS deleted,
                a.cv_file_url, a.cv_hash
         FROM applicant a
-        LEFT JOIN job_positions p ON p.id = a.position_id AND p.archived_at IS NULL
+        LEFT JOIN job_positions p ON p.job_id = a.position_id AND p.archived_at IS NULL
         WHERE a.deleted_at IS NOT NULL
         ORDER BY a.deleted_at DESC
     ")->fetchAll();
@@ -804,12 +804,12 @@ function static_add_applicant(array $in, ?array $cvUpload = null): array
    (and uploads that position's job description PDF). Every position has its OWN job description, so the
    applicant is shown the PDF of the position they were added under (applicant/questionnaire.php, question 1).
    Stored in the database table job_positions; the PDFs are kept in Cloudinary (jd_url column).
-     id, name, jd_url, jd_public_id, created_at, archived_at
+     job_id, job_name, jd_url, jd_public_id, created_at, archived_at
    An applicant keeps position_id + position (the name when they were added).
    ========================================================================== */
 const STATIC_JD_BYTES = 5 * 1024 * 1024;                   // 5 MB at most, like the CV
 
-// Active positions in the order they were created. BACKEND: SELECT id, name, jd_url FROM job_positions WHERE archived_at IS NULL ORDER BY id
+// Active positions in the order they were created. BACKEND: SELECT job_id, job_name, jd_url FROM job_positions WHERE archived_at IS NULL ORDER BY job_id
 function static_positions(): array
 {
     $pdo = db();
@@ -820,12 +820,12 @@ function static_positions(): array
     } catch (Throwable $e) {
         error_log('Job description sync error: ' . $e->getMessage());
     }
-    $stmt = $pdo->query("SELECT id, name, jd_url, jd_public_id, created_at, archived_at FROM job_positions WHERE archived_at IS NULL ORDER BY id");
+    $stmt = $pdo->query("SELECT job_id, job_name, jd_url, jd_public_id, created_at, archived_at FROM job_positions WHERE archived_at IS NULL ORDER BY job_id");
     $out = [];
     while ($row = $stmt->fetch()) {
         $out[] = [
-            'id'          => (int) $row['id'],
-            'name'        => (string) $row['name'],
+            'id'          => (int) $row['job_id'],
+            'name'        => (string) $row['job_name'],
             'jd'          => !empty($row['jd_url']) ? [
                 'name'       => '',
                 'size'       => 0,
@@ -843,13 +843,13 @@ function static_position_find(int $id): ?array
 {
     if ($id <= 0) return null;
     $pdo = db();
-    $stmt = $pdo->prepare("SELECT id, name, jd_url, jd_public_id, created_at, archived_at FROM job_positions WHERE id = :id AND archived_at IS NULL LIMIT 1");
+    $stmt = $pdo->prepare("SELECT job_id, job_name, jd_url, jd_public_id, created_at, archived_at FROM job_positions WHERE job_id = :id AND archived_at IS NULL LIMIT 1");
     $stmt->execute([':id' => $id]);
     $row = $stmt->fetch();
     if (!$row) return null;
     return [
-        'id'          => (int) $row['id'],
-        'name'        => (string) $row['name'],
+        'id'          => (int) $row['job_id'],
+        'name'        => (string) $row['job_name'],
         'jd'          => !empty($row['jd_url']) ? [
             'name'       => '',
             'size'       => 0,
@@ -865,8 +865,8 @@ function static_position_find(int $id): ?array
 function static_position_public(array $p): array
 {
     return [
-        'id'      => (int) $p['id'],
-        'name'    => (string) $p['name'],
+        'id' => (int) $p['job_id'],
+        'name'    => (string) $p['job_name'],
         'has_jd'  => !empty($p['jd']['url']),
         'jd_name' => !empty($p['jd']['name']) ? (string) $p['jd']['name'] : '',
         'jd_url'  => !empty($p['jd']['url']) ? (string) $p['jd']['url'] : ''
@@ -923,7 +923,7 @@ function static_position_add(string $name, ?array $jdUpload = null): array
 
     // Check for duplicate active name in the database
     $pdo = db();
-    $stmt = $pdo->prepare("SELECT id FROM job_positions WHERE archived_at IS NULL AND LOWER(name) = LOWER(:name) LIMIT 1");
+    $stmt = $pdo->prepare("SELECT job_id FROM job_positions WHERE archived_at IS NULL AND LOWER(job_name) = LOWER(:name) LIMIT 1");
     $stmt->execute([':name' => $name]);
     if ($stmt->fetch()) {
         throw new InvalidArgumentException('This job position already exists. Choose it from the list.');
@@ -951,7 +951,7 @@ function static_position_add(string $name, ?array $jdUpload = null): array
         }
     }
 
-    $stmt = $pdo->prepare("INSERT INTO job_positions (name, jd_url, jd_public_id, created_at, archived_at) VALUES (:name, :jd_url, :jd_public_id, :created_at, NULL) RETURNING id, name, jd_url, jd_public_id, created_at, archived_at");
+    $stmt = $pdo->prepare("INSERT INTO job_positions (job_name, jd_url, jd_public_id, created_at, archived_at) VALUES (:name, :jd_url, :jd_public_id, :created_at, NULL) RETURNING job_id, job_name, jd_url, jd_public_id, created_at, archived_at");
     $stmt->execute([
         ':name'         => $name,
         ':jd_url'       => $jdUrl,
@@ -961,8 +961,8 @@ function static_position_add(string $name, ?array $jdUpload = null): array
     $row = $stmt->fetch();
 
     $saved = [
-        'id'          => (int) $row['id'],
-        'name'        => (string) $row['name'],
+        'id'          => (int) $row['job_id'],
+        'name'        => (string) $row['job_name'],
         'jd'          => !empty($row['jd_url']) ? [
             'name'       => $jdName,
             'size'       => (int) ($jdUpload['size'] ?? 0),
@@ -981,7 +981,7 @@ function static_position_delete(int $id): array
 {
     $pdo = db();
 
-    $stmt = $pdo->prepare("SELECT id, name, jd_public_id, archived_at FROM job_positions WHERE id = :id LIMIT 1");
+    $stmt = $pdo->prepare("SELECT job_id, job_name, jd_public_id, archived_at FROM job_positions WHERE job_id = :id LIMIT 1");
     $stmt->execute([':id' => $id]);
     $pos = $stmt->fetch();
     if (!$pos) throw new InvalidArgumentException('That job position was not found.');
@@ -1002,16 +1002,16 @@ function static_position_delete(int $id): array
         }
     }
 
-    $stmt = $pdo->prepare("UPDATE job_positions SET archived_at = :archived_at WHERE id = :id RETURNING id, name, jd_url, jd_public_id, created_at, archived_at");
+    $stmt = $pdo->prepare("UPDATE job_positions SET archived_at = :archived_at WHERE job_id = :job_id RETURNING job_id, job_name, jd_url, jd_public_id, created_at, archived_at");
     $stmt->execute([
         ':archived_at' => static_now()->format('Y-m-d H:i:s'),
-        ':id'          => $id
+        ':job_id'      => $id
     ]);
     $row = $stmt->fetch();
 
     $saved = [
-        'id'          => (int) $row['id'],
-        'name'        => (string) $row['name'],
+        'id'          => (int) $row['job_id'],
+        'name'        => (string) $row['job_name'],
         'jd'          => !empty($row['jd_url']) ? [
             'name'       => '',
             'size'       => 0,
@@ -1281,7 +1281,7 @@ if (!function_exists('static_seed_hr_accounts')) {
         $out = [];
         while ($row = $stmt->fetch()) {
             $out[] = [
-                'id'          => (int) $row['id'],
+    'id' => (int) $row['job_id'],
                 'name'        => (string) $row['name'],
                 'email'       => (string) $row['email'],
                 'role'        => 'HR Staff',

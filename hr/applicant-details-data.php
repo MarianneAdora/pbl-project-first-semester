@@ -66,13 +66,13 @@ function details_position(?int $positionId): array
     if (!$positionId) return $none;
     try {
         $pdo = db();
-        $st = $pdo->prepare("SELECT name, jd_url, archived_at FROM job_positions WHERE id = :id LIMIT 1");
+        $st = $pdo->prepare("SELECT job_name, jd_url, archived_at FROM job_positions WHERE job_id = :id LIMIT 1");
         $st->execute([':id' => $positionId]);
         $row = $st->fetch();
-        if (!$row || trim((string) $row['name']) === '') return $none;
+        if (!$row || trim((string) $row['job_name']) === '') return $none;
         $archived = !empty($row['archived_at']);
         return [
-            'name'     => (string) $row['name'],
+            'name'     => (string) $row['job_name'],
             'jd_url'   => $archived ? '' : trim((string) ($row['jd_url'] ?? '')),
             'archived' => $archived
         ];

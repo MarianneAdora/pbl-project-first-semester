@@ -40,8 +40,8 @@ CREATE INDEX idx_users_status ON users(status);
 -- positions via the "+ Add job position" control in Add Applicant.
 -- ------------------------------------------------------------
 CREATE TABLE job_positions (
-    id            SERIAL PRIMARY KEY,
-    name          VARCHAR(100) NOT NULL,
+    job_id         SERIAL PRIMARY KEY,
+    job_name       VARCHAR(100) NOT NULL,
     jd_url        VARCHAR(512),         -- Cloudinary secure_url
     jd_public_id  VARCHAR(255),         -- Cloudinary public_id (for deletion)
     created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -59,7 +59,7 @@ CREATE TABLE applicant (
     reference_code       VARCHAR(50)  NOT NULL UNIQUE,
     secure_token         VARCHAR(64)  NOT NULL UNIQUE,
     encoded_by_user_id   INT REFERENCES users(user_id),
-    position_id          INT REFERENCES job_positions(id), -- the job position this applicant was added under
+    position_id          INT REFERENCES job_positions(job_id), -- the job position this applicant was added under
 
     name                 VARCHAR(255) NOT NULL,   -- full name = first + middle + last (kept for the rest of the app)
     first_name           VARCHAR(100) NOT NULL,
