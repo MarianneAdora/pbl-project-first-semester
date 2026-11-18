@@ -2999,6 +2999,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastCount = -1;
     const readKeys = new Set();
     let readStateReady = false;
+    let feedRefreshInFlight = null;
     const expandedKeys = new Set();
 
     const accountId = Number((window.HR_ACCOUNT || {}).id) || 0;
@@ -3246,7 +3247,6 @@ document.addEventListener('DOMContentLoaded', () => {
         panel.hidden = false;
         bell.setAttribute('aria-expanded', 'true');
         paintList();
-        refreshFeed();
     }
 
     function closePanel() {
@@ -3300,28 +3300,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Refresh the server activity and account-specific read state, including changes made in other tabs.
     async function refreshFeed() {
+        if (feedRefreshInFlight) return feedRefreshInFlight;
+        const request = (async () => {
+            try {
+                const response = await fetch('hr-data.php', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({ action: 'activity' })
+                });
+                const data = await response.json();
+                if (!response.ok || !data || data.status !== 'success' || !Array.isArray(data.activity)) {
+                    throw new Error(data && data.message ? data.message : 'Could not refresh notifications.');
+                }
+                feed = data.activity;
+                if (Array.isArray(data.completed_ids)) {
+                    completedApplicantIds = data.completed_ids.map(Number).filter(id => Number.isSafeInteger(id) && id > 0);
+                }
+                paintRecentApplicants(data.recent_applicants);
+                await syncReadState();
+                paint();
+            } catch (err) {
+                console.error('Could not refresh HR notifications.', err);
+                if (err && err.message === 'Your session has ended. Please log in again.') {
+                    window.location.replace('../index.php');
+                    return;
+                }
+                if (!panel.hidden) HR.toast(err.message || 'Could not refresh notifications.', { error: true, duration: 6000 });
+            }
+        })();
+        feedRefreshInFlight = request;
         try {
-            const response = await fetch('hr-data.php', {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify({ action: 'activity' })
-            })
-            ;
-            const data = await response.json();
-            if (!response.ok || !data || data.status !== 'success' || !Array.isArray(data.activity)) {
-                throw new Error(data && data.message ? data.message : 'Could not refresh notifications.');
-            }
-            feed = data.activity;
-            if (Array.isArray(data.completed_ids)) {
-                completedApplicantIds = data.completed_ids.map(Number).filter(id => Number.isSafeInteger(id) && id > 0);
-            }
-            paintRecentApplicants(data.recent_applicants);
-            await syncReadState();
-            paint();
-        } catch (err) {
-            console.error('Could not refresh HR notifications.', err);
-            if (!panel.hidden) HR.toast(err.message || 'Could not refresh notifications.', { error: true, duration: 6000 });
+            await request;
+        } finally {
+            if (feedRefreshInFlight === request) feedRefreshInFlight = null;
         }
     }
 

@@ -1754,7 +1754,9 @@ function static_profile_for_page(string $avatarBase): array
 if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) !== false
     && strcasecmp(realpath($_SERVER['SCRIPT_FILENAME']), __FILE__) === 0) {   // strcasecmp: Windows paths
 
+    require_once __DIR__ . '/../src/Helpers/security.php';
     if (session_status() === PHP_SESSION_NONE) session_start();
+    restore_remembered_session();
     header('Content-Type: application/json; charset=UTF-8');
     error_reporting(0);          // suppress warnings/notices that would corrupt the JSON response
     @ini_set('display_errors', '0');

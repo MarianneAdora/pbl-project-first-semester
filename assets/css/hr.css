@@ -9571,3 +9571,35 @@ html[data-motion="off"] .nav-notif-panel:not([hidden]) { animation: none; }
         white-space: nowrap;
     }
 }
+
+@media (max-width: 600px) {
+    :where(html[data-page="archive"]) #statusDropdown .dropdown-menu {
+        overflow-x: hidden;
+    }
+
+    :where(html[data-page="archive"]) #statusDropdown .dropdown-option {
+        min-width: 0;
+        height: auto;
+        min-height: 44px;
+        gap: 6px;
+        padding: 6px 8px;
+    }
+
+    :where(html[data-page="archive"]) #statusDropdown .opt-label {
+        min-width: 0;
+        font-size: 12px;
+        line-height: 1.15;
+        overflow-wrap: anywhere;
+    }
+
+    :where(html[data-page="archive"]) #statusDropdown .opt-count {
+        flex: 0 0 28px;
+        min-width: 28px;
+        padding-right: 4px;
+        padding-left: 4px;
+    }
+
+    :where(html[data-page="archive"]) #statusDropdown .opt-check {
+        display: none;
+    }
+}
