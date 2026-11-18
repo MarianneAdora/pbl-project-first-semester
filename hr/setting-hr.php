@@ -11,6 +11,9 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {
     exit();
 }
 
+require_once __DIR__ . '/../src/Helpers/security.php';
+$csrf = csrf_token();
+
 // HR settings page; archive sync is loaded from the database below.
 require_once __DIR__ . '/../src/Helpers/db.php';
 require_once __DIR__ . '/hr-data.php';
@@ -29,6 +32,7 @@ $account_avatar_url = $profile['avatar_url'];
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<?php echo htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8'); ?>">
     <title>Settings - Expertise Portal</title>
 
     <!-- Runs before first paint so the screen is already covered when arriving via login -->

@@ -20,14 +20,18 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $json = json_decode((string) file_get_contents('php://input'), true);
 $input = is_array($json) ? $json : $_POST;
-$csrf = (string) ($input['csrf_token'] ?? '');
-if (!csrf_verify($csrf)) {
-    notification_read_respond(['status' => 'error', 'message' => 'Invalid CSRF token. Please refresh and try again.'], 403);
-}
-
 $userId = (int) ($_SESSION['user_id'] ?? 0);
 if ($userId <= 0 || !in_array((string) ($_SESSION['user_role'] ?? ''), ['hr', 'admin'], true)) {
     notification_read_respond(['status' => 'error', 'message' => 'Your session has ended. Please log in again.'], 403);
+}
+
+$csrf = (string) ($input['csrf_token'] ?? '');
+if (!csrf_verify($csrf)) {
+    notification_read_respond([
+        'status' => 'error',
+        'message' => 'Invalid CSRF token. Please try again.',
+        'csrf_token' => csrf_token(),
+    ], 403);
 }
 
 $action = (string) ($input['action'] ?? '');

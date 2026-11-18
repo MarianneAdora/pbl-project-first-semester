@@ -11,6 +11,9 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {
     exit();
 }
 
+require_once __DIR__ . '/../src/Helpers/security.php';
+$csrf = csrf_token();
+
 // Keeps the browser copy of the Archive in step with hr-data.php
 require_once __DIR__ . '/hr-data.php';
 
@@ -22,6 +25,7 @@ $positions = static_positions();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<?php echo htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8'); ?>">
     <title>Add Applicant - Expertise Portal</title>
 
     <!-- Runs before first paint so the screen is already covered when arriving via login -->

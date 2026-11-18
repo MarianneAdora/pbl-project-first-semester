@@ -2113,6 +2113,7 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
                 static_respond([
                     'status' => 'success',
                     'activity' => static_hr_feed(),
+                    'completed_ids' => static_completed_ids(static_applicants()),
                     'recent_applicants' => repo_applicants_recent(null, 10)
                 ]);
                 break;
