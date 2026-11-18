@@ -2588,7 +2588,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         { id: 'duration', label: 'Time-to-Complete Distribution (including continued pages)' },
                         { id: 'turnaround', label: 'Scheduling Turnaround Time' }
                     ]
-                }]);
+                }], pdfBtn);
             } catch (err) {
                 HR.toast(err.message || 'Could not open the report filter.', { error: true, duration: 5000 });
                 return;

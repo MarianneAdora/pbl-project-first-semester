@@ -14,6 +14,8 @@ if (['dashboardadmin', 'dashboardhr'].includes(document.documentElement.getAttri
 
     const RED = [163, 8, 30], INK = [31, 31, 35], SOFT = [91, 95, 102], FAINT = [139, 144, 152];
     const TRACK = [232, 234, 237], PANEL = [243, 244, 246], WHITE = [255, 255, 255];
+    let reportFilterSequence = 0;
+    let activeReportFilter = null;
 
     // one colour per section, the same as the chart on the Dashboard
     const PALETTE = ['#8f8aea', '#74cfb9', '#f8a09a', '#f6c453', '#7ab8f0', '#c58ae0'];
@@ -252,7 +254,11 @@ if (['dashboardadmin', 'dashboardhr'].includes(document.documentElement.getAttri
         return buildAdmin(report, opts);
     }
 
-    function selectRecords(title, groups) {
+    function selectRecords(title, groups, trigger) {
+        if (activeReportFilter) {
+            activeReportFilter(null, false);
+            return Promise.resolve(null);
+        }
         return new Promise((resolve) => {
             const options = groups.reduce((all, group) => all.concat(group.options), []);
             if (!options.length) {
@@ -260,23 +266,26 @@ if (['dashboardadmin', 'dashboardhr'].includes(document.documentElement.getAttri
                 return;
             }
 
-            const dialog = document.createElement('dialog');
-            dialog.className = 'dashboard-report-filter';
-            dialog.setAttribute('aria-labelledby', 'dashboardReportFilterTitle');
+            const panel = document.createElement('div');
+            panel.id = 'dashboardReportFilter' + (++reportFilterSequence);
+            panel.className = 'dashboard-report-filter';
+            panel.setAttribute('role', 'dialog');
+            panel.setAttribute('aria-modal', 'false');
+            panel.setAttribute('aria-labelledby', panel.id + 'Title');
 
             const content = document.createElement('div');
             content.className = 'dashboard-report-filter-content';
 
             const heading = document.createElement('h2');
-            heading.id = 'dashboardReportFilterTitle';
+            heading.id = panel.id + 'Title';
             heading.textContent = title;
             content.appendChild(heading);
 
             const description = document.createElement('p');
-            description.id = 'dashboardReportFilterDescription';
+            description.id = panel.id + 'Description';
             description.className = 'dashboard-report-filter-description';
             description.textContent = 'Choose which dashboard records to include in the PDF.';
-            dialog.setAttribute('aria-describedby', description.id);
+            panel.setAttribute('aria-describedby', description.id);
             content.appendChild(description);
 
             const fields = document.createElement('div');
@@ -324,18 +333,56 @@ if (['dashboardadmin', 'dashboardhr'].includes(document.documentElement.getAttri
             selected.disabled = true;
             actions.append(cancel, all, selected);
             content.appendChild(actions);
-            dialog.appendChild(content);
-            document.body.appendChild(dialog);
+            panel.appendChild(content);
+            document.body.appendChild(panel);
 
             let finished = false;
-            const finish = (result) => {
+            const finish = (result, restoreFocus) => {
                 if (finished) return;
                 finished = true;
-                if (dialog.open) dialog.close();
-                dialog.remove();
+                activeReportFilter = null;
+                document.removeEventListener('click', onOutsideClick);
+                document.removeEventListener('keydown', onKeyDown);
+                window.removeEventListener('resize', positionPanel);
+                window.removeEventListener('scroll', positionPanel, true);
+                panel.remove();
+                if (trigger) {
+                    trigger.setAttribute('aria-expanded', 'false');
+                    trigger.removeAttribute('aria-controls');
+                    if (restoreFocus !== false) trigger.focus();
+                }
                 resolve(result);
             };
+            activeReportFilter = finish;
             const checkedOptions = () => checkboxes.filter((checkbox) => checkbox.checked);
+            const positionPanel = () => {
+                if (!trigger || !trigger.isConnected) {
+                    panel.style.left = Math.max(12, (window.innerWidth - panel.offsetWidth) / 2) + 'px';
+                    panel.style.top = Math.max(12, (window.innerHeight - panel.offsetHeight) / 2) + 'px';
+                    return;
+                }
+                const rect = trigger.getBoundingClientRect();
+                const margin = 12;
+                const width = Math.min(420, window.innerWidth - margin * 2);
+                panel.style.width = width + 'px';
+                const height = panel.offsetHeight;
+                const left = Math.max(margin, Math.min(rect.right - width, window.innerWidth - width - margin));
+                let top = rect.bottom + 8;
+                if (top + height > window.innerHeight - margin) {
+                    top = Math.max(margin, rect.top - height - 8);
+                }
+                panel.style.left = left + 'px';
+                panel.style.top = Math.min(top, window.innerHeight - height - margin) + 'px';
+            };
+            const onOutsideClick = (event) => {
+                if (!panel.contains(event.target) && (!trigger || !trigger.contains(event.target))) finish(null, false);
+            };
+            const onKeyDown = (event) => {
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    finish(null);
+                }
+            };
 
             checkboxes.forEach((checkbox) => {
                 checkbox.addEventListener('change', () => {
@@ -349,15 +396,17 @@ if (['dashboardadmin', 'dashboardhr'].includes(document.documentElement.getAttri
                 if (!chosen.length) return;
                 finish({ include: chosen, includeAll: chosen.length === options.length });
             });
-            dialog.addEventListener('cancel', (event) => {
-                event.preventDefault();
-                finish(null);
-            });
-            dialog.addEventListener('click', (event) => {
-                if (event.target === dialog) finish(null);
-            });
-            dialog.showModal();
-            cancel.focus();
+            document.addEventListener('click', onOutsideClick);
+            document.addEventListener('keydown', onKeyDown);
+            window.addEventListener('resize', positionPanel);
+            window.addEventListener('scroll', positionPanel, true);
+            if (trigger) {
+                trigger.setAttribute('aria-haspopup', 'dialog');
+                trigger.setAttribute('aria-expanded', 'true');
+                trigger.setAttribute('aria-controls', panel.id);
+            }
+            positionPanel();
+            checkboxes[0].focus();
         });
     }
 

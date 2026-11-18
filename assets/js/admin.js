@@ -4703,7 +4703,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ];
             let selection;
             try {
-                selection = await window.DashboardPdf.selectRecords('Choose Admin PDF records', groups);
+                selection = await window.DashboardPdf.selectRecords('Choose Admin PDF records', groups, pdfBtn);
             } catch (err) {
                 ADMIN.toast(err.message || 'Could not open the report filter.', { error: true, duration: 5000 });
                 return;

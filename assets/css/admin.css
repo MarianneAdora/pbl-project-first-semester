@@ -2289,20 +2289,20 @@ html:where([data-page="dashboardadmin"])[data-theme="dark"] .stat-icon { backgro
 :where(html[data-page="dashboardadmin"]) .stats-download.is-busy svg { animation: pdfBob 0.7s ease-in-out infinite; }
 @keyframes pdfBob { 50% { transform: translateY(3px); } }
 
-dialog.dashboard-report-filter {
-    width: min(580px, calc(100vw - 28px));
-    max-width: 580px;
-    max-height: 88vh;
-    padding: 0;
+.dashboard-report-filter {
+    position: fixed;
+    z-index: 1200;
+    width: min(420px, calc(100vw - 24px));
+    max-height: min(80vh, 640px);
+    overflow: hidden;
     border: 1px solid var(--edge);
-    border-radius: 16px;
+    border-radius: 12px;
     background: var(--surface);
     color: var(--ink);
-    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
 }
 
-dialog.dashboard-report-filter::backdrop { background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(3px); }
-.dashboard-report-filter-content { display: flex; flex-direction: column; max-height: 88vh; padding: 22px; }
+.dashboard-report-filter-content { display: flex; flex-direction: column; max-height: min(80vh, 640px); padding: 18px; }
 .dashboard-report-filter-content h2 { margin: 0; color: var(--ink); font-size: 18px; font-weight: 800; }
 .dashboard-report-filter-description { margin: 6px 0 16px; color: var(--ink-soft); font-size: 12px; line-height: 1.45; }
 .dashboard-report-filter-groups { display: grid; flex: 1 1 auto; min-height: 0; gap: 14px; overflow-y: auto; padding: 2px 2px 8px; }
@@ -2318,8 +2318,8 @@ dialog.dashboard-report-filter::backdrop { background: rgba(15, 23, 42, 0.55); b
 .dashboard-report-filter-actions button.is-selected:disabled { opacity: 0.5; cursor: not-allowed; }
 
 @media (max-width: 480px) {
-    .dashboard-report-filter-content { padding: 18px; }
-    .dashboard-report-filter-actions button { flex: 1 1 100%; }
+    .dashboard-report-filter-content { padding: 16px; }
+    .dashboard-report-filter-actions button { flex: 1 1 auto; }
 }
 
 /* ---------- Questionnaires Statistics: sideways bars (left to right), scrollable ---------- */
