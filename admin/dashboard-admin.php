@@ -55,30 +55,15 @@ $profile = static_profile_for_page('../hr/data/avatars/');
 // Every number on this page is queried live from the database.
 $overview = repo_admin_overview();             // the three summary boxes
 $stats    = repo_admin_question_stats();       // Questionnaires Statistics: every question + the answer most applicants chose
-$requests = static_profile_requests();
 $all_log  = repo_recent_activity(null, 1000);
 $recent   = array_values(array_filter(
     $all_log,
-    static fn(array $row): bool => $row['activity'] !== 'Password Change Requested'
+    static fn(array $row): bool => true
 ));
-foreach ($requests as $request) {
-    $recent[] = [
-        'at'       => repo_activity_format_timestamp($request['requested_at'] ?? null),
-        'activity' => 'Password Change Requested',
-        'details'  => $request['name'] . ' (HR) · ' . $request['email'],
-        'by'       => 'HR',
-        'actor_name' => $request['name'],
-        'actor'    => 'HR',
-        'kind'     => 'pw_request',
-        'req'      => $request
-    ];
-}
-usort($recent, static fn(array $a, array $b): int => (strtotime($b['at']) ?: 0) <=> (strtotime($a['at']) ?: 0));
+usort($recent, static fn(array $a, array $b): int => (strtotime($b['at'] ?? '') ?: 0) <=> (strtotime($a['at'] ?? '') ?: 0));
 $recent = array_slice($recent, 0, 10);
 // Total activity count (for the share bar on the summary box).
 $logTotal = count($all_log);
-
-$pending = count(array_filter($requests, static fn(array $request): bool => $request['status'] === 'pending'));
 
 $failure  = repo_admin_failure_rates(20);       // Question-Level Failure Rate (show all knockout questions)
 $risk     = repo_admin_risk_flags();           // Risk Flag Breakdown by Factor
@@ -161,34 +146,6 @@ $greeting     = 'Hello, ' . $display_name . '!';
             <div class="modal-actions">
                 <button type="button" class="modal-btn is-cancel" id="cancelLogout">Cancel</button>
                 <button type="button" class="modal-btn is-confirm" id="confirmLogout">Log Out</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- HR password change: opens when the Admin clicks a request in Recent Activities -->
-    <div class="modal-backdrop" id="pwReqModal" role="dialog" aria-modal="true" aria-labelledby="pwReqTitle">
-        <div class="modal-card req-card">
-            <h3 id="pwReqTitle">Approval needed</h3>
-            <p class="req-lead" id="pwReqLead"></p>
-            <p class="req-email" id="pwReqEmail"></p>
-            <div class="req-status" id="pwReqStatus"></div>
-
-            <section class="req-password-card" aria-label="Password change summary">
-                <h4>Password</h4>
-                <div class="req-password-row"><span>Current</span><strong>Verified</strong></div>
-                <div class="req-password-row"><span>New</span><strong>Change requested</strong></div>
-            </section>
-            <p class="req-note" id="pwReqNote">Passwords are stored securely and cannot be viewed here. If approved, the new password takes effect at the next login.</p>
-
-            <details class="req-reason" id="pwReqReasonBox">
-                <summary>Add a rejection reason <span>(optional)</span></summary>
-                <textarea id="pwReqReason" maxlength="200" rows="2" placeholder="This reason will be shared with HR."></textarea>
-            </details>
-
-            <div class="modal-actions req-actions">
-                <button type="button" class="modal-btn is-cancel" id="pwReqClose" hidden>Close</button>
-                <button type="button" class="modal-btn is-reject" id="pwReqReject">Reject</button>
-                <button type="button" class="modal-btn is-approve" id="pwReqApprove">Approve</button>
             </div>
         </div>
     </div>
@@ -283,14 +240,7 @@ $greeting     = 'Hello, ' . $display_name . '!';
                             <button type="button" class="notif-markall" id="notifMarkAll">Mark all as read</button>
                         </div>
                         <ul class="notif-list" id="notifList"></ul>
-                        <div class="pw-wrap" id="pwWrap" hidden>
-                            <div class="pw-head">
-                                <h3>Password changes waiting for your approval</h3>
-                                <button type="button" class="pw-markall" id="pwMarkAll">Decide all</button>
-                            </div>
-                            <ul class="pw-list" id="pwList"></ul>
-                        </div>
-                        <p class="notif-foot">HR activity, including name, email, picture and password changes, also appears under Recent Activities.</p>
+                        <p class="notif-foot">HR activity, including name, email and picture changes, also appears under Recent Activities.</p>
                     </div>
                 </div>
             </div>
@@ -460,8 +410,6 @@ $greeting     = 'Hello, ' . $display_name . '!';
                 <div class="card-top">
                     <div class="activity-title">
                         <h3 id="activityTitle">Recent Activities</h3>
-                        <!-- HR password changes waiting for you: the line is clickable (approve / reject) -->
-                        <span class="pending-chip" id="pendingChip" hidden></span>
                     </div>
                     <span class="activity-count"><?php echo htmlspecialchars($log_count, ENT_QUOTES, 'UTF-8'); ?></span>
                 </div>
@@ -503,8 +451,7 @@ $greeting     = 'Hello, ' . $display_name . '!';
             'risk' => $risk,
             'activity' => $recent,
             'volume' => $volume,
-            'pending' => $pending,
-            'pw_requests' => array_values(array_filter($requests, static fn(array $r): bool => $r['status'] === 'pending'))
+            'activity' => $recent,
         ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
     </script>
     <!-- Shared admin behaviour first, then this page's script -->

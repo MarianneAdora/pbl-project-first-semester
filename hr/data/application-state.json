@@ -2446,40 +2446,5 @@
         "email": "admin@expertise.com",
         "avatar": "admin-7978d8f0a326.jpg",
         "hash": "$2y$10$TggIZEgjf8zgB.We1aEKe.3O8MCiEYMRT00bM/d0P7MbyLZSuT77."
-    },
-    "password_requests": [
-        {
-            "id": 1,
-            "account_id": 1,
-            "name": "HR",
-            "email": "hr@expertise.com",
-            "status": "rejected",
-            "requested_at": "2026-11-01 10:50:16",
-            "decided_at": "2026-11-01 10:51:26",
-            "decided_by": "Admin",
-            "reason": "sorry no update"
-        },
-        {
-            "id": 2,
-            "account_id": 1,
-            "name": "HR",
-            "email": "hr@expertise.com",
-            "status": "approved",
-            "requested_at": "2026-11-01 10:55:25",
-            "decided_at": "2026-11-01 10:55:49",
-            "decided_by": "Admin",
-            "reason": ""
-        },
-        {
-            "id": 3,
-            "account_id": 1,
-            "name": "HR",
-            "email": "hr@expertise.com",
-            "status": "approved",
-            "requested_at": "2026-11-01 11:27:23",
-            "decided_at": "2026-11-01 11:27:50",
-            "decided_by": "Admin",
-            "reason": ""
-        }
-    ]
+    }
 }

@@ -7676,7 +7676,6 @@ html[data-motion="off"] .spinner {              /* a loading spinner still has t
    Profile (added with hr/hr-data.php)
    - the round picture + the profile chip next to "Hello, ...!" on the Dashboard
    - the picture block in Settings > Account
-   - the status box for HR's own password change request
    Colours come from the theme variables, so the dark theme needs no extra rules.
    ========================================================================== */
 :where(html[data-page="dashboardhr"], html[data-page="settinghr"]) .avatar {
@@ -7806,59 +7805,6 @@ html[data-motion="off"] .spinner {              /* a loading spinner still has t
 
 @media (max-width: 480px) {
     :where(html[data-page="settinghr"]) .avatar-edit { flex-direction: column; align-items: flex-start; }
-}
-
-/* ---------- HR Settings: where is my password change request? ---------- */
-:where(html[data-page="settinghr"]) .pw-status {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    margin-top: 6px;
-    padding: 14px 16px;
-    border: 1px solid var(--edge, #d9dce1);
-    border-left-width: 4px;
-    border-radius: 12px;
-    background: var(--surface-2, #f3f4f6);
-}
-:where(html[data-page="settinghr"]) .pw-status[hidden], :where(html[data-page="settinghr"]) .pw-status-btn[hidden] { display: none; }
-:where(html[data-page="settinghr"]) .pw-status[data-state="pending"]  { border-left-color: #e29a00; }
-:where(html[data-page="settinghr"]) .pw-status[data-state="approved"] { border-left-color: #159a43; }
-:where(html[data-page="settinghr"]) .pw-status[data-state="rejected"] { border-left-color: #d1122a; }
-
-:where(html[data-page="settinghr"]) .pw-status-ico { flex: none; width: 12px; height: 12px; border-radius: 50%; background: #8b9098; }
-:where(html[data-page="settinghr"]) .pw-status[data-state="pending"]  .pw-status-ico { background: #e29a00; animation: pwPulse 1.4s ease-in-out infinite; }
-:where(html[data-page="settinghr"]) .pw-status[data-state="approved"] .pw-status-ico { background: #159a43; }
-:where(html[data-page="settinghr"]) .pw-status[data-state="rejected"] .pw-status-ico { background: #d1122a; }
-@keyframes pwPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.35; transform: scale(0.7); } }
-
-:where(html[data-page="settinghr"]) .pw-status-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-:where(html[data-page="settinghr"]) .pw-status-text strong { font-size: 14px; font-weight: 800; color: var(--ink, #1f1f23); }
-:where(html[data-page="settinghr"]) .pw-status-text span { font-size: 12.5px; line-height: 1.45; color: var(--ink-soft, #5b5f66); }
-
-:where(html[data-page="settinghr"]) .pw-status-btn {
-    flex: none;
-    height: 36px;
-    padding: 0 14px;
-    border: 2px solid var(--edge, #d9dce1);
-    border-radius: 10px;
-    background: transparent;
-    color: var(--ink-soft, #5b5f66);
-    font-family: inherit;
-    font-size: 12.5px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: border-color 0.2s ease, color 0.2s ease;
-}
-:where(html[data-page="settinghr"]) .pw-status-btn:hover { border-color: var(--red-bright, #d1122a); color: var(--red, #a3081e); }
-:where(html[data-page="settinghr"]) .pw-status-btn:disabled { opacity: 0.6; cursor: wait; }
-
-:where(html[data-page="settinghr"]) .btn-update-pw:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; background: transparent; color: var(--blue-ink, #0077c2); }
-
-@media (max-width: 600px) {
-    :where(html[data-page="settinghr"]) .pw-status { flex-wrap: wrap; }
-}
-@media (prefers-reduced-motion: reduce) {
-    :where(html[data-page="settinghr"]) .pw-status[data-state="pending"] .pw-status-ico { animation: none; }
 }
 
 /* ---- Add Applicant: job position list + "Add Job Position" pop-up, dark theme ---- */

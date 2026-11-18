@@ -20,7 +20,7 @@ END $$;
 -- ------------------------------------------------------------
 
 -- Admin: full access to all application tables
-GRANT SELECT, INSERT, UPDATE, DELETE ON users, applicant, response, score, otp, question_config, job_positions, schedule, activity_log, password_requests, otp_request_log TO admin;
+GRANT SELECT, INSERT, UPDATE, DELETE ON users, applicant, response, score, otp, question_config, job_positions, schedule, activity_log, otp_request_log TO admin;
 
 -- HR: read + limited write on applicant-facing tables
 GRANT SELECT, INSERT, UPDATE, DELETE ON applicant, response, score, schedule, activity_log TO hr;
@@ -156,17 +156,4 @@ CREATE POLICY job_positions_hr_read ON job_positions
     FOR SELECT TO hr
     USING (archived_at IS NULL);
 
--- ------------------------------------------------------------
--- PASSWORD_REQUESTS
--- ------------------------------------------------------------
-ALTER TABLE password_requests ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS password_requests_admin_all ON password_requests;
-CREATE POLICY password_requests_admin_all ON password_requests
-    FOR ALL TO admin
-    USING (true);
-
-DROP POLICY IF EXISTS password_requests_hr_own ON password_requests;
-CREATE POLICY password_requests_hr_own ON password_requests
-    FOR SELECT TO hr
-    USING (account_id = current_setting('app.user_id', true)::int);

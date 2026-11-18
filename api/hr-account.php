@@ -1,9 +1,7 @@
 <?php
 // api/hr-account.php — the HR's own account changes (Settings > Account).
 //   save_profile    { name, email }     name is applied at once; a new email waits for the Admin's approval
-//   change_password { current, next }   waits for the Admin's approval
-//   cancel_request  {}                  HR takes its pending request back
-//   status          {}                  the pending request, if any
+//   change_password { current, next }   applied at once, no approval needed
 // Every change is written to the activity log, so it shows in the Admin's Recent Activities.
 
 require_once __DIR__ . '/../src/Helpers/security.php';
@@ -16,7 +14,6 @@ date_default_timezone_set('Asia/Manila');
 
 require_once __DIR__ . '/../src/Helpers/db.php';
 require_once __DIR__ . '/../src/Repositories/ActivityRepository.php';
-require_once __DIR__ . '/../src/Repositories/ProfileChangeRepository.php';
 
 function hr_respond(array $data, int $code = 200): void
 {
@@ -50,7 +47,6 @@ try {
     $user = $me->fetch();
     if (!$user) hr_respond(['status' => 'error', 'message' => 'Your account is no longer active.'], 403);
 
-    $pending = fn() => repo_pcr_hr_view(repo_pcr_pending_for_user($uid, $pdo));
     $parts = function (?string $email, bool $pw): string {
         $p = [];
         if ($email !== null) $p[] = 'email';
@@ -60,7 +56,7 @@ try {
 
     switch ($action) {
         case 'status':
-            hr_respond(['status' => 'success', 'message' => '', 'pending' => $pending()]);
+            hr_respond(['status' => 'success', 'message' => '', 'pending' => null]);
             break;
 
         case 'save_profile':
@@ -88,9 +84,6 @@ try {
                 $dup->execute([':e' => $email, ':u' => $uid]);
                 if ($dup->fetchColumn()) hr_respond(['status' => 'error', 'field' => 'email', 'message' => 'That email address is already in use.'], 422);
 
-                $req = repo_pcr_submit($uid, $email, null, $pdo);
-                $row = repo_pcr_pending_for_user($uid, $pdo);
-                repo_log_activity('HR Change Request', $name . ' (HR) · ' . $parts($row['new_email'], !empty($row['new_password_hash'])) . ' · waiting for approval', 'HR', $pdo, $req['id']);
                 $changes['email_requested'] = true;
             }
 
@@ -100,7 +93,7 @@ try {
                 'name'    => $name,
                 'email'   => (string) $user['email'],          // the email that is really in use right now
                 'changes' => $changes,
-                'pending' => $pending(),
+                'pending' => null,
             ]);
             break;
 
@@ -115,23 +108,18 @@ try {
             if ($next === $current)
                 hr_respond(['status' => 'error', 'field' => 'pwNew', 'message' => 'The new password must be different from the current one.'], 422);
 
-            $req = repo_pcr_submit($uid, null, $next, $pdo);
-            $row = repo_pcr_pending_for_user($uid, $pdo);
-            repo_log_activity('HR Change Request', $user['name'] . ' (HR) · ' . $parts($row['new_email'], !empty($row['new_password_hash'])) . ' · waiting for approval', 'HR', $pdo, $req['id']);
+            $stmt = $pdo->prepare("UPDATE users SET password_hash = :hash WHERE user_id = :u");
+            $stmt->execute([':hash' => password_hash($next, PASSWORD_DEFAULT), ':u' => $uid]);
+            if ($stmt->rowCount() === 0)
+                hr_respond(['status' => 'error', 'message' => 'Your account could not be found. Please log in again.'], 403);
+
+            repo_log_activity('HR Password Changed', $user['name'] . ' (HR)', 'HR', $pdo);
 
             hr_respond([
                 'status'  => 'success',
-                'message' => 'Sent. Your new password is waiting for the admin\'s approval. Keep using your current password until then.',
-                'pending' => $pending(),
+                'message' => 'Password updated.',
+                'pending' => null,
             ]);
-            break;
-
-        case 'cancel_request':
-            $row = repo_pcr_pending_for_user($uid, $pdo);
-            if (!$row) hr_respond(['status' => 'success', 'message' => 'There is no request waiting.', 'pending' => null]);
-            repo_pcr_close((int) $row['request_id'], 'cancelled', $uid, $pdo);
-            repo_log_activity('HR Change Cancelled', $user['name'] . ' (HR) · ' . $parts($row['new_email'], !empty($row['new_password_hash'])), 'HR', $pdo, (int) $row['request_id']);
-            hr_respond(['status' => 'success', 'message' => 'Your request was cancelled.', 'pending' => null]);
             break;
 
         default:

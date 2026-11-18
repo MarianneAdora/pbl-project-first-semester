@@ -703,7 +703,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!notifWrap && sidebarHeader) {
             notifWrap = document.createElement('div');
             notifWrap.className = 'notif-wrap mobile-notif-wrap';
-            notifWrap.innerHTML = '<button type="button" class="notif-bell" id="notifBell" aria-haspopup="true" aria-expanded="false" aria-controls="notifPanel" aria-label="Notifications" title="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg><span class="notif-count" id="notifBadge" hidden>0</span></button><div class="notif-panel" id="notifPanel" role="dialog" aria-label="Notifications" hidden><div class="notif-head"><h3>Notifications</h3><button type="button" class="notif-markall" id="notifMarkAll">Mark all as read</button></div><ul class="notif-list" id="notifList"></ul><div class="pw-wrap" id="pwWrap" hidden><div class="pw-head"><h3>Password changes waiting for your approval</h3><button type="button" class="pw-markall" id="pwMarkAll">Approve all</button></div><ul class="pw-list" id="pwList"></ul></div><p class="notif-foot">HR activity, including name, email, picture and password changes, also appears under Recent Activities.</p></div>';
+            notifWrap.innerHTML = '<button type="button" class="notif-bell" id="notifBell" aria-haspopup="true" aria-expanded="false" aria-controls="notifPanel" aria-label="Notifications" title="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg><span class="notif-count" id="notifBadge" hidden>0</span></button><div class="notif-panel" id="notifPanel" role="dialog" aria-label="Notifications" hidden><div class="notif-head"><h3>Notifications</h3><button type="button" class="notif-markall" id="notifMarkAll">Mark all as read</button></div><ul class="notif-list" id="notifList"></ul><p class="notif-foot">HR activity, including name, email and picture changes, also appears under Recent Activities.</p></div>';
             sidebarHeader.appendChild(notifWrap);
         }
 
@@ -3951,12 +3951,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const badge = document.getElementById('notifBadge');
     const list = document.getElementById('notifList');
     const markAll = document.getElementById('notifMarkAll');
-    const pwWrap = document.getElementById('pwWrap');
-    const pwList = document.getElementById('pwList');
-    const pwMarkAll = document.getElementById('pwMarkAll');
-    if (!bell || !panel || !badge || !list || !markAll || !pwWrap || !pwList) return;
+    if (!bell || !panel || !badge || !list || !markAll) return;
 
-    let data = window.ADMIN_NOTIFY || { recent: [], pw_requests: [] };
+    let data = window.ADMIN_NOTIFY || { recent: [] };
     const readKeys = new Set();
     let readStateReady = false;
     const expandedKeys = new Set();
@@ -4005,7 +4002,7 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let i = 0; i < value.length; i++) hash = Math.imul(hash ^ value.charCodeAt(i), 16777619);
         return 'activity:h' + (hash >>> 0).toString(36);
     };
-    const passwordKey = (request) => 'password-request:' + Number(request.id);
+    const allKeys = () => activities().map(activityKey);
     const formatDate = (value) => {
         const match = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(String(value || ''));
         if (!match) return String(value || '');
@@ -4029,10 +4026,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return true;
         }).sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 20);
     };
-    const pendingRequests = () => Array.isArray(data.pw_requests)
-        ? data.pw_requests.filter((request) => request.status === 'pending')
-        : [];
-    const allKeys = () => activities().map(activityKey).concat(pendingRequests().map(passwordKey));
+    const allKeys = () => activities().map(activityKey);
 
     async function readRequest(action, keys, retried) {
         const response = await fetch('../api/notification-read.php', {
@@ -4080,8 +4074,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         const unreadActivity = activities().filter((row) => !readKeys.has(activityKey(row))).length;
-        const unreadPassword = pendingRequests().filter((request) => !readKeys.has(passwordKey(request))).length;
-        const total = unreadActivity + unreadPassword;
+        const total = unreadActivity;
         badge.textContent = total > 99 ? '99+' : String(total);
         badge.hidden = total === 0;
         bell.classList.toggle('has-notifications', total > 0);
@@ -4112,26 +4105,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 '</span>' + (expanded ? '<span class="notif-expanded-detail">Recorded by ' + esc(row.actor_name || row.by || 'the system') + '</span>' : '') +
                 '</span></button></li>';
         }).join('') || '<li class="notif-empty">Nothing yet. HR activity shows up here.</li>';
-
-        const requests = pendingRequests();
-        pwWrap.hidden = requests.length === 0;
-        pwList.innerHTML = requests.map((request) => {
-            const key = passwordKey(request);
-            const expanded = expandedKeys.has(key);
-            return '<li class="pw-item"><span class="notif-ico tone-amber">' + svg(ICONS.lock) + '</span>' +
-                '<button type="button" class="pw-info pw-expand notif-item' +
-                (readKeys.has(key) ? '' : ' is-new') + (expanded ? ' is-expanded' : '') +
-                '" data-notification-key="' + esc(key) + '" aria-expanded="' + String(expanded) + '">' +
-                '<strong>' + esc(request.name) + ' (HR)</strong><small>' + esc(request.email) + ' · requested ' + esc(formatDate(request.requested_at)) + '</small>' +
-                (expanded ? '<small class="notif-expanded-detail">This password change is awaiting your decision. Use the controls beside this notification to approve or reject it.</small>' : '') +
-                '</button><div class="pw-actions">' +
-                '<button type="button" class="pw-btn is-approve" data-id="' + Number(request.id) + '" title="Approve" aria-label="Approve password change">&#10003;</button>' +
-                '<button type="button" class="pw-btn is-reject" data-id="' + Number(request.id) + '" title="Reject" aria-label="Reject password change">&#10006;</button>' +
-                '</div></li>';
-        }).join('');
         paintBadge();
         markAll.disabled = allKeys().every((key) => readKeys.has(key));
-        if (pwMarkAll) pwMarkAll.disabled = requests.length === 0;
     }
 
     function paint() {
@@ -4172,21 +4147,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     pwList.addEventListener('click', async (event) => {
-        const action = event.target.closest('.pw-btn');
-        if (action) {
-            const id = Number(action.dataset.id);
-            const decision = action.classList.contains('is-approve') ? 'approve' : 'reject';
-            action.disabled = true;
-            try {
-                await ADMIN.request('password_decide', { id: id, decision: decision, reason: '' });
-                await refresh();
-            } catch (error) {
-                ADMIN.toast(error.message || 'Could not ' + decision + ' the request.', { error: true, duration: 6000 });
-            } finally {
-                paintList();
-            }
-            return;
-        }
         const button = event.target.closest('button.pw-expand[data-notification-key]');
         if (!button) return;
         const key = button.dataset.notificationKey;
@@ -4204,23 +4164,6 @@ document.addEventListener('DOMContentLoaded', () => {
         catch (error) { ADMIN.toast(error.message || 'Could not mark notifications as read.', { error: true, duration: 6000 }); }
         finally { markAll.disabled = false; paintList(); }
     });
-    if (pwMarkAll) {
-        pwMarkAll.addEventListener('click', async () => {
-            const requests = pendingRequests();
-            if (!requests.length) return;
-            pwMarkAll.disabled = true;
-            try {
-                for (const request of requests) {
-                    await ADMIN.request('password_decide', { id: request.id, decision: 'approve', reason: '' });
-                }
-            } catch (error) {
-                ADMIN.toast(error.message || 'Could not approve all password requests.', { error: true, duration: 6000 });
-            } finally {
-                await refresh();
-                paintList();
-            }
-        });
-    }
     document.addEventListener('click', () => {
         panel.hidden = true;
         bell.setAttribute('aria-expanded', 'false');
@@ -4255,7 +4198,7 @@ if (document.documentElement.getAttribute('data-page') === 'dashboardadmin') {
    }
    ========================================================================== */
 document.addEventListener('DOMContentLoaded', () => {
-    const data = window.ADMIN_DASH || { stats: { sections: [], questions: [], submissions: 0 }, activity: [], pw_requests: [] };
+    const data = window.ADMIN_DASH || { stats: { sections: [], questions: [], submissions: 0 }, activity: [] };
     const esc = ADMIN.esc;
     const SEEN_KEY = 'admin_activity_seen';
     const DASH_SEEN_KEY = 'admin_dashboard_last_seen_at';
@@ -4352,107 +4295,6 @@ document.addEventListener('DOMContentLoaded', () => {
         body.innerHTML = renderDashboardActivityRows(data.activity);
     }
 
-    /* ---------- 2b. HR password changes: click the line -> approve or reject ----------
-       Each "Password Change Requested" line carries its live request (row.req). The pop-up reads it, and the answer goes to
-       api/admin-action.php (action password_decide). HR sees the result in Settings and in the bell on the HR Dashboard. */
-    const requests = {};
-    data.activity.forEach(r => { if (r.req) requests[r.req.id] = r.req; });
-
-    const pendingChip = document.getElementById('pendingChip');
-    function paintPending() {
-        const n = Object.values(requests).filter(r => r.status === 'pending').length;
-        pendingChip.hidden = n === 0;
-        pendingChip.textContent = n + ' waiting for your approval';
-    }
-    paintPending();
-
-    const reqModal = document.getElementById('pwReqModal');
-    const reqApprove = document.getElementById('pwReqApprove');
-    const reqReject = document.getElementById('pwReqReject');
-    const reqReason = document.getElementById('pwReqReason');
-    let openId = null;
-    let reqBusy = false;
-    let reqFocus = null;
-
-    function openRequest(id) {
-        const r = requests[id];
-        if (!r) return;
-        openId = id;
-        reqFocus = document.activeElement;
-        const pending = r.status === 'pending';
-        document.getElementById('pwReqLead').textContent = r.name + ' (HR) asked for the changes below · ' + ADMIN.formatDate(r.requested_at);
-        document.getElementById('pwReqEmail').textContent = r.email;
-        document.getElementById('pwReqStatus').innerHTML = '<span class="req-pill is-' + esc(r.status) + '">' + esc(PILL[r.status] || r.status) + '</span>' +
-            (r.decided_at ? ' <small>' + esc(ADMIN.formatDate(r.decided_at)) + '</small>' : '') +
-            (r.status === 'rejected' && r.reason ? '<small class="req-why">Reason: ' + esc(r.reason) + '</small>' : '');
-        document.getElementById('pwReqReasonBox').hidden = !pending;
-        document.getElementById('pwReqReasonBox').open = false;
-        document.getElementById('pwReqNote').hidden = !pending;
-        reqApprove.hidden = !pending;
-        reqReject.hidden = !pending;
-        document.getElementById('pwReqClose').hidden = pending;
-        reqReason.value = '';
-        reqModal.classList.add('active');
-        setTimeout(() => (pending ? reqApprove : document.getElementById('pwReqClose')).focus(), 120);
-    }
-
-    function closeRequest() {
-        if (reqBusy) return;
-        reqModal.classList.remove('active');
-        openId = null;
-        if (reqFocus && reqFocus.focus) reqFocus.focus();
-    }
-
-    async function decide(decision) {
-        if (reqBusy || openId === null) return;
-        reqBusy = true;
-        reqApprove.disabled = reqReject.disabled = true;
-        const id = openId;
-        try {
-            const res = await ADMIN.request('password_decide', { id: id, decision: decision, reason: reqReason.value.trim() });
-            requests[id] = res.result;
-            // the line on the list shows the new status at once
-            const rowEl = body.querySelector('tr[data-req="' + id + '"]');
-            if (rowEl) {
-                const pill = rowEl.querySelector('[data-pill]');
-                if (pill) { pill.className = 'req-pill is-' + res.result.status; pill.textContent = PILL[res.result.status]; }
-            }
-            paintPending();
-            reqBusy = false;
-            closeRequest();
-            ADMIN.toast(res.message + ' HR can see the answer.', { duration: 4500 });
-        } catch (err) {
-            reqBusy = false;
-            ADMIN.toast(err.message, { error: true, duration: 6000 });
-        }
-        reqApprove.disabled = reqReject.disabled = false;
-    }
-
-    body.addEventListener('click', (e) => {
-        const tr = e.target.closest('tr[data-req]');
-        if (tr) openRequest(Number(tr.dataset.req));
-    });
-    body.addEventListener('keydown', (e) => {
-        if (e.key !== 'Enter' && e.key !== ' ') return;
-        const tr = e.target.closest('tr[data-req]');
-        if (tr) { e.preventDefault(); openRequest(Number(tr.dataset.req)); }
-    });
-    reqApprove.addEventListener('click', () => decide('approve'));
-    reqReject.addEventListener('click', () => decide('reject'));
-    document.getElementById('pwReqClose').addEventListener('click', closeRequest);
-    reqModal.addEventListener('click', (e) => { if (e.target === reqModal) closeRequest(); });
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && reqModal.classList.contains('active') && !document.getElementById('logoutModal').classList.contains('active')) closeRequest();
-    });
-    reqModal.addEventListener('keydown', (e) => {          // Tab stays inside the open pop-up
-        if (e.key !== 'Tab') return;
-        const items = Array.from(reqModal.querySelectorAll('button, textarea, summary')).filter(el => !el.disabled && !el.hidden && el.offsetParent !== null);
-        if (!items.length) return;
-        const first = items[0], last = items[items.length - 1];
-        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-    });
-
     // the list fades out at the bottom edge while there are more rows to scroll to (same as the HR Dashboard)
     const listScroll = document.querySelector('.activity-card .table-responsive');
     function updateListFade() {
@@ -4503,9 +4345,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const abadge = document.getElementById('notifBadge');
     const alist = document.getElementById('notifList');
     const amarkAll = document.getElementById('notifMarkAll');
-    const apwWrap = document.getElementById('pwWrap');
-    const apwList = document.getElementById('pwList');
-    const apwMarkAll = document.getElementById('pwMarkAll');
     if (abell && apanel && abadge && alist && amarkAll) {
         const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         const ICONS = {
@@ -4552,8 +4391,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return { icon: ICONS.sync, tone: 'tone-blue' };
         };
         const svg = (d) => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + d + '"/></svg>';
-        const pwReqs = {};                          // id -> request (pending pw changes)
-        (Array.isArray(data.pw_requests) ? data.pw_requests : []).forEach(r => { pwReqs[r.id] = r; });
         let lastCount = -1;
         const accountId = Number(data.account_id) || 0;
         const csrfMeta = document.querySelector('meta[name="csrf-token"]');
@@ -4570,7 +4407,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const activityKey = row => 'activity:' + rowActivityKey(row).replace(/[^A-Za-z0-9_-]/g, '');
-        const passwordKey = request => 'password-request:' + Number(request.id);
 
         const activityRows = () => {
             const serverRows = window.ADMIN_NOTIFY && Array.isArray(window.ADMIN_NOTIFY.recent) ? window.ADMIN_NOTIFY.recent : [];
@@ -4585,9 +4421,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }).sort((a, b) => String(b.at).localeCompare(String(a.at)));
         };
         const unreadActivity = () => activityRows().slice(0, 20).filter(row => !readKeys.has(activityKey(row)));
-        const unreadPw = () => Object.values(pwReqs).filter(r => r.status === 'pending' && !readKeys.has(passwordKey(r)));
-        const notificationKeys = () => activityRows().slice(0, 20).map(activityKey)
-            .concat(Object.values(pwReqs).filter(r => r.status === 'pending').map(passwordKey));
+        const notificationKeys = () => activityRows().slice(0, 20).map(activityKey);
 
         async function notificationRequest(action, keys, retried) {
             const response = await fetch('../api/notification-read.php', {
@@ -4635,7 +4469,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 abell.title = 'Notifications';
                 return;
             }
-            const total = unreadActivity().length + unreadPw().length;
+            const total = unreadActivity().length;
             abadge.textContent = total > 99 ? '99+' : String(total);
             abadge.hidden = total <= 0;
             abell.classList.toggle('has-notifications', total > 0);
@@ -4671,34 +4505,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     (expanded ? '<span class="notif-expanded-detail">Recorded by ' + esc(row.actor_name || row.by || 'the system') + '</span>' : '') +
                     '</span></button></li>';
             });
-            if (!acts.length && Object.values(pwReqs).filter(r => r.status === 'pending').length === 0) {
+            if (!acts.length) {
                 html = '<li class="notif-empty">Nothing yet. HR activity shows up here.</li>';
             }
             alist.innerHTML = html;
-
-            // Password change requests
-            const pending = Object.values(pwReqs).filter(r => r.status === 'pending');
-            apwWrap.hidden = pending.length === 0;
-            let pwHtml = '';
-            pending.forEach(r => {
-                const key = passwordKey(r);
-                const expanded = expandedKeys.has(key);
-                pwHtml += '<li class="pw-item">' +
-                    '<span class="notif-ico tone-amber">' + svg(ICONS.lock) + '</span>' +
-                    '<button type="button" class="pw-info pw-expand notif-item' + (readKeys.has(key) ? '' : ' is-new') +
-                    (expanded ? ' is-expanded' : '') + '" data-notification-key="' + esc(key) + '" aria-expanded="' + String(expanded) + '">' +
-                    '<strong>' + esc(r.name) + ' (HR)</strong><small>' + esc(r.email) + ' \u00b7 requested ' + esc(when(r.requested_at)) + '</small>' +
-                    (expanded ? '<small class="notif-expanded-detail">This password change is awaiting your decision. Use the controls beside this notification to approve or reject it.</small>' : '') +
-                    '</button>' +
-                    '<div class="pw-actions">' +
-                    '<button type="button" class="pw-btn is-approve" data-id="' + r.id + '" title="Approve">' + esc(ICONS.done ? '\u2713' : 'Approve') + '</button>' +
-                    '<button type="button" class="pw-btn is-reject" data-id="' + r.id + '" title="Reject">' + esc('\u2716') + '</button>' +
-                    '</div></li>';
-            });
-            apwList.innerHTML = pwHtml;
             paintBadge();
-            if (amarkAll) amarkAll.disabled = unreadActivity().length === 0 && unreadPw().length === 0;
-            if (apwMarkAll) apwMarkAll.disabled = pending.length === 0;
+            if (amarkAll) amarkAll.disabled = unreadActivity().length === 0;
         }
 
         async function openPanel() {
@@ -4735,10 +4547,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const button = e.target.closest('button[data-notification-key]');
             if (button) expandNotification(button);
         });
-        apwList.addEventListener('click', (e) => {
-            const button = e.target.closest('button.pw-expand[data-notification-key]');
-            if (button) expandNotification(button);
-        });
         document.addEventListener('click', closePanel);
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !apanel.hidden) { closePanel(); abell.focus(); } });
 
@@ -4753,39 +4561,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         }
-        if (apwMarkAll) {
-            apwMarkAll.addEventListener('click', () => {
-                const pending = Object.values(pwReqs).filter(r => r.status === 'pending');
-                if (!pending.length) return;
-                apwMarkAll.disabled = true;
-                Promise.all(pending.map(r => ADMIN.request('password_decide', { id: r.id, decision: 'approve', reason: '' })))
-                    .then(res => { res.forEach(r2 => { if (r2 && r2.result) pwReqs[r2.result.id] = r2.result; }); })
-                    .catch(err => {
-                        ADMIN.toast(err.message || 'Could not approve all password requests.', { error: true, duration: 6000 });
-                    })
-                    .finally(async () => { await refreshBell(); paintList(); });
-            });
-        }
-
-        // Inline approve / reject for pending password requests
-        apwList.addEventListener('click', async (e) => {
-            const btn = e.target.closest('.pw-btn');
-            if (!btn) return;
-            const id = Number(btn.dataset.id);
-            const r = pwReqs[id];
-            if (!r) return;
-            const decision = btn.classList.contains('is-approve') ? 'approve' : 'reject';
-            btn.disabled = true;
-            try {
-                const res = await ADMIN.request('password_decide', { id: id, decision: decision, reason: '' });
-                if (res && res.result) pwReqs[res.result.id] = res.result;
-                await refreshBell();
-                paintList();
-            } catch (err) {
-                ADMIN.toast(err.message || 'Could not ' + decision + ' the request.', { error: true, duration: 6000 });
-                paintList();
-            }
-        });
 
         async function refreshBell() {
             try {
@@ -4793,8 +4568,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const updated = response && response.data && response.data.notify;
                 if (!updated) throw new Error('The server returned an invalid notification response.');
                 window.ADMIN_NOTIFY = updated;
-                Object.keys(pwReqs).forEach(id => delete pwReqs[id]);
-                (Array.isArray(updated.pw_requests) ? updated.pw_requests : []).forEach(request => { pwReqs[request.id] = request; });
                 await syncReadState();
                 paintList();
             } catch (err) {
@@ -4805,7 +4578,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Refresh when something changes elsewhere or a new server notification arrives.
         window.addEventListener('storage', (e) => {
-            if (e.key === 'ebsmi_activity_extra' || e.key === 'ebsmi_change_requests') refreshBell();
+            if (e.key === 'ebsmi_activity_extra') refreshBell();
         });
         window.addEventListener('admin:notification-read-sync', refreshBell);
         document.addEventListener('admin:badges', refreshBell);

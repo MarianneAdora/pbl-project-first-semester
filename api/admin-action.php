@@ -127,23 +127,6 @@ try {
             ]);
             break;
 
-        case 'password_decide':
-            if (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') !== 'XMLHttpRequest') {
-                admin_respond(['status' => 'error', 'message' => 'Invalid request.'], 400);
-            }
-            $decision = (string) ($input['decision'] ?? '');
-            $result = static_profile_decide_request(
-                (int) ($input['id'] ?? 0),
-                $decision,
-                (string) ($input['reason'] ?? '')
-            );
-            admin_respond([
-                'status'  => 'success',
-                'message' => $decision === 'approve' ? 'Password change approved.' : 'Password change rejected.',
-                'result'  => $result
-            ]);
-            break;
-
         case 'account_archive':
             $aid = (int) ($input['id'] ?? 0);
             $ast = db()->prepare("SELECT name, email FROM users WHERE user_id = :id"); $ast->execute([':id' => $aid]); $ar = $ast->fetch(); $aname = (string) ($ar['name'] ?? ''); $aemail = (string) ($ar['email'] ?? '');
@@ -467,10 +450,6 @@ try {
 
         case 'notify':
             $notify = repo_admin_notify();
-            $notify['pw_requests'] = array_values(array_filter(
-                static_profile_requests(),
-                static fn(array $request): bool => $request['status'] === 'pending'
-            ));
             admin_respond(['status' => 'success', 'message' => '', 'result' => null, 'data' => ['notify' => $notify]]);
             break;
 

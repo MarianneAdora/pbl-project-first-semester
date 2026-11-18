@@ -475,44 +475,9 @@ window.HR = (function () {
        Dashboard bell lists the answer, both until HR has read it (Settings > "Got it", or opening the bell).
        Needs window.HR_ACCOUNT.id (printed by every HR page). The master switch in Settings > Notifications
        hides the number, but the highlighted banner on the Settings page itself always shows.
-       BACKEND: unread = rows in the HR's notification table with read_at IS NULL. */
-    function accountId() { return Number((window.HR_ACCOUNT || {}).id) || 0; }
-
-    function unreadDecisions() {
-        if (!window.HRREQ || !accountId()) return [];
-        return readSettings().notifications === false ? [] : HRREQ.hrUnread(accountId());
-    }
-
-    function ensureSettingsBadge() {
-        let badge = document.getElementById('settingsBadge');
-        if (badge) return badge;
-        const link = document.querySelector('.sidebar-footer a[href$="setting-hr.php"]');
-        if (!link) return null;
-        badge = document.createElement('span');
-        badge.className = 'nav-badge alert';
-        badge.id = 'settingsBadge';
-        badge.hidden = true;
-        link.appendChild(badge);
-        return badge;
-    }
+        BACKEND: unread = rows in the HR's notification table with read_at IS NULL. */
 
     let lastSettingsCount = -1;
-    function refreshSettingsBadge() {
-        const badge = ensureSettingsBadge();
-        const count = unreadDecisions().length;
-        if (badge) {
-            badge.textContent = count > 99 ? '99+' : String(count);
-            badge.hidden = count <= 0;
-            badge.setAttribute('title', count + ' answer' + (count === 1 ? '' : 's') + ' from the admin to read');
-            if (count > lastSettingsCount && count > 0) {
-                badge.classList.remove('pop');
-                void badge.offsetWidth;
-                badge.classList.add('pop');
-            }
-        }
-        lastSettingsCount = count;
-        return count;
-    }
 
     // Sidebar badges on every HR page
     document.addEventListener('DOMContentLoaded', () => {
@@ -529,22 +494,20 @@ window.HR = (function () {
 
         refreshDashboardBadge();
         refreshApplicantBadges();
-        refreshSettingsBadge();
     });
 
     // Back button (page restored from the cache): the Admin may have answered meanwhile
-    window.addEventListener('pageshow', (e) => { if (e.persisted) refreshSettingsBadge(); });
+    window.addEventListener('pageshow', (e) => { if (e.persisted) refreshDashboardBadge(); });
 
     // Keep the badge right when another tab changes things
     window.addEventListener('storage', (e) => {
         if ([SEEN_KEY, COMPLETED_KEY, KEY].includes(e.key)) refreshDashboardBadge();
         if (e.key === NEW_KEY) refreshApplicantBadges();
-        if (e.key === 'ebsmi_activity_extra' || e.key === 'ebsmi_change_requests') refreshSettingsBadge();   // the Admin answered
+        if (e.key === 'ebsmi_activity_extra') refreshDashboardBadge();
         if (e.key === SETTINGS_KEY) {          // Settings saved in another tab
             applySettings(null, true);
             refreshDashboardBadge();
             refreshApplicantBadges();
-            refreshSettingsBadge();
         }
         if (e.key === PROFILE_KEY) applyProfile();
     });
@@ -555,7 +518,6 @@ window.HR = (function () {
         setArchiveBadge, bumpArchive, toast,
         syncCompleted, isUnseen, markSeen, unseenCompleted, refreshDashboardBadge,
         noteNewApplicant, clearNewApplicants, refreshApplicantBadges,
-        refreshSettingsBadge, unreadDecisions,
         settings: { get: readSettings, save: saveSettings, apply: applySettings, defaults: SETTINGS_DEFAULTS, profile: readProfile, saveProfile: saveProfile },
         arrivedViaTransition: false
     };
@@ -3037,9 +2999,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let readStateReady = false;
     const expandedKeys = new Set();
 
-    // The Admin's answers to HR's email / password requests (window.HR_ACCOUNT is printed by dashboard-hr.php).
     const accountId = Number((window.HR_ACCOUNT || {}).id) || 0;
-    const decisions = () => (window.HRREQ && accountId ? HRREQ.hrNotices(accountId) : []);
     let completedApplicantIds = Array.isArray(window.HR_COMPLETED_IDS)
         ? window.HR_COMPLETED_IDS.map(Number).filter(id => Number.isSafeInteger(id) && id > 0)
         : [];
@@ -3054,7 +3014,6 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let i = 0; i < value.length; i++) hash = Math.imul(hash ^ value.charCodeAt(i), 16777619);
         return 'activity:h' + (hash >>> 0).toString(36);
     }
-    const decisionKey = (row) => 'hr-decision:' + safeId(row.id);
     const completedKey = (id) => 'completed:' + Number(id);
 
     // Settings > Notifications master switch (the bell itself always stays; only the number is hidden)
@@ -3067,12 +3026,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const unreadActivity = () => feed.slice(0, 20).filter(row => !readKeys.has(activityKey(row)));
-    const unreadDecisions = () => decisions().slice(0, 10).filter(row => !readKeys.has(decisionKey(row)));
     const unreadCompletedIds = () => completedNotificationsOn()
         ? completedApplicantIds.filter(id => !readKeys.has(completedKey(id)))
         : [];
-    const notificationKeys = () => decisions().slice(0, 10).map(decisionKey)
-        .concat(feed.slice(0, 20).map(activityKey), completedApplicantIds.map(completedKey));
+    const notificationKeys = () => feed.slice(0, 20).map(activityKey).concat(completedApplicantIds.map(completedKey));
 
     function signalNotificationReadState() {
         try {
@@ -3157,19 +3114,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function paintList() {
         const done = unreadCompletedIds();
         let html = '';
-        decisions().slice(0, 10).forEach(n => {
-            const ok = n.status === 'approved';
-            const key = decisionKey(n);
-            const expanded = expandedKeys.has(key);
-            html += '<li class="notif-entry' + (expanded ? ' is-expanded' : '') + '">' +
-                '<button type="button" class="notif-item' + (readKeys.has(key) ? '' : ' is-new') + (expanded ? ' is-expanded' : '') +
-                '" data-notification-key="' + esc(key) + '" data-notification-type="single" aria-expanded="' + String(expanded) + '">' +
-                '<span class="notif-ico ' + (ok ? 'tone-green' : 'tone-red') + '">' + svg(ok ? ICONS.done : ICONS.cancel) + '</span>' +
-                '<span class="notif-text"><strong>' + esc(n.title) + '</strong>' +
-                '<span class="notif-detail">' + esc(n.detail) + '</span>' +
-                '<span class="notif-time">' + esc(when(n.at)) + '</span></span></button>' +
-                (expanded ? '<a class="notif-open" href="setting-hr.php">Open Settings</a>' : '') + '</li>';
-        });
         const completedKey = 'completed:summary';
         const completedExpanded = expandedKeys.has(completedKey);
         if (done.length > 0 || completedExpanded) {
@@ -3201,7 +3145,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }).join('');
         if (!html) html = '<li class="notif-empty">Nothing yet. When you add, delete or restore an applicant, answer an interview schedule or change your profile, it shows up here.</li>';
         listEl.innerHTML = html;
-        if (markAllBtn) markAllBtn.disabled = unreadActivity().length === 0 && unreadDecisions().length === 0 && done.length === 0;
+        if (markAllBtn) markAllBtn.disabled = unreadActivity().length === 0 && done.length === 0;
     }
 
     function paintRecentApplicants(applicants) {
@@ -3269,7 +3213,7 @@ document.addEventListener('DOMContentLoaded', () => {
             bell.title = 'Notifications';
             return;
         }
-        const total = notifyOn() ? unreadActivity().length + unreadCompletedIds().length + unreadDecisions().length : 0;
+        const total = notifyOn() ? unreadActivity().length + unreadCompletedIds().length : 0;
         badge.textContent = total > 99 ? '99+' : String(total);
         badge.hidden = total <= 0;
         bell.classList.toggle('has-notifications', total > 0);

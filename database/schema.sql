@@ -294,19 +294,8 @@ CREATE TABLE notification_reads (
 -- PASSWORD CHANGE REQUESTS
 -- HR requests to change their password; the Admin reviews and decides.
 -- ------------------------------------------------------------
-CREATE TABLE password_requests (
-    request_id    SERIAL PRIMARY KEY,
-    account_id    INT         NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-    current_hash  VARCHAR(255) NOT NULL,
-    new_password  VARCHAR(255) NOT NULL,
-    status        VARCHAR(20)  NOT NULL DEFAULT 'pending'
-                  CHECK (status IN ('pending', 'approved', 'rejected')),
-    decision      VARCHAR(20),
-    reason        VARCHAR(500),
-    created_at    TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    reviewed_at   TIMESTAMP,
-    reviewed_by   INT REFERENCES users(user_id)
-);
+-- End of tables
+-- ------------------------------------------------------------
 
 COMMIT;
 
