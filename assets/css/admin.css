@@ -6165,6 +6165,27 @@ html[data-motion="off"] .nav-notif-panel:not([hidden]) { animation: none; }
 }
 
 @media (max-width: 800px) {
+    .sidebar .sidebar-header {
+        animation: none;
+    }
+
+    html.js .sidebar .sidebar-header .notif-wrap.reveal {
+        animation: none !important;
+        opacity: 1;
+    }
+
+    html[data-page] .sidebar .sidebar-header button.notif-bell,
+    html[data-page] .sidebar .sidebar-header button.notif-bell:hover,
+    html[data-page] .sidebar .sidebar-header button.notif-bell:active {
+        transition: none;
+        transform: none;
+    }
+
+    html[data-page] .sidebar .sidebar-header .notif-bell.ring svg,
+    html[data-page] .sidebar .sidebar-header .notif-count.pop {
+        animation: none !important;
+    }
+
     html.js .sidebar .profile-chip.sidebar-profile.reveal {
         animation: none !important;
         opacity: 1;
