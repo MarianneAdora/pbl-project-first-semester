@@ -9525,6 +9525,22 @@ html[data-motion="off"] .nav-notif-panel:not([hidden]) { animation: none; }
 }
 
 @media (max-width: 600px) {
+    :where(html[data-page="archive"]) #leftDropdown .dropdown-btn {
+        flex-wrap: nowrap;
+        gap: 4px;
+        padding-right: 6px;
+        padding-left: 8px;
+    }
+
+    :where(html[data-page="archive"]) #leftDropdown .dropdown-value {
+        display: block;
+        flex: 1 1 0;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
     :where(html[data-page="archive"]) #leftDropdown .dropdown-menu {
         left: 0;
         right: 0;
@@ -9541,5 +9557,17 @@ html[data-motion="off"] .nav-notif-panel:not([hidden]) { animation: none; }
     :where(html[data-page="archive"]) #leftDropdown .dropdown-option .opt-label {
         min-width: 0;
         line-height: 1.15;
+    }
+
+    :where(html[data-page="archive"]) .filter-reset {
+        display: inline-flex;
+        flex: 0 0 56px;
+        align-items: center;
+        justify-content: center;
+        width: 56px;
+        min-width: 56px;
+        height: 32px;
+        padding: 0 6px;
+        white-space: nowrap;
     }
 }
