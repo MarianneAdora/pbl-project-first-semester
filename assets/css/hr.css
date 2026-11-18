@@ -8574,6 +8574,7 @@ html[data-motion="off"] .spinner {              /* a loading spinner still has t
     .sidebar .sidebar-header .notif-wrap { position: relative; z-index: 4; display: flex; flex: 0 0 auto; align-items: center; margin: 0; }
     .mobile-notif-wrap { display: none; }
     .sidebar .sidebar-header .mobile-notif-wrap { display: flex; }
+    .sidebar .sidebar-header .notif-wrap { grid-column: 3; }
     html[data-page] .sidebar .sidebar-header button.notif-bell {
         width: 46px;
         min-width: 46px;
@@ -8616,6 +8617,8 @@ html[data-motion="off"] .spinner {              /* a loading spinner still has t
     }
 
     .sidebar .profile-chip.sidebar-profile {
+        grid-column: 4;
+        justify-self: end;
         box-sizing: border-box;
         flex: 0 1 132px;
         width: auto;

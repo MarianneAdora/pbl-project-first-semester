@@ -618,7 +618,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (window.matchMedia('(max-width: 800px)').matches) {
             sidebarHeader.insertBefore(mobileNavToggle, sidebarHeader.firstChild);
             if (notifWrap) sidebarHeader.appendChild(notifWrap);
-            if (sidebarProfile) sidebarHeader.appendChild(sidebarProfile);
+            if (sidebarProfile) {
+                sidebarHeader.insertBefore(sidebarProfile, notifWrap ? notifWrap.nextSibling : null);
+            }
         } else {
             if (sidebarProfile) accountRow.appendChild(sidebarProfile);
             if (notifWrap) accountRow.appendChild(notifWrap);
