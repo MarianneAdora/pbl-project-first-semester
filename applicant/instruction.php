@@ -146,10 +146,6 @@ $reminders = [
                     Estimated Time: <?= htmlspecialchars($estimatedTime) ?>
                 </p>
 
-                <a href="<?= $nextPage ?>" class="start__btn reveal" id="beginBtn" style="--i:15.5">
-                    <span class="start__btn-label">Begin Screening</span>
-                    <span class="start__btn-arrow" aria-hidden="true">&rarr;</span>
-                </a>
                 <div class="start__consent">
                     <input type="checkbox" id="privacyAgreement" aria-describedby="privacyError"
                         data-accepted="<?= $privacyAccepted ? 'true' : 'false' ?>"
@@ -157,6 +153,10 @@ $reminders = [
                     <label for="privacyAgreement">I have read and agree to the</label>
                     <a href="<?= $nextPage ?>" id="privacyLink">Privacy Policy</a>
                 </div>
+                <a href="<?= $nextPage ?>" class="start__btn reveal" id="beginBtn" style="--i:15.5">
+                    <span class="start__btn-label">Begin Screening</span>
+                    <span class="start__btn-arrow" aria-hidden="true">&rarr;</span>
+                </a>
                 <p class="start__consent-error" id="privacyError" role="alert" hidden>
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 22 20.5H2L12 3.5Z"/><path d="M12 9v5M12 17.2v.1"/></svg>
                     <span>Please review and agree to the Privacy Policy before beginning the screening.</span>
