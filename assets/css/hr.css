@@ -9416,3 +9416,17 @@ html[data-motion="off"] .nav-notif-panel:not([hidden]) { animation: none; }
         overflow-wrap: anywhere;
     }
 }
+
+@media (max-width: 800px) {
+    html.js .sidebar .profile-chip.sidebar-profile.reveal {
+        animation: none !important;
+        opacity: 1;
+    }
+
+    .sidebar .profile-chip.sidebar-profile,
+    .sidebar .profile-chip.sidebar-profile:hover,
+    .sidebar .profile-chip.sidebar-profile:active {
+        transition: none;
+        transform: none;
+    }
+}
