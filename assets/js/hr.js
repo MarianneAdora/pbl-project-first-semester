@@ -572,27 +572,105 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelLogout = document.getElementById('cancelLogout');
     const confirmLogout = document.getElementById('confirmLogout');
     const pageOverlay = document.getElementById('pageOverlay');
+    const sidebarHeader = sidebar ? sidebar.querySelector('.sidebar-header') : null;
+    const sidebarNav = sidebar ? sidebar.querySelector('.sidebar-nav') : null;
+    const sidebarProfile = sidebar ? sidebar.querySelector('.sidebar-profile') : null;
+    let notifWrap = document.querySelector('.content-header .notif-wrap');
+    let accountRow = null;
     let mobileNavToggle = null;
+    let positionNotifPanel = () => {};
 
     if (sidebar) {
+        if (!notifWrap && sidebarHeader) {
+            notifWrap = document.createElement('div');
+            notifWrap.className = 'notif-wrap mobile-notif-wrap';
+            notifWrap.innerHTML = '<button type="button" class="notif-bell" id="notifBell" aria-haspopup="true" aria-expanded="false" aria-controls="notifPanel" aria-label="Notifications" title="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg><span class="notif-count" id="notifBadge" hidden>0</span></button><div class="notif-panel" id="notifPanel" role="dialog" aria-label="Notifications" hidden><div class="notif-head"><h3>Notifications</h3><button type="button" class="notif-markall" id="notifMarkAll">Mark all as read</button></div><ul class="notif-list" id="notifList"></ul><p class="notif-foot">Your activity, including changes to your name, email and picture, also appears in the Admin&#39;s Recent Activities. Theme and display preferences are not included.</p></div>';
+            sidebarHeader.appendChild(notifWrap);
+        }
+
         mobileNavToggle = document.createElement('button');
         mobileNavToggle.type = 'button';
         mobileNavToggle.className = 'mobile-nav-toggle';
-        mobileNavToggle.setAttribute('aria-label', 'Open navigation');
+        mobileNavToggle.setAttribute('aria-label', 'Expand navigation');
         mobileNavToggle.setAttribute('aria-expanded', 'false');
-        mobileNavToggle.innerHTML = '<img src="../assets/images/expertise2.png" alt="">';
-        document.body.appendChild(mobileNavToggle);
+        mobileNavToggle.innerHTML = '<svg class="menu-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg><svg class="close-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>';
+
+        if (sidebarNav) {
+            if (!sidebarNav.id) sidebarNav.id = 'mobileSidebarNav';
+            const sidebarFooter = sidebar.querySelector('.sidebar-footer');
+            const controlledIds = [sidebarNav.id];
+            if (sidebarFooter) {
+                if (!sidebarFooter.id) sidebarFooter.id = 'mobileSidebarFooter';
+                controlledIds.push(sidebarFooter.id);
+            }
+            mobileNavToggle.setAttribute('aria-controls', controlledIds.join(' '));
+        }
+
+        if (sidebarHeader) {
+            sidebarHeader.insertBefore(mobileNavToggle, sidebarHeader.firstChild);
+            accountRow = document.createElement('div');
+            accountRow.className = 'sidebar-account-row';
+            sidebarHeader.insertAdjacentElement('afterend', accountRow);
+            if (sidebarProfile) accountRow.appendChild(sidebarProfile);
+            if (notifWrap) {
+                notifWrap.classList.add('reveal');
+                accountRow.appendChild(notifWrap);
+            }
+        }
+
+        const notifPanel = notifWrap ? notifWrap.querySelector('.notif-panel') : null;
+        const notifBell = notifWrap ? notifWrap.querySelector('.notif-bell') : null;
+        if (notifPanel) {
+            notifPanel.classList.add('nav-notif-panel');
+            document.body.appendChild(notifPanel);
+            positionNotifPanel = () => {
+                if (notifPanel.hidden || !notifBell) return;
+                const isMobile = window.matchMedia('(max-width: 800px)').matches;
+                const bellRect = notifBell.getBoundingClientRect();
+                const viewportWidth = document.documentElement.clientWidth;
+                const panelWidth = Math.min(360, Math.max(0, viewportWidth - 24));
+                const panelHeight = Math.min(420, Math.max(0, window.innerHeight - 24));
+                let left = sidebar.getBoundingClientRect().right + 12;
+                let top = bellRect.top;
+
+                if (isMobile) {
+                    left = Math.max(12, Math.min(viewportWidth - panelWidth - 12, bellRect.right - panelWidth));
+                    top = sidebarHeader.getBoundingClientRect().bottom + 8;
+                } else if (left + panelWidth > viewportWidth - 12) {
+                    left = Math.max(12, bellRect.left - panelWidth - 8);
+                }
+
+                top = Math.min(Math.max(12, top), Math.max(12, window.innerHeight - panelHeight - 12));
+                notifPanel.style.left = left + 'px';
+                notifPanel.style.top = top + 'px';
+                notifPanel.style.right = 'auto';
+            };
+            if (notifBell) notifBell.addEventListener('click', () => setTimeout(positionNotifPanel, 0));
+            window.addEventListener('scroll', () => setTimeout(positionNotifPanel, 0), true);
+        }
     }
+
+    const syncMobileHeader = () => {
+        if (!sidebarHeader || !accountRow) return;
+        sidebarHeader.classList.toggle('has-profile', Boolean(sidebarProfile));
+        if (window.matchMedia('(max-width: 800px)').matches) {
+            sidebarHeader.insertBefore(mobileNavToggle, sidebarHeader.firstChild);
+            if (notifWrap) sidebarHeader.appendChild(notifWrap);
+            if (sidebarProfile) sidebarHeader.appendChild(sidebarProfile);
+        } else {
+            if (sidebarProfile) accountRow.appendChild(sidebarProfile);
+            if (notifWrap) accountRow.appendChild(notifWrap);
+        }
+    };
+
+    syncMobileHeader();
 
     const setDrawerOpen = (open) => {
         root.classList.toggle('drawer-open', open);
         document.body.classList.toggle('noscroll', open);
         if (mobileNavToggle) {
             mobileNavToggle.setAttribute('aria-expanded', String(open));
-            mobileNavToggle.setAttribute('aria-label', open ? 'Close navigation' : 'Open navigation');
-            mobileNavToggle.innerHTML = open
-                ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>'
-                : '<img src="../assets/images/expertise2.png" alt="">';
+            mobileNavToggle.setAttribute('aria-label', open ? 'Collapse navigation' : 'Expand navigation');
         }
     };
 
@@ -671,8 +749,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     window.addEventListener('resize', () => {
+        syncMobileHeader();
         applySidebarPreference();
         if (!window.matchMedia('(max-width: 800px)').matches) setDrawerOpen(false);
+        setTimeout(positionNotifPanel, 0);
     });
 
     // Create (once) the drawer backdrop and wire its close + nav-link close behaviour
@@ -2920,6 +3000,7 @@ document.addEventListener('DOMContentLoaded', () => {
         taCard.addEventListener('keydown', (e) => { if (e.key === 'Enter') goTa(); });
     }
 });
+}
 
 /* ==========================================================================
    Notification bell (HR Dashboard header)
@@ -2953,16 +3034,16 @@ document.addEventListener('DOMContentLoaded', () => {
     let feed = Array.isArray(window.HR_ACTIVITY) ? window.HR_ACTIVITY : [];
     let lastCount = -1;
     const readKeys = new Set();
+    let readStateReady = false;
     const expandedKeys = new Set();
 
     // The Admin's answers to HR's email / password requests (window.HR_ACCOUNT is printed by dashboard-hr.php).
     const accountId = Number((window.HR_ACCOUNT || {}).id) || 0;
     const decisions = () => (window.HRREQ && accountId ? HRREQ.hrNotices(accountId) : []);
-    const completedApplicantIds = Array.isArray(window.HR_COMPLETED_IDS)
+    let completedApplicantIds = Array.isArray(window.HR_COMPLETED_IDS)
         ? window.HR_COMPLETED_IDS.map(Number).filter(id => Number.isSafeInteger(id) && id > 0)
         : [];
     const csrfMeta = document.querySelector('meta[name="csrf-token"]');
-    const csrfToken = csrfMeta ? csrfMeta.content : '';
 
     const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const safeId = (id) => String(id == null ? '' : id).replace(/[^A-Za-z0-9_-]/g, '');
@@ -2993,15 +3074,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const notificationKeys = () => decisions().slice(0, 10).map(decisionKey)
         .concat(feed.slice(0, 20).map(activityKey), completedApplicantIds.map(completedKey));
 
-    async function notificationRequest(action, keys) {
+    function signalNotificationReadState() {
+        try {
+            localStorage.setItem('notification_read_sync', Date.now() + ':' + Math.random());
+        } catch (err) {
+            console.warn('Could not broadcast notification read state across tabs.', err);
+        }
+    }
+
+    async function notificationRequest(action, keys, retried) {
         const response = await fetch('../api/notification-read.php', {
             method: 'POST',
             credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify({ action: action, keys: keys, csrf_token: csrfToken })
+            body: JSON.stringify({ action: action, keys: keys, csrf_token: csrfMeta ? csrfMeta.content : '' })
         });
         const data = await response.json().catch(() => { throw new Error('The server did not answer correctly. Please try again.'); });
-        if (!response.ok || data.status !== 'success') throw new Error(data.message || 'Notification state could not be saved.');
+        if (!response.ok || data.status !== 'success') {
+            if (!retried && data.message && data.message.indexOf('Invalid CSRF token') === 0 && data.csrf_token && csrfMeta) {
+                csrfMeta.content = data.csrf_token;
+                return notificationRequest(action, keys, true);
+            }
+            throw new Error(data.message || 'Notification state could not be saved.');
+        }
         return data;
     }
 
@@ -3012,6 +3107,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await notificationRequest('state', keys.slice(i, i + 500));
             (data.read_keys || []).forEach(key => readKeys.add(key));
         }
+        readStateReady = true;
     }
 
     async function markRead(keys) {
@@ -3020,6 +3116,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await notificationRequest('mark_many', unique.slice(i, i + 500));
             (data.read_keys || []).forEach(key => readKeys.add(key));
         }
+        signalNotificationReadState();
         paint();
     }
 
@@ -3165,12 +3262,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function paintBadge() {
+        if (!readStateReady) {
+            badge.hidden = true;
+            bell.classList.remove('has-notifications');
+            bell.setAttribute('aria-label', 'Notifications');
+            bell.title = 'Notifications';
+            return;
+        }
         const total = notifyOn() ? unreadActivity().length + unreadCompletedIds().length + unreadDecisions().length : 0;
         badge.textContent = total > 99 ? '99+' : String(total);
         badge.hidden = total <= 0;
         bell.classList.toggle('has-notifications', total > 0);
         bell.setAttribute('aria-label', total > 0 ? 'Notifications, ' + total + ' new' : 'Notifications');
         bell.title = total > 0 ? total + ' new notification' + (total === 1 ? '' : 's') : 'Notifications';
+        if (lastCount < 0 && total > 0 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            bell.classList.add('ring');
+            bell.addEventListener('animationend', () => bell.classList.remove('ring'), { once: true, capture: true });
+        }
         if (total > lastCount && lastCount >= 0) {
             badge.classList.remove('pop');
             void badge.offsetWidth;                 // restart the animation
@@ -3259,6 +3367,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(data && data.message ? data.message : 'Could not refresh notifications.');
             }
             feed = data.activity;
+            if (Array.isArray(data.completed_ids)) {
+                completedApplicantIds = data.completed_ids.map(Number).filter(id => Number.isSafeInteger(id) && id > 0);
+            }
             paintRecentApplicants(data.recent_applicants);
             await syncReadState();
             paint();
@@ -3269,14 +3380,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     paint();
-    syncReadState().then(paint).catch(err => {
-        console.error('Could not load HR notification read state.', err);
-        HR.toast(err.message || 'Could not load notification read state.', { error: true, duration: 6000 });
-    });
-    if (!badge.hidden && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        bell.classList.add('ring');
-        bell.addEventListener('animationend', () => bell.classList.remove('ring'), { once: true, capture: true });
-    }
+    refreshFeed();
 
     window.addEventListener('pageshow', (e) => { if (e.persisted) { paint(); refreshFeed(); } });
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshFeed(); });
@@ -3285,11 +3389,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 15000);
     window.addEventListener('storage', (e) => {
         if (e.key === 'hr_settings') paint();
+        if (e.key === 'notification_read_sync') refreshFeed();
         if (e.key === 'ebsmi_activity_extra' || e.key === 'ebsmi_change_requests') refreshFeed();
     });
     document.addEventListener('hr:settings-changed', paint);
 });
-}
 
 /* ===== PAGE : details.js (runs only on: details) ===== */
 if (document.documentElement.getAttribute('data-page') === 'details') {

@@ -29,11 +29,15 @@ $input = is_array($json) ? $json : $_POST;
 $action = (string) ($input['action'] ?? '');
 
 $csrfIn = (string) ($input['csrf_token'] ?? '');
-    if (!csrf_verify($csrfIn)) {
-        admin_respond(['status' => 'error', 'message' => 'Invalid CSRF token. Please refresh and try again.'], 403);
-    }
 if (($_SESSION['user_role'] ?? '') !== 'admin') {
     admin_respond(['status' => 'error', 'message' => 'Your session has ended. Please log in again.'], 403);
+}
+if (!csrf_verify($csrfIn)) {
+    admin_respond([
+        'status' => 'error',
+        'message' => 'Invalid CSRF token. Please try again.',
+        'csrf_token' => csrf_token(),
+    ], 403);
 }
 
 try {
@@ -462,7 +466,12 @@ try {
             break;
 
         case 'notify':
-            admin_respond(['status' => 'success', 'message' => '', 'result' => null, 'data' => ['notify' => repo_admin_notify()]]);
+            $notify = repo_admin_notify();
+            $notify['pw_requests'] = array_values(array_filter(
+                static_profile_requests(),
+                static fn(array $request): bool => $request['status'] === 'pending'
+            ));
+            admin_respond(['status' => 'success', 'message' => '', 'result' => null, 'data' => ['notify' => $notify]]);
             break;
 
         default:

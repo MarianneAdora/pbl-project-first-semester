@@ -44,6 +44,14 @@ window.ADMIN = (function () {
         try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch (err) { return false; }
     }
 
+    function signalNotificationReadState() {
+        try {
+            localStorage.setItem('notification_read_sync', Date.now() + ':' + Math.random());
+        } catch (err) {
+            console.warn('Could not broadcast notification read state across tabs.', err);
+        }
+    }
+
     const readSettings = () => Object.assign({}, SETTINGS_DEFAULTS, readJSON(SETTINGS_KEY));
     const readProfile = () => readJSON(PROFILE_KEY);
 
@@ -107,7 +115,7 @@ window.ADMIN = (function () {
         return meta ? meta.content : '';
     }
 
-    function request(action, payload) {
+    function request(action, payload, retried) {
         return fetch(SERVER_API, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
@@ -119,7 +127,16 @@ window.ADMIN = (function () {
                 () => { throw new Error('Could not reach the server. Please check your connection and try again.'); }
             )
             .then(data => {
-                if (data.status !== 'success') throw new Error(data.message || 'Something went wrong. Please try again.');
+                    if (data.status !== 'success') {
+                        if (!retried && data.message && data.message.indexOf('Invalid CSRF token') === 0 && data.csrf_token) {
+                            const meta = document.querySelector('meta[name="csrf-token"]');
+                            if (meta) {
+                                meta.content = data.csrf_token;
+                                return request(action, payload, true);
+                            }
+                        }
+                        throw new Error(data.message || 'Something went wrong. Please try again.');
+                    }
                 if (data.data && data.data.archive) setExpiring(countExpiring(data.data.archive));   // keep the Archive badge right
                 return data;
             });
@@ -649,10 +666,11 @@ window.ADMIN = (function () {
         if (e.key === PROFILE_KEY) applyProfile();
         if (e.key === SEEN_KEY || e.key === NEW_HR_KEY) refreshBadges();
         if (e.key === 'ebsmi_activity_extra' || e.key === 'ebsmi_change_requests') refreshBadges();   // HR sent a change (other tab)
+        if (e.key === 'notification_read_sync') window.dispatchEvent(new CustomEvent('admin:notification-read-sync'));
     });
 
     return {
-        request, esc, formatDate, toast, confirm: confirmBox, icons, countUp, noMotion,
+        request, esc, formatDate, toast, confirm: confirmBox, icons, countUp, noMotion, signalNotificationReadState,
         menu: openMenu, closeMenu, pager, showing, flash, showFlash,
         flyToArchive, flyToNav, bumpArchive, bumpNav,
         hr: { note: noteNewHr, clear: clearNewHr, ids: readNewHr },
@@ -673,27 +691,105 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelLogout = document.getElementById('cancelLogout');
     const confirmLogout = document.getElementById('confirmLogout');
     const pageOverlay = document.getElementById('pageOverlay');
+    const sidebarHeader = sidebar ? sidebar.querySelector('.sidebar-header') : null;
+    const sidebarNav = sidebar ? sidebar.querySelector('.sidebar-nav') : null;
+    const sidebarProfile = sidebar ? sidebar.querySelector('.sidebar-profile') : null;
+    let notifWrap = document.querySelector('.content-header .notif-wrap');
+    let accountRow = null;
     let mobileNavToggle = null;
+    let positionNotifPanel = () => {};
 
     if (sidebar) {
+        if (!notifWrap && sidebarHeader) {
+            notifWrap = document.createElement('div');
+            notifWrap.className = 'notif-wrap mobile-notif-wrap';
+            notifWrap.innerHTML = '<button type="button" class="notif-bell" id="notifBell" aria-haspopup="true" aria-expanded="false" aria-controls="notifPanel" aria-label="Notifications" title="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg><span class="notif-count" id="notifBadge" hidden>0</span></button><div class="notif-panel" id="notifPanel" role="dialog" aria-label="Notifications" hidden><div class="notif-head"><h3>Notifications</h3><button type="button" class="notif-markall" id="notifMarkAll">Mark all as read</button></div><ul class="notif-list" id="notifList"></ul><div class="pw-wrap" id="pwWrap" hidden><div class="pw-head"><h3>Password changes waiting for your approval</h3><button type="button" class="pw-markall" id="pwMarkAll">Approve all</button></div><ul class="pw-list" id="pwList"></ul></div><p class="notif-foot">HR activity, including name, email, picture and password changes, also appears under Recent Activities.</p></div>';
+            sidebarHeader.appendChild(notifWrap);
+        }
+
         mobileNavToggle = document.createElement('button');
         mobileNavToggle.type = 'button';
         mobileNavToggle.className = 'mobile-nav-toggle';
-        mobileNavToggle.setAttribute('aria-label', 'Open navigation');
+        mobileNavToggle.setAttribute('aria-label', 'Expand navigation');
         mobileNavToggle.setAttribute('aria-expanded', 'false');
-        mobileNavToggle.innerHTML = '<img src="../assets/images/expertise2.png" alt="">';
-        document.body.appendChild(mobileNavToggle);
+        mobileNavToggle.innerHTML = '<svg class="menu-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg><svg class="close-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>';
+
+        if (sidebarNav) {
+            if (!sidebarNav.id) sidebarNav.id = 'mobileSidebarNav';
+            const sidebarFooter = sidebar.querySelector('.sidebar-footer');
+            const controlledIds = [sidebarNav.id];
+            if (sidebarFooter) {
+                if (!sidebarFooter.id) sidebarFooter.id = 'mobileSidebarFooter';
+                controlledIds.push(sidebarFooter.id);
+            }
+            mobileNavToggle.setAttribute('aria-controls', controlledIds.join(' '));
+        }
+
+        if (sidebarHeader) {
+            sidebarHeader.insertBefore(mobileNavToggle, sidebarHeader.firstChild);
+            accountRow = document.createElement('div');
+            accountRow.className = 'sidebar-account-row';
+            sidebarHeader.insertAdjacentElement('afterend', accountRow);
+            if (sidebarProfile) accountRow.appendChild(sidebarProfile);
+            if (notifWrap) {
+                notifWrap.classList.add('reveal');
+                accountRow.appendChild(notifWrap);
+            }
+        }
+
+        const notifPanel = notifWrap ? notifWrap.querySelector('.notif-panel') : null;
+        const notifBell = notifWrap ? notifWrap.querySelector('.notif-bell') : null;
+        if (notifPanel) {
+            notifPanel.classList.add('nav-notif-panel');
+            document.body.appendChild(notifPanel);
+            positionNotifPanel = () => {
+                if (notifPanel.hidden || !notifBell) return;
+                const isMobile = window.matchMedia('(max-width: 800px)').matches;
+                const bellRect = notifBell.getBoundingClientRect();
+                const viewportWidth = document.documentElement.clientWidth;
+                const panelWidth = Math.min(360, Math.max(0, viewportWidth - 24));
+                const panelHeight = Math.min(420, Math.max(0, window.innerHeight - 24));
+                let left = sidebar.getBoundingClientRect().right + 12;
+                let top = bellRect.top;
+
+                if (isMobile) {
+                    left = Math.max(12, Math.min(viewportWidth - panelWidth - 12, bellRect.right - panelWidth));
+                    top = sidebarHeader.getBoundingClientRect().bottom + 8;
+                } else if (left + panelWidth > viewportWidth - 12) {
+                    left = Math.max(12, bellRect.left - panelWidth - 8);
+                }
+
+                top = Math.min(Math.max(12, top), Math.max(12, window.innerHeight - panelHeight - 12));
+                notifPanel.style.left = left + 'px';
+                notifPanel.style.top = top + 'px';
+                notifPanel.style.right = 'auto';
+            };
+            if (notifBell) notifBell.addEventListener('click', () => setTimeout(positionNotifPanel, 0));
+            window.addEventListener('scroll', () => setTimeout(positionNotifPanel, 0), true);
+        }
     }
+
+    const syncMobileHeader = () => {
+        if (!sidebarHeader || !accountRow) return;
+        sidebarHeader.classList.toggle('has-profile', Boolean(sidebarProfile));
+        if (window.matchMedia('(max-width: 800px)').matches) {
+            sidebarHeader.insertBefore(mobileNavToggle, sidebarHeader.firstChild);
+            if (notifWrap) sidebarHeader.appendChild(notifWrap);
+            if (sidebarProfile) sidebarHeader.appendChild(sidebarProfile);
+        } else {
+            if (sidebarProfile) accountRow.appendChild(sidebarProfile);
+            if (notifWrap) accountRow.appendChild(notifWrap);
+        }
+    };
+
+    syncMobileHeader();
 
     const setDrawerOpen = (open) => {
         root.classList.toggle('drawer-open', open);
         document.body.classList.toggle('noscroll', open);
         if (mobileNavToggle) {
             mobileNavToggle.setAttribute('aria-expanded', String(open));
-            mobileNavToggle.setAttribute('aria-label', open ? 'Close navigation' : 'Open navigation');
-            mobileNavToggle.innerHTML = open
-                ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>'
-                : '<img src="../assets/images/expertise2.png" alt="">';
+            mobileNavToggle.setAttribute('aria-label', open ? 'Collapse navigation' : 'Expand navigation');
         }
     };
 
@@ -771,8 +867,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     window.addEventListener('resize', () => {
+        syncMobileHeader();
         applySidebarPreference();
         if (!window.matchMedia('(max-width: 800px)').matches) setDrawerOpen(false);
+        setTimeout(positionNotifPanel, 0);
     });
 
     // Create (once) the drawer backdrop and wire its close + nav-link close behaviour
@@ -3846,6 +3944,305 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 }
 
+if (document.documentElement.getAttribute('data-page') !== 'dashboardadmin') {
+document.addEventListener('DOMContentLoaded', () => {
+    const bell = document.getElementById('notifBell');
+    const panel = document.getElementById('notifPanel');
+    const badge = document.getElementById('notifBadge');
+    const list = document.getElementById('notifList');
+    const markAll = document.getElementById('notifMarkAll');
+    const pwWrap = document.getElementById('pwWrap');
+    const pwList = document.getElementById('pwList');
+    const pwMarkAll = document.getElementById('pwMarkAll');
+    if (!bell || !panel || !badge || !list || !markAll || !pwWrap || !pwList) return;
+
+    let data = window.ADMIN_NOTIFY || { recent: [], pw_requests: [] };
+    const readKeys = new Set();
+    let readStateReady = false;
+    const expandedKeys = new Set();
+    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    const esc = ADMIN.esc;
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    let lastCount = -1;
+    const ICONS = {
+        add: 'M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z',
+        remove: 'M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z',
+        restore: 'M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z',
+        download: 'M5 20h14v-2H5v2zm7-3 7-7h-4V3H9v7H5l7 7z',
+        event: 'M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z',
+        sync: 'M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z',
+        done: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z',
+        person: 'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z',
+        lock: 'M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z',
+        cancel: 'M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z'
+    };
+    const svg = (path) => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + path + '"/></svg>';
+    const look = (activity) => {
+        const value = String(activity).toLowerCase();
+        if (value.indexOf('dashboard report downloaded') !== -1) return { icon: ICONS.download, tone: 'tone-blue' };
+        if (value.indexOf('hr change') !== -1) {
+            if (value.indexOf('approved') !== -1) return { icon: ICONS.done, tone: 'tone-green' };
+            if (value.indexOf('rejected') !== -1) return { icon: ICONS.cancel, tone: 'tone-red' };
+            return { icon: ICONS.person, tone: 'tone-blue' };
+        }
+        if (value.indexOf('password') !== -1 && value.indexOf('approved') !== -1) return { icon: ICONS.done, tone: 'tone-green' };
+        if (value.indexOf('password') !== -1 && value.indexOf('rejected') !== -1) return { icon: ICONS.cancel, tone: 'tone-red' };
+        if (value.indexOf('password') !== -1) return { icon: ICONS.lock, tone: 'tone-amber' };
+        if (value.indexOf('profile') !== -1 || value.indexOf('name changed') !== -1 || value.indexOf('email changed') !== -1) return { icon: ICONS.person, tone: 'tone-blue' };
+        if (value.indexOf('forever') !== -1) return { icon: ICONS.remove, tone: 'tone-red' };
+        if (value.indexOf('deleted') !== -1) return { icon: ICONS.remove, tone: 'tone-amber' };
+        if (value.indexOf('restored') !== -1) return { icon: ICONS.restore, tone: 'tone-blue' };
+        if (value.indexOf('added') !== -1) return { icon: ICONS.add, tone: 'tone-green' };
+        if (value.indexOf('interview') !== -1) return { icon: ICONS.event, tone: 'tone-blue' };
+        if (value.indexOf('status') !== -1) return { icon: ICONS.sync, tone: 'tone-amber' };
+        return { icon: ICONS.sync, tone: 'tone-blue' };
+    };
+
+    const activityKey = (row) => {
+        if (row && row.id != null) return 'activity:' + String(row.id).replace(/[^A-Za-z0-9_-]/g, '');
+        const value = [row && row.at, row && row.activity, row && row.details, row && row.by].join('|');
+        let hash = 2166136261;
+        for (let i = 0; i < value.length; i++) hash = Math.imul(hash ^ value.charCodeAt(i), 16777619);
+        return 'activity:h' + (hash >>> 0).toString(36);
+    };
+    const passwordKey = (request) => 'password-request:' + Number(request.id);
+    const formatDate = (value) => {
+        const match = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(String(value || ''));
+        if (!match) return String(value || '');
+        let result = months[Number(match[2]) - 1] + ' ' + Number(match[3]) + ', ' + match[1];
+        if (match[4] !== undefined) {
+            const hour = Number(match[4]);
+            result += ' · ' + (hour % 12 || 12) + ':' + match[5] + ' ' + (hour >= 12 ? 'PM' : 'AM');
+        }
+        return result;
+    };
+    const activities = () => {
+        const rows = Array.isArray(data.recent) ? data.recent.slice() : [];
+        if (window.HRREQ && typeof HRREQ.activity === 'function') {
+            rows.push(...HRREQ.activity().filter((row) => String(row.by).toLowerCase() !== 'admin'));
+        }
+        const seen = new Set();
+        return rows.filter((row) => {
+            const key = activityKey(row);
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        }).sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 20);
+    };
+    const pendingRequests = () => Array.isArray(data.pw_requests)
+        ? data.pw_requests.filter((request) => request.status === 'pending')
+        : [];
+    const allKeys = () => activities().map(activityKey).concat(pendingRequests().map(passwordKey));
+
+    async function readRequest(action, keys, retried) {
+        const response = await fetch('../api/notification-read.php', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ action, keys, csrf_token: csrfMeta ? csrfMeta.content : '' })
+        });
+        const result = await response.json().catch(() => { throw new Error('The server did not answer correctly. Please try again.'); });
+        if (!response.ok || result.status !== 'success') {
+            if (!retried && result.message && result.message.indexOf('Invalid CSRF token') === 0 && result.csrf_token && csrfMeta) {
+                csrfMeta.content = result.csrf_token;
+                return readRequest(action, keys, true);
+            }
+            throw new Error(result.message || 'Notification state could not be saved.');
+        }
+        return result;
+    }
+
+    async function syncReadState() {
+        const keys = Array.from(new Set(allKeys()));
+        for (let i = 0; i < keys.length; i += 500) {
+            const result = await readRequest('state', keys.slice(i, i + 500));
+            (result.read_keys || []).forEach((key) => readKeys.add(key));
+        }
+        readStateReady = true;
+    }
+
+    async function markRead(keys) {
+        const unique = Array.from(new Set(keys));
+        for (let i = 0; i < unique.length; i += 500) {
+            const result = await readRequest('mark_many', unique.slice(i, i + 500));
+            (result.read_keys || []).forEach((key) => readKeys.add(key));
+        }
+        ADMIN.signalNotificationReadState();
+        paint();
+    }
+
+    function paintBadge() {
+        if (!readStateReady) {
+            badge.hidden = true;
+            bell.classList.remove('has-notifications');
+            bell.setAttribute('aria-label', 'Notifications');
+            bell.title = 'Notifications';
+            return;
+        }
+        const unreadActivity = activities().filter((row) => !readKeys.has(activityKey(row))).length;
+        const unreadPassword = pendingRequests().filter((request) => !readKeys.has(passwordKey(request))).length;
+        const total = unreadActivity + unreadPassword;
+        badge.textContent = total > 99 ? '99+' : String(total);
+        badge.hidden = total === 0;
+        bell.classList.toggle('has-notifications', total > 0);
+        bell.setAttribute('aria-label', total ? 'Notifications, ' + total + ' new' : 'Notifications');
+        bell.title = total ? total + ' new notification' + (total === 1 ? '' : 's') : 'Notifications';
+        if (lastCount < 0 && total > 0 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            bell.classList.add('ring');
+            bell.addEventListener('animationend', () => bell.classList.remove('ring'), { once: true, capture: true });
+        }
+        if (total > lastCount && lastCount >= 0 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            bell.classList.remove('ring');
+            void bell.offsetWidth;
+            bell.classList.add('ring');
+            bell.addEventListener('animationend', () => bell.classList.remove('ring'), { once: true, capture: true });
+        }
+        lastCount = total;
+    }
+
+    function paintList() {
+        list.innerHTML = activities().map((row) => {
+            const key = activityKey(row);
+            const expanded = expandedKeys.has(key);
+            const icon = look(row.activity);
+            return '<li class="notif-entry' + (expanded ? ' is-expanded' : '') + '"><button type="button" class="notif-item' +
+                (readKeys.has(key) ? '' : ' is-new') + (expanded ? ' is-expanded' : '') + '" data-notification-key="' + esc(key) + '" aria-expanded="' + String(expanded) + '">' +
+                '<span class="notif-ico ' + icon.tone + '">' + svg(icon.icon) + '</span><span class="notif-text"><strong>' + esc(row.activity) +
+                '</strong><span class="notif-detail">' + esc(row.details) + '</span><span class="notif-time">' + esc(formatDate(row.at)) +
+                '</span>' + (expanded ? '<span class="notif-expanded-detail">Recorded by ' + esc(row.actor_name || row.by || 'the system') + '</span>' : '') +
+                '</span></button></li>';
+        }).join('') || '<li class="notif-empty">Nothing yet. HR activity shows up here.</li>';
+
+        const requests = pendingRequests();
+        pwWrap.hidden = requests.length === 0;
+        pwList.innerHTML = requests.map((request) => {
+            const key = passwordKey(request);
+            const expanded = expandedKeys.has(key);
+            return '<li class="pw-item"><span class="notif-ico tone-amber">' + svg(ICONS.lock) + '</span>' +
+                '<button type="button" class="pw-info pw-expand notif-item' +
+                (readKeys.has(key) ? '' : ' is-new') + (expanded ? ' is-expanded' : '') +
+                '" data-notification-key="' + esc(key) + '" aria-expanded="' + String(expanded) + '">' +
+                '<strong>' + esc(request.name) + ' (HR)</strong><small>' + esc(request.email) + ' · requested ' + esc(formatDate(request.requested_at)) + '</small>' +
+                (expanded ? '<small class="notif-expanded-detail">This password change is awaiting your decision. Use the controls beside this notification to approve or reject it.</small>' : '') +
+                '</button><div class="pw-actions">' +
+                '<button type="button" class="pw-btn is-approve" data-id="' + Number(request.id) + '" title="Approve" aria-label="Approve password change">&#10003;</button>' +
+                '<button type="button" class="pw-btn is-reject" data-id="' + Number(request.id) + '" title="Reject" aria-label="Reject password change">&#10006;</button>' +
+                '</div></li>';
+        }).join('');
+        paintBadge();
+        markAll.disabled = allKeys().every((key) => readKeys.has(key));
+        if (pwMarkAll) pwMarkAll.disabled = requests.length === 0;
+    }
+
+    function paint() {
+        paintBadge();
+        if (!panel.hidden) paintList();
+    }
+
+    async function refresh() {
+        try {
+            const result = await ADMIN.request('notify');
+            data = result.data.notify;
+            await syncReadState();
+            paint();
+        } catch (error) {
+            console.error('Could not refresh Admin notifications.', error);
+            if (!panel.hidden) ADMIN.toast(error.message || 'Could not refresh notifications.', { error: true, duration: 6000 });
+        }
+    }
+
+    bell.addEventListener('click', (event) => {
+        event.stopPropagation();
+        panel.hidden = !panel.hidden;
+        bell.setAttribute('aria-expanded', String(!panel.hidden));
+        if (panel.hidden) paintBadge();
+        else { paintList(); refresh(); }
+    });
+    panel.addEventListener('click', (event) => event.stopPropagation());
+    list.addEventListener('click', async (event) => {
+        const button = event.target.closest('button[data-notification-key]');
+        if (!button) return;
+        const key = button.dataset.notificationKey;
+        const expanded = expandedKeys.has(key);
+        expanded ? expandedKeys.delete(key) : expandedKeys.add(key);
+        paintList();
+        if (!expanded) {
+            try { await markRead([key]); }
+            catch (error) { ADMIN.toast(error.message || 'Could not mark this notification as read.', { error: true, duration: 6000 }); }
+        }
+    });
+    pwList.addEventListener('click', async (event) => {
+        const action = event.target.closest('.pw-btn');
+        if (action) {
+            const id = Number(action.dataset.id);
+            const decision = action.classList.contains('is-approve') ? 'approve' : 'reject';
+            action.disabled = true;
+            try {
+                await ADMIN.request('password_decide', { id: id, decision: decision, reason: '' });
+                await refresh();
+            } catch (error) {
+                ADMIN.toast(error.message || 'Could not ' + decision + ' the request.', { error: true, duration: 6000 });
+            } finally {
+                paintList();
+            }
+            return;
+        }
+        const button = event.target.closest('button.pw-expand[data-notification-key]');
+        if (!button) return;
+        const key = button.dataset.notificationKey;
+        const expanded = expandedKeys.has(key);
+        expanded ? expandedKeys.delete(key) : expandedKeys.add(key);
+        paintList();
+        if (!expanded) {
+            try { await markRead([key]); }
+            catch (error) { ADMIN.toast(error.message || 'Could not mark this notification as read.', { error: true, duration: 6000 }); }
+        }
+    });
+    markAll.addEventListener('click', async () => {
+        markAll.disabled = true;
+        try { await markRead(allKeys()); }
+        catch (error) { ADMIN.toast(error.message || 'Could not mark notifications as read.', { error: true, duration: 6000 }); }
+        finally { markAll.disabled = false; paintList(); }
+    });
+    if (pwMarkAll) {
+        pwMarkAll.addEventListener('click', async () => {
+            const requests = pendingRequests();
+            if (!requests.length) return;
+            pwMarkAll.disabled = true;
+            try {
+                for (const request of requests) {
+                    await ADMIN.request('password_decide', { id: request.id, decision: 'approve', reason: '' });
+                }
+            } catch (error) {
+                ADMIN.toast(error.message || 'Could not approve all password requests.', { error: true, duration: 6000 });
+            } finally {
+                await refresh();
+                paintList();
+            }
+        });
+    }
+    document.addEventListener('click', () => {
+        panel.hidden = true;
+        bell.setAttribute('aria-expanded', 'false');
+        paintBadge();
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !panel.hidden) {
+            panel.hidden = true;
+            bell.setAttribute('aria-expanded', 'false');
+            bell.focus();
+        }
+    });
+
+    paint();
+    refresh();
+    window.addEventListener('pageshow', (event) => { if (event.persisted) refresh(); });
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refresh(); });
+    setInterval(() => { if (document.visibilityState === 'visible') refresh(); }, 30000);
+    window.addEventListener('admin:notification-read-sync', refresh);
+});
+}
+
 /* ===== PAGE : dashboardadmin.js (runs only on: dashboardadmin) ===== */
 if (document.documentElement.getAttribute('data-page') === 'dashboardadmin') {
 /* ==========================================================================
@@ -4160,8 +4557,8 @@ document.addEventListener('DOMContentLoaded', () => {
         let lastCount = -1;
         const accountId = Number(data.account_id) || 0;
         const csrfMeta = document.querySelector('meta[name="csrf-token"]');
-        const csrfToken = csrfMeta ? csrfMeta.content : '';
         const readKeys = new Set();
+        let readStateReady = false;
         const expandedKeys = new Set();
 
         function rowActivityKey(row) {
@@ -4192,15 +4589,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const notificationKeys = () => activityRows().slice(0, 20).map(activityKey)
             .concat(Object.values(pwReqs).filter(r => r.status === 'pending').map(passwordKey));
 
-        async function notificationRequest(action, keys) {
+        async function notificationRequest(action, keys, retried) {
             const response = await fetch('../api/notification-read.php', {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                body: JSON.stringify({ action: action, keys: keys, csrf_token: csrfToken })
+                body: JSON.stringify({ action: action, keys: keys, csrf_token: csrfMeta ? csrfMeta.content : '' })
             });
             const result = await response.json().catch(() => { throw new Error('The server did not answer correctly. Please try again.'); });
-            if (!response.ok || result.status !== 'success') throw new Error(result.message || 'Notification state could not be saved.');
+            if (!response.ok || result.status !== 'success') {
+                if (!retried && result.message && result.message.indexOf('Invalid CSRF token') === 0 && result.csrf_token && csrfMeta) {
+                    csrfMeta.content = result.csrf_token;
+                    return notificationRequest(action, keys, true);
+                }
+                throw new Error(result.message || 'Notification state could not be saved.');
+            }
             return result;
         }
 
@@ -4211,6 +4614,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const result = await notificationRequest('state', keys.slice(i, i + 500));
                 (result.read_keys || []).forEach(key => readKeys.add(key));
             }
+            readStateReady = true;
         }
 
         async function markRead(keys) {
@@ -4219,16 +4623,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 const result = await notificationRequest('mark_many', unique.slice(i, i + 500));
                 (result.read_keys || []).forEach(key => readKeys.add(key));
             }
+            ADMIN.signalNotificationReadState();
             paintList();
         }
 
         function paintBadge() {
+            if (!readStateReady) {
+                abadge.hidden = true;
+                abell.classList.remove('has-notifications');
+                abell.setAttribute('aria-label', 'Notifications');
+                abell.title = 'Notifications';
+                return;
+            }
             const total = unreadActivity().length + unreadPw().length;
             abadge.textContent = total > 99 ? '99+' : String(total);
             abadge.hidden = total <= 0;
             abell.classList.toggle('has-notifications', total > 0);
             abell.setAttribute('aria-label', total > 0 ? 'Notifications, ' + total + ' new' : 'Notifications');
             abell.title = total > 0 ? total + ' new notification' + (total === 1 ? '' : 's') : 'Notifications';
+            if (lastCount < 0 && total > 0 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                abell.classList.add('ring');
+                abell.addEventListener('animationend', () => abell.classList.remove('ring'), { once: true, capture: true });
+            }
             if (total > lastCount && lastCount >= 0) {
                 abell.classList.remove('ring');
                 void abell.offsetWidth;
@@ -4288,11 +4704,7 @@ document.addEventListener('DOMContentLoaded', () => {
         async function openPanel() {
             apanel.hidden = false;
             abell.setAttribute('aria-expanded', 'true');
-            try {
-                await syncReadState();
-            } catch (err) {
-                ADMIN.toast(err.message || 'Could not load notification read state.', { error: true, duration: 6000 });
-            }
+            await refreshBell();
             paintList();
         }
 
@@ -4347,8 +4759,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!pending.length) return;
                 apwMarkAll.disabled = true;
                 Promise.all(pending.map(r => ADMIN.request('password_decide', { id: r.id, decision: 'approve', reason: '' })))
-                    .then(res => { res.forEach(r2 => { if (r2 && r2.result) pwReqs[r2.result.id] = r2.result; }); paintList(); })
-                    .catch(() => { paintList(); apwMarkAll.disabled = false; });
+                    .then(res => { res.forEach(r2 => { if (r2 && r2.result) pwReqs[r2.result.id] = r2.result; }); })
+                    .catch(err => {
+                        ADMIN.toast(err.message || 'Could not approve all password requests.', { error: true, duration: 6000 });
+                    })
+                    .finally(async () => { await refreshBell(); paintList(); });
             });
         }
 
@@ -4364,6 +4779,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const res = await ADMIN.request('password_decide', { id: id, decision: decision, reason: '' });
                 if (res && res.result) pwReqs[res.result.id] = res.result;
+                await refreshBell();
                 paintList();
             } catch (err) {
                 ADMIN.toast(err.message || 'Could not ' + decision + ' the request.', { error: true, duration: 6000 });
@@ -4373,31 +4789,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
         async function refreshBell() {
             try {
+                const response = await ADMIN.request('notify');
+                const updated = response && response.data && response.data.notify;
+                if (!updated) throw new Error('The server returned an invalid notification response.');
+                window.ADMIN_NOTIFY = updated;
+                Object.keys(pwReqs).forEach(id => delete pwReqs[id]);
+                (Array.isArray(updated.pw_requests) ? updated.pw_requests : []).forEach(request => { pwReqs[request.id] = request; });
                 await syncReadState();
                 paintList();
             } catch (err) {
-                console.error('Could not refresh admin notification read state.', err);
+                console.error('Could not refresh admin notifications.', err);
                 if (!apanel.hidden) ADMIN.toast(err.message || 'Could not refresh notifications.', { error: true, duration: 6000 });
             }
         }
 
         // Refresh when something changes elsewhere or a new server notification arrives.
-        document.addEventListener('storage', (e) => {
+        window.addEventListener('storage', (e) => {
             if (e.key === 'ebsmi_activity_extra' || e.key === 'ebsmi_change_requests') refreshBell();
         });
+        window.addEventListener('admin:notification-read-sync', refreshBell);
         document.addEventListener('admin:badges', refreshBell);
         document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshBell(); });
         window.addEventListener('pageshow', (ev) => { if (ev.persisted) refreshBell(); });
+        setInterval(() => { if (document.visibilityState === 'visible') refreshBell(); }, 30000);
 
         paintList();
-        syncReadState().then(paintList).catch(err => {
-            console.error('Could not load admin notification read state.', err);
-            ADMIN.toast(err.message || 'Could not load notification read state.', { error: true, duration: 6000 });
-        });
-        if (!abadge.hidden && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-            abell.classList.add('ring');
-            abell.addEventListener('animationend', () => abell.classList.remove('ring'), { once: true, capture: true });
-        }
+        refreshBell();
     }
 
     /* ---------- 3. Questionnaires Statistics: one bar per question, the answer most applicants chose ---------- */
