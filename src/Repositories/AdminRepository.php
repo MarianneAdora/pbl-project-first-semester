@@ -644,11 +644,11 @@ function repo_admin_volume(?PDO $pdo = null): array
     $monday = $now->modify('monday this week');
 
     $week = ['labels' => [], 'ranges' => [], 'values' => [], 'sample' => []];
-    for ($i = 5; $i >= 0; $i--) {
+    for ($i = 4; $i >= 0; $i--) {
         $start = $monday->modify('-' . $i . ' weeks');
         $end   = $start->modify('+7 days');
         $last  = $end->modify('-1 day');
-        $week['labels'][] = 'W' . (6 - $i);
+        $week['labels'][] = 'W' . (5 - $i);
         $week['ranges'][] = $start->format('M j') . ' to ' . ($start->format('M') === $last->format('M') ? $last->format('j') : $last->format('M j'));
         $week['values'][] = $countBetween($start, $end);
         $week['sample'][] = false;
