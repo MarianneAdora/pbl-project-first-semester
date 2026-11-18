@@ -135,9 +135,9 @@ CREATE INDEX idx_otp_request_log_requested_at ON otp_request_log(requested_at);
 -- One row per rate-limited request.
 -- ------------------------------------------------------------
 CREATE TABLE rate_limit_log (
-    id          SERIAL PRIMARY KEY,
-    key_hash    CHAR(64)   NOT NULL,
-    created_at  TIMESTAMP  NOT NULL DEFAULT CURRENT_TIMESTAMP
+    rate_limit_id   SERIAL PRIMARY KEY,
+    key_hash        CHAR(64)   NOT NULL,
+    created_at      TIMESTAMP  NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_rate_limit_key_time ON rate_limit_log(key_hash, created_at);

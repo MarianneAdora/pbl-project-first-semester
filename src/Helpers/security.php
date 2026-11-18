@@ -132,7 +132,7 @@ function rate_limit_ensure_table(): void
     try {
         $pdo->exec(
             "CREATE TABLE IF NOT EXISTS rate_limit_log (" .
-            "id SERIAL PRIMARY KEY, " .
+            "rate_limit_id SERIAL PRIMARY KEY, " .
             "key_hash CHAR(64) NOT NULL, " .
             "created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP" .
             ")"
