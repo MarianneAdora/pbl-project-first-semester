@@ -1,7 +1,7 @@
 <?php
 class GeminiService {
     private $apiKey;
-    private $models = ['gemini-3.8-flash', 'gemini-3.6-flash'];
+    private $models;
 
     public function __construct() {
         require_once __DIR__ . '/../Helpers/env.php';
@@ -9,6 +9,11 @@ class GeminiService {
         if (empty($this->apiKey)) {
             throw new Exception("GEMINI_API_KEY is missing from .env");
         }
+
+        $configuredModel = trim((string) (getenv('GEMINI_MODEL') ?: ''));
+        $this->models = $configuredModel !== ''
+            ? [$configuredModel, 'gemini-2.5-flash', 'gemini-2.5-flash-lite']
+            : ['gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'];
     }
 
     /**
@@ -72,8 +77,8 @@ class GeminiService {
             curl_close($request);
             if ($status >= 200 && $status < 300) break;
 
-            if ($status === 503 && $index < count($this->models) - 1) {
-                error_log("Gemini model {$model} is unavailable; retrying with a fallback model.");
+            if (in_array($status, [404, 429, 503], true) && $index < count($this->models) - 1) {
+                error_log("Gemini model {$model} returned HTTP {$status}; retrying with a fallback model.");
                 continue;
             }
 
