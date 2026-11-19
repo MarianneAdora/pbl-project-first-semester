@@ -4352,6 +4352,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     ADMIN.notify.markSeen(latestAt);
 
+    function markDashboardActivitiesRead() {
+        const newest = (data.activity || []).reduce((max, row) => (row.at && row.at > max ? row.at : max), seenAt || '');
+        if (!newest) return;
+
+        seenAt = newest;
+        try { localStorage.setItem(DASH_SEEN_KEY, newest); } catch (e) {}
+        try { localStorage.setItem(SEEN_KEY, newest); } catch (e) {}
+        ADMIN.notify.markSeen(newest);
+        if (body) body.innerHTML = renderDashboardActivityRows(data.activity);
+        if (chip) chip.hidden = true;
+    }
+
     /* ---------- 2b. Admin notification bell (recent activities + pending password approvals) ---------- */
     const abell = document.getElementById('notifBell');
     const apanel = document.getElementById('notifPanel');
@@ -4568,6 +4580,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 amarkAll.disabled = true;
                 try {
                     await markRead(notificationKeys());
+                    markDashboardActivitiesRead();
                 } catch (err) {
                     ADMIN.toast(err.message || 'Could not mark notifications as read.', { error: true, duration: 6000 });
                     paintList();
