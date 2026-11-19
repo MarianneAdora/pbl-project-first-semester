@@ -1252,6 +1252,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const deletePositionText = document.getElementById('deletePositionText');
     const cancelDeletePosition = document.getElementById('cancelDeletePosition');
     const confirmDeletePosition = document.getElementById('confirmDeletePosition');
+    const positionDeleteErrorModal = document.getElementById('positionDeleteErrorModal');
+    const positionDeleteErrorText = document.getElementById('positionDeleteErrorText');
+    const positionDeleteErrorOk = document.getElementById('positionDeleteErrorOk');
+    let positionDeleteErrorFocusId = null;
     let deletePendingId = null;
     let deletePendingName = null;
 
@@ -1332,8 +1336,9 @@ document.addEventListener('DOMContentLoaded', () => {
         li.setAttribute('aria-selected', 'false');
         li.id = 'pd-opt-' + p.id;
         li.dataset.value = String(p.id);
+        li.dataset.assignedCount = String(p.assigned_count || 0);
         li.innerHTML = '<span class="pd-name"></span><span class="pd-tag"></span>'
-            + '<button type="button" class="pd-delete" data-id="' + String(p.id) + '" aria-label="Delete" title="Delete">'
+            + '<button type="button" class="pd-delete" data-id="' + String(p.id) + '" data-assigned-count="' + String(p.assigned_count || 0) + '" aria-label="Delete" title="Delete">'
             + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>'
             + '</button>'
             + '<svg class="pd-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>';
@@ -1353,11 +1358,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const li = del.closest('.pd-opt');
             const id = del.dataset.id;
             const name = li ? li.querySelector('.pd-name').textContent : 'this position';
+            const assignedCount = Number(del.dataset.assignedCount || 0);
+            if (assignedCount > 0) {
+                positionDeleteErrorText.textContent = 'This job position is assigned to ' + assignedCount
+                    + ' applicant' + (assignedCount === 1 ? '' : 's')
+                    + ' (including archived applicants) and cannot be deleted.';
+                positionDeleteErrorFocusId = id;
+                positionDeleteErrorModal.classList.add('active');
+                positionDeleteErrorOk.focus();
+                return;
+            }
             // open custom confirmation modal instead of browser confirm()
             deletePendingId = id;
             deletePendingName = name;
             deletePositionTitle.textContent = 'Delete job position "' + name + '"?';
-            deletePositionText.textContent = 'This position cannot be deleted while it is assigned to any applicant, including archived applicants. Its job description PDF will also be removed.';
+            deletePositionText.textContent = 'A position assigned to an applicant, including an archived applicant, cannot be deleted. Its job description PDF will also be removed.';
             deletePositionModal.classList.add('active');
             cancelDeletePosition.focus();
             return;
@@ -1389,8 +1404,25 @@ document.addEventListener('DOMContentLoaded', () => {
             // if the deleted position was the currently selected one, clear the selection
             if (posInput.value === String(id)) { setPosition('', POS_PLACEHOLDER); }
         } catch (err) {
-            HR.toast(err.message || 'Could not delete the job position. Please try again.', { error: true, duration: 8000 });
+            positionDeleteErrorText.textContent = err.message || 'Could not delete the job position. Please try again.';
+            positionDeleteErrorFocusId = id;
+            positionDeleteErrorModal.classList.add('active');
+            positionDeleteErrorOk.focus();
         }
+    });
+
+    function closePositionDeleteError() {
+        positionDeleteErrorModal.classList.remove('active');
+        const deleteButton = positionDeleteErrorFocusId
+            ? document.querySelector('.pd-delete[data-id="' + positionDeleteErrorFocusId + '"]')
+            : null;
+        if (deleteButton) deleteButton.focus();
+        positionDeleteErrorFocusId = null;
+    }
+
+    positionDeleteErrorOk.addEventListener('click', closePositionDeleteError);
+    positionDeleteErrorModal.addEventListener('click', (e) => {
+        if (e.target === positionDeleteErrorModal) closePositionDeleteError();
     });
 
     // Delete position modal: cancel
@@ -1582,6 +1614,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sentModal.classList.contains('active')) finishSent();
         else if (positionModal.classList.contains('active')) closePositionModal();
         else if (discardModal.classList.contains('active')) discardModal.classList.remove('active');
+        else if (positionDeleteErrorModal.classList.contains('active')) closePositionDeleteError();
         else if (deletePositionModal.classList.contains('active')) { deletePendingId = null; deletePendingName = null; deletePositionModal.classList.remove('active'); }
     });
 });
