@@ -3764,16 +3764,16 @@ html:where([data-page="archiveadmin"],[data-page="hrlist"],[data-page="questionl
         display: flex;
         align-items: center;
         grid-column: 1;
-        grid-row: 2;
+        grid-row: 1;
         gap: 4px;
     }
     :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(1)::before { content: "Order"; margin-right: auto; }
-    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(2) { display: grid; grid-column: 2; grid-row: 2; }
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(2) { display: grid; grid-column: 2; grid-row: 1; }
     :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(2)::before { content: "Section"; }
     :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(3) {
         display: grid;
         grid-column: 1 / -1;
-        grid-row: 1;
+        grid-row: 2;
         grid-template-columns: minmax(42px, 24%) minmax(0, 1fr);
     }
     :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(3)::before { content: "Title"; }
