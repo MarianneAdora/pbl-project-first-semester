@@ -1389,7 +1389,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // if the deleted position was the currently selected one, clear the selection
             if (posInput.value === String(id)) { setPosition('', POS_PLACEHOLDER); }
         } catch (err) {
-            alert(err.message || 'Could not delete the job position. Please try again.');
+            HR.toast(err.message || 'Could not delete the job position. Please try again.', { error: true, duration: 8000 });
         }
     });
 
