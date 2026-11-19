@@ -137,6 +137,17 @@ $positions = static_positions();
         </div>
     </div>
 
+    <!-- Job Position Deletion Blocked Alert -->
+    <div class="modal-backdrop" id="positionDeleteErrorModal" role="alertdialog" aria-modal="true" aria-labelledby="positionDeleteErrorTitle" aria-describedby="positionDeleteErrorText">
+        <div class="modal-card">
+            <h3 id="positionDeleteErrorTitle">Unable to delete job position</h3>
+            <p id="positionDeleteErrorText"></p>
+            <div class="modal-actions">
+                <button class="btn-confirm" id="positionDeleteErrorOk" type="button">OK</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Invitation Sent Modal -->
     <div class="modal-backdrop" id="sentModal" role="dialog" aria-modal="true" aria-labelledby="sentTitle">
         <div class="modal-card invite-modal">
@@ -305,7 +316,7 @@ $positions = static_positions();
                                 <li class="pd-opt" role="option" id="pd-opt-<?php echo (int) $p['id']; ?>" data-value="<?php echo (int) $p['id']; ?>" aria-selected="false">
                                     <span class="pd-name"><?php echo htmlspecialchars((string) $p['name'], ENT_QUOTES, 'UTF-8'); ?></span>
                                     <span class="pd-tag<?php echo $hasJd ? ' has' : ''; ?>"><?php echo $hasJd ? 'PDF' : 'No PDF'; ?></span>
-                                    <button type="button" class="pd-delete" data-id="<?php echo (int) $p['id']; ?>" aria-label="Delete <?php echo htmlspecialchars((string) $p['name'], ENT_QUOTES, 'UTF-8'); ?>" title="Delete">
+                                    <button type="button" class="pd-delete" data-id="<?php echo (int) $p['id']; ?>" data-assigned-count="<?php echo (int) ($p['assigned_count'] ?? 0); ?>" aria-label="Delete <?php echo htmlspecialchars((string) $p['name'], ENT_QUOTES, 'UTF-8'); ?>" title="Delete">
                                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
                                     </button>
                                     <svg class="pd-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>

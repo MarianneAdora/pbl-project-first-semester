@@ -828,7 +828,19 @@ function static_positions(): array
     } catch (Throwable $e) {
         error_log('Job description sync error: ' . $e->getMessage());
     }
-    $stmt = $pdo->query("SELECT job_id, job_name, jd_url, jd_public_id, created_at, archived_at FROM job_positions WHERE archived_at IS NULL ORDER BY job_id");
+    $stmt = $pdo->query(
+        "SELECT jp.job_id, jp.job_name, jp.jd_url, jp.jd_public_id, jp.created_at, jp.archived_at,
+                COALESCE(applicant_counts.assigned_count, 0) AS assigned_count
+         FROM job_positions jp
+         LEFT JOIN (
+             SELECT position_id, COUNT(*) AS assigned_count
+             FROM applicant
+             WHERE position_id IS NOT NULL
+             GROUP BY position_id
+         ) applicant_counts ON applicant_counts.position_id = jp.job_id
+         WHERE jp.archived_at IS NULL
+         ORDER BY jp.job_id"
+    );
     $out = [];
     while ($row = $stmt->fetch()) {
         $out[] = [
@@ -841,7 +853,8 @@ function static_positions(): array
                 'public_id'  => (string) ($row['jd_public_id'] ?? '')
             ] : null,
             'created'     => (string) $row['created_at'],
-            'archived_at' => empty($row['archived_at']) ? null : (string) $row['archived_at']
+            'archived_at' => empty($row['archived_at']) ? null : (string) $row['archived_at'],
+            'assigned_count' => (int) ($row['assigned_count'] ?? 0)
         ];
     }
     return $out;
@@ -877,7 +890,8 @@ function static_position_public(array $p): array
         'name'    => (string) $p['job_name'],
         'has_jd'  => !empty($p['jd']['url']),
         'jd_name' => !empty($p['jd']['name']) ? (string) $p['jd']['name'] : '',
-        'jd_url'  => !empty($p['jd']['url']) ? (string) $p['jd']['url'] : ''
+        'jd_url'  => !empty($p['jd']['url']) ? (string) $p['jd']['url'] : '',
+        'assigned_count' => (int) ($p['assigned_count'] ?? 0)
     ];
 }
 
