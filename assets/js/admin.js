@@ -2677,6 +2677,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const filtersActive = () => state.status !== 'all' || state.q.trim() !== '';
 
     // ---------- rendering ----------
+    function initialsOf(name) {
+        const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+        if (!parts.length) return '?';
+        const chars = (part) => Array.from(part);
+        if (parts.length === 1) return chars(parts[0]).slice(0, 2).join('').toUpperCase();
+        return (chars(parts[0])[0] + chars(parts[parts.length - 1])[0]).toUpperCase();
+    }
+
     function render() {
         const filtered = getFiltered();
         const total = filtered.length;
@@ -2719,13 +2727,26 @@ document.addEventListener('DOMContentLoaded', () => {
         // name (a red dot + NEW tag while the Admin has not looked at a new account yet)
         const tdName = el('td', 'cell-name');
         tdName.title = a.name;
+        const avatar = el('span', 'hr-account-avatar', initialsOf(a.name));
+        avatar.setAttribute('aria-hidden', 'true');
+        if (a.avatar_url) {
+            const image = el('img');
+            image.alt = '';
+            image.loading = 'lazy';
+            image.src = a.avatar_url;
+            image.addEventListener('error', () => image.remove(), { once: true });
+            avatar.appendChild(image);
+        }
+        tdName.appendChild(avatar);
         if (newIds.has(Number(a.id))) {
             tr.classList.add('is-new');
             const dot = el('span', 'new-dot');
             dot.title = 'New HR account';
             tdName.appendChild(dot);
         }
-        tdName.appendChild(el('strong', null, a.name));
+        const name = el('span', 'hr-account-name');
+        name.appendChild(el('strong', null, a.name));
+        tdName.appendChild(name);
         if (newIds.has(Number(a.id))) tdName.appendChild(el('span', 'new-tag', 'NEW'));
 
         const tdEmail = el('td', null, a.email);

@@ -3487,6 +3487,25 @@ html:where([data-page="archiveadmin"],[data-page="hrlist"],[data-page="questionl
 
 :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table .cell-name strong { font-weight: 700; color: var(--ink); }
 :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table .col-num { color: var(--ink-soft); }
+:where(html[data-page="hrlist"]) .hr-table .cell-name { display: flex; align-items: center; gap: 9px; }
+:where(html[data-page="hrlist"]) .hr-account-avatar {
+    position: relative;
+    display: grid;
+    place-items: center;
+    flex: 0 0 34px;
+    width: 34px;
+    height: 34px;
+    overflow: hidden;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #d1122a, #a3081e);
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1;
+}
+:where(html[data-page="hrlist"]) .hr-account-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+:where(html[data-page="hrlist"]) .hr-account-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+:where(html[data-page="hrlist"]) .hr-account-name strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Column widths (no min-width: the table never needs a sideways scrollbar) */
 :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table col.c-num    { width: 70px; }

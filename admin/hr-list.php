@@ -17,9 +17,15 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
 date_default_timezone_set('Asia/Manila');
 
 require_once __DIR__ . '/../src/Repositories/AdminRepository.php';
+require_once __DIR__ . '/../hr/hr-data.php';
 
 try {
     $accounts = repo_admin_accounts();
+    foreach ($accounts as &$account) {
+        $account['avatar_url'] = static_profile_avatar_url($account['avatar'], '../hr/data/avatars/');
+        unset($account['avatar']);
+    }
+    unset($account);
 } catch (Throwable $e) {
     error_log('hr-list.php DB error: ' . $e->getMessage());
     $accounts = [];
@@ -94,7 +100,6 @@ try {
 
         <?php
         // Profile card: the name + picture saved in Settings (clicking it opens Settings)
-        require_once __DIR__ . '/../hr/hr-data.php';
         $sbp_name = trim((string) ($_SESSION['user_name'] ?? 'Administrator'));
         $sbp_role = 'Administrator';
         try {

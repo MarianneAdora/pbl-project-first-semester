@@ -28,7 +28,7 @@ function repo_admin_accounts(?PDO $pdo = null): array
 {
     $pdo = $pdo ?: db();
     $rows = $pdo->query(
-        'SELECT user_id AS id, name, email, role, status, deleted_at IS NULL AS is_active, created_at' .
+        'SELECT user_id AS id, name, email, avatar_url, role, status, deleted_at IS NULL AS is_active, created_at' .
         ' FROM users WHERE role = \'hr\' AND deleted_at IS NULL ORDER BY created_at ASC, user_id ASC'
     )->fetchAll();
     $out = [];
@@ -37,6 +37,7 @@ function repo_admin_accounts(?PDO $pdo = null): array
             'id'      => (int) $r['id'],
             'name'    => (string) $r['name'],
             'email'   => (string) $r['email'],
+            'avatar'  => (string) ($r['avatar_url'] ?? ''),
             'role'    => 'HR Staff',
             'status'  => (string) ($r['status'] ?? 'Active'),
             'created' => $r['created_at'] ? date('Y-m-d H:i', strtotime((string) $r['created_at'])) : '',
