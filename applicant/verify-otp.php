@@ -107,7 +107,9 @@ $issueDbOtp = function () use ($otpDb, $applicantId, $email, $applicantName, $re
                 . max(1, (int) ceil($wait / 60)) . ' minute(s).';
         }
 
-        $wait = max(0, $resendBase + $resendStep * $resends - $lastAge);
+        // No prior sends at all -> no cooldown on the initial send.
+        // $resendBase ($resendBase) throttles resends after the first code, not the first send itself.
+        $wait = empty($ages) ? 0 : max(0, $resendBase + $resendStep * $resends - $lastAge);
         if ($wait > 0) {
             if ($ownsTransaction) $pdo->commit();
             return 'Please wait ' . $wait . ' second' . ($wait === 1 ? '' : 's') . ' before asking for a new code.';
