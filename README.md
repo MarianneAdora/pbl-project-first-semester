@@ -94,7 +94,7 @@ pbl-project-first-semester/
    \i database/schema.sql
    ```
 
-   Optionally load seed data (includes default admin/HR accounts and 13 questionnaire questions):
+   Optionally load all seed data (includes default admin/HR accounts and 13 questionnaire questions):
 
    ```sql
    \i database/seeds.sql
