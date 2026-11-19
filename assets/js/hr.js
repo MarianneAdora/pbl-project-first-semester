@@ -16,6 +16,9 @@
    ========================================================================== */
 
 /* ---------- PART 1: shared helpers (window.HR) ---------- */
+// Compatibility guard for tabs that loaded an older copy while the portal was updated.
+window.refreshSettingsBadge = window.refreshSettingsBadge || function () {};
+
 window.HR = (function () {
     // Archive data is kept in this browser (localStorage) for now.
     // When the database is ready, replace archiveRequest() with a fetch() to your PHP, and
@@ -126,7 +129,6 @@ window.HR = (function () {
         applySettings(next, true);
         refreshDashboardBadge();               // badges appear / disappear right away
         refreshApplicantBadges();
-        refreshSettingsBadge();
         document.dispatchEvent(new CustomEvent('hr:settings-changed', { detail: next }));
         return ok;
     }
@@ -1355,7 +1357,7 @@ document.addEventListener('DOMContentLoaded', () => {
             deletePendingId = id;
             deletePendingName = name;
             deletePositionTitle.textContent = 'Delete job position "' + name + '"?';
-            deletePositionText.textContent = 'Its job description PDF will also be removed.';
+            deletePositionText.textContent = 'This position cannot be deleted while it is assigned to any applicant, including archived applicants. Its job description PDF will also be removed.';
             deletePositionModal.classList.add('active');
             cancelDeletePosition.focus();
             return;
@@ -1387,7 +1389,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // if the deleted position was the currently selected one, clear the selection
             if (posInput.value === String(id)) { setPosition('', POS_PLACEHOLDER); }
         } catch (err) {
-            alert(err.message || 'Could not delete the job position. Please try again.');
+            HR.toast(err.message || 'Could not delete the job position. Please try again.', { error: true, duration: 8000 });
         }
     });
 
@@ -1532,14 +1534,23 @@ document.addEventListener('DOMContentLoaded', () => {
             try { data = await res.json(); } catch (err) { throw new Error('The server did not answer correctly. Please try again.'); }
             if (data.status !== 'success') throw new Error(data.message || 'Something went wrong. Please try again.');
 
+            const addedPosition = data.position;
+            const savedPosition = Array.isArray(data.positions)
+                ? data.positions.find(p => String(p.id) === String(addedPosition && addedPosition.id))
+                    || data.positions.find(p => typeof p.name === 'string' && p.name.trim().toLowerCase() === positionName.value.trim().replace(/\s+/g, ' ').toLowerCase())
+                : addedPosition;
+            if (!savedPosition || !savedPosition.id || typeof savedPosition.name !== 'string' || !savedPosition.name.trim()) {
+                throw new Error('The position was saved, but its name could not be loaded. Please refresh the page.');
+            }
+
             // the new position goes in right above "+ Add job position", and is chosen
-            addPosOption(data.position);
-            setPosition(String(data.position.id), data.position.name);
+            addPosOption(savedPosition);
+            setPosition(String(savedPosition.id), savedPosition.name);
             setError('position', '');
 
             savingPosition = false;
             closePositionModal();
-            HR.toast('Job position "' + data.position.name + '" added' + (data.position.has_jd ? ' with its job description.' : '. No job description PDF yet: applicants see the sample one.'), { duration: 5000 });
+            HR.toast('Job position "' + savedPosition.name + '" added' + (savedPosition.has_jd ? ' with its job description.' : '. No job description PDF yet: applicants see the sample one.'), { duration: 5000 });
         } catch (err) {
             const msg = err.message || 'Something went wrong. Please try again.';
             setPosError(/PDF|job description/i.test(msg) ? 'jd' : 'name', msg);
@@ -5536,6 +5547,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const checks = pwChecks(pwNew.value);
         const problems = {
             pwNew: !pwNew.value ? 'Enter a new password.'
+                : new Blob([pwNew.value]).size > 72 ? 'The new password must be 72 bytes or fewer.'
                 : !(checks.len && checks.case && checks.num) ? 'The new password does not meet all the requirements.' : '',
             pwConfirm: !pwConfirm.value ? 'Type the new password again.'
                 : pwConfirm.value !== pwNew.value ? 'The passwords do not match.' : ''

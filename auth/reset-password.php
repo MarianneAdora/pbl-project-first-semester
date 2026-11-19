@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once __DIR__ . '/../src/Helpers/security.php';
+start_secure_session(1800);
 
 $token = $_GET['token'] ?? '';
 ?>
@@ -47,7 +48,7 @@ $token = $_GET['token'] ?? '';
                         <label for="pwNew">New password</label>
                         <div class="set-input reset-input">
                             <svg viewBox="0 0 24 24" aria-hidden="true" class="input-icon"><path d="M12 2C9.24 2 7 4.24 7 7v2h2V7c0-1.66 1.34-3 3-3s3 1.34 3 3v2h2V7c0-2.76-2.24-5-5-5z"/><path d="M18 9H6c-1.1 0-2 .9-2 2v9c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-9c0-1.1-.9-2-2-2zm-6 7.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
-                            <input type="password" id="pwNew" name="password" autocomplete="new-password" required>
+                            <input type="password" id="pwNew" name="password" maxlength="72" autocomplete="new-password" required>
                             <button type="button" class="eye eye-reset" aria-pressed="false" aria-label="Show new password"><svg class="eye-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg><svg class="eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2z"/></svg></button>
                         </div>
                         <div class="meter" id="pwMeter" data-level="0"><i></i><i></i><i></i><i></i></div>
@@ -65,7 +66,7 @@ $token = $_GET['token'] ?? '';
                         <label for="pwConfirm">Confirm new password</label>
                         <div class="set-input reset-input">
                             <svg viewBox="0 0 24 24" aria-hidden="true" class="input-icon"><path d="M12 2C9.24 2 7 4.24 7 7v2h2V7c0-1.66 1.34-3 3-3s3 1.34 3 3v2h2V7c0-2.76-2.24-5-5-5z"/><path d="M18 9H6c-1.1 0-2 .9-2 2v9c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-9c0-1.1-.9-2-2-2zm-6 7.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
-                            <input type="password" id="pwConfirm" name="confirm" autocomplete="new-password" required>
+                            <input type="password" id="pwConfirm" name="confirm" maxlength="72" autocomplete="new-password" required>
                             <button type="button" class="eye eye-reset" aria-pressed="false" aria-label="Show confirmation password"><svg class="eye-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg><svg class="eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2z"/></svg></button>
                         </div>
                         <p class="set-error reset-error" role="alert"></p>
@@ -168,6 +169,11 @@ $token = $_GET['token'] ?? '';
                 pwConfirm.closest('.set-field').querySelector('.reset-error').textContent = '';
 
                 const c = checks(pwNew.value);
+                if (new Blob([pwNew.value]).size > 72) {
+                    pwNew.closest('.set-field').querySelector('.reset-error').textContent = 'The password must be 72 bytes or fewer.';
+                    pwNew.focus();
+                    return;
+                }
                 if (!c.len || !c.case || !c.num) {
                     pwNew.closest('.set-field').querySelector('.reset-error').textContent = 'The password does not meet all the requirements.';
                     pwNew.focus();

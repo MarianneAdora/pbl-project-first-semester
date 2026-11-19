@@ -1,6 +1,7 @@
 ﻿<?php
 // hr/cv-proxy.php — serves a CV from Cloudinary to signed-in HR/Admin only.
-session_start();
+require_once __DIR__ . '/../src/Helpers/security.php';
+start_secure_session(1800);
 
 if (!in_array($_SESSION['user_role'] ?? '', ['hr', 'admin'], true)) {
     http_response_code(403); exit('Access denied.');

@@ -1,6 +1,6 @@
 <?php
-session_start();
 require_once __DIR__ . '/../src/Helpers/security.php';
+start_secure_session(1800);
 $csrf = csrf_token();
 
 // ---- Settings ---------------------------------------------------------------
@@ -46,27 +46,72 @@ if ($applicantId > 0 && $email === '') {
     $otpDbError = 'Your email address is missing. Please reopen your invite link.';
 }
 
-/** Log an OTP request timestamp to otp_request_log (best-effort). */
-$logOtpRequest = function () use ($applicantId): void {
+/** Reserve the per-applicant send slot under a lock so simultaneous requests cannot bypass limits. */
+$reserveOtpRequest = function () use ($applicantId, $resendBase, $resendStep, $resendMax, $resendWindow): array {
+    $pdo = db();
+    $ownsTransaction = !$pdo->inTransaction();
+    if ($ownsTransaction) $pdo->beginTransaction();
+
     try {
-        $pdo = db();
-        $pdo->prepare(
-            "INSERT INTO otp_request_log (applicant_id, requested_at) VALUES (?, NOW())"
-        )->execute([$applicantId]);
+        $lock = $pdo->prepare("SELECT pg_advisory_xact_lock(hashtextextended(:lock_key, 0))");
+        $lock->execute([':lock_key' => 'otp-send:' . $applicantId]);
+
+        $stmt = $pdo->prepare(
+            "SELECT EXTRACT(EPOCH FROM (NOW() - requested_at))::int AS age_seconds
+             FROM otp_request_log
+             WHERE applicant_id = :applicant_id
+               AND requested_at > NOW() - (CAST(:window_seconds AS INTEGER) * INTERVAL '1 second')
+             ORDER BY requested_at ASC"
+        );
+        $stmt->execute([':applicant_id' => $applicantId, ':window_seconds' => $resendWindow]);
+        $ages = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+
+        $resends = max(0, count($ages) - 1);
+        $lastAge = $ages ? max(0, min($ages)) : 0;
+        if ($resends >= $resendMax) {
+            $wait = max(0, $resendWindow - $lastAge);
+            if ($ownsTransaction) $pdo->commit();
+            return ['allowed' => false, 'blocked' => true, 'wait' => $wait];
+        }
+
+        $wait = max(0, $resendBase + $resendStep * $resends - $lastAge);
+        if ($wait > 0) {
+            if ($ownsTransaction) $pdo->commit();
+            return ['allowed' => false, 'blocked' => false, 'wait' => $wait];
+        }
+
+        $pdo->prepare("INSERT INTO otp_request_log (applicant_id, requested_at) VALUES (:applicant_id, NOW())")
+            ->execute([':applicant_id' => $applicantId]);
+        if ($ownsTransaction) $pdo->commit();
+        return ['allowed' => true, 'blocked' => false, 'wait' => 0];
     } catch (Throwable $e) {
-        error_log('otp_request_log insert error: ' . $e->getMessage());
+        if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
     }
 };
 
 /** Send a fresh code through the DB (hash stored, email via Brevo). Returns error message or ''. */
-$issueDbOtp = function () use ($otpDb, $applicantId, $email, $applicantName, $logOtpRequest): string {
+$issueDbOtp = function () use ($otpDb, $applicantId, $email, $applicantName, $reserveOtpRequest): string {
+    try {
+        $reservation = $reserveOtpRequest();
+    } catch (Throwable $e) {
+        error_log('OTP send-limit check error: ' . $e->getMessage());
+        return 'Code sending is temporarily unavailable. Please try again later.';
+    }
+    if (!$reservation['allowed']) {
+        if ($reservation['blocked']) {
+            return 'You have reached the maximum number of resends. Please try again in '
+                . max(1, (int) ceil($reservation['wait'] / 60)) . ' minute(s).';
+        }
+        return 'Please wait ' . $reservation['wait'] . ' second(s) before asking for a new code.';
+    }
+
     try {
         $ok = $otpDb->generateAndSendOtp($applicantId, $email, $applicantName !== '' ? $applicantName : $email);
-        if ($ok) $logOtpRequest();
-        return $ok ? '' : 'We could not send the code. Please try again.';
+        return $ok ? '' : 'We could not send the code. Please try again later.';
     } catch (Throwable $e) {
         error_log('verify-otp send error: ' . $e->getMessage());
-        return 'We could not send the code. Please try again.';
+        return 'We could not send the code. Please try again later.';
     }
 };
 
@@ -95,18 +140,23 @@ $issueSessionOtp = function () use ($email, $applicantName, $otpLifetime): strin
 };
 
 /** Timestamps of every code sent in the last hour (the first one is the initial send). */
-$getRequestStamps = function () use ($otpDb, $applicantId, $resendWindow): array {
+$otpRateLogUnavailable = false;
+$getRequestStamps = function () use ($otpDb, $applicantId, $resendWindow, &$otpRateLogUnavailable): array {
     if ($otpDb) {
         try {
             $st = db()->prepare(
-                "SELECT EXTRACT(EPOCH FROM (NOW() - requested_at))::int AS age_seconds FROM otp_request_log
-                 WHERE applicant_id = ? AND requested_at > (NOW() - INTERVAL '{$resendWindow} seconds')"
+                "SELECT EXTRACT(EPOCH FROM (NOW() - requested_at))::int AS age_seconds
+                 FROM otp_request_log
+                 WHERE applicant_id = ?
+                   AND requested_at > NOW() - (CAST(? AS INTEGER) * INTERVAL '1 second')
+                 ORDER BY requested_at ASC"
             );
-            $st->execute([$applicantId]);
+            $st->execute([$applicantId, $resendWindow]);
             $now = time();
             return array_map(fn($age) => $now - (int) $age, $st->fetchAll(PDO::FETCH_COLUMN));
         } catch (Throwable $e) {
             error_log('otp_request_log read error: ' . $e->getMessage());
+            $otpRateLogUnavailable = true;
             return [];
         }
     }
@@ -137,7 +187,7 @@ if ($otpDb) {
     $now = time();
     $lockTs = ($row && !empty($row['locked_until'])) ? strtotime((string) $row['locked_until']) : false;
     $locked = (bool) ($lockTs && $now < $lockTs);
-    if (!$locked && (!$row || $_SERVER['REQUEST_METHOD'] !== 'POST')) {
+    if (!$locked && $_SERVER['REQUEST_METHOD'] !== 'POST') {
         $expTs = $row ? strtotime((string) $row['expires_at']) : false;
         if (!$row || $expTs === false || $now > $expTs) {
             $sendError = $issueDbOtp();
@@ -155,12 +205,8 @@ if ($otpDb) {
         $_SESSION['otp_attempts'] = 0;
     }
     $locked = !empty($_SESSION['otp_locked_until']) && time() < $_SESSION['otp_locked_until'];
-    if (!$locked) {
-        if (!isset($_SESSION['otp'], $_SESSION['otp_expires'])) {
-            $sendError = $issueSessionOtp();
-            if ($sendError !== '') $otpDbError = $sendError;
-        }
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST' && isset($_SESSION['otp_expires']) && time() > $_SESSION['otp_expires']) {
+    if (!$locked && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+        if (!isset($_SESSION['otp'], $_SESSION['otp_expires']) || time() > $_SESSION['otp_expires']) {
             $sendError = $issueSessionOtp();
             if ($sendError !== '') $otpDbError = $sendError;
         }
@@ -172,7 +218,9 @@ if ($otpDb) {
 $error  = $otpDbError;
 $notice = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$locked && !$verificationUnavailable) { // a locked page ignores every submit
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !csrf_verify((string) ($_POST['csrf_token'] ?? ''))) {
+    $error = 'Your verification page has expired. Refresh and try again.';
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && !$locked && !$verificationUnavailable) { // a locked page ignores every submit
     if (isset($_POST['resend'])) {
         $rs = $resendState($getRequestStamps());
         if ($rs['blocked']) {
@@ -210,6 +258,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$locked && !$verificationUnavailab
                 }
             }
             if ($check['ok']) {
+                rotate_session();
                 $_SESSION['otp_verified'] = true;
                 $dest = $nextPage;
                 try {
@@ -232,6 +281,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$locked && !$verificationUnavailab
             } else {
                 $_SESSION['otp_failed_total'] = (int) ($_SESSION['otp_failed_total'] ?? 0) + 1;
             }
+        } elseif (!isset($_SESSION['otp'], $_SESSION['otp_expires'])) {
+            $error = 'There is no active verification code. Please request a new one.';
         } elseif (time() > $_SESSION['otp_expires']) {
             $error = 'This code has expired. Please request a new one.';
         } elseif (!hash_equals((string) ($_SESSION['otp'] ?? ''), $code)) {
@@ -250,6 +301,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$locked && !$verificationUnavailab
             }
             $attemptsLeft = max(0, $left);
         } else {
+            rotate_session();
             $_SESSION['otp_verified'] = true;
             unset($_SESSION['otp'], $_SESSION['otp_expires'], $_SESSION['otp_sent_at'], $_SESSION['otp_attempts'], $_SESSION['otp_locked_until'], $_SESSION['resend_log']);
             header('Location: ' . $nextPage);
@@ -276,6 +328,13 @@ $resendsUsed    = max(0, count($stamps) - 1);                 // every click on 
 $attemptsLeft   = max(0, $resendMax - $resendsUsed);
 $resendBlocked  = $rs['blocked'];
 $cooldown       = $locked ? 0 : $rs['wait'];
+$resendUnavailable = $verificationUnavailable || ($otpRateLogUnavailable && $notice === '');
+if ($otpRateLogUnavailable && $notice !== '') {
+    $cooldown = max($cooldown, $resendBase);
+}
+if ($otpRateLogUnavailable && $notice === '' && $error === '') {
+    $error = 'Code resend limits are temporarily unavailable. Please try again later.';
+}
 $showLimitPopup = $resendBlocked && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['resend']);
 $blockMinutes   = max(1, (int) ceil($rs['wait'] / 60));
 
@@ -354,6 +413,7 @@ $logoSrc = is_file(__DIR__ . '/../assets/images/expertise.png') ? '../assets/ima
         </p>
 
         <form class="otp" id="otpForm" method="post" action="" autocomplete="off" novalidate>
+            <input type="hidden" name="csrf_token" value="<?= attr($csrf) ?>">
 
             <div class="otp__boxes" id="otpBoxes">
                 <?php for ($i = 0; $i < 6; $i++): ?>
@@ -379,7 +439,7 @@ $logoSrc = is_file(__DIR__ . '/../assets/images/expertise.png') ? '../assets/ima
             </button>
 
             <div class="resend reveal" style="--i:9.8">
-                <button type="submit" name="resend" value="1" class="resend__btn" id="resendBtn" data-cooldown="<?= (int) $cooldown ?>" <?= $cooldown > 0 || $verificationUnavailable ? 'disabled' : '' ?>>Resend Code</button>
+                <button type="submit" name="resend" value="1" class="resend__btn" id="resendBtn" data-cooldown="<?= (int) $cooldown ?>" <?= $cooldown > 0 || $resendUnavailable ? 'disabled' : '' ?>>Resend Code</button>
                 <p class="resend__timer">
                     <span id="timer" data-remaining="<?= (int) $remaining ?>"><?= $timerText ?></span>
                     <span id="timerSuffix"><?= $remaining > 0 ? 'remaining' : 'expired' ?></span>

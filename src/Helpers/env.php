@@ -6,13 +6,19 @@ function loadEnv($path) {
     
     $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
-        // Skip comments
-        if (strpos(trim($line), '#') === 0) {
+        // Skip comments and blank lines
+        $trimmed = trim($line);
+        if ($trimmed === '' || strpos($trimmed, '#') === 0) {
+            continue;
+        }
+        
+        // Skip lines without an equals sign
+        if (strpos($trimmed, '=') === false) {
             continue;
         }
         
         // Split by the first equals sign
-        list($name, $value) = explode('=', $line, 2);
+        list($name, $value) = explode('=', $trimmed, 2);
         $name = trim($name);
         $value = trim($value);
         

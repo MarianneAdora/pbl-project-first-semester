@@ -1,34 +1,8 @@
 <?php
-session_start();
-
+require_once __DIR__ . '/../src/Helpers/security.php';
+start_secure_session(1800);
+restore_remembered_session();
 require_once __DIR__ . '/../src/Helpers/db.php';
-
-// Restore session from "remember me" cookie when no session exists
-if (empty($_SESSION['user_role']) && isset($_COOKIE['remember'])) {
-    $pdo = db();
-    $parts = explode('|', $_COOKIE['remember'], 2);
-    if (count($parts) === 2) {
-        $uid = (int) $parts[0];
-        $token = $parts[1];
-        if ($uid > 0 && $token !== '') {
-            $stmt = $pdo->prepare(
-                "SELECT user_id, role, name, email, remember_token, remember_token_expires_at
-                 FROM users WHERE user_id = :id AND deleted_at IS NULL LIMIT 1"
-            );
-            $stmt->execute([':id' => $uid]);
-            $row = $stmt->fetch();
-            if ($row && !empty($row['remember_token']) && hash_equals($row['remember_token'], hash('sha256', $token))) {
-                $expires = $row['remember_token_expires_at'];
-                if ($expires && strtotime($expires) > time()) {
-                    $_SESSION['user_role'] = $row['role'];
-                    $_SESSION['user_email'] = strtolower(trim((string) $row['email']));
-                    $_SESSION['user_name'] = (string) $row['name'];
-                    $_SESSION['user_id'] = (int) $row['user_id'];
-                }
-            }
-        }
-    }
-}
 
 // No caching, so the Back button after logout never shows this page
 header('Cache-Control: no-store, no-cache, must-revalidate');
@@ -63,6 +37,14 @@ try {
     $stats = ['total' => 0, 'pending' => 0, 'in_progress' => 0, 'completed' => 0, 'passed' => 0, 'failed' => 0];
 }
 
+// Summary cards count active applicants added during the current Manila calendar month.
+try {
+    $card_stats = repo_dashboard_monthly_stats();
+} catch (Throwable $e) {
+    error_log('dashboard monthly stats error: ' . $e->getMessage());
+    $card_stats = ['total' => 0, 'pending' => 0, 'in_progress' => 0, 'completed' => 0, 'passed' => 0, 'failed' => 0];
+}
+
 /* Original hard-coded numbers (kept for reference):
 $stats = [
     'total'       => 35,
@@ -81,9 +63,9 @@ function share(int $part, int $total): int
 }
 
 $pct = [
-    'pending'     => share($stats['pending'], $stats['total']),
-    'in_progress' => share($stats['in_progress'], $stats['total']),
-    'completed'   => share($stats['completed'], $stats['total'])
+    'pending'     => share($card_stats['pending'], $card_stats['total']),
+    'in_progress' => share($card_stats['in_progress'], $card_stats['total']),
+    'completed'   => share($card_stats['completed'], $card_stats['total'])
 ];
 
 $screened     = $stats['passed'] + $stats['failed'];
@@ -456,10 +438,10 @@ function status_badge(string $status): string
                         <span class="card-title">Total Applicants</span>
                         <svg class="stat-go" viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
                     </div>
-                    <div class="card-value" data-count="<?php echo (int) $stats['total']; ?>"><?php echo (int) $stats['total']; ?></div>
+                    <div class="card-value" data-count="<?php echo (int) $card_stats['total']; ?>"><?php echo (int) $card_stats['total']; ?></div>
                     <div class="stat-foot">
                         <div class="stat-bar"><span style="--w:100%"></span></div>
-                        <span class="stat-note">All registered applicants</span>
+                        <span class="stat-note">Applicants registered this month</span>
                     </div>
                 </div>
 
@@ -471,10 +453,10 @@ function status_badge(string $status): string
                         <span class="card-title">Pending</span>
                         <svg class="stat-go" viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
                     </div>
-                    <div class="card-value" data-count="<?php echo (int) $stats['pending']; ?>"><?php echo (int) $stats['pending']; ?></div>
+                    <div class="card-value" data-count="<?php echo (int) $card_stats['pending']; ?>"><?php echo (int) $card_stats['pending']; ?></div>
                     <div class="stat-foot">
                         <div class="stat-bar"><span style="--w:<?php echo $pct['pending']; ?>%"></span></div>
-                        <span class="stat-note"><?php echo $pct['pending']; ?>% waiting to start</span>
+                        <span class="stat-note"><?php echo $pct['pending']; ?>% of this month's applicants waiting to start</span>
                     </div>
                 </div>
 
@@ -486,10 +468,10 @@ function status_badge(string $status): string
                         <span class="card-title">In Progress</span>
                         <svg class="stat-go" viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
                     </div>
-                    <div class="card-value" data-count="<?php echo (int) $stats['in_progress']; ?>"><?php echo (int) $stats['in_progress']; ?></div>
+                    <div class="card-value" data-count="<?php echo (int) $card_stats['in_progress']; ?>"><?php echo (int) $card_stats['in_progress']; ?></div>
                     <div class="stat-foot">
                         <div class="stat-bar"><span style="--w:<?php echo $pct['in_progress']; ?>%"></span></div>
-                        <span class="stat-note"><?php echo $pct['in_progress']; ?>% taking the screening</span>
+                        <span class="stat-note"><?php echo $pct['in_progress']; ?>% of this month's applicants taking the screening</span>
                     </div>
                 </div>
 
@@ -502,10 +484,10 @@ function status_badge(string $status): string
                         <span class="new-chip" id="completedNewChip" hidden>0 new</span>
                         <svg class="stat-go" viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
                     </div>
-                    <div class="card-value" data-count="<?php echo (int) $stats['completed']; ?>"><?php echo (int) $stats['completed']; ?></div>
+                    <div class="card-value" data-count="<?php echo (int) $card_stats['completed']; ?>"><?php echo (int) $card_stats['completed']; ?></div>
                     <div class="stat-foot">
                         <div class="stat-bar"><span style="--w:<?php echo $pct['completed']; ?>%"></span></div>
-                        <span class="stat-note"><?php echo $pct['completed']; ?>% finished the screening</span>
+                        <span class="stat-note"><?php echo $pct['completed']; ?>% of this month's applicants finished the screening</span>
                     </div>
                 </div>
             </div>

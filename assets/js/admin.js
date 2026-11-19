@@ -17,6 +17,9 @@
    ========================================================================== */
 
 /* ---------- PART 1: shared helpers (window.ADMIN) ---------- */
+// Compatibility guard for tabs that loaded an older copy while the portal was updated.
+window.refreshSettingsBadge = window.refreshSettingsBadge || function () {};
+
 window.ADMIN = (function () {
     /* ---- Settings (admin/settings-admin.php) -----------------------------------------------------
        Kept in this browser for now, like the HR settings:
@@ -1131,6 +1134,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         password(v) {
             if (!v) return isEdit ? '' : 'Please enter a password.';       // Edit: empty = keep the current password
+            if (new Blob([v]).size > 72) return 'The password must be 72 bytes or fewer.';
             if (/\s/.test(v)) return 'The password cannot contain spaces.';
             if (v.length < 8) return 'The password is too short (at least 8 characters).';
             if (!/[A-Za-z]/.test(v)) return 'Add at least one letter to the password.';
@@ -1763,9 +1767,12 @@ document.addEventListener('DOMContentLoaded', () => {
             return t.length > 80 ? 'The label is too long (80 characters at most).' : '';
         },
         followup_options(v) {
-            const n = lines(v).length;
+            if (v.length > 2000) return 'The choices must be 2000 characters or fewer in total.';
+            const options = lines(v);
+            const n = options.length;
             if (n < 2) return 'Add at least two choices, one per line.';
             if (n > 12) return 'The list can have 12 choices at most.';
+            if (options.some(option => option.length > 100)) return 'Each choice must be 100 characters or fewer.';
             return '';
         },
         max(v) {
@@ -1797,7 +1804,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isWhole(max) && Number(t) > Number(max)) return 'The lowest passing rating cannot be higher than the highest rating (' + max + ').';
             return '';
         },
-        body(v) { return v.trim() ? '' : 'Please write the statement the applicant has to read.'; },
+        body(v) {
+            if (!v.trim()) return 'Please write the statement the applicant has to read.';
+            return v.length > 10000 ? 'The statement must be 10000 characters or fewer.' : '';
+        },
         checkbox(v) {
             const t = v.trim();
             if (!t) return 'Please write the text next to the checkbox (example: I agree).';
@@ -2725,7 +2735,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (busy) return;
         const yes = await ADMIN.confirm({
             title: 'Delete this HR account?',
-            message: a.name + ' will be moved to the Archive and can no longer log in. You can restore the account within 30 days.',
+            message: a.name + ' will be moved to the Archive and can no longer log in. You can restore the account within 30 days. At least one HR account must remain outside the Archive.',
             confirmLabel: 'Delete',
             icon: ADMIN.icons.trash
         });
@@ -3920,6 +3930,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const problems = {
             pwCurrent: !pwCurrent.value ? 'Enter your current password.' : '',
             pwNew: !pwNew.value ? 'Enter a new password.'
+                : new Blob([pwNew.value]).size > 72 ? 'The new password must be 72 bytes or fewer.'
                 : !(checks.len && checks.case && checks.num) ? 'The new password does not meet all the requirements.' : '',
             pwConfirm: !pwConfirm.value ? 'Type the new password again.'
                 : pwConfirm.value !== pwNew.value ? 'The passwords do not match.' : ''

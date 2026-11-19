@@ -5,8 +5,7 @@
 // Every change is written to the activity log, so it shows in the Admin's Recent Activities.
 
 require_once __DIR__ . '/../src/Helpers/security.php';
-secure_session(1800);
-session_start();
+start_secure_session(1800);
 send_security_headers(false);
 
 header('Content-Type: application/json; charset=UTF-8');
@@ -63,9 +62,9 @@ try {
             $name  = trim((string) ($input['name'] ?? ''));
             $email = strtolower(trim((string) ($input['email'] ?? '')));
 
-            if ($name === '' || mb_strlen($name) > 100 || preg_match('/\d/', $name) || !preg_match("/^[\\p{L}\\p{M}'.\\- ]+$/u", $name))
+            if ($name === '' || mb_strlen($name) > 100 || preg_match('/\d/', $name) || !preg_match("/^[\\p{L}\\p{M}'.\\- ]+$/u", $name) || preg_match_all('/\p{L}/u', $name) < 2)
                 hr_respond(['status' => 'error', 'field' => 'name', 'message' => 'Please enter a valid name (letters only).'], 422);
-            if (!filter_var($email, FILTER_VALIDATE_EMAIL))
+            if (strlen($email) > 150 || !filter_var($email, FILTER_VALIDATE_EMAIL))
                 hr_respond(['status' => 'error', 'field' => 'email', 'message' => 'Enter a valid email address (example: name@gmail.com).'], 422);
 
             $changes = ['name_changed' => false, 'email_requested' => false];
@@ -103,12 +102,18 @@ try {
 
             if (!password_verify($current, (string) $user['password_hash']))
                 hr_respond(['status' => 'error', 'field' => 'pwCurrent', 'message' => 'Your current password is not correct.'], 422);
+            if (strlen($next) > 72)
+                hr_respond(['status' => 'error', 'field' => 'pwNew', 'message' => 'The new password must be 72 bytes or fewer.'], 422);
             if (strlen($next) < 8 || !preg_match('/[a-z]/', $next) || !preg_match('/[A-Z]/', $next) || !preg_match('/\d/', $next))
                 hr_respond(['status' => 'error', 'field' => 'pwNew', 'message' => 'The new password does not meet all the requirements.'], 422);
             if ($next === $current)
                 hr_respond(['status' => 'error', 'field' => 'pwNew', 'message' => 'The new password must be different from the current one.'], 422);
 
-            $stmt = $pdo->prepare("UPDATE users SET password_hash = :hash WHERE user_id = :u");
+            $stmt = $pdo->prepare(
+                "UPDATE users
+                 SET password_hash = :hash, remember_token = NULL, remember_token_expires_at = NULL
+                 WHERE user_id = :u"
+            );
             $stmt->execute([':hash' => password_hash($next, PASSWORD_DEFAULT), ':u' => $uid]);
             if ($stmt->rowCount() === 0)
                 hr_respond(['status' => 'error', 'message' => 'Your account could not be found. Please log in again.'], 403);

@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once __DIR__ . '/../src/Helpers/security.php';
+start_secure_session(1800);
 
 // Protection: Ensure only HR users can access this page
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {
@@ -636,7 +637,7 @@ $pageData = [
             <p id="rejectDescription"><strong><?php echo $h($applicant['name']); ?></strong> will be marked as rejected, regardless of their current screening status.</p>
             <div class="reject-reason-group">
                 <label for="rejectReason">Reason for rejection</label>
-                <textarea id="rejectReason" name="rejectReason" rows="4" placeholder="Tell the applicant why they were not selected..."></textarea>
+                <textarea id="rejectReason" name="rejectReason" rows="4" maxlength="2000" placeholder="Tell the applicant why they were not selected..."></textarea>
             </div>
             <div class="modal-actions">
                 <button type="button" class="btn-cancel" id="rejectCancel">Cancel</button>

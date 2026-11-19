@@ -12,8 +12,7 @@ error_reporting(0);
 @ini_set('display_errors', '0');
 
 require_once __DIR__ . '/../src/Helpers/security.php';
-secure_session(1800);
-session_start();
+start_secure_session(1800);
 send_security_headers(false);
 
 header('Content-Type: application/json; charset=UTF-8');
@@ -35,7 +34,12 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 // Rate limit password reset requests (5 per 15 minutes per IP)
 $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
-$rl = rate_limit('password-reset:' . $ip, 5, 15 * 60);
+try {
+    $rl = rate_limit('password-reset:' . $ip, 5, 15 * 60);
+} catch (Throwable $e) {
+    error_log('Password-reset rate-limit check failed: ' . $e->getMessage());
+    respond(['status' => 'error', 'message' => 'Password reset is temporarily unavailable. Please try again later.'], 503);
+}
 if (!$rl['allowed']) {
     http_response_code(429);
     respond(['status' => 'error', 'message' => 'Too many reset requests. Please try again in ' . $rl['retry_after'] . ' seconds.', 'retry_after' => $rl['retry_after']]);
@@ -51,7 +55,7 @@ try {
     switch ($action) {
         case 'request': {
             $email = strtolower(trim((string) ($input['email'] ?? '')));
-            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            if (strlen($email) > 150 || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 respond(['status' => 'success', 'message' => 'If the email exists, a reset link has been sent.']);
             }
 
@@ -106,6 +110,9 @@ try {
             if ($password === '' || $password !== $confirm) {
                 respond(['status' => 'error', 'message' => 'Please enter the same password in both fields.'], 422);
             }
+            if (strlen($password) > 72) {
+                respond(['status' => 'error', 'message' => 'The password must be 72 bytes or fewer.'], 422);
+            }
             if (strlen($password) < 8 || !preg_match('/[a-z]/', $password) || !preg_match('/[A-Z]/', $password) || !preg_match('/\d/', $password)) {
                 respond(['status' => 'error', 'message' => 'The password must be at least 8 characters and include upper and lower case letters and a number.'], 422);
             }
@@ -126,7 +133,9 @@ try {
 
             $pdo->prepare(
                 "UPDATE users
-                 SET password_hash = :hash, reset_token = NULL, reset_token_expires_at = NULL
+                 SET password_hash = :hash,
+                     reset_token = NULL, reset_token_expires_at = NULL,
+                     remember_token = NULL, remember_token_expires_at = NULL
                  WHERE user_id = :u"
             )->execute([
                 ':hash' => password_hash($password, PASSWORD_DEFAULT),
