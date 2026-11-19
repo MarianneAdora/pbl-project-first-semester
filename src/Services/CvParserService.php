@@ -16,7 +16,11 @@ class CvParserService {
      * @return array ['name'=>string,'email'=>string,'contact'=>string,'raw_text'=>string]
      */
     public function parseFile($filePath, $originalName = null, $mimeType = null) {
-        $text = $this->extractText($filePath, $originalName, $mimeType);
+        try {
+            $text = $this->extractText($filePath, $originalName, $mimeType);
+        } catch (Throwable $e) {
+            throw new Exception('Could not read any text from this CV. Try a text-based PDF or DOCX file.');
+        }
         $text = trim(preg_replace('/[ \t]+/', ' ', (string) $text));
         if (mb_strlen($text) < 10) {
             throw new Exception('Could not read any text from this CV. Try a text-based PDF.');
