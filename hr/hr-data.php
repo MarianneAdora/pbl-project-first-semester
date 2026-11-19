@@ -828,19 +828,7 @@ function static_positions(): array
     } catch (Throwable $e) {
         error_log('Job description sync error: ' . $e->getMessage());
     }
-    $stmt = $pdo->query(
-        "SELECT jp.job_id, jp.job_name, jp.jd_url, jp.jd_public_id, jp.created_at, jp.archived_at,
-                COALESCE(applicant_counts.assigned_count, 0) AS assigned_count
-         FROM job_positions jp
-         LEFT JOIN (
-             SELECT position_id, COUNT(*) AS assigned_count
-             FROM applicant
-             WHERE position_id IS NOT NULL
-             GROUP BY position_id
-         ) applicant_counts ON applicant_counts.position_id = jp.job_id
-         WHERE jp.archived_at IS NULL
-         ORDER BY jp.job_id"
-    );
+    $stmt = $pdo->query("SELECT job_id, job_name, jd_url, jd_public_id, created_at, archived_at FROM job_positions WHERE archived_at IS NULL ORDER BY job_id");
     $out = [];
     while ($row = $stmt->fetch()) {
         $out[] = [
@@ -853,8 +841,7 @@ function static_positions(): array
                 'public_id'  => (string) ($row['jd_public_id'] ?? '')
             ] : null,
             'created'     => (string) $row['created_at'],
-            'archived_at' => empty($row['archived_at']) ? null : (string) $row['archived_at'],
-            'assigned_count' => (int) ($row['assigned_count'] ?? 0)
+            'archived_at' => empty($row['archived_at']) ? null : (string) $row['archived_at']
         ];
     }
     return $out;
@@ -890,8 +877,7 @@ function static_position_public(array $p): array
         'name'    => (string) $p['job_name'],
         'has_jd'  => !empty($p['jd']['url']),
         'jd_name' => !empty($p['jd']['name']) ? (string) $p['jd']['name'] : '',
-        'jd_url'  => !empty($p['jd']['url']) ? (string) $p['jd']['url'] : '',
-        'assigned_count' => (int) ($p['assigned_count'] ?? 0)
+        'jd_url'  => !empty($p['jd']['url']) ? (string) $p['jd']['url'] : ''
     ];
 }
 
@@ -999,6 +985,13 @@ function static_position_add(string $name, ?array $jdUpload = null): array
 
 // Archive a job position and delete its Cloudinary job-description PDF.
 // Returns the archived position. Throws InvalidArgumentException if not found or in use.
+function static_position_applicant_count(int $id): int
+{
+    $stmt = db()->prepare('SELECT COUNT(*) FROM applicant WHERE position_id = :id');
+    $stmt->execute([':id' => $id]);
+    return (int) $stmt->fetchColumn();
+}
+
 function static_position_delete(int $id): array
 {
     $pdo = db();
@@ -1009,9 +1002,7 @@ function static_position_delete(int $id): array
     if (!$pos) throw new InvalidArgumentException('That job position was not found.');
     if (!empty($pos['archived_at'])) throw new InvalidArgumentException('That job position is already archived.');
 
-    $assigned = $pdo->prepare('SELECT COUNT(*) FROM applicant WHERE position_id = :id');
-    $assigned->execute([':id' => $id]);
-    $applicantCount = (int) $assigned->fetchColumn();
+    $applicantCount = static_position_applicant_count($id);
     if ($applicantCount > 0) {
         throw new InvalidArgumentException(
             'This job position is assigned to ' . $applicantCount . ' applicant' . ($applicantCount === 1 ? '' : 's')
@@ -1807,6 +1798,8 @@ function static_profile_for_page(string $avatarBase): array
        action = add | archive | restore | purge | status
        add      first_name, middle_name (optional), last_name, email, contact, position_id, cv (file)
        position_add  name, jd (a PDF, optional)     "+ Add job position" in Add Applicant
+       position_delete_check id                    preflight the job-position deletion constraint
+       position_delete id                          archive an unassigned position
        positions     (nothing)                      the list of job positions
        archive  ids = [101, 102], at = { id: ms }     Screening List "Delete" (at is optional)
        restore  ids = [101, 102]                      Archive "Restore"
@@ -1936,6 +1929,15 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
 
             case 'positions':
                 static_respond(['status' => 'success', 'positions' => array_map('static_position_public', static_positions())]);
+                break;
+
+            case 'position_delete_check':
+                $pid = (int) ($input['id'] ?? 0);
+                if ($pid <= 0) static_respond(['status' => 'error', 'message' => 'Invalid position id.'], 400);
+                if (static_position_find($pid) === null) {
+                    static_respond(['status' => 'error', 'message' => 'That job position was not found or is already archived.'], 404);
+                }
+                static_respond(['status' => 'success', 'assigned_count' => static_position_applicant_count($pid)]);
                 break;
 
             case 'position_delete':

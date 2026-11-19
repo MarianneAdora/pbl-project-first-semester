@@ -1336,9 +1336,8 @@ document.addEventListener('DOMContentLoaded', () => {
         li.setAttribute('aria-selected', 'false');
         li.id = 'pd-opt-' + p.id;
         li.dataset.value = String(p.id);
-        li.dataset.assignedCount = String(p.assigned_count || 0);
         li.innerHTML = '<span class="pd-name"></span><span class="pd-tag"></span>'
-            + '<button type="button" class="pd-delete" data-id="' + String(p.id) + '" data-assigned-count="' + String(p.assigned_count || 0) + '" aria-label="Delete" title="Delete">'
+            + '<button type="button" class="pd-delete" data-id="' + String(p.id) + '" aria-label="Delete" title="Delete">'
             + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>'
             + '</button>'
             + '<svg class="pd-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>';
@@ -1358,11 +1357,31 @@ document.addEventListener('DOMContentLoaded', () => {
             const li = del.closest('.pd-opt');
             const id = del.dataset.id;
             const name = li ? li.querySelector('.pd-name').textContent : 'this position';
-            const assignedCount = Number(del.dataset.assignedCount || 0);
-            if (assignedCount > 0) {
-                positionDeleteErrorText.textContent = 'This job position is assigned to ' + assignedCount
-                    + ' applicant' + (assignedCount === 1 ? '' : 's')
-                    + ' (including archived applicants) and cannot be deleted.';
+            try {
+                const body = new FormData();
+                body.append('action', 'position_delete_check');
+                body.append('id', id);
+                const res = await fetch('hr-data.php', { method: 'POST', body, credentials: 'same-origin' });
+                let data;
+                try { data = await res.json(); } catch (err) { throw new Error('The server did not answer correctly. Please try again.'); }
+                if (!data || data.status !== 'success') {
+                    throw new Error(data && data.message || 'Could not check the job position. Please try again.');
+                }
+                const assignedCount = Number(data.assigned_count);
+                if (!Number.isInteger(assignedCount) || assignedCount < 0) {
+                    throw new Error('Could not check whether this job position is assigned. Please try again.');
+                }
+                if (assignedCount > 0) {
+                    positionDeleteErrorText.textContent = 'This job position is assigned to ' + assignedCount
+                        + ' applicant' + (assignedCount === 1 ? '' : 's')
+                        + ' (including archived applicants) and cannot be deleted.';
+                    positionDeleteErrorFocusId = id;
+                    positionDeleteErrorModal.classList.add('active');
+                    positionDeleteErrorOk.focus();
+                    return;
+                }
+            } catch (err) {
+                positionDeleteErrorText.textContent = err.message || 'Could not check the job position. Please try again.';
                 positionDeleteErrorFocusId = id;
                 positionDeleteErrorModal.classList.add('active');
                 positionDeleteErrorOk.focus();
