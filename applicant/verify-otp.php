@@ -46,21 +46,46 @@ if ($applicantId > 0 && $email === '') {
     $otpDbError = 'Your email address is missing. Please reopen your invite link.';
 }
 
-/** Reserve the per-applicant send slot under a lock so simultaneous requests cannot bypass limits. */
-$reserveOtpRequest = function () use ($applicantId, $resendBase, $resendStep, $resendMax, $resendWindow): array {
+/** Send and record a code atomically, preventing orphaned cooldowns and parallel first sends. */
+$issueDbOtp = function () use ($otpDb, $applicantId, $email, $applicantName, $resendBase, $resendStep, $resendMax, $resendWindow): string {
     $pdo = db();
     $ownsTransaction = !$pdo->inTransaction();
-    if ($ownsTransaction) $pdo->beginTransaction();
+    $clearOrphanedRequestLogs = function () use ($pdo, $applicantId): void {
+        if ($pdo->inTransaction()) return;
+        try {
+            $pdo->beginTransaction();
+            $lock = $pdo->prepare("SELECT pg_advisory_xact_lock(hashtextextended(:lock_key, 0))");
+            $lock->execute([':lock_key' => 'otp-send:' . $applicantId]);
+            $otp = $pdo->prepare("SELECT 1 FROM otp WHERE applicant_id = :applicant_id LIMIT 1");
+            $otp->execute([':applicant_id' => $applicantId]);
+            if (!$otp->fetchColumn()) {
+                $pdo->prepare("DELETE FROM otp_request_log WHERE applicant_id = :applicant_id")
+                    ->execute([':applicant_id' => $applicantId]);
+            }
+            $pdo->commit();
+        } catch (Throwable $cleanupError) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            error_log('OTP orphaned request cleanup error: ' . $cleanupError->getMessage());
+        }
+    };
 
     try {
+        if ($ownsTransaction) $pdo->beginTransaction();
         $lock = $pdo->prepare("SELECT pg_advisory_xact_lock(hashtextextended(:lock_key, 0))");
         $lock->execute([':lock_key' => 'otp-send:' . $applicantId]);
 
+        $existingOtp = $pdo->prepare("SELECT 1 FROM otp WHERE applicant_id = :applicant_id LIMIT 1");
+        $existingOtp->execute([':applicant_id' => $applicantId]);
+        if (!$existingOtp->fetchColumn()) {
+            $pdo->prepare("DELETE FROM otp_request_log WHERE applicant_id = :applicant_id")
+                ->execute([':applicant_id' => $applicantId]);
+        }
+
         $stmt = $pdo->prepare(
-            "SELECT EXTRACT(EPOCH FROM (NOW() - requested_at))::int AS age_seconds
+            "SELECT EXTRACT(EPOCH FROM (clock_timestamp() - requested_at))::int AS age_seconds
              FROM otp_request_log
              WHERE applicant_id = :applicant_id
-               AND requested_at > NOW() - (CAST(:window_seconds AS INTEGER) * INTERVAL '1 second')
+               AND requested_at > clock_timestamp() - (CAST(:window_seconds AS INTEGER) * INTERVAL '1 second')
              ORDER BY requested_at ASC"
         );
         $stmt->execute([':applicant_id' => $applicantId, ':window_seconds' => $resendWindow]);
@@ -71,72 +96,33 @@ $reserveOtpRequest = function () use ($applicantId, $resendBase, $resendStep, $r
         if ($resends >= $resendMax) {
             $wait = max(0, $resendWindow - $lastAge);
             if ($ownsTransaction) $pdo->commit();
-            return ['allowed' => false, 'blocked' => true, 'wait' => $wait];
+            return 'You have reached the maximum number of resends. Please try again in '
+                . max(1, (int) ceil($wait / 60)) . ' minute(s).';
         }
 
         $wait = max(0, $resendBase + $resendStep * $resends - $lastAge);
         if ($wait > 0) {
             if ($ownsTransaction) $pdo->commit();
-            return ['allowed' => false, 'blocked' => false, 'wait' => $wait];
+            return 'Please wait ' . $wait . ' second' . ($wait === 1 ? '' : 's') . ' before asking for a new code.';
         }
 
-        $insert = $pdo->prepare(
-            "INSERT INTO otp_request_log (applicant_id, requested_at) VALUES (:applicant_id, NOW()) RETURNING log_id"
-        );
-        $insert->execute([':applicant_id' => $applicantId]);
-        $requestId = (int) $insert->fetchColumn();
+        $ok = $otpDb->generateAndSendOtp($applicantId, $email, $applicantName !== '' ? $applicantName : $email);
+        if (!$ok) {
+            if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
+            $clearOrphanedRequestLogs();
+            return 'We could not send the code. Please try again.';
+        }
+
+        $pdo->prepare(
+            "INSERT INTO otp_request_log (applicant_id, requested_at) VALUES (:applicant_id, clock_timestamp())"
+        )->execute([':applicant_id' => $applicantId]);
         if ($ownsTransaction) $pdo->commit();
-        return ['allowed' => true, 'blocked' => false, 'wait' => 0, 'request_id' => $requestId];
+        return '';
     } catch (Throwable $e) {
         if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
-        throw $e;
-    }
-};
-
-/** Remove a reserved cooldown slot when the email send fails and no usable code was issued. */
-$releaseOtpRequest = function (int $requestId) use ($applicantId): bool {
-    try {
-        $stmt = db()->prepare(
-            "DELETE FROM otp_request_log WHERE log_id = :log_id AND applicant_id = :applicant_id"
-        );
-        $stmt->execute([':log_id' => $requestId, ':applicant_id' => $applicantId]);
-        return $stmt->rowCount() === 1;
-    } catch (Throwable $e) {
-        error_log('OTP send reservation cleanup error: ' . $e->getMessage());
-        return false;
-    }
-};
-
-/** Send a fresh code through the DB (hash stored, email via Brevo). Returns error message or ''. */
-$issueDbOtp = function () use ($otpDb, $applicantId, $email, $applicantName, $reserveOtpRequest, $releaseOtpRequest): string {
-    try {
-        $reservation = $reserveOtpRequest();
-    } catch (Throwable $e) {
-        error_log('OTP send-limit check error: ' . $e->getMessage());
-        return 'Code sending is temporarily unavailable. Please try again later.';
-    }
-    if (!$reservation['allowed']) {
-        if ($reservation['blocked']) {
-            return 'You have reached the maximum number of resends. Please try again in '
-                . max(1, (int) ceil($reservation['wait'] / 60)) . ' minute(s).';
-        }
-        return 'Please wait ' . $reservation['wait'] . ' second(s) before asking for a new code.';
-    }
-
-    $requestId = (int) ($reservation['request_id'] ?? 0);
-    try {
-        $ok = $otpDb->generateAndSendOtp($applicantId, $email, $applicantName !== '' ? $applicantName : $email);
-        if ($ok) return '';
-        $released = $requestId > 0 && $releaseOtpRequest($requestId);
-        return $released
-            ? 'We could not send the code. Please try again.'
-            : 'We could not send the code. Please wait briefly, then try again.';
-    } catch (Throwable $e) {
         error_log('verify-otp send error: ' . $e->getMessage());
-        $released = $requestId > 0 && $releaseOtpRequest($requestId);
-        return $released
-            ? 'We could not send the code. Please try again.'
-            : 'We could not send the code. Please wait briefly, then try again.';
+        $clearOrphanedRequestLogs();
+        return 'Code sending is temporarily unavailable. Please try again later.';
     }
 };
 
@@ -339,10 +325,12 @@ if ($otpDb) {
     $row = $otpDb->latestOtp($applicantId);
     $expTs = $row ? strtotime((string) $row['expires_at']) : false;
     $remaining = (!$locked && $expTs) ? max(0, $expTs - time()) : 0;
+    $hasOtpCode = (bool) $row;
     if ($row) $attemptsLeft = max(0, $maxAttempts - (int) $row['attempt_count']);
     $lockLeft = ($locked && $row && !empty($row['locked_until'])) ? max(0, strtotime((string) $row['locked_until']) - time()) : 0;
 } else {
     $remaining = ($locked || !isset($_SESSION['otp_expires'])) ? 0 : max(0, $_SESSION['otp_expires'] - time());
+    $hasOtpCode = isset($_SESSION['otp'], $_SESSION['otp_expires']);
     $lockLeft  = $locked ? max(0, $_SESSION['otp_locked_until'] - time()) : 0;
 }
 
@@ -364,6 +352,7 @@ $showLimitPopup = $resendBlocked && $_SERVER['REQUEST_METHOD'] === 'POST' && iss
 $blockMinutes   = max(1, (int) ceil($rs['wait'] / 60));
 
 $timerText = sprintf('%02d:%02d', intdiv($remaining, 60), $remaining % 60);
+$timerSuffixText = $remaining > 0 ? 'remaining' : ($hasOtpCode ? 'expired' : 'not sent');
 $lockText     = sprintf('%02d:%02d', intdiv($lockLeft, 60), $lockLeft % 60);
 $contactLink  = 'mailto:hr@expertise.example';                                    // same address as opening.php
 
@@ -433,7 +422,13 @@ $logoSrc = is_file(__DIR__ . '/../assets/images/expertise.png') ? '../assets/ima
 
         <h1 class="verify__title reveal" style="--i:3.5">Verify Your Email</h1>
         <p class="verify__text reveal" style="--i:4.5">
+            <?php if ($remaining > 0): ?>
             We&rsquo;ve sent a 6-digit code to<br>
+            <?php elseif ($hasOtpCode): ?>
+            Your previous code has expired. Request a new one for<br>
+            <?php else: ?>
+            No active verification code was sent to<br>
+            <?php endif; ?>
             <strong class="verify__email"><?= $emailDisplay ?></strong>
         </p>
 
@@ -466,8 +461,8 @@ $logoSrc = is_file(__DIR__ . '/../assets/images/expertise.png') ? '../assets/ima
             <div class="resend reveal" style="--i:9.8">
                 <button type="submit" name="resend" value="1" class="resend__btn" id="resendBtn" data-cooldown="<?= (int) $cooldown ?>" <?= $cooldown > 0 || $resendUnavailable ? 'disabled' : '' ?>>Resend Code</button>
                 <p class="resend__timer">
-                    <span id="timer" data-remaining="<?= (int) $remaining ?>"><?= $timerText ?></span>
-                    <span id="timerSuffix"><?= $remaining > 0 ? 'remaining' : 'expired' ?></span>
+                    <span id="timer" data-remaining="<?= (int) $remaining ?>" data-has-code="<?= $hasOtpCode ? 'true' : 'false' ?>"><?= $timerText ?></span>
+                    <span id="timerSuffix"><?= $timerSuffixText ?></span>
                 </p>
             </div>
 

@@ -2373,6 +2373,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const bannerText = document.getElementById("errorText");
     const timerEl = document.getElementById("timer");
     const timerSuffix = document.getElementById("timerSuffix");
+    const hasOtpCode = timerEl.dataset.hasCode === "true";
     const timerWrap = timerEl.closest(".resend__timer");
     const LAST = boxes.length - 1;
 
@@ -2577,8 +2578,8 @@ document.addEventListener("DOMContentLoaded", function () {
         const m = Math.floor(remaining / 60);
         const s = remaining % 60;
         timerEl.textContent = String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
-        timerSuffix.textContent = remaining > 0 ? "remaining" : "expired";
-        timerWrap.classList.toggle("is-expired", remaining <= 0);
+        timerSuffix.textContent = remaining > 0 ? "remaining" : (hasOtpCode ? "expired" : "not sent");
+        timerWrap.classList.toggle("is-expired", remaining <= 0 && hasOtpCode);
         return remaining;
     }
 
