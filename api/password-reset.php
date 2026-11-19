@@ -12,8 +12,7 @@ error_reporting(0);
 @ini_set('display_errors', '0');
 
 require_once __DIR__ . '/../src/Helpers/security.php';
-secure_session(1800);
-session_start();
+start_secure_session(1800);
 send_security_headers(false);
 
 header('Content-Type: application/json; charset=UTF-8');
@@ -35,7 +34,12 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 // Rate limit password reset requests (5 per 15 minutes per IP)
 $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
-$rl = rate_limit('password-reset:' . $ip, 5, 15 * 60);
+try {
+    $rl = rate_limit('password-reset:' . $ip, 5, 15 * 60);
+} catch (Throwable $e) {
+    error_log('Password-reset rate-limit check failed: ' . $e->getMessage());
+    respond(['status' => 'error', 'message' => 'Password reset is temporarily unavailable. Please try again later.'], 503);
+}
 if (!$rl['allowed']) {
     http_response_code(429);
     respond(['status' => 'error', 'message' => 'Too many reset requests. Please try again in ' . $rl['retry_after'] . ' seconds.', 'retry_after' => $rl['retry_after']]);
@@ -129,7 +133,9 @@ try {
 
             $pdo->prepare(
                 "UPDATE users
-                 SET password_hash = :hash, reset_token = NULL, reset_token_expires_at = NULL
+                 SET password_hash = :hash,
+                     reset_token = NULL, reset_token_expires_at = NULL,
+                     remember_token = NULL, remember_token_expires_at = NULL
                  WHERE user_id = :u"
             )->execute([
                 ':hash' => password_hash($password, PASSWORD_DEFAULT),

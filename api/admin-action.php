@@ -1,8 +1,7 @@
 <?php
 // api/admin-action.php — DB-backed AJAX endpoint for admin archive/restore/purge actions.
 require_once __DIR__ . '/../src/Helpers/security.php';
-secure_session(1800);
-session_start();
+start_secure_session(1800);
 send_security_headers(false);
 
 header('Content-Type: application/json; charset=UTF-8');
@@ -242,8 +241,11 @@ try {
                     admin_respond(['status' => 'error', 'message' => 'The passwords do not match.'], 422);
                 }
                 $hash = password_hash($password, PASSWORD_DEFAULT);
-                $upd = $pdo->prepare("UPDATE users SET name=:n, email=:e, email_normalized=:en, password_hash=:p, status=:s WHERE user_id=:id AND role='hr' AND deleted_at IS NULL");
+                $upd = $pdo->prepare("UPDATE users SET name=:n, email=:e, email_normalized=:en, password_hash=:p, status=:s, remember_token=NULL, remember_token_expires_at=NULL WHERE user_id=:id AND role='hr' AND deleted_at IS NULL");
                 $upd->execute([':n' => $name, ':e' => $email, ':en' => $en, ':p' => $hash, ':s' => $status, ':id' => $id]);
+            } elseif ($status === 'Inactive') {
+                $upd = $pdo->prepare("UPDATE users SET name=:n, email=:e, email_normalized=:en, status=:s, remember_token=NULL, remember_token_expires_at=NULL WHERE user_id=:id AND role='hr' AND deleted_at IS NULL");
+                $upd->execute([':n' => $name, ':e' => $email, ':en' => $en, ':s' => $status, ':id' => $id]);
             } else {
                 $upd = $pdo->prepare("UPDATE users SET name=:n, email=:e, email_normalized=:en, status=:s WHERE user_id=:id AND role='hr' AND deleted_at IS NULL");
                 $upd->execute([':n' => $name, ':e' => $email, ':en' => $en, ':s' => $status, ':id' => $id]);

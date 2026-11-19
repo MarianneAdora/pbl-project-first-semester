@@ -2,7 +2,8 @@
 // hr/archive-action.php — shared POST endpoint for Screening List actions.
 // Body: JSON { action: archive | restore | purge | status, ids: [int, ...], id: int, status: string, result: string }
 
-session_start();
+require_once __DIR__ . '/../src/Helpers/security.php';
+start_secure_session(1800);
 header("Content-Type: application/json");
 
 $respond = function (array $data, int $code = 200): void {

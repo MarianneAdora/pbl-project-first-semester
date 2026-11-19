@@ -839,7 +839,8 @@ function details_send_email(array $email, int $applicantId, string $kind): bool
 if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) !== false
     && strcasecmp(realpath($_SERVER['SCRIPT_FILENAME']), __FILE__) === 0) {   // strcasecmp: Windows paths
 
-    if (session_status() === PHP_SESSION_NONE) session_start();
+    require_once __DIR__ . '/../src/Helpers/security.php';
+    start_secure_session(1800);
 
     function details_respond(array $data, int $code = 200): void
     {

@@ -1,34 +1,8 @@
 <?php
-session_start();
-
+require_once __DIR__ . '/../src/Helpers/security.php';
+start_secure_session(1800);
+restore_remembered_session();
 require_once __DIR__ . '/../src/Helpers/db.php';
-
-// Restore session from "remember me" cookie when no session exists
-if (empty($_SESSION['user_role']) && isset($_COOKIE['remember'])) {
-    $pdo = db();
-    $parts = explode('|', $_COOKIE['remember'], 2);
-    if (count($parts) === 2) {
-        $uid = (int) $parts[0];
-        $token = $parts[1];
-        if ($uid > 0 && $token !== '') {
-            $stmt = $pdo->prepare(
-                "SELECT user_id, role, name, email, remember_token, remember_token_expires_at
-                 FROM users WHERE user_id = :id AND deleted_at IS NULL LIMIT 1"
-            );
-            $stmt->execute([':id' => $uid]);
-            $row = $stmt->fetch();
-            if ($row && !empty($row['remember_token']) && hash_equals($row['remember_token'], hash('sha256', $token))) {
-                $expires = $row['remember_token_expires_at'];
-                if ($expires && strtotime($expires) > time()) {
-                    $_SESSION['user_role'] = $row['role'];
-                    $_SESSION['user_email'] = strtolower(trim((string) $row['email']));
-                    $_SESSION['user_name'] = (string) $row['name'];
-                    $_SESSION['user_id'] = (int) $row['user_id'];
-                }
-            }
-        }
-    }
-}
 
 // No caching, so the Back button after logout never shows this page
 header('Cache-Control: no-store, no-cache, must-revalidate');

@@ -1746,7 +1746,9 @@ function static_profile_change_password(string $current, string $new): array
     static_profile_check_new_password($new, $current);
 
     $pdo = db();
-    $stmt = $pdo->prepare("UPDATE users SET password_hash = :hash WHERE user_id = :id");
+    $stmt = $pdo->prepare(
+        "UPDATE users SET password_hash = :hash, remember_token = NULL, remember_token_expires_at = NULL WHERE user_id = :id"
+    );
     $stmt->execute([':hash' => password_hash($new, PASSWORD_DEFAULT), ':id' => $me['id']]);
     if ($stmt->rowCount() === 0) throw new StaticProfileError('Your account could not be found. Please log in again.');
     try { repo_log_activity('Changed Password', $me['name'] . ' (' . $me['email'] . ')'); } catch (Throwable $e) {}
@@ -1808,7 +1810,7 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
     && strcasecmp(realpath($_SERVER['SCRIPT_FILENAME']), __FILE__) === 0) {   // strcasecmp: Windows paths
 
     require_once __DIR__ . '/../src/Helpers/security.php';
-    if (session_status() === PHP_SESSION_NONE) session_start();
+    start_secure_session(1800);
     restore_remembered_session();
     header('Content-Type: application/json; charset=UTF-8');
     error_reporting(0);          // suppress warnings/notices that would corrupt the JSON response

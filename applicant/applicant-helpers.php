@@ -376,7 +376,8 @@ function static_validate_answer(array $q, array $answers): string
 if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) !== false
     && strcasecmp(realpath($_SERVER['SCRIPT_FILENAME']), __FILE__) === 0) {
 
-    if (session_status() === PHP_SESSION_NONE) session_start();
+    require_once __DIR__ . '/../src/Helpers/security.php';
+    start_secure_session(1800);
     header('Content-Type: application/json; charset=UTF-8');
 
     function applicant_helpers_respond(array $data, int $code = 200): void

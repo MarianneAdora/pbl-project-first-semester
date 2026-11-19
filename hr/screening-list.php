@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once __DIR__ . '/../src/Helpers/security.php';
+start_secure_session(1800);
 
 // Protection: Ensure only HR users can access this page
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {

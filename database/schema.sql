@@ -162,6 +162,7 @@ CREATE TABLE rate_limit_log (
 );
 
 CREATE INDEX idx_rate_limit_key_time ON rate_limit_log(key_hash, created_at);
+CREATE INDEX idx_rate_limit_created_at ON rate_limit_log(created_at);
 
 -- ------------------------------------------------------------
 -- QUESTION CONFIG

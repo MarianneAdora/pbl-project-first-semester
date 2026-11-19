@@ -5,8 +5,7 @@
 // Every change is written to the activity log, so it shows in the Admin's Recent Activities.
 
 require_once __DIR__ . '/../src/Helpers/security.php';
-secure_session(1800);
-session_start();
+start_secure_session(1800);
 send_security_headers(false);
 
 header('Content-Type: application/json; charset=UTF-8');
@@ -110,7 +109,11 @@ try {
             if ($next === $current)
                 hr_respond(['status' => 'error', 'field' => 'pwNew', 'message' => 'The new password must be different from the current one.'], 422);
 
-            $stmt = $pdo->prepare("UPDATE users SET password_hash = :hash WHERE user_id = :u");
+            $stmt = $pdo->prepare(
+                "UPDATE users
+                 SET password_hash = :hash, remember_token = NULL, remember_token_expires_at = NULL
+                 WHERE user_id = :u"
+            );
             $stmt->execute([':hash' => password_hash($next, PASSWORD_DEFAULT), ':u' => $uid]);
             if ($stmt->rowCount() === 0)
                 hr_respond(['status' => 'error', 'message' => 'Your account could not be found. Please log in again.'], 403);
