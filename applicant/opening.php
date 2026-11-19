@@ -28,7 +28,7 @@ if ($tokenParam !== '') {
         if ($isNewApplicant) {
             rotate_session();
             foreach (['otp_verified', 'otp', 'otp_expires', 'otp_sent_at', 'otp_attempts', 'otp_locked_until',
-                      'otp_failed_total', 'otp_request_times', 'otp_was_locked',
+                      'otp_failed_total', 'otp_request_times', 'otp_was_locked', 'resend_log',
                       'screening_submitted', 'screening_reference', 'screening_result', 'screening_privacy_accepted_at', 'interview',
                       'rejection_email_sent'] as $k) {
                 unset($_SESSION[$k]);

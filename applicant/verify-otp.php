@@ -240,6 +240,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !csrf_verify((string) ($_POST['csrf
                 $error = '';
                 $notice = 'A new code has been sent to your email.';
             }
+        } elseif (!$otpDb && !isset($_SESSION['otp'], $_SESSION['otp_expires'])) {
+            $sendError = $issueSessionOtp();
+            if ($sendError !== '') $error = $sendError;
+            else {
+                $error = '';
+                $notice = 'A new code has been sent to your email.';
+            }
         } else {
             $rs = $resendState($getRequestStamps());
             if ($rs['blocked']) {
