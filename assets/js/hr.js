@@ -11,7 +11,7 @@
    HR common behaviour: shared by every HR page
    Part 1: window.HR helpers (archive storage, sidebar badge, toast)
    Part 2: entrance animation, sidebar (collapsed state is remembered),
-           Applicants dropdown, logout confirmation + stripe sweep-in
+           Applicants navigation, logout confirmation + stripe sweep-in
    Load this file BEFORE the page's own script.
    ========================================================================== */
 
@@ -321,6 +321,13 @@ window.HR = (function () {
         refreshDashboardBadge();
     }
 
+    function markAllCompletedSeen() {
+        const seen = new Set(readSeen());
+        readIds(COMPLETED_KEY).forEach(id => seen.add(id));
+        writeIds(SEEN_KEY, Array.from(seen));
+        refreshDashboardBadge();
+    }
+
     function ensureDashboardBadge() {
         let badge = document.getElementById('dashboardBadge');
         if (badge) return badge;
@@ -385,18 +392,7 @@ window.HR = (function () {
                 link.appendChild(main);
             }
         }
-        let sub = document.getElementById('screeningBadge');
-        if (!sub) {
-            const item = document.querySelector('.sub-menu a.sub-item[href$="screening-list.php"]');
-            if (item) {
-                sub = document.createElement('span');
-                sub.className = 'nav-badge alert mini';
-                sub.id = 'screeningBadge';
-                sub.hidden = true;
-                item.appendChild(sub);
-            }
-        }
-        return [main, sub].filter(Boolean);
+        return main ? [main] : [];
     }
 
     let lastNewCount = -1;
@@ -486,44 +482,9 @@ window.HR = (function () {
        Dashboard bell lists the answer, both until HR has read it (Settings > "Got it", or opening the bell).
        Needs window.HR_ACCOUNT.id (printed by every HR page). The master switch in Settings > Notifications
        hides the number, but the highlighted banner on the Settings page itself always shows.
-       BACKEND: unread = rows in the HR's notification table with read_at IS NULL. */
-    function accountId() { return Number((window.HR_ACCOUNT || {}).id) || 0; }
-
-    function unreadDecisions() {
-        if (!window.HRREQ || !accountId()) return [];
-        return readSettings().notifications === false ? [] : HRREQ.hrUnread(accountId());
-    }
-
-    function ensureSettingsBadge() {
-        let badge = document.getElementById('settingsBadge');
-        if (badge) return badge;
-        const link = document.querySelector('.sidebar-footer a[href$="setting-hr.php"]');
-        if (!link) return null;
-        badge = document.createElement('span');
-        badge.className = 'nav-badge alert';
-        badge.id = 'settingsBadge';
-        badge.hidden = true;
-        link.appendChild(badge);
-        return badge;
-    }
+        BACKEND: unread = rows in the HR's notification table with read_at IS NULL. */
 
     let lastSettingsCount = -1;
-    function refreshSettingsBadge() {
-        const badge = ensureSettingsBadge();
-        const count = unreadDecisions().length;
-        if (badge) {
-            badge.textContent = count > 99 ? '99+' : String(count);
-            badge.hidden = count <= 0;
-            badge.setAttribute('title', count + ' answer' + (count === 1 ? '' : 's') + ' from the admin to read');
-            if (count > lastSettingsCount && count > 0) {
-                badge.classList.remove('pop');
-                void badge.offsetWidth;
-                badge.classList.add('pop');
-            }
-        }
-        lastSettingsCount = count;
-        return count;
-    }
 
     // Sidebar badges on every HR page
     document.addEventListener('DOMContentLoaded', () => {
@@ -540,22 +501,20 @@ window.HR = (function () {
 
         refreshDashboardBadge();
         refreshApplicantBadges();
-        refreshSettingsBadge();
     });
 
     // Back button (page restored from the cache): the Admin may have answered meanwhile
-    window.addEventListener('pageshow', (e) => { if (e.persisted) refreshSettingsBadge(); });
+    window.addEventListener('pageshow', (e) => { if (e.persisted) refreshDashboardBadge(); });
 
     // Keep the badge right when another tab changes things
     window.addEventListener('storage', (e) => {
         if ([SEEN_KEY, COMPLETED_KEY, KEY].includes(e.key)) refreshDashboardBadge();
         if (e.key === NEW_KEY) refreshApplicantBadges();
-        if (e.key === 'ebsmi_activity_extra' || e.key === 'ebsmi_change_requests') refreshSettingsBadge();   // the Admin answered
+        if (e.key === 'ebsmi_activity_extra') refreshDashboardBadge();
         if (e.key === SETTINGS_KEY) {          // Settings saved in another tab
             applySettings(null, true);
             refreshDashboardBadge();
             refreshApplicantBadges();
-            refreshSettingsBadge();
         }
         if (e.key === PROFILE_KEY) applyProfile();
     });
@@ -564,9 +523,8 @@ window.HR = (function () {
     return {
         archiveRequest, archiveRequestLocal, serverRequest, syncArchiveFromServer, readArchived, readArchivedAt, readDeleted, purgeExpired, ARCHIVE_DAYS,
         setArchiveBadge, bumpArchive, toast,
-        syncCompleted, isUnseen, markSeen, unseenCompleted, refreshDashboardBadge,
+        syncCompleted, isUnseen, markSeen, markAllCompletedSeen, unseenCompleted, refreshDashboardBadge,
         noteNewApplicant, clearNewApplicants, refreshApplicantBadges,
-        refreshSettingsBadge, unreadDecisions,
         settings: { get: readSettings, save: saveSettings, apply: applySettings, defaults: SETTINGS_DEFAULTS, profile: readProfile, saveProfile: saveProfile },
         arrivedViaTransition: false
     };
@@ -578,34 +536,112 @@ document.addEventListener('DOMContentLoaded', () => {
     const root = document.documentElement;
     const sidebar = document.getElementById('sidebar');
     const sidebarToggle = document.getElementById('sidebarToggle');
-    const arrowToggleBtn = document.getElementById('arrowToggleBtn');
-    const applicantsGroup = document.getElementById('applicantsGroup');
     const logoutBtn = document.getElementById('logoutBtn');
     const logoutModal = document.getElementById('logoutModal');
     const cancelLogout = document.getElementById('cancelLogout');
     const confirmLogout = document.getElementById('confirmLogout');
     const pageOverlay = document.getElementById('pageOverlay');
+    const sidebarHeader = sidebar ? sidebar.querySelector('.sidebar-header') : null;
+    const sidebarNav = sidebar ? sidebar.querySelector('.sidebar-nav') : null;
+    const sidebarProfile = sidebar ? sidebar.querySelector('.sidebar-profile') : null;
+    let notifWrap = document.querySelector('.content-header .notif-wrap');
+    let accountRow = null;
     let mobileNavToggle = null;
+    let positionNotifPanel = () => {};
 
     if (sidebar) {
+        if (!notifWrap && sidebarHeader) {
+            notifWrap = document.createElement('div');
+            notifWrap.className = 'notif-wrap mobile-notif-wrap';
+            notifWrap.innerHTML = '<button type="button" class="notif-bell" id="notifBell" aria-haspopup="true" aria-expanded="false" aria-controls="notifPanel" aria-label="Notifications" title="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg><span class="notif-count" id="notifBadge" hidden>0</span></button><div class="notif-panel" id="notifPanel" role="dialog" aria-label="Notifications" hidden><div class="notif-head"><h3>Notifications</h3><button type="button" class="notif-markall" id="notifMarkAll">Mark all as read</button></div><ul class="notif-list" id="notifList"></ul></div>';
+            sidebarHeader.appendChild(notifWrap);
+        }
+
         mobileNavToggle = document.createElement('button');
         mobileNavToggle.type = 'button';
         mobileNavToggle.className = 'mobile-nav-toggle';
-        mobileNavToggle.setAttribute('aria-label', 'Open navigation');
+        mobileNavToggle.setAttribute('aria-label', 'Expand navigation');
         mobileNavToggle.setAttribute('aria-expanded', 'false');
-        mobileNavToggle.innerHTML = '<img src="../assets/images/expertise2.png" alt="">';
-        document.body.appendChild(mobileNavToggle);
+        mobileNavToggle.innerHTML = '<svg class="menu-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg><svg class="close-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>';
+
+        if (sidebarNav) {
+            if (!sidebarNav.id) sidebarNav.id = 'mobileSidebarNav';
+            const sidebarFooter = sidebar.querySelector('.sidebar-footer');
+            const controlledIds = [sidebarNav.id];
+            if (sidebarFooter) {
+                if (!sidebarFooter.id) sidebarFooter.id = 'mobileSidebarFooter';
+                controlledIds.push(sidebarFooter.id);
+            }
+            mobileNavToggle.setAttribute('aria-controls', controlledIds.join(' '));
+        }
+
+        if (sidebarHeader) {
+            sidebarHeader.insertBefore(mobileNavToggle, sidebarHeader.firstChild);
+            accountRow = document.createElement('div');
+            accountRow.className = 'sidebar-account-row';
+            sidebarHeader.insertAdjacentElement('afterend', accountRow);
+            if (sidebarProfile) accountRow.appendChild(sidebarProfile);
+            if (notifWrap) {
+                notifWrap.classList.add('reveal');
+                accountRow.appendChild(notifWrap);
+            }
+        }
+
+        const notifPanel = notifWrap ? notifWrap.querySelector('.notif-panel') : null;
+        const notifBell = notifWrap ? notifWrap.querySelector('.notif-bell') : null;
+        if (notifPanel) {
+            notifPanel.classList.add('nav-notif-panel');
+            document.body.appendChild(notifPanel);
+            positionNotifPanel = () => {
+                if (notifPanel.hidden || !notifBell) return;
+                const isMobile = window.matchMedia('(max-width: 800px)').matches;
+                const bellRect = notifBell.getBoundingClientRect();
+                const viewportWidth = document.documentElement.clientWidth;
+                const panelWidth = Math.min(360, Math.max(0, viewportWidth - 24));
+                const panelHeight = Math.min(420, Math.max(0, window.innerHeight - 24));
+                let left = sidebar.getBoundingClientRect().right + 12;
+                let top = bellRect.top;
+
+                if (isMobile) {
+                    left = Math.max(12, Math.min(viewportWidth - panelWidth - 12, bellRect.right - panelWidth));
+                    top = sidebarHeader.getBoundingClientRect().bottom + 8;
+                } else if (left + panelWidth > viewportWidth - 12) {
+                    left = Math.max(12, bellRect.left - panelWidth - 8);
+                }
+
+                top = Math.min(Math.max(12, top), Math.max(12, window.innerHeight - panelHeight - 12));
+                notifPanel.style.left = left + 'px';
+                notifPanel.style.top = top + 'px';
+                notifPanel.style.right = 'auto';
+            };
+            if (notifBell) notifBell.addEventListener('click', () => setTimeout(positionNotifPanel, 0));
+            window.addEventListener('scroll', () => setTimeout(positionNotifPanel, 0), true);
+        }
     }
+
+    const syncMobileHeader = () => {
+        if (!sidebarHeader || !accountRow) return;
+        sidebarHeader.classList.toggle('has-profile', Boolean(sidebarProfile));
+        if (window.matchMedia('(max-width: 800px)').matches) {
+            sidebarHeader.insertBefore(mobileNavToggle, sidebarHeader.firstChild);
+            if (notifWrap) sidebarHeader.appendChild(notifWrap);
+            if (sidebarProfile) {
+                sidebarHeader.insertBefore(sidebarProfile, notifWrap ? notifWrap.nextSibling : null);
+            }
+        } else {
+            if (sidebarProfile) accountRow.appendChild(sidebarProfile);
+            if (notifWrap) accountRow.appendChild(notifWrap);
+        }
+    };
+
+    syncMobileHeader();
 
     const setDrawerOpen = (open) => {
         root.classList.toggle('drawer-open', open);
         document.body.classList.toggle('noscroll', open);
         if (mobileNavToggle) {
             mobileNavToggle.setAttribute('aria-expanded', String(open));
-            mobileNavToggle.setAttribute('aria-label', open ? 'Close navigation' : 'Open navigation');
-            mobileNavToggle.innerHTML = open
-                ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>'
-                : '<img src="../assets/images/expertise2.png" alt="">';
+            mobileNavToggle.setAttribute('aria-label', open ? 'Collapse navigation' : 'Expand navigation');
         }
     };
 
@@ -684,8 +720,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     window.addEventListener('resize', () => {
+        syncMobileHeader();
         applySidebarPreference();
         if (!window.matchMedia('(max-width: 800px)').matches) setDrawerOpen(false);
+        setTimeout(positionNotifPanel, 0);
     });
 
     // Create (once) the drawer backdrop and wire its close + nav-link close behaviour
@@ -696,21 +734,10 @@ document.addEventListener('DOMContentLoaded', () => {
             b.className = 'drawer-backdrop';
             document.body.appendChild(b);
             b.addEventListener('click', () => setDrawerOpen(false));
-            sidebar.querySelectorAll('.nav-item, .sub-item').forEach((item) => {
+            sidebar.querySelectorAll('.nav-item').forEach((item) => {
                 item.addEventListener('click', () => setDrawerOpen(false));
             });
         }
-    }
-
-    // 3. Applicants dropdown (arrow only)
-    if (arrowToggleBtn && applicantsGroup && sidebar) {
-        arrowToggleBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            if (!sidebar.classList.contains('collapsed')) {
-                applicantsGroup.classList.toggle('active');
-            }
-        });
     }
 
     // 4. Logout: confirm, then elements lift away while the stripes sweep in
@@ -1118,9 +1145,8 @@ document.addEventListener('DOMContentLoaded', () => {
        listed at the top of opening.php (applicant_name, applicant_email). */
     /* Real request: saves the applicant through add-applicants.php (it is the endpoint too),
        so the Screening List, Dashboard cards and Recent Applicants all show the new person.
-       The CV file (if chosen) is uploaded flat to ebsmi-shortlist-applicant-cvs as cv-{id}-{filename}
-       (PDFs = previewable image type) and its URL is saved as cv_file_url.
-       Invitation email still not sent. */
+       The CV file (if chosen) is uploaded flat to ebsmi-shortlist-applicant-cvs and its URL is saved
+       as cv_file_url. hr-data.php sends the screening invitation through the email service. */
     async function sendInvitation(formData) {
         formData.set('action', 'add'); // hr-data.php routes on this; without it the server answers "Unknown action."
         const res = await fetch('../hr/hr-data.php', { method: 'POST', body: formData, credentials: 'same-origin' });
@@ -2555,10 +2581,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const pdfBtn = document.getElementById('hrStatsDownloadBtn');
     if (pdfBtn) {
         pdfBtn.addEventListener('click', async () => {
-            if (!window.DashboardPdf || !window.DashboardPdf.recordDownload || !window.HR_DASH) {
+            if (!window.DashboardPdf || !window.DashboardPdf.recordDownload || !window.DashboardPdf.selectRecords || !window.HR_DASH) {
                 HR.toast('The dashboard PDF could not be loaded. Reload the page and try again.', { error: true, duration: 5000 });
                 return;
             }
+            let selection;
+            try {
+                selection = await window.DashboardPdf.selectRecords('Choose HR PDF records', [{
+                    label: 'HR dashboard records',
+                    options: [
+                        { id: 'funnel', label: 'Funnel Drop-Off' },
+                        { id: 'results', label: 'Passed / Rejected' },
+                        { id: 'duration', label: 'Time-to-Complete Distribution (including continued pages)' },
+                        { id: 'turnaround', label: 'Scheduling Turnaround Time' }
+                    ]
+                }], pdfBtn);
+            } catch (err) {
+                HR.toast(err.message || 'Could not open the report filter.', { error: true, duration: 5000 });
+                return;
+            }
+            if (!selection) return;
+
             pdfBtn.disabled = true;
             pdfBtn.classList.add('is-busy');
             let downloaded = false;
@@ -2574,9 +2617,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     funnel: report.funnel,
                     duration: report.duration,
                     turnaround: report.turnaround,
-                    pass_rate: report.pass_rate
+                    pass_rate: report.pass_rate,
+                    include: selection.include,
+                    includeAll: selection.includeAll
                 }, { generated: now, by: by });
-                window.DashboardPdf.download(blob, 'HR-Dashboard-Statistics-' + day + '.pdf');
+                window.DashboardPdf.download(blob, 'HR-Dashboard-Statistics' + (selection.includeAll ? '' : '-Selected') + '-' + day + '.pdf');
                 downloaded = true;
                 await window.DashboardPdf.recordDownload('hr');
                 HR.toast('PDF downloaded and recorded in Recent Activities.', { duration: 3500 });
@@ -2646,6 +2691,17 @@ document.addEventListener('DOMContentLoaded', () => {
         writeNewSeenAt(latest || seenAt);
     }
     paintNew();
+
+    window.addEventListener('hr:notifications-marked-read', () => {
+        paintUnseen();
+        const latest = originalRows.reduce((max, row) => {
+            const updated = row.dataset.updated || '';
+            const timestamp = updated ? new Date(updated).getTime() : 0;
+            return timestamp > max ? timestamp : max;
+        }, readNewSeenAt());
+        writeNewSeenAt(latest);
+        paintNew();
+    });
 
     // the page can come back from the cache (Back button) or change in another tab
     window.addEventListener('pageshow', (e) => { if (e.persisted) { paintUnseen(); paintNew(); } });
@@ -2945,15 +3001,14 @@ document.addEventListener('DOMContentLoaded', () => {
         taCard.addEventListener('keydown', (e) => { if (e.key === 'Enter') goTa(); });
     }
 });
+}
 
 /* ==========================================================================
    Notification bell (HR Dashboard header)
-   Lists what HR did (the same lines the Admin sees under Recent Activities) plus completed
-   screenings that nobody has opened yet. The number on the bell counts the lines that are new since
-   the bell was last opened. Opening it marks them as read (they stay highlighted while it is open).
+   Lists recent activity, Admin decisions and completed screenings. Read state is stored per account.
+   Opening the panel does not mark notifications as read; clicking an item does.
    Settings > Notifications (the master switch) hides the number; Settings changes are never listed.
    Data: window.HR_ACTIVITY, printed by dashboard-hr.php (and refreshed through hr-data.php, action 'activity').
-   The "last read" time is kept in this browser for now; with the database it becomes a column on the user.
    ========================================================================== */
 document.addEventListener('DOMContentLoaded', () => {
     const bell = document.getElementById('notifBell');
@@ -2963,7 +3018,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const markAllBtn = document.getElementById('notifMarkAll');
     if (!bell || !panel || !badge || !listEl) return;
 
-    const SEEN_KEY = 'hr_activity_seen';              // the time of the newest line HR has already read
     const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const ICONS = {
         add:     'M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z',
@@ -2979,37 +3033,89 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     let feed = Array.isArray(window.HR_ACTIVITY) ? window.HR_ACTIVITY : [];
-    let fresh = new Set();                            // lines that were new when the bell was opened (highlighted while it is open)
     let lastCount = -1;
+    const readKeys = new Set();
+    let readStateReady = false;
+    let feedRefreshInFlight = null;
+    const expandedKeys = new Set();
 
-    // The Admin's answers to HR's email / password requests (window.HR_ACCOUNT is printed by dashboard-hr.php).
-    // Unread ones count on the bell and stay highlighted until the bell is opened (or Settings > "Got it").
     const accountId = Number((window.HR_ACCOUNT || {}).id) || 0;
-    let freshDecisions = new Set();                   // answers that were unread when the bell was opened
-    const decisions = () => (window.HRREQ && accountId ? HRREQ.hrNotices(accountId) : []);
-    const unreadDecisions = () => decisions().filter(n => !n.read);
-    function readDecisions() {
-        if (window.HRREQ && accountId) HRREQ.markHrRead(accountId);
-        if (window.HR && HR.refreshSettingsBadge) HR.refreshSettingsBadge();
-    }
+    let completedApplicantIds = Array.isArray(window.HR_COMPLETED_IDS)
+        ? window.HR_COMPLETED_IDS.map(Number).filter(id => Number.isSafeInteger(id) && id > 0)
+        : [];
+    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
 
     const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    const keyOf = (row) => row.at + '|' + row.activity + '|' + row.details;
-
-    function readSeen() { try { return localStorage.getItem(SEEN_KEY) || ''; } catch (e) { return ''; } }
-    function writeSeen(v) { try { localStorage.setItem(SEEN_KEY, v); } catch (e) { /* storage unavailable */ } }
-    function newest() { return feed.reduce((a, r) => (r.at > a ? r.at : a), ''); }
-
-    // The very first visit starts "all read", so the old sample lines do not count as news
-    if (readSeen() === '' && feed.length) writeSeen(newest());
+    const safeId = (id) => String(id == null ? '' : id).replace(/[^A-Za-z0-9_-]/g, '');
+    function activityKey(row) {
+        if (row && row.id != null && safeId(row.id)) return 'activity:' + safeId(row.id);
+        const value = [row && row.at, row && row.activity, row && row.details, row && row.by].join('|');
+        let hash = 2166136261;
+        for (let i = 0; i < value.length; i++) hash = Math.imul(hash ^ value.charCodeAt(i), 16777619);
+        return 'activity:h' + (hash >>> 0).toString(36);
+    }
+    const completedKey = (id) => 'completed:' + Number(id);
 
     // Settings > Notifications master switch (the bell itself always stays; only the number is hidden)
     function notifyOn() {
         try { return !(window.HR && HR.settings) || HR.settings.get().notifications !== false; } catch (e) { return true; }
     }
 
-    const unread = () => feed.filter(r => r.at > readSeen());
-    const completedLeft = () => (window.HR && HR.unseenCompleted ? HR.unseenCompleted().length : 0);
+    function completedNotificationsOn() {
+        try { return !(window.HR && HR.settings) || HR.settings.get().notifyCompleted !== false; } catch (e) { return true; }
+    }
+
+    const unreadActivity = () => feed.slice(0, 20).filter(row => !readKeys.has(activityKey(row)));
+    const unreadCompletedIds = () => completedNotificationsOn()
+        ? completedApplicantIds.filter(id => !readKeys.has(completedKey(id)))
+        : [];
+    const notificationKeys = () => feed.slice(0, 20).map(activityKey).concat(completedApplicantIds.map(completedKey));
+
+    function signalNotificationReadState() {
+        try {
+            localStorage.setItem('notification_read_sync', Date.now() + ':' + Math.random());
+        } catch (err) {
+            console.warn('Could not broadcast notification read state across tabs.', err);
+        }
+    }
+
+    async function notificationRequest(action, keys, retried) {
+        const response = await fetch('../api/notification-read.php', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ action: action, keys: keys, csrf_token: csrfMeta ? csrfMeta.content : '' })
+        });
+        const data = await response.json().catch(() => { throw new Error('The server did not answer correctly. Please try again.'); });
+        if (!response.ok || data.status !== 'success') {
+            if (!retried && data.message && data.message.indexOf('Invalid CSRF token') === 0 && data.csrf_token && csrfMeta) {
+                csrfMeta.content = data.csrf_token;
+                return notificationRequest(action, keys, true);
+            }
+            throw new Error(data.message || 'Notification state could not be saved.');
+        }
+        return data;
+    }
+
+    async function syncReadState() {
+        if (!accountId) throw new Error('Could not identify your HR account. Please log in again.');
+        const keys = Array.from(new Set(notificationKeys()));
+        for (let i = 0; i < keys.length; i += 500) {
+            const data = await notificationRequest('state', keys.slice(i, i + 500));
+            (data.read_keys || []).forEach(key => readKeys.add(key));
+        }
+        readStateReady = true;
+    }
+
+    async function markRead(keys) {
+        const unique = Array.from(new Set(keys));
+        for (let i = 0; i < unique.length; i += 500) {
+            const data = await notificationRequest('mark_many', unique.slice(i, i + 500));
+            (data.read_keys || []).forEach(key => readKeys.add(key));
+        }
+        signalNotificationReadState();
+        paint();
+    }
 
     function when(at) {
         const m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(String(at || ''));
@@ -3046,33 +3152,40 @@ document.addEventListener('DOMContentLoaded', () => {
     const svg = (d) => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + d + '"/></svg>';
 
     function paintList() {
-        const done = completedLeft();
+        const done = unreadCompletedIds();
         let html = '';
-        decisions().slice(0, 10).forEach(n => {
-            const ok = n.status === 'approved';
-            html += '<li><a class="notif-item' + (freshDecisions.has(n.id) ? ' is-new' : '') + '" href="setting-hr.php">' +
-                '<span class="notif-ico ' + (ok ? 'tone-green' : 'tone-red') + '">' + svg(ok ? ICONS.done : ICONS.cancel) + '</span>' +
-                '<span class="notif-text"><strong>' + esc(n.title) + '</strong>' +
-                '<span class="notif-detail">' + esc(n.detail) + '</span>' +
-                '<span class="notif-time">' + esc(when(n.at)) + '</span></span></a></li>';
-        });
-        if (done > 0) {
-            html += '<li><a class="notif-item is-new" href="screening-list.php?status=Completed">' +
+        const completedKey = 'completed:summary';
+        const completedExpanded = expandedKeys.has(completedKey);
+        if (done.length > 0 || completedExpanded) {
+            const count = done.length || completedApplicantIds.length;
+            html += '<li class="notif-entry' + (completedExpanded ? ' is-expanded' : '') + '">' +
+                '<button type="button" class="notif-item' + (completedExpanded ? ' is-expanded' : '') +
+                '" data-notification-key="' + completedKey + '" data-notification-type="completed" aria-expanded="' + String(completedExpanded) + '">' +
                 '<span class="notif-ico tone-green">' + svg(ICONS.done) + '</span>' +
-                '<span class="notif-text"><strong>' + done + ' completed screening' + (done === 1 ? '' : 's') + ' to review</strong>' +
-                '<span class="notif-detail">Open the Screening List to see who finished.</span></span></a></li>';
+                '<span class="notif-text"><strong>' + (done.length
+                    ? done.length + ' completed screening' + (done.length === 1 ? '' : 's') + ' to review'
+                    : 'Completed screenings') + '</strong>' +
+                '<span class="notif-detail">' + (done.length
+                    ? 'There are ' + done.length + ' applicants waiting for screening review.'
+                    : 'This notification has been read. Open the Screening List to review completed applicants.') +
+                '</span></span></button>' +
+                (completedExpanded ? '<a class="notif-open" href="screening-list.php?status=Completed">Open Screening List (' + count + ')</a>' : '') + '</li>';
         }
         html += feed.slice(0, 20).map(row => {
             const l = look(row.activity);
-            return '<li class="notif-item' + (fresh.has(keyOf(row)) ? ' is-new' : '') + '">' +
+            const key = activityKey(row);
+            const expanded = expandedKeys.has(key);
+            return '<li class="notif-entry' + (expanded ? ' is-expanded' : '') + '">' +
+                '<button type="button" class="notif-item' + (readKeys.has(key) ? '' : ' is-new') + (expanded ? ' is-expanded' : '') +
+                '" data-notification-key="' + esc(key) + '" data-notification-type="single" aria-expanded="' + String(expanded) + '">' +
                 '<span class="notif-ico ' + l.tone + '">' + svg(l.icon) + '</span>' +
                 '<span class="notif-text"><strong>' + esc(row.activity) + '</strong>' +
                 '<span class="notif-detail">' + esc(row.details) + '</span>' +
-                '<span class="notif-time">' + esc(when(row.at)) + '</span></span></li>';
+                '<span class="notif-time">' + esc(when(row.at)) + '</span></span></button></li>';
         }).join('');
         if (!html) html = '<li class="notif-empty">Nothing yet. When you add, delete or restore an applicant, answer an interview schedule or change your profile, it shows up here.</li>';
         listEl.innerHTML = html;
-        if (markAllBtn) markAllBtn.disabled = fresh.size === 0 && unread().length === 0 && freshDecisions.size === 0 && unreadDecisions().length === 0;
+        if (markAllBtn) markAllBtn.disabled = unreadActivity().length === 0 && done.length === 0;
     }
 
     function paintRecentApplicants(applicants) {
@@ -3088,19 +3201,28 @@ document.addEventListener('DOMContentLoaded', () => {
             rejected: 'status-failed'
         })[String(value || '').trim().toLowerCase()] || 'status-default';
 
+        const todayParts = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'Asia/Manila',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        }).formatToParts(new Date());
+        const today = {};
+        todayParts.forEach(part => { if (part.type !== 'literal') today[part.type] = part.value; });
+        const todayKey = today.year + '-' + today.month + '-' + today.day;
+        const yesterdayKey = new Date(Date.UTC(Number(today.year), Number(today.month) - 1, Number(today.day) - 1))
+            .toISOString().slice(0, 10);
+
         const dateLabel = (value) => {
             const match = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(String(value || ''));
             if (!match) return String(value || '');
-            const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-            const now = new Date();
-            const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-            const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-            const label = MONTHS[date.getMonth()] + ' ' + date.getDate() + ', ' + match[1];
+            const dateKey = match[1] + '-' + match[2] + '-' + match[3];
+            const label = MONTHS[Number(match[2]) - 1] + ' ' + Number(match[3]) + ', ' + match[1];
             if (!match[4]) return label;
             const hour = Number(match[4]);
             const time = (hour % 12 || 12) + ':' + match[5] + ' ' + (hour >= 12 ? 'PM' : 'AM');
-            if (sameDay(date, now)) return 'Today, ' + time;
-            if (sameDay(date, yesterday)) return 'Yesterday, ' + time;
+            if (dateKey === todayKey) return 'Today, ' + time;
+            if (dateKey === yesterdayKey) return 'Yesterday, ' + time;
             return label;
         };
 
@@ -3111,11 +3233,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const completed = status.toLowerCase() === 'completed';
             const result = applicant.result ? String(applicant.result) : '';
             const name = esc(applicant.name);
+            const updated = String(applicant.updated || '');
             const statusHtml = '<span class="status-pill ' + badgeClass(status) + '">' + esc(status) + '</span>' +
                 (completed && result ? ' <span class="status-pill ' + badgeClass(result) + '">' + esc(result) + '</span>' : '');
-            return '<tr class="clickable-row" data-id="' + id + '" data-completed="' + (completed ? '1' : '0') + '" data-url="details.php?id=' + id + '">' +
+            return '<tr class="clickable-row" data-id="' + id + '" data-completed="' + (completed ? '1' : '0') + '" data-updated="' + esc(updated) + '" data-url="details.php?id=' + id + '">' +
                 '<td title="' + name + '"><span class="name-cell"><span class="unseen-dot" title="Completed screening, not viewed yet"></span><strong>' + name + '</strong></span></td>' +
-                '<td>' + esc(dateLabel(applicant.updated)) + '</td><td>' + statusHtml + '</td></tr>';
+                '<td>' + esc(dateLabel(updated)) + '</td><td>' + statusHtml + '</td></tr>';
         }).filter(Boolean);
 
         body.innerHTML = rows.length ? rows.join('') : '<tr><td colspan="3" class="empty-row">No applicants yet.</td></tr>';
@@ -3123,12 +3246,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function paintBadge() {
-        const total = notifyOn() ? unread().length + completedLeft() + unreadDecisions().length : 0;
+        if (!readStateReady) {
+            badge.hidden = true;
+            bell.classList.remove('has-notifications');
+            bell.setAttribute('aria-label', 'Notifications');
+            bell.title = 'Notifications';
+            return;
+        }
+        const total = notifyOn() ? unreadActivity().length + unreadCompletedIds().length : 0;
         badge.textContent = total > 99 ? '99+' : String(total);
         badge.hidden = total <= 0;
         bell.classList.toggle('has-notifications', total > 0);
         bell.setAttribute('aria-label', total > 0 ? 'Notifications, ' + total + ' new' : 'Notifications');
         bell.title = total > 0 ? total + ' new notification' + (total === 1 ? '' : 's') : 'Notifications';
+        if (lastCount < 0 && total > 0 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            bell.classList.add('ring');
+            bell.addEventListener('animationend', () => bell.classList.remove('ring'), { once: true, capture: true });
+        }
         if (total > lastCount && lastCount >= 0) {
             badge.classList.remove('pop');
             void badge.offsetWidth;                 // restart the animation
@@ -3147,26 +3281,14 @@ document.addEventListener('DOMContentLoaded', () => {
     function paint() { paintBadge(); if (!panel.hidden) paintList(); }
 
     function openPanel() {
-        fresh = new Set(unread().map(keyOf));      // highlighted while the panel is open
-        freshDecisions = new Set(unreadDecisions().map(n => n.id));
-        writeSeen(newest() || readSeen());          // opening counts as reading them
-        readDecisions();
-        // Mark any unseen completed screenings as read so the badge clears
-        if (window.HR && window.HR.unseenCompleted) {
-            window.HR.unseenCompleted().forEach(id => window.HR.markSeen(id));
-        }
         panel.hidden = false;
         bell.setAttribute('aria-expanded', 'true');
         paintList();
-        paintBadge();
-        refreshFeed();                              // pick up anything done since the page loaded
     }
 
     function closePanel() {
         if (panel.hidden) return;
         panel.hidden = true;
-        fresh = new Set();
-        freshDecisions = new Set();
         bell.setAttribute('aria-expanded', 'false');
         paintBadge();
     }
@@ -3176,56 +3298,87 @@ document.addEventListener('DOMContentLoaded', () => {
         if (panel.hidden) openPanel(); else closePanel();
     });
     panel.addEventListener('click', (e) => e.stopPropagation());
+    listEl.addEventListener('click', async (e) => {
+        const button = e.target.closest('button[data-notification-key]');
+        if (!button) return;
+        const key = button.dataset.notificationKey;
+        const type = button.dataset.notificationType;
+        const keys = type === 'completed'
+            ? unreadCompletedIds().map(completedKey)
+            : [key];
+        const isExpanded = expandedKeys.has(key);
+        if (isExpanded) expandedKeys.delete(key);
+        else expandedKeys.add(key);
+        paintList();
+        if (!isExpanded) {
+            try {
+                await markRead(keys);
+            } catch (err) {
+                HR.toast(err.message || 'Could not mark this notification as read.', { error: true, duration: 6000 });
+            }
+        }
+    });
     document.addEventListener('click', closePanel);
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && !panel.hidden) { closePanel(); bell.focus(); }
     });
 
     if (markAllBtn) {
-        markAllBtn.addEventListener('click', () => {
-            writeSeen(newest() || readSeen());
-            readDecisions();
-            // Mark all unseen completed screenings as read so the badge clears
-            if (window.HR && window.HR.unseenCompleted) {
-                window.HR.unseenCompleted().forEach(id => window.HR.markSeen(id));
+        markAllBtn.addEventListener('click', async () => {
+            markAllBtn.disabled = true;
+            try {
+                await markRead(notificationKeys());
+                HR.markAllCompletedSeen();
+                HR.clearNewApplicants();
+                window.dispatchEvent(new CustomEvent('hr:notifications-marked-read'));
+            } catch (err) {
+                HR.toast(err.message || 'Could not mark notifications as read.', { error: true, duration: 6000 });
+                paintList();
             }
-            fresh = new Set();
-            freshDecisions = new Set();
-            paint();
         });
     }
 
-    // Latest lines from the server (the page may be old: restored from the cache, or the tab was in the background)
-    function refreshFeed() {
-        fetch('hr-data.php', {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'activity' })
-        })
-            .then(res => res.json())
-            .then(data => {
-                if (!data || data.status !== 'success' || !Array.isArray(data.activity)) return;
-                paintRecentApplicants(data.recent_applicants);
-                if (!panel.hidden) {
-                    // lines that arrived while the panel is open count as read, but show highlighted
-                    const known = new Set(feed.map(keyOf));
-                    data.activity.forEach(r => { if (!known.has(keyOf(r))) fresh.add(keyOf(r)); });
-                    feed = data.activity;
-                    writeSeen(newest() || readSeen());
-                } else {
-                    feed = data.activity;
+    // Refresh the server activity and account-specific read state, including changes made in other tabs.
+    async function refreshFeed() {
+        if (feedRefreshInFlight) return feedRefreshInFlight;
+        const request = (async () => {
+            try {
+                const response = await fetch('hr-data.php', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({ action: 'activity' })
+                });
+                const data = await response.json();
+                if (!response.ok || !data || data.status !== 'success' || !Array.isArray(data.activity)) {
+                    throw new Error(data && data.message ? data.message : 'Could not refresh notifications.');
                 }
+                feed = data.activity;
+                if (Array.isArray(data.completed_ids)) {
+                    completedApplicantIds = data.completed_ids.map(Number).filter(id => Number.isSafeInteger(id) && id > 0);
+                }
+                paintRecentApplicants(data.recent_applicants);
+                await syncReadState();
                 paint();
-            })
-            .catch(() => { /* offline: keep what the page already has */ });
+            } catch (err) {
+                console.error('Could not refresh HR notifications.', err);
+                if (err && err.message === 'Your session has ended. Please log in again.') {
+                    window.location.replace('../index.php');
+                    return;
+                }
+                if (!panel.hidden) HR.toast(err.message || 'Could not refresh notifications.', { error: true, duration: 6000 });
+            }
+        })();
+        feedRefreshInFlight = request;
+        try {
+            await request;
+        } finally {
+            if (feedRefreshInFlight === request) feedRefreshInFlight = null;
+        }
     }
 
     paint();
-    if (!badge.hidden && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        bell.classList.add('ring');
-        bell.addEventListener('animationend', () => bell.classList.remove('ring'), { once: true, capture: true });
-    }
+    refreshFeed();
 
     window.addEventListener('pageshow', (e) => { if (e.persisted) { paint(); refreshFeed(); } });
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshFeed(); });
@@ -3233,18 +3386,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (document.visibilityState === 'visible') refreshFeed();
     }, 15000);
     window.addEventListener('storage', (e) => {
-        if (e.key === SEEN_KEY || e.key === 'hr_settings') paint();
-        if (e.key === 'ebsmi_activity_extra' || e.key === 'ebsmi_change_requests') {     // the Admin just answered (other tab)
-            if (!panel.hidden) {                       // panel is open: the answer counts as read, but shows highlighted
-                unreadDecisions().forEach(n => freshDecisions.add(n.id));
-                readDecisions();
-            }
-            paint();
-        }
+        if (e.key === 'hr_settings') paint();
+        if (e.key === 'notification_read_sync') refreshFeed();
+        if (e.key === 'ebsmi_activity_extra' || e.key === 'ebsmi_change_requests') refreshFeed();
     });
     document.addEventListener('hr:settings-changed', paint);
 });
-}
 
 /* ===== PAGE : details.js (runs only on: details) ===== */
 if (document.documentElement.getAttribute('data-page') === 'details') {
@@ -3418,7 +3565,10 @@ if (document.documentElement.getAttribute('data-page') === 'details') {
         moveInk(false);
         if (!silent) {                                  // every tab opens from its very top, never from the old scroll spot
             var sc = $('details');
-            if (sc && sc.scrollTop > 0) {
+            if (window.matchMedia('(max-width: 800px)').matches && window.scrollY > 0) {
+                window.scrollTo(0, 0);
+                wrapReset();
+            } else if (sc && sc.scrollTop > 0) {
                 sc.style.scrollBehavior = 'auto';       // jump at once (a smooth glide would be cut short by the header changing size)
                 sc.scrollTop = 0;
                 sc.style.scrollBehavior = '';
@@ -3464,8 +3614,7 @@ if (document.documentElement.getAttribute('data-page') === 'details') {
     window.addEventListener('resize', function () { moveInk(true); });
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { moveInk(true); });
 
-    // The top part (title, applicant card, tabs) stays put while the page scrolls; once the page has
-    // scrolled it shrinks to a slim bar so the content keeps most of the screen.
+    // On desktop the top part shrinks to a slim bar as the main content scrolls; mobile uses page scrolling.
     (function () {
         var wrap = $('detailsSticky');
         var scroller = $('details');                   // <main class="main-content details"> is what scrolls
@@ -3476,6 +3625,12 @@ if (document.documentElement.getAttribute('data-page') === 'details') {
 
         function update() {
             queued = false;
+            var mobilePageScroll = window.matchMedia('(max-width: 800px)').matches;
+            if (mobilePageScroll) {
+                compact = false;
+                wrap.classList.remove('is-compact', 'is-stuck');
+                return;
+            }
             var y = scroller.scrollTop;
             var room = scroller.scrollHeight - scroller.clientHeight;
             wrap.classList.toggle('is-stuck', y > 4);
@@ -3493,9 +3648,12 @@ if (document.documentElement.getAttribute('data-page') === 'details') {
             window.setTimeout(update, 500);            // look again once the header has settled
         }
 
-        scroller.addEventListener('scroll', function () {
+        function queueUpdate() {
             if (!queued) { queued = true; window.requestAnimationFrame(update); }
-        }, { passive: true });
+        }
+        scroller.addEventListener('scroll', queueUpdate, { passive: true });
+        window.addEventListener('scroll', queueUpdate, { passive: true });
+        window.addEventListener('resize', queueUpdate, { passive: true });
         update();
     })();
 

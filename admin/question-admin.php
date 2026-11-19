@@ -177,6 +177,9 @@ function static_admin_clean_question(array $in, array $all, ?array $old = null):
             if ($note !== '') $q['no_note'] = $note;
             // which answer counts as good in the Questionnaires Statistics (Yes unless the Admin says otherwise)
             if (($in['favorable'] ?? 'Yes') === 'No') $q['favorable'] = 'No';
+            else $q['favorable'] = 'Yes';
+            $q['answer_config'] = ['favorable' => $q['favorable']];
+            if ($note !== '') $q['answer_config']['no_note'] = $note;
             break;
 
         case 'yesno_select':
@@ -729,20 +732,10 @@ function static_admin_overview(): array
 if (!defined('STATIC_ACTIVITY_SHOW_DAYS')) define('STATIC_ACTIVITY_SHOW_DAYS', 3);
 
 // Returns ['rows' => the lines to show (newest first, at most $limit), 'total' => how many lines are still listed,
-//          'pending' => HR password changes still waiting for the Admin]
-// A "Password Change Requested" line is special: while the request is still pending it is ALWAYS listed (it does not
-// expire after 3 days and it is not pushed out by newer lines), because the Admin opens it to approve or reject.
-// Every such line also gets 'req' = the live request (status, who, when), so the line shows what happened to it.
+// A "Password Change Requested" line no longer exists: passwords are applied at once, no approval flow.
 function static_admin_recent_activity(int $limit = 10): array
 {
     $store   = application_state_read();
-    $reqs    = static_profile_requests_by_id($store);
-    foreach (static_profile_requests($store) as $raw) {
-        $rid = (int) ($raw['id'] ?? 0);
-        if (!isset($reqs[$rid]) || $reqs[$rid]['status'] !== 'pending') continue;
-        $reqs[$rid]['new_password']     = !empty($raw['plain']) ? (string) $raw['plain'] : null;
-    }
-    $pending = count(array_filter($reqs, fn($r) => $r['status'] === 'pending'));
     $log     = isset($store['activity']) && is_array($store['activity']) ? array_values($store['activity']) : static_seed_activity();
     $now     = static_now();
     $nowText = $now->format('Y-m-d H:i:s');
@@ -757,17 +750,15 @@ function static_admin_recent_activity(int $limit = 10): array
     $changed = false;
     foreach ($order as $i) {
         $ref   = (int) ($log[$i]['ref'] ?? 0);
-        $isReq = ($log[$i]['kind'] ?? '') === 'pw_request' && isset($reqs[$ref]);
-        $keep  = $isReq && $reqs[$ref]['status'] === 'pending';   // still waiting for the Admin: stays on the list
+        $keep  = true;
 
         $seen = (string) ($log[$i]['admin_seen_at'] ?? '');
-        if (!$keep && $seen !== '' && $seen <= $cut) continue;    // seen more than 3 days ago: gone from the list
+        if (!$seen || $seen <= $cut) continue;    // seen more than 3 days ago: gone from the list
         $total++;
-        if (!$keep && count($rows) >= $limit) continue;          // listed in total, but not among the latest ones shown
+        if (count($rows) >= $limit) continue;     // listed in total, but not among the latest ones shown
         if ($seen === '') { $log[$i]['admin_seen_at'] = $nowText; $changed = true; }   // shown now = seen now
         $row = $log[$i];
         unset($row['admin_seen_at']);
-        if ($isReq) $row['req'] = $reqs[$ref];
         $rows[] = $row;
     }
 
@@ -775,7 +766,7 @@ function static_admin_recent_activity(int $limit = 10): array
         $store['activity'] = $log;
         application_state_write($store);
     }
-    return ['rows' => $rows, 'total' => $total, 'pending' => $pending];
+    return ['rows' => $rows, 'total' => $total, 'pending' => 0];
 }
 
 // How favourable one answer is, 0 to 100 (null = this question is not scored)
@@ -1188,9 +1179,10 @@ function static_admin_notify(): array
        question_add | question_update   the question fields (see static_admin_clean_question), id for update
                                         optional question.section_rename = a new title for the section named in question.section
        question_archive | question_restore | question_purge   id = 'q14'
-       account_add | account_update     name, email, password (new password; empty on update = unchanged),
-                                        status (update), id for update
+       account_update     name, email, password (new password; empty on update = unchanged),
+                          status (update), id for update
        account_archive | account_restore | account_purge      id = 3
+       HR account creation is handled only by api/admin-action.php, which requires email OTP verification.
    Response (JSON):  { status: 'success', message: '...', result: {the saved row, or null}, data: { questions, accounts, archive, types } }
                      { status: 'error', message: '...' }
    ========================================================================== */
@@ -1248,9 +1240,10 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
                 break;
 
             case 'account_add':
-                $result = static_admin_add_account((array) ($input['account'] ?? []));
-                $message = 'HR account added.';
-                break;
+                static_admin_respond([
+                    'status' => 'error',
+                    'message' => 'HR accounts must be created through the secure admin workflow.'
+                ], 403);
             case 'account_update':
                 $result = static_admin_update_account((int) ($input['id'] ?? 0), (array) ($input['account'] ?? []));
                 $message = 'HR account saved.';
@@ -1266,18 +1259,6 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
             case 'account_purge':
                 if (!static_admin_purge_account((int) ($input['id'] ?? 0))) static_admin_respond(['status' => 'error', 'message' => $missing], 404);
                 $message = 'HR account deleted forever.';
-                break;
-
-            case 'password_decide':     // Recent Activities pop-up: approve or reject an HR password change
-                // like hr/hr-data.php: only our own pages can send this header, a form on another site cannot
-                if (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') !== 'XMLHttpRequest') static_admin_respond(['status' => 'error', 'message' => 'Invalid request.'], 400);
-                $decision = (string) ($input['decision'] ?? '');
-                $result   = static_profile_decide_request((int) ($input['id'] ?? 0), $decision, (string) ($input['reason'] ?? ''));
-                static_admin_respond([
-                    'status'  => 'success',
-                    'message' => $decision === 'approve' ? 'Password change approved.' : 'Password change rejected.',
-                    'result'  => $result
-                ]);
                 break;
 
             case 'notify':      // the sidebar badges ask for the fresh numbers every few seconds (admin-common.js)

@@ -163,7 +163,7 @@ try {
             </header>
         </div>
 
-        <!-- Search + section filter + status filter -->
+        <!-- Search + filter toggle -->
         <div class="toolbar reveal" id="toolbar" style="--i:2">
             <label class="search-box" for="searchInput">
                 <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
@@ -173,24 +173,46 @@ try {
                 </button>
             </label>
 
-            <a href="add-question.php" class="btn btn-primary btn-add" id="addQuestionBtn" title="Create questions" aria-label="Create questions">
+            <a href="add-question.php" class="btn btn-primary btn-add" id="addQuestionBtn" title="Add questionnaire" aria-label="Add questionnaire">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-                <span>Create Questions</span>
+                <span>Add Questionnaire</span>
             </a>
 
-            <!-- Section filter: the options are built by questionlist.js from the questions -->
-            <div class="dropdown is-section" id="sectionDropdown">
-                <button type="button" class="dropdown-btn" aria-haspopup="listbox" aria-expanded="false" aria-label="Filter by section" aria-labelledby="sectionValue">
+            <button type="button" class="filter-toggle" id="filterToggle" aria-expanded="true" aria-controls="filterPanel" title="Show or hide filters">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.25 5.61C6.27 8.2 10 13 10 13v6c0 .55.45 1 1 1h2c.55 0 1-.45 1-1v-6s3.72-4.8 5.74-7.39A.998.998 0 0 0 18.95 4H5.04c-.83 0-1.3.95-.79 1.61z"/></svg>
+                <span class="filter-dot" id="filterDot" hidden></span>
+                <span class="sr-only">Toggle filters</span>
+            </button>
+        </div>
+
+        <div class="filter-panel reveal is-settled" id="filterPanel" style="--i:3">
+            <div class="filter-panel-inner">
+                <div class="filter-card" id="sectionCard">
+                    <div class="filter-head">
+                        <span class="filter-label" id="sectionLabel">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v3H4zm0 6h16v3H4zm0 6h10v3H4z"/></svg>Section
+                        </span>
+                        <button type="button" class="filter-reset" data-filter-reset hidden>Reset</button>
+                    </div>
+                    <div class="dropdown is-section" id="sectionDropdown">
+                <button type="button" class="dropdown-btn" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="sectionLabel sectionValue">
                     <span class="dot"></span>
                     <span class="dropdown-value" id="sectionValue">All Sections</span>
                     <svg class="dropdown-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
                 </button>
-                <ul class="dropdown-menu" role="listbox" aria-label="Section" tabindex="-1"></ul>
-            </div>
+                <ul class="dropdown-menu" role="listbox" aria-labelledby="sectionLabel" tabindex="-1"></ul>
+                    </div>
+                </div>
 
-            <!-- Custom dropdown (same one as the HR Accounts list) -->
-            <div class="dropdown" id="statusDropdown">
-                <button type="button" class="dropdown-btn" aria-haspopup="listbox" aria-expanded="false" aria-label="Filter by status" aria-labelledby="statusValue">
+                <div class="filter-card" id="statusCard">
+                    <div class="filter-head">
+                        <span class="filter-label" id="statusLabel">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>Status
+                        </span>
+                        <button type="button" class="filter-reset" data-filter-reset hidden>Reset</button>
+                    </div>
+                    <div class="dropdown" id="statusDropdown">
+                <button type="button" class="dropdown-btn" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="statusLabel statusValue">
                     <span class="dot"></span>
                     <span class="dropdown-value" id="statusValue">All Status</span>
                     <svg class="dropdown-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
@@ -209,11 +231,13 @@ try {
                         <svg class="opt-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>
                     </li>
                 </ul>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Table -->
-        <section class="table-card reveal" style="--i:3">
+        <section class="table-card reveal" style="--i:4">
             <div class="table-scroll" id="tableScroll">
                 <table class="hr-table q-table" id="questionTable">
                     <colgroup>
@@ -248,7 +272,7 @@ try {
         </section>
 
         <!-- Footer: count + pagination -->
-        <footer class="list-footer reveal" style="--i:4">
+        <footer class="list-footer reveal" style="--i:5">
             <p class="showing" id="showingText" aria-live="polite"></p>
             <nav class="pagination" id="pagination" aria-label="Pagination"></nav>
         </footer>

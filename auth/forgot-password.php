@@ -38,7 +38,7 @@ session_start();
             <form id="forgotForm" autocomplete="off" novalidate>
                 <div class="form-group">
                     <label for="email">Email</label>
-                    <input type="email" id="email" name="email" class="form-control" aria-describedby="emailError" required>
+                    <input type="email" id="email" name="email" class="form-control" placeholder="name@example.com" aria-describedby="emailError" required>
                     <p class="field-error" id="emailError" role="alert"></p>
                 </div>
 

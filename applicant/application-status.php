@@ -54,9 +54,9 @@ $dbResult  = strtolower((string) ($applicantRowForResult['result'] ?? ''));
 $dbStatus  = strtolower((string) ($applicantRowForResult['db_status'] ?? ''));
 $dbReason  = (string) ($applicantRowForResult['rejection_reason'] ?? '');
 
-// The display status collapses DB states to Completed; use raw db_status to
-// distinguish an HR rejection from an automatic screening failure.
-$dbManuallyRejected = ($dbResult === 'rejected' && $dbStatus !== 'completed');
+// The HR reject action sets raw db_status to "rejected"; automated screening
+// failures keep their screening status and must use the screening result page.
+$dbManuallyRejected = ($dbResult === 'rejected' && $dbStatus === 'rejected');
 
 if (in_array(strtolower($dbResult), ['accepted', 'passed'], true)) {
     $outcome = 'passed';

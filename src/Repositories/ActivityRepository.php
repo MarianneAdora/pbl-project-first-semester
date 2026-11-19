@@ -7,10 +7,20 @@
 
 require_once __DIR__ . '/../Helpers/db.php';
 
+function repo_activity_format_timestamp(?string $timestamp): string
+{
+    if ($timestamp === null || $timestamp === '') return '';
+
+    return (new DateTimeImmutable($timestamp, new DateTimeZone('UTC')))
+        ->setTimezone(new DateTimeZone('Asia/Manila'))
+        ->format('Y-m-d H:i:s');
+}
+
 function repo_activity_format(array $row): array
 {
     return [
-        'at'         => $row['created_at'] ? date('Y-m-d H:i:s', strtotime((string) $row['created_at'])) : '',
+        'id'         => (int) ($row['log_id'] ?? $row['id'] ?? 0),
+        'at'         => repo_activity_format_timestamp(isset($row['created_at']) ? (string) $row['created_at'] : null),
         'activity'   => (string) $row['activity'],
         'details'    => (string) $row['details'],
         'by'         => (string) $row['actor'],
@@ -34,8 +44,8 @@ function repo_log_activity(string $activity, string $details = '-', ?string $act
     try {
         $st = $pdo->prepare(
             "INSERT INTO activity_log (actor, actor_name, activity, details, created_at)
-             VALUES (:a, :an, :act, :d, NOW())
-             RETURNING actor, actor_name, activity, details, created_at"
+             VALUES (:a, :an, :act, :d, NOW() AT TIME ZONE 'UTC')
+             RETURNING log_id, actor, actor_name, activity, details, created_at"
         );
         $st->execute([':a' => $actor, ':an' => $actorName, ':act' => $activity, ':d' => $details]);
         $row = $st->fetch();
@@ -51,7 +61,7 @@ function repo_recent_activity(?PDO $pdo = null, int $limit = 10): array
 {
     $pdo = $pdo ?: db();
     $st = $pdo->prepare(
-        "SELECT actor, actor_name, activity, details, created_at FROM activity_log
+        "SELECT log_id, actor, actor_name, activity, details, created_at FROM activity_log
          WHERE actor IN ('HR', 'Admin')
          ORDER BY created_at DESC, log_id DESC LIMIT :lim"
     );
@@ -62,13 +72,53 @@ function repo_recent_activity(?PDO $pdo = null, int $limit = 10): array
     return $out;
 }
 
-function repo_activities_week(?PDO $pdo = null): int
+function repo_admin_activity_feed(?string $hrActorName = null, bool $hrOnly = false, int $limit = 10, ?PDO $pdo = null): array
 {
     $pdo = $pdo ?: db();
-    $st = $pdo->query(
-        "SELECT COUNT(*) FROM activity_log
-         WHERE actor IN ('HR', 'Admin') AND created_at >= (NOW() - INTERVAL '7 days')"
+    $where = "actor IN ('HR', 'Admin')";
+    $params = [];
+    if ($hrActorName !== null) {
+        $where = "actor = 'HR' AND actor_name = :actor_name";
+        $params[':actor_name'] = $hrActorName;
+    } elseif ($hrOnly) {
+        $where = "actor = 'HR'";
+    }
+
+    $count = $pdo->prepare("SELECT COUNT(*) FROM activity_log WHERE $where");
+    $count->execute($params);
+
+    $st = $pdo->prepare(
+        "SELECT log_id, actor, actor_name, activity, details, created_at FROM activity_log
+         WHERE $where
+         ORDER BY created_at DESC, log_id DESC LIMIT :lim"
     );
+    foreach ($params as $key => $value) $st->bindValue($key, $value, PDO::PARAM_STR);
+    $st->bindValue(':lim', $limit, PDO::PARAM_INT);
+    $st->execute();
+
+    $rows = [];
+    foreach ($st->fetchAll() as $row) $rows[] = repo_activity_format($row);
+
+    return ['rows' => $rows, 'total' => (int) $count->fetchColumn()];
+}
+
+function repo_activities_week(?PDO $pdo = null, ?string $actorName = null, bool $hrOnly = false): int
+{
+    $pdo = $pdo ?: db();
+    $where = "actor IN ('HR', 'Admin')";
+    $params = [];
+    if ($actorName !== null) {
+        $where = "actor = 'HR' AND actor_name = :actor_name";
+        $params[':actor_name'] = $actorName;
+    } elseif ($hrOnly) {
+        $where = "actor = 'HR'";
+    }
+
+    $st = $pdo->prepare(
+        "SELECT COUNT(*) FROM activity_log
+         WHERE $where AND created_at >= (NOW() - INTERVAL '7 days')"
+    );
+    $st->execute($params);
     return (int) $st->fetchColumn();
 }
 

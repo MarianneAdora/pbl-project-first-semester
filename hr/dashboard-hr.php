@@ -212,9 +212,8 @@ try {
 }
 $avatar_html = static_profile_avatar_html($display_name, $profile['avatar_url']);
 
-// IDs of EVERY applicant whose status is Completed (backend: SELECT id ... WHERE status = 'Completed').
-// The red mark + the Dashboard notification badge are built from this list; an applicant stops
-// counting as "new" once HR opens their details page.
+// IDs of applicants whose status is Completed, used to identify the Dashboard's screening notification.
+// The bell read state is saved per HR account through api/notification-read.php.
 $completed_ids = [];
 try {
     foreach (repo_applicants_active() as $a) {
@@ -232,6 +231,7 @@ try {
     foreach (repo_recent_activity(null, 30) as $row) {
         if (strcasecmp((string) ($row['by'] ?? ''), 'Admin') === 0) continue;
         $hr_feed[] = [
+            'id'       => (int) ($row['id'] ?? 0),
             'at'       => (string) ($row['at'] ?? ''),
             'activity' => (string) ($row['activity'] ?? ''),
             'details'  => (string) ($row['details'] ?? ''),
@@ -378,25 +378,11 @@ function status_badge(string $status): string
                 <span class="nav-text">Dashboard</span>
             </a>
 
-            <!-- Applicants Dropdown Item -->
-            <div class="nav-group reveal" id="applicantsGroup" style="--i:2">
-                <div class="nav-dropdown-wrapper">
-                    <!-- Main Applicants Button -->
-                    <a href="screening-list.php" class="nav-item nav-main-link" id="applicantsMainLink">
-                        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
-                        <span class="nav-text">Applicants</span>
-                        <span class="nav-badge" id="applicantsBadge" hidden>0</span>
-                    </a>
-                    <!-- Pure White Arrow Toggle Button -->
-                    <button class="dropdown-arrow-btn" id="arrowToggleBtn" title="Toggle Menu">
-                        <svg class="arrow-icon" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
-                    </button>
-                </div>
-                <div class="sub-menu" id="applicantsSubMenu">
-                    <a href="screening-list.php" class="sub-item"><span class="sub-text">Screening List</span><span class="nav-badge alert mini" id="screeningBadge" hidden>0</span></a>
-                    <a href="add-applicants.php" class="sub-item"><span class="sub-text">Add Applicant</span></a>
-                </div>
-            </div>
+            <a href="screening-list.php" class="nav-item reveal" id="applicantsMainLink" style="--i:2">
+                <svg class="nav-icon" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                <span class="nav-text">Applicants</span>
+                <span class="nav-badge" id="applicantsBadge" hidden>0</span>
+            </a>
 
             <!-- Archive -->
             <a href="archive.php" id="archiveLink" class="nav-item reveal" style="--i:3">
@@ -435,7 +421,7 @@ function status_badge(string $status): string
             </div>
 
             <div class="header-tools">
-            <button type="button" class="hr-stats-download" id="hrStatsDownloadBtn" title="Download dashboard statistics">
+            <button type="button" class="hr-stats-download" id="hrStatsDownloadBtn" title="Download dashboard statistics" aria-label="Download dashboard statistics PDF">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
                 Download Stats
             </button>
@@ -452,7 +438,6 @@ function status_badge(string $status): string
                         <button type="button" class="notif-markall" id="notifMarkAll">Mark all as read</button>
                     </div>
                     <ul class="notif-list" id="notifList"></ul>
-                    <p class="notif-foot">Your activity, including changes to your name, email and picture, also appears in the Admin's Recent Activities. Theme and display preferences are not included.</p>
                 </div>
             </div>
             </div>
@@ -694,7 +679,7 @@ function status_badge(string $status): string
                         <p class="quick-action-sub">Register a new applicant and add them to the screening list.</p>
                         <a href="add-applicants.php" class="btn-add-new">
                             <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-                            ADD NEW
+                            ADD APPLICANT
                         </a>
                     </div>
                 </div>
@@ -770,6 +755,7 @@ function status_badge(string $status): string
         };
         // every applicant with status Completed (drives the red marks + the Dashboard badge)
         const completedIds = <?php echo json_encode(array_map('intval', $completed_ids)); ?>;
+        window.HR_COMPLETED_IDS = completedIds;
         // numbers behind the Time-to-Complete histogram (the funnel + the turnaround card are drawn by PHP)
         window.DASH_INSIGHTS = <?php echo json_encode([
             'duration' => ['labels' => $duration['labels'], 'titles' => $duration['titles'], 'counts' => $duration['counts'], 'n' => $duration['n']]

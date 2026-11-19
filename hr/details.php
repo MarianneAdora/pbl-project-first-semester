@@ -7,6 +7,9 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {
     exit();
 }
 
+require_once __DIR__ . '/../src/Helpers/security.php';
+$csrf = csrf_token();
+
 // No caching, so the Back button after logout never shows this page
 header('Cache-Control: no-store, no-cache, must-revalidate');
 header('Pragma: no-cache');
@@ -103,6 +106,7 @@ $pageData = [
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<?php echo htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8'); ?>">
     <title>Applicant Details - Expertise Portal</title>
 
     <!-- Runs before first paint so the screen is already covered when arriving via login -->
@@ -168,29 +172,38 @@ $pageData = [
             </button>
         </div>
 
+        <?php
+        require_once __DIR__ . '/hr-data.php';
+        $sbp_name = trim((string) ($_SESSION['user_name'] ?? 'HR'));
+        $sbp_role = 'HR Staff';
+        try {
+            $sbp = static_profile_for_page('data/avatars/');
+            if (trim((string) ($sbp['name'] ?? '')) !== '') $sbp_name = (string) $sbp['name'];
+            $sbp_role = (string) ($sbp['role_label'] ?? 'HR Staff');
+            $sbp_html = static_profile_avatar_html($sbp_name, (string) ($sbp['avatar_url'] ?? ''));
+        } catch (Throwable $e) {
+            $sbp_html = static_profile_avatar_html($sbp_name, '');
+        }
+        ?>
+        <a class="profile-chip sidebar-profile reveal" id="profileChip" href="setting-hr.php" style="--i:1" title="<?php echo htmlspecialchars($sbp_name . ' - open your profile in Settings', ENT_QUOTES, 'UTF-8'); ?>" aria-label="<?php echo htmlspecialchars($sbp_name . ', ' . $sbp_role . '. Open your profile in Settings', ENT_QUOTES, 'UTF-8'); ?>">
+            <?php echo $sbp_html; ?>
+            <span class="profile-meta">
+                <strong><?php echo htmlspecialchars($sbp_name, ENT_QUOTES, 'UTF-8'); ?></strong>
+                <small><?php echo htmlspecialchars($sbp_role, ENT_QUOTES, 'UTF-8'); ?></small>
+            </span>
+        </a>
+
         <nav class="sidebar-nav">
             <a href="dashboard-hr.php" class="nav-item reveal" style="--i:1">
                 <svg class="nav-icon" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
                 <span class="nav-text">Dashboard</span>
             </a>
 
-            <!-- Applicants section: open, and highlighted because this page belongs to it -->
-            <div class="nav-group active current reveal" id="applicantsGroup" style="--i:2">
-                <div class="nav-dropdown-wrapper">
-                    <a href="screening-list.php" class="nav-item nav-main-link" id="applicantsMainLink">
-                        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
-                        <span class="nav-text">Applicants</span>
-                        <span class="nav-badge" id="applicantsBadge" hidden>0</span>
-                    </a>
-                    <button class="dropdown-arrow-btn" id="arrowToggleBtn" title="Toggle Menu">
-                        <svg class="arrow-icon" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
-                    </button>
-                </div>
-                <div class="sub-menu" id="applicantsSubMenu">
-                    <a href="screening-list.php" class="sub-item active" aria-current="page"><span class="sub-text">Screening List</span><span class="nav-badge alert mini" id="screeningBadge" hidden>0</span></a>
-                    <a href="add-applicants.php" class="sub-item"><span class="sub-text">Add Applicant</span></a>
-                </div>
-            </div>
+            <a href="screening-list.php" class="nav-item active reveal" id="applicantsMainLink" style="--i:2">
+                <svg class="nav-icon" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                <span class="nav-text">Applicants</span>
+                <span class="nav-badge" id="applicantsBadge" hidden>0</span>
+            </a>
 
             <!-- Archive -->
             <a href="archive.php" id="archiveLink" class="nav-item reveal" style="--i:3">

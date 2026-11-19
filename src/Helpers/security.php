@@ -65,6 +65,53 @@ function rotate_session(): void
     session_regenerate_id(true);
 }
 
+/**
+ * Restore a signed-in session from a valid Remember me cookie.
+ */
+function restore_remembered_session(): bool
+{
+    $role = (string) ($_SESSION['user_role'] ?? '');
+    $userId = (int) ($_SESSION['user_id'] ?? 0);
+    if ($userId > 0 && in_array($role, [ROLE_ADMIN, ROLE_HR], true)) {
+        return true;
+    }
+
+    $parts = explode('|', (string) ($_COOKIE['remember'] ?? ''), 2);
+    if (count($parts) !== 2) {
+        return false;
+    }
+
+    $userId = (int) $parts[0];
+    $token = $parts[1];
+    if ($userId <= 0 || $token === '') {
+        return false;
+    }
+
+    $stmt = db()->prepare(
+        "SELECT user_id, role, name, email, remember_token, remember_token_expires_at
+         FROM users
+         WHERE user_id = :id AND deleted_at IS NULL AND status = 'Active'
+         LIMIT 1"
+    );
+    $stmt->execute([':id' => $userId]);
+    $user = $stmt->fetch();
+    if (!$user || !in_array((string) ($user['role'] ?? ''), [ROLE_ADMIN, ROLE_HR], true)) {
+        return false;
+    }
+
+    $storedToken = (string) ($user['remember_token'] ?? '');
+    $expiresAt = strtotime((string) ($user['remember_token_expires_at'] ?? ''));
+    if ($storedToken === '' || !hash_equals($storedToken, hash('sha256', $token)) || $expiresAt === false || $expiresAt <= time()) {
+        return false;
+    }
+
+    $_SESSION['user_id'] = (int) $user['user_id'];
+    $_SESSION['user_role'] = (string) $user['role'];
+    $_SESSION['user_name'] = (string) $user['name'];
+    $_SESSION['user_email'] = strtolower(trim((string) $user['email']));
+    return true;
+}
+
 /*───────────────────────────── CSRF / bot protection ─────────────────────────────*/
 
 /**
@@ -132,7 +179,7 @@ function rate_limit_ensure_table(): void
     try {
         $pdo->exec(
             "CREATE TABLE IF NOT EXISTS rate_limit_log (" .
-            "id SERIAL PRIMARY KEY, " .
+            "rate_limit_id SERIAL PRIMARY KEY, " .
             "key_hash CHAR(64) NOT NULL, " .
             "created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP" .
             ")"

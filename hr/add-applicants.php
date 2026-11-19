@@ -11,10 +11,13 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {
     exit();
 }
 
+require_once __DIR__ . '/../src/Helpers/security.php';
+$csrf = csrf_token();
+
 // Keeps the browser copy of the Archive in step with hr-data.php
 require_once __DIR__ . '/hr-data.php';
 
-// The Job Position list (each position has its own job description PDF). BACKEND: SELECT id, name FROM job_positions
+// The Job Position list (each position has its own job description PDF). BACKEND: SELECT job_id, job_name FROM job_positions
 $positions = static_positions();
 ?>
 <!DOCTYPE html>
@@ -22,6 +25,7 @@ $positions = static_positions();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<?php echo htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8'); ?>">
     <title>Add Applicant - Expertise Portal</title>
 
     <!-- Runs before first paint so the screen is already covered when arriving via login -->
@@ -114,7 +118,7 @@ $positions = static_positions();
                 <p class="pos-hint">Without a PDF, the applicants of this position are shown the sample job description until one is added.</p>
                 <div class="modal-actions">
                     <button class="btn-cancel" id="positionCancel" type="button">Cancel</button>
-                    <button class="btn-confirm" id="positionSave" type="submit">Add Position</button>
+                    <button class="btn-confirm" id="positionSave" type="submit">Add Job Position</button>
                 </div>
             </form>
         </div>
@@ -192,23 +196,11 @@ $positions = static_positions();
                 <span class="nav-text">Dashboard</span>
             </a>
 
-            <!-- Applicants section: this page belongs to it, so it is highlighted and open -->
-            <div class="nav-group current active reveal" id="applicantsGroup" style="--i:2">
-                <div class="nav-dropdown-wrapper">
-                    <a href="screening-list.php" class="nav-item nav-main-link" id="applicantsMainLink">
-                        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
-                        <span class="nav-text">Applicants</span>
-                        <span class="nav-badge" id="applicantsBadge" hidden>0</span>
-                    </a>
-                    <button class="dropdown-arrow-btn" id="arrowToggleBtn" title="Toggle Menu">
-                        <svg class="arrow-icon" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
-                    </button>
-                </div>
-                <div class="sub-menu" id="applicantsSubMenu">
-                    <a href="screening-list.php" class="sub-item"><span class="sub-text">Screening List</span><span class="nav-badge alert mini" id="screeningBadge" hidden>0</span></a>
-                    <a href="add-applicants.php" class="sub-item active" aria-current="page"><span class="sub-text">Add Applicant</span></a>
-                </div>
-            </div>
+            <a href="screening-list.php" class="nav-item active reveal" id="applicantsMainLink" style="--i:2">
+                <svg class="nav-icon" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                <span class="nav-text">Applicants</span>
+                <span class="nav-badge" id="applicantsBadge" hidden>0</span>
+            </a>
 
             <!-- Archive -->
             <a href="archive.php" id="archiveLink" class="nav-item reveal" style="--i:3">
@@ -237,9 +229,15 @@ $positions = static_positions();
 
     <!-- Main Content -->
     <main class="main-content">
-        <header class="content-header reveal" style="--i:1">
-            <h1>Add Shortlisted Applicant</h1>
-        </header>
+        <div class="form-head reveal" style="--i:1">
+            <header class="content-header">
+                <h1>Add Shortlisted Applicant</h1>
+            </header>
+            <a href="screening-list.php" class="back-link" id="backLink">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                Back
+            </a>
+        </div>
 
         <!-- ================= Form ================= -->
         <section class="form-card reveal" style="--i:2" id="formCard">

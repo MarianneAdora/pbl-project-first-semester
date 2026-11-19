@@ -316,7 +316,7 @@ function repo_applicant_jd_url(int $positionId, ?PDO $pdo = null): string
     if ($positionId <= 0) return '';
     $pdo = $pdo ?: db();
     $read = function () use ($pdo, $positionId): string {
-        $st = $pdo->prepare("SELECT jd_url FROM job_positions WHERE id = :id AND archived_at IS NULL LIMIT 1");
+        $st = $pdo->prepare("SELECT jd_url FROM job_positions WHERE job_id = :id AND archived_at IS NULL LIMIT 1");
         $st->execute([':id' => $positionId]);
         return trim((string) ($st->fetchColumn() ?: ''));
     };
@@ -347,7 +347,7 @@ function repo_jd_key(string $s): string
 function repo_sync_position_jds(?PDO $pdo = null, bool $force = false): int
 {
     $pdo = $pdo ?: db();
-    $rows = $pdo->query("SELECT id, name FROM job_positions WHERE archived_at IS NULL AND (jd_url IS NULL OR jd_url = '') ORDER BY id")->fetchAll();
+    $rows = $pdo->query("SELECT job_id, job_name FROM job_positions WHERE archived_at IS NULL AND (jd_url IS NULL OR jd_url = '') ORDER BY job_id")->fetchAll();
     if (!$rows) return 0;
 
     if (!$force && session_status() === PHP_SESSION_ACTIVE) {
@@ -361,9 +361,9 @@ function repo_sync_position_jds(?PDO $pdo = null, bool $force = false): int
 
     $linked = 0;
     $taken  = [];
-    $upd = $pdo->prepare("UPDATE job_positions SET jd_url = :u, jd_public_id = :p WHERE id = :id AND (jd_url IS NULL OR jd_url = '')");
+    $upd = $pdo->prepare("UPDATE job_positions SET jd_url = :u, jd_public_id = :p WHERE job_id = :id AND (jd_url IS NULL OR jd_url = '')");
     foreach ($rows as $row) {
-        $key = repo_jd_key((string) $row['name']);
+        $key = repo_jd_key((string) $row['job_name']);
         if (strlen($key) < 3) continue;
         $best = null; $bestScore = 0; $tie = false;
         foreach ($assets as $i => $a) {
@@ -748,22 +748,30 @@ function repo_dashboard_stats(?PDO $pdo = null): array
 }
 
 /**
- * Recent Applicants for the HR dashboard: newest inserted first, with a display 'updated' label.
+ * Recent Applicants for the HR dashboard: newest inserted first, with the latest applicant activity time.
  * The generated ID is the stable insertion order, even when imported/demo created_at values are future-dated.
  */
 function repo_applicants_recent(?PDO $pdo = null, int $limit = 10): array
 {
     $pdo = $pdo ?: db();
     $st = $pdo->prepare(
-        "SELECT applicant_id, name, email, phone_number, status, result, created_at" .
-        " FROM applicant WHERE deleted_at IS NULL ORDER BY applicant_id DESC LIMIT :lim"
+        "SELECT a.applicant_id, a.name, a.email, a.phone_number, a.status, a.result," .
+        " GREATEST(COALESCE(GREATEST(a.invited_at, a.verified_at, a.submitted_at, a.passed_at, a.rejected_at, a.restored_at), a.created_at)," .
+        " r.started_at, r.submitted_at, sc.reviewed_at," .
+        " (SELECT MAX(s.updated_at) FROM schedule s WHERE s.applicant_id = a.applicant_id)) AS last_updated" .
+        " FROM applicant a" .
+        " LEFT JOIN response r ON r.applicant_id = a.applicant_id" .
+        " LEFT JOIN score sc ON sc.response_id = r.response_id" .
+        " WHERE a.deleted_at IS NULL ORDER BY a.applicant_id DESC LIMIT :lim"
     );
     $st->bindValue(':lim', $limit, PDO::PARAM_INT);
     $st->execute();
     $out = [];
     foreach ($st->fetchAll() as $r) {
         $d = applicant_to_display($r);
-        $d['updated'] = $r['created_at'] ? date('Y-m-d H:i', strtotime((string) $r['created_at'])) : '';
+        $d['updated'] = $r['last_updated']
+            ? (new DateTimeImmutable((string) $r['last_updated'], new DateTimeZone('Asia/Manila')))->format('Y-m-d H:i')
+            : '';
         $out[] = $d;
     }
     return $out;

@@ -34,14 +34,35 @@ CREATE INDEX idx_users_remember_token ON users(remember_token) WHERE remember_to
 CREATE INDEX idx_users_status ON users(status);
 
 -- ------------------------------------------------------------
+-- ADMIN MFA CHALLENGES
+-- Short-lived email OTP challenges for sensitive Admin actions.
+-- ------------------------------------------------------------
+CREATE TABLE admin_mfa_challenges (
+    challenge_id   BIGSERIAL PRIMARY KEY,
+    admin_user_id  INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    purpose        VARCHAR(40) NOT NULL,
+    session_hash   CHAR(64) NOT NULL,
+    token_hash     CHAR(64) NOT NULL UNIQUE,
+    code_hash      VARCHAR(255) NOT NULL,
+    operation_hash CHAR(64) NOT NULL,
+    attempt_count  SMALLINT NOT NULL DEFAULT 0,
+    expires_at     TIMESTAMPTZ NOT NULL,
+    consumed_at    TIMESTAMPTZ,
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_admin_mfa_challenges_owner
+    ON admin_mfa_challenges (admin_user_id, purpose, created_at DESC);
+
+-- ------------------------------------------------------------
 -- JOB POSITIONS
 -- One row per job position; each position has its own job
 -- description PDF stored in Cloudinary (jd_url). HR adds
 -- positions via the "+ Add job position" control in Add Applicant.
 -- ------------------------------------------------------------
 CREATE TABLE job_positions (
-    id            SERIAL PRIMARY KEY,
-    name          VARCHAR(100) NOT NULL,
+    job_id         SERIAL PRIMARY KEY,
+    job_name       VARCHAR(100) NOT NULL,
     jd_url        VARCHAR(512),         -- Cloudinary secure_url
     jd_public_id  VARCHAR(255),         -- Cloudinary public_id (for deletion)
     created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -59,7 +80,7 @@ CREATE TABLE applicant (
     reference_code       VARCHAR(50)  NOT NULL UNIQUE,
     secure_token         VARCHAR(64)  NOT NULL UNIQUE,
     encoded_by_user_id   INT REFERENCES users(user_id),
-    position_id          INT REFERENCES job_positions(id), -- the job position this applicant was added under
+    position_id          INT REFERENCES job_positions(job_id), -- the job position this applicant was added under
 
     name                 VARCHAR(255) NOT NULL,   -- full name = first + middle + last (kept for the rest of the app)
     first_name           VARCHAR(100) NOT NULL,
@@ -135,9 +156,9 @@ CREATE INDEX idx_otp_request_log_requested_at ON otp_request_log(requested_at);
 -- One row per rate-limited request.
 -- ------------------------------------------------------------
 CREATE TABLE rate_limit_log (
-    id          SERIAL PRIMARY KEY,
-    key_hash    CHAR(64)   NOT NULL,
-    created_at  TIMESTAMP  NOT NULL DEFAULT CURRENT_TIMESTAMP
+    rate_limit_id   SERIAL PRIMARY KEY,
+    key_hash        CHAR(64)   NOT NULL,
+    created_at      TIMESTAMP  NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_rate_limit_key_time ON rate_limit_log(key_hash, created_at);
@@ -282,23 +303,20 @@ CREATE TABLE activity_log (
     created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Notification read state is private to each signed-in account.
+CREATE TABLE notification_reads (
+    user_id          INT          NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    notification_key VARCHAR(255) NOT NULL,
+    read_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, notification_key)
+);
+
 -- ------------------------------------------------------------
 -- PASSWORD CHANGE REQUESTS
 -- HR requests to change their password; the Admin reviews and decides.
 -- ------------------------------------------------------------
-CREATE TABLE password_requests (
-    request_id    SERIAL PRIMARY KEY,
-    account_id    INT         NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-    current_hash  VARCHAR(255) NOT NULL,
-    new_password  VARCHAR(255) NOT NULL,
-    status        VARCHAR(20)  NOT NULL DEFAULT 'pending'
-                  CHECK (status IN ('pending', 'approved', 'rejected')),
-    decision      VARCHAR(20),
-    reason        VARCHAR(500),
-    created_at    TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    reviewed_at   TIMESTAMP,
-    reviewed_by   INT REFERENCES users(user_id)
-);
+-- End of tables
+-- ------------------------------------------------------------
 
 COMMIT;
 

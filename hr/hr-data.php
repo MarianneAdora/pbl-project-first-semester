@@ -31,7 +31,7 @@ function static_accounts(): array
         $accounts[$email] = [
             'hash'     => (string) $row['password_hash'],
             'role'     => 'hr',
-            'name'     => (string) $row['name'],
+'name' => (string) $row['job_name'],
             'redirect' => 'hr/dashboard-hr.php'
         ];
     }
@@ -423,7 +423,7 @@ function static_hr_feed(int $limit = 30): array
     $mine = static_hr_session_id();
     foreach ($rows as $row) {
         $by   = (string) ($row['by'] ?? '');
-        $item = ['at' => (string) ($row['at'] ?? ''), 'activity' => (string) $row['activity'], 'details' => (string) $row['details'], 'by' => $by];
+        $item = ['id' => (int) ($row['id'] ?? 0), 'at' => (string) ($row['at'] ?? ''), 'activity' => (string) $row['activity'], 'details' => (string) $row['details'], 'by' => $by];
 
         // a profile / password line belongs to one HR account: nobody else sees it
         if (isset($row['owner']) && (int) $row['owner'] !== $mine) continue;
@@ -473,13 +473,13 @@ function static_applicants(): array
     $rows = $pdo->query("
         SELECT a.applicant_id AS id, a.name, a.first_name, a.middle_name, a.last_name,
                a.email, a.phone_number AS contact, a.position_id,
-               p.name AS position,
+               p.job_name AS position,
                a.status, a.result,
                a.created_at AS updated,
                a.invited_at, a.submitted_at, a.passed_at,
                a.cv_file_url, a.cv_hash
         FROM applicant a
-        LEFT JOIN job_positions p ON p.id = a.position_id AND p.archived_at IS NULL
+        LEFT JOIN job_positions p ON p.job_id = a.position_id AND p.archived_at IS NULL
         WHERE a.deleted_at IS NULL
         ORDER BY a.applicant_id ASC
     ")->fetchAll();
@@ -527,14 +527,14 @@ function static_archived_applicants(): array
     $rows = $pdo->query("
         SELECT a.applicant_id AS id, a.name, a.first_name, a.middle_name, a.last_name,
                a.email, a.phone_number AS contact, a.position_id,
-               p.name AS position,
+               p.job_name AS position,
                a.status, a.result,
                a.created_at AS updated,
                a.invited_at, a.submitted_at, a.passed_at,
                a.deleted_at AS deleted,
                a.cv_file_url, a.cv_hash
         FROM applicant a
-        LEFT JOIN job_positions p ON p.id = a.position_id AND p.archived_at IS NULL
+        LEFT JOIN job_positions p ON p.job_id = a.position_id AND p.archived_at IS NULL
         WHERE a.deleted_at IS NOT NULL
         ORDER BY a.deleted_at DESC
     ")->fetchAll();
@@ -745,9 +745,13 @@ function static_add_applicant(array $in, ?array $cvUpload = null): array
     // Send the screening invitation (personal link with the secure token).
     // If it cannot be sent, remove the row again so HR can simply retry with the same email.
     $sent = false;
+    $emailFailure = null;
     try {
-        $sent = (new EmailService())->sendInviteEmail($email, $name, $token);
+        $emailService = new EmailService();
+        $sent = $emailService->sendInviteEmail($email, $name, $token);
+        $emailFailure = $emailService->lastFailure();
     } catch (Throwable $e) {
+        $emailFailure = 'exception';
         error_log('Invitation email error: ' . $e->getMessage());
     }
     if (!$sent) {
@@ -756,7 +760,14 @@ function static_add_applicant(array $in, ?array $cvUpload = null): array
         } catch (Throwable $e) {
             error_log('Could not roll back applicant after email failure: ' . $e->getMessage());
         }
-        throw new InvalidArgumentException('The invitation email could not be sent. Please check the email address and try again. (Details are in the PHP error log.)');
+        $messages = [
+            'missing_api_key' => 'We could not send the invitation email. Please try again later.',
+            'unauthorized'    => 'We could not send the invitation email. Please try again later.',
+            'transport'       => 'We could not send the invitation email. Please try again later.',
+            'rejected'        => 'We could not send the invitation email. Please check the email address and try again.',
+            'exception'       => 'We could not send the invitation email. Please try again later.'
+        ];
+        throw new InvalidArgumentException($messages[$emailFailure] ?? 'The invitation email could not be sent. Please try again later.');
     }
 
     $applicant = [
@@ -793,12 +804,12 @@ function static_add_applicant(array $in, ?array $cvUpload = null): array
    (and uploads that position's job description PDF). Every position has its OWN job description, so the
    applicant is shown the PDF of the position they were added under (applicant/questionnaire.php, question 1).
    Stored in the database table job_positions; the PDFs are kept in Cloudinary (jd_url column).
-     id, name, jd_url, jd_public_id, created_at, archived_at
+     job_id, job_name, jd_url, jd_public_id, created_at, archived_at
    An applicant keeps position_id + position (the name when they were added).
    ========================================================================== */
 const STATIC_JD_BYTES = 5 * 1024 * 1024;                   // 5 MB at most, like the CV
 
-// Active positions in the order they were created. BACKEND: SELECT id, name, jd_url FROM job_positions WHERE archived_at IS NULL ORDER BY id
+// Active positions in the order they were created. BACKEND: SELECT job_id, job_name, jd_url FROM job_positions WHERE archived_at IS NULL ORDER BY job_id
 function static_positions(): array
 {
     $pdo = db();
@@ -809,12 +820,12 @@ function static_positions(): array
     } catch (Throwable $e) {
         error_log('Job description sync error: ' . $e->getMessage());
     }
-    $stmt = $pdo->query("SELECT id, name, jd_url, jd_public_id, created_at, archived_at FROM job_positions WHERE archived_at IS NULL ORDER BY id");
+    $stmt = $pdo->query("SELECT job_id, job_name, jd_url, jd_public_id, created_at, archived_at FROM job_positions WHERE archived_at IS NULL ORDER BY job_id");
     $out = [];
     while ($row = $stmt->fetch()) {
         $out[] = [
-            'id'          => (int) $row['id'],
-            'name'        => (string) $row['name'],
+            'id'          => (int) $row['job_id'],
+            'name'        => (string) $row['job_name'],
             'jd'          => !empty($row['jd_url']) ? [
                 'name'       => '',
                 'size'       => 0,
@@ -832,13 +843,13 @@ function static_position_find(int $id): ?array
 {
     if ($id <= 0) return null;
     $pdo = db();
-    $stmt = $pdo->prepare("SELECT id, name, jd_url, jd_public_id, created_at, archived_at FROM job_positions WHERE id = :id AND archived_at IS NULL LIMIT 1");
+    $stmt = $pdo->prepare("SELECT job_id, job_name, jd_url, jd_public_id, created_at, archived_at FROM job_positions WHERE job_id = :id AND archived_at IS NULL LIMIT 1");
     $stmt->execute([':id' => $id]);
     $row = $stmt->fetch();
     if (!$row) return null;
     return [
-        'id'          => (int) $row['id'],
-        'name'        => (string) $row['name'],
+        'id'          => (int) $row['job_id'],
+        'name'        => (string) $row['job_name'],
         'jd'          => !empty($row['jd_url']) ? [
             'name'       => '',
             'size'       => 0,
@@ -854,8 +865,8 @@ function static_position_find(int $id): ?array
 function static_position_public(array $p): array
 {
     return [
-        'id'      => (int) $p['id'],
-        'name'    => (string) $p['name'],
+        'id' => (int) $p['job_id'],
+        'name'    => (string) $p['job_name'],
         'has_jd'  => !empty($p['jd']['url']),
         'jd_name' => !empty($p['jd']['name']) ? (string) $p['jd']['name'] : '',
         'jd_url'  => !empty($p['jd']['url']) ? (string) $p['jd']['url'] : ''
@@ -912,7 +923,7 @@ function static_position_add(string $name, ?array $jdUpload = null): array
 
     // Check for duplicate active name in the database
     $pdo = db();
-    $stmt = $pdo->prepare("SELECT id FROM job_positions WHERE archived_at IS NULL AND LOWER(name) = LOWER(:name) LIMIT 1");
+    $stmt = $pdo->prepare("SELECT job_id FROM job_positions WHERE archived_at IS NULL AND LOWER(job_name) = LOWER(:name) LIMIT 1");
     $stmt->execute([':name' => $name]);
     if ($stmt->fetch()) {
         throw new InvalidArgumentException('This job position already exists. Choose it from the list.');
@@ -940,7 +951,7 @@ function static_position_add(string $name, ?array $jdUpload = null): array
         }
     }
 
-    $stmt = $pdo->prepare("INSERT INTO job_positions (name, jd_url, jd_public_id, created_at, archived_at) VALUES (:name, :jd_url, :jd_public_id, :created_at, NULL) RETURNING id, name, jd_url, jd_public_id, created_at, archived_at");
+    $stmt = $pdo->prepare("INSERT INTO job_positions (job_name, jd_url, jd_public_id, created_at, archived_at) VALUES (:name, :jd_url, :jd_public_id, :created_at, NULL) RETURNING job_id, job_name, jd_url, jd_public_id, created_at, archived_at");
     $stmt->execute([
         ':name'         => $name,
         ':jd_url'       => $jdUrl,
@@ -950,8 +961,8 @@ function static_position_add(string $name, ?array $jdUpload = null): array
     $row = $stmt->fetch();
 
     $saved = [
-        'id'          => (int) $row['id'],
-        'name'        => (string) $row['name'],
+        'id'          => (int) $row['job_id'],
+        'name'        => (string) $row['job_name'],
         'jd'          => !empty($row['jd_url']) ? [
             'name'       => $jdName,
             'size'       => (int) ($jdUpload['size'] ?? 0),
@@ -970,7 +981,7 @@ function static_position_delete(int $id): array
 {
     $pdo = db();
 
-    $stmt = $pdo->prepare("SELECT id, name, jd_public_id, archived_at FROM job_positions WHERE id = :id LIMIT 1");
+    $stmt = $pdo->prepare("SELECT job_id, job_name, jd_public_id, archived_at FROM job_positions WHERE job_id = :id LIMIT 1");
     $stmt->execute([':id' => $id]);
     $pos = $stmt->fetch();
     if (!$pos) throw new InvalidArgumentException('That job position was not found.');
@@ -991,16 +1002,16 @@ function static_position_delete(int $id): array
         }
     }
 
-    $stmt = $pdo->prepare("UPDATE job_positions SET archived_at = :archived_at WHERE id = :id RETURNING id, name, jd_url, jd_public_id, created_at, archived_at");
+    $stmt = $pdo->prepare("UPDATE job_positions SET archived_at = :archived_at WHERE job_id = :job_id RETURNING job_id, job_name, jd_url, jd_public_id, created_at, archived_at");
     $stmt->execute([
         ':archived_at' => static_now()->format('Y-m-d H:i:s'),
-        ':id'          => $id
+        ':job_id'      => $id
     ]);
     $row = $stmt->fetch();
 
     $saved = [
-        'id'          => (int) $row['id'],
-        'name'        => (string) $row['name'],
+        'id'          => (int) $row['job_id'],
+        'name'        => (string) $row['job_name'],
         'jd'          => !empty($row['jd_url']) ? [
             'name'       => '',
             'size'       => 0,
@@ -1229,16 +1240,14 @@ function static_purge_expired(): int
 
 
 /* ==========================================================================
-   PROFILE + HR PASSWORD APPROVAL (used by BOTH sides, so it lives in this shared file)
+   PROFILE (used by BOTH sides, so it lives in this shared file)
    Profile   Name, email and picture of the signed-in Admin / HR (Settings). HR changes also write a line to the
              activity log, so the Admin sees them under Recent Activities.
-   Password  Admin: changed at once. HR: becomes a REQUEST (hash only) that the Admin approves or rejects by clicking
-             the line in Recent Activities (admin/question-admin.php, action password_decide). HR sees the answer in
-             Settings and in the bell.
-   Store     hr_accounts[].avatar | admin_account {name,email,hash,avatar} | password_requests[] | activity lines with
+   Password  Changed at once for both Admin and HR -- no approval flow.
+   Store     hr_accounts[].avatar | admin_account {name,email,hash,avatar} | activity lines with
              kind / owner / ref. Pictures are kept in data/avatars/.
-   Endpoint  the actions profile_save, password_change, password_status, password_cancel at the bottom of this file.
-   BACKEND   UPDATE users SET name, email, avatar_url ...; INSERT INTO password_requests ...; Cloudinary for the picture.
+   Endpoint  the actions profile_save, password_change at the bottom of this file.
+   BACKEND   UPDATE users SET name, email, avatar_url, password_hash ...; Cloudinary for the picture.
    ========================================================================== */
 
 
@@ -1270,7 +1279,7 @@ if (!function_exists('static_seed_hr_accounts')) {
         $out = [];
         while ($row = $stmt->fetch()) {
             $out[] = [
-                'id'          => (int) $row['id'],
+    'id' => (int) $row['job_id'],
                 'name'        => (string) $row['name'],
                 'email'       => (string) $row['email'],
                 'role'        => 'HR Staff',
@@ -1668,87 +1677,9 @@ function static_profile_check_new_password(string $new, string $current): void
     if ($new === $current)    throw new StaticProfileError('The new password must be different from the current one.', 'pwNew');
 }
 
-/* ---------- the requests (HR password changes waiting for the Admin) ---------- */
-
-// One database row -> the request shape the pages use. The table has no "cancelled" status (its CHECK allows
-// pending / approved / rejected), so a request HR took back is stored as rejected + decision "cancelled".
-function static_profile_request_row(array $r): array
-{
-    $status = (string) ($r['status'] ?? 'pending');
-    if ($status === 'rejected' && (string) ($r['decision'] ?? '') === 'cancelled') $status = 'cancelled';
-    return [
-        'id'           => (int) ($r['request_id'] ?? 0),
-        'account_id'   => (int) ($r['account_id'] ?? 0),
-        'name'         => (string) ($r['name'] ?? ''),
-        'email'        => (string) ($r['email'] ?? ''),
-        'status'       => $status,
-        'requested_at' => (string) ($r['created_at'] ?? ''),
-        'decided_at'   => !empty($r['reviewed_at']) ? (string) $r['reviewed_at'] : null,
-        'reason'       => (string) ($r['reason'] ?? '')
-    ];
-}
-
-// All requests, oldest first. $store is kept only so older callers still work (requests now live in the database).
-function static_profile_requests(array $store = []): array
-{
-    require_once __DIR__ . '/../src/Helpers/db.php';
-    try {
-        $rows = db()->query("
-            SELECT r.request_id, r.account_id, r.status, r.decision, r.reason, r.created_at, r.reviewed_at, u.name, u.email
-            FROM password_requests r JOIN users u ON u.user_id = r.account_id
-            ORDER BY r.request_id
-        ")->fetchAll();
-    } catch (Throwable $e) {
-        error_log('Password requests read failed: ' . $e->getMessage());
-        return [];
-    }
-    return array_map('static_profile_request_row', $rows);
-}
-
-function static_profile_next_request_id(array $reqs): int
-{
-    $max = 0;
-    foreach ($reqs as $r) $max = max($max, (int) ($r['id'] ?? 0));
-    return $max + 1;
-}
-
-// A request as the pages see it: never the password hash
-function static_profile_request_public(array $r): array
-{
-    return [
-        'id'           => (int) ($r['id'] ?? 0),
-        'account_id'   => (int) ($r['account_id'] ?? 0),
-        'name'         => (string) ($r['name'] ?? ''),
-        'email'        => (string) ($r['email'] ?? ''),
-        'status'       => (string) ($r['status'] ?? 'pending'),
-        'requested_at' => (string) ($r['requested_at'] ?? ''),
-        'decided_at'   => isset($r['decided_at']) ? (string) $r['decided_at'] : null,
-        'reason'       => (string) ($r['reason'] ?? '')
-    ];
-}
-
-// id => request, for the Admin's Recent Activities (each line shows the live status)
-function static_profile_requests_by_id(array $store): array
-{
-    $out = [];
-    foreach (static_profile_requests($store) as $r) $out[(int) ($r['id'] ?? 0)] = static_profile_request_public($r);
-    return $out;
-}
-
-// The newest request of one HR account (null when HR never asked). Callable as ($store, $id) or ($id).
-function static_profile_latest_request($storeOrId, ?int $accountId = null): ?array
-{
-    $id = is_array($storeOrId) ? (int) $accountId : (int) $storeOrId;
-    $found = null;
-    foreach (static_profile_requests() as $r) {
-        if ((int) $r['account_id'] === $id) $found = $r;        // later ones are newer
-    }
-    return $found !== null ? static_profile_request_public($found) : null;
-}
-
 /* ---------- change the password ----------
-   Admin: applied now.  HR: a request is created and waits for the Admin.
-   Returns ['mode' => 'applied' | 'pending', 'request' => the request or null] */
+   Applied at once for both Admin and HR. No approval flow.
+   Returns ['mode' => 'applied', 'request' => null] */
 function static_profile_change_password(string $current, string $new): array
 {
     require_once __DIR__ . '/../src/Helpers/db.php';
@@ -1762,118 +1693,11 @@ function static_profile_change_password(string $current, string $new): array
     static_profile_check_new_password($new, $current);
 
     $pdo = db();
-
-    if ($me['role'] === 'admin') {
-        $stmt = $pdo->prepare("UPDATE users SET password_hash = :hash WHERE email = :email AND role = 'admin' AND deleted_at IS NULL");
-        $stmt->execute([
-            ':hash' => password_hash($new, PASSWORD_DEFAULT),
-            ':email' => $me['email']
-        ]);
-        if ($stmt->rowCount() === 0) throw new StaticProfileError('Your account could not be found. Please log in again.');
-        try { repo_log_activity('Changed Admin Password', $me['name'] . ' (' . $me['email'] . ')'); } catch (Throwable $e) {}
-        return ['mode' => 'applied', 'request' => null];
-    }
-
-    // HR: apply at once (no admin approval needed for password)
     $stmt = $pdo->prepare("UPDATE users SET password_hash = :hash WHERE user_id = :id");
     $stmt->execute([':hash' => password_hash($new, PASSWORD_DEFAULT), ':id' => $me['id']]);
     if ($stmt->rowCount() === 0) throw new StaticProfileError('Your account could not be found. Please log in again.');
-    try { repo_log_activity('Changed HR Password', $me['name'] . ' (' . $me['email'] . ')'); } catch (Throwable $e) {}
+    try { repo_log_activity('Changed Password', $me['name'] . ' (' . $me['email'] . ')'); } catch (Throwable $e) {}
     return ['mode' => 'applied', 'request' => null];
-}
-
-// HR takes back the request that is still pending
-function static_profile_cancel_request(): array
-{
-    require_once __DIR__ . '/../src/Helpers/db.php';
-    $me = static_profile_me();
-    if ($me === null || $me['role'] !== 'hr') throw new StaticProfileError('Your account could not be found. Please log in again.');
-
-    $pdo = db();
-    $stmt = $pdo->prepare("
-        UPDATE password_requests SET status = 'rejected', decision = 'cancelled', reviewed_at = :now
-        WHERE account_id = :aid AND status = 'pending'
-        RETURNING request_id, account_id, status, decision, reason, created_at, reviewed_at
-    ");
-    $stmt->execute([':aid' => $me['id'], ':now' => static_now()->format('Y-m-d H:i:s')]);
-    $row = $stmt->fetch();
-
-    if (!$row) throw new StaticProfileError('There is no password change waiting for approval.');
-
-    $row['name']  = $me['name'];
-    $row['email'] = $me['email'];
-    return static_profile_request_public(static_profile_request_row($row));
-}
-
-// The Admin answers a request. $decision = 'approve' | 'reject'.  Called from admin/question-admin.php (Admin only).
-// Approve: the HR account gets the new password. Reject: nothing changes (an optional reason is kept for HR).
-// Either way a line is written to the activity log; HR sees it in the bell and in Settings.
-function static_profile_decide_request(int $id, string $decision, string $reason = ''): array
-{
-    if ($decision !== 'approve' && $decision !== 'reject') throw new InvalidArgumentException('Choose Approve or Reject.');
-    $reason = trim($reason);
-    if (mb_strlen($reason) > 200) throw new InvalidArgumentException('The reason is too long (200 characters at most).');
-
-    require_once __DIR__ . '/../src/Helpers/db.php';
-    $pdo = db();
-
-    $stmt = $pdo->prepare("
-        SELECT r.*, u.name, u.email FROM password_requests r JOIN users u ON u.user_id = r.account_id
-        WHERE r.request_id = :id LIMIT 1
-    ");
-    $stmt->execute([':id' => $id]);
-    $r = $stmt->fetch();
-    if (!$r) throw new InvalidArgumentException('That request was not found.');
-    if ((string) $r['status'] !== 'pending') {
-        throw new InvalidArgumentException((string) ($r['decision'] ?? '') === 'cancelled'
-            ? 'HR took this request back, so there is nothing to answer.'
-            : 'This request was already ' . (string) $r['status'] . '.');
-    }
-
-    if ($decision === 'approve') {
-        $stored = (string) ($r['new_password'] ?? '');
-        if ($stored === '') throw new InvalidArgumentException('This request has no new password. Ask HR to send it again.');
-        // new_password already holds a hash; anything else is hashed now
-        $hash = preg_match('/^\$(2y|2a|2b|argon2)/', $stored) ? $stored : password_hash($stored, PASSWORD_DEFAULT);
-        $stmt = $pdo->prepare("UPDATE users SET password_hash = :hash WHERE user_id = :aid AND role = 'hr' AND deleted_at IS NULL");
-        $stmt->execute([':hash' => $hash, ':aid' => (int) $r['account_id']]);
-        if ($stmt->rowCount() === 0) throw new InvalidArgumentException('That HR account no longer exists, so its password cannot be changed.');
-    }
-
-    $now    = static_now()->format('Y-m-d H:i:s');
-    $status = $decision === 'approve' ? 'approved' : 'rejected';
-    $stmt = $pdo->prepare("
-        UPDATE password_requests SET status = :status, decision = :decision, reviewed_at = :reviewed_at, reason = :reason
-        WHERE request_id = :id
-    ");
-    $stmt->execute([
-        ':status'      => $status,
-        ':decision'    => $decision === 'approve' ? 'approved' : 'rejected',
-        ':reviewed_at' => $now,
-        ':reason'      => $decision === 'reject' ? $reason : '',
-        ':id'          => $id
-    ]);
-
-        $detail = (string) $r['name'] . ' (HR) · ' . (string) ($r['email'] ?? '');
-        if ($decision === 'reject' && $reason !== '') $detail .= ' · reason: ' . $reason;
-        try {
-            repo_log_activity(
-                $decision === 'approve' ? 'Password Change Approved' : 'Password Change Rejected',
-                $detail,
-                'Admin'
-            );
-        } catch (Throwable $e) {}
-
-    return static_profile_request_public([
-        'id'           => (int) $r['request_id'],
-        'account_id'   => (int) $r['account_id'],
-        'name'         => (string) $r['name'],
-        'email'        => (string) $r['email'],
-        'status'       => $status,
-        'requested_at' => (string) $r['created_at'],
-        'decided_at'   => $now,
-        'reason'       => $decision === 'reject' ? $reason : ''
-    ]);
 }
 
 /* ==========================================================================
@@ -1902,7 +1726,6 @@ function static_profile_for_page(string $avatarBase): array
         'avatar_url'  => static_profile_avatar_url($file, $avatarBase),
         'avatar_base' => $avatarBase,
         'initials'    => static_profile_initials($name),
-        'request'     => ($me !== null && $me['role'] === 'hr') ? static_profile_latest_request($store, $me['id']) : null
     ];
 }
 
@@ -1921,7 +1744,7 @@ function static_profile_for_page(string $avatarBase): array
        purge    ids = [101, 102]                      Archive "Delete forever"
        status   id, status, result                    Pending | In Progress | Completed (+ Passed | Rejected)
        activity (nothing)                             the latest HR activity and recent applicants for the HR Dashboard
-       profile_save | password_change | password_status | password_cancel   Settings > Account (see PROFILE above)
+        profile_save | password_change   Settings > Account (see PROFILE above)
    Every change that worked also writes one line to the activity log (static_log), which the Admin
    Dashboard shows under Recent Activities.
    Response (JSON):
@@ -1931,7 +1754,9 @@ function static_profile_for_page(string $avatarBase): array
 if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) !== false
     && strcasecmp(realpath($_SERVER['SCRIPT_FILENAME']), __FILE__) === 0) {   // strcasecmp: Windows paths
 
+    require_once __DIR__ . '/../src/Helpers/security.php';
     if (session_status() === PHP_SESSION_NONE) session_start();
+    restore_remembered_session();
     header('Content-Type: application/json; charset=UTF-8');
     error_reporting(0);          // suppress warnings/notices that would corrupt the JSON response
     @ini_set('display_errors', '0');
@@ -1965,7 +1790,7 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
 
     $action = (string) ($input['action'] ?? '');
     // profile / password actions: our own pages send this header, a form on another website cannot
-    if (in_array($action, ['profile_save', 'password_change', 'password_status', 'password_cancel'], true)
+    if (in_array($action, ['profile_save', 'password_change'], true)
         && ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') !== 'XMLHttpRequest') {
         static_respond(['status' => 'error', 'message' => 'Invalid request.'], 400);
     }
@@ -2102,6 +1927,7 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
                 static_respond([
                     'status' => 'success',
                     'activity' => static_hr_feed(),
+                    'completed_ids' => static_completed_ids(static_applicants()),
                     'recent_applicants' => repo_applicants_recent(null, 10)
                 ]);
                 break;
@@ -2135,19 +1961,6 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
                 'mode'    => $res['mode'],
                 'request' => $res['request']
                 ]);
-                break;
-
-            case 'password_status':
-                $pme    = static_profile_me();
-                static_respond([
-                    'status'  => 'success',
-                    'message' => '',
-                    'request' => ($pme !== null && $pme['role'] === 'hr') ? static_profile_latest_request($pme['id']) : null
-                ]);
-                break;
-
-            case 'password_cancel':
-                static_respond(['status' => 'success', 'message' => 'Password change request cancelled.', 'request' => static_profile_cancel_request()]);
                 break;
 
             default:

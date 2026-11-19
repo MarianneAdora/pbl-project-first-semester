@@ -9,7 +9,7 @@ $csrf = csrf_token();
 $requireVerification = true;      // TODO: keep true in production
 
 $nextPage = 'upload-video.php';   // the video step
-$backPage = 'instruction.php';    // "Previous" on the first question
+$backPage = 'instruction.php';    // return to instructions after the first question
 
 // Stepper (same as the other applicant pages): 0 = Verification, 1 = Instructions, 2 = Questionnaires, 3 = Video, 4 = Submit
 $currentStep = 2;
@@ -22,6 +22,7 @@ header('Pragma: no-cache');
 if ($requireVerification) {
     if (empty($_SESSION['otp_verified']))         { header('Location: opening.php');            exit; }
     if (!empty($_SESSION['screening_submitted'])) { header('Location: application-status.php'); exit; }   // already sent: no second try
+    if (empty($_SESSION['screening_privacy_accepted_at'])) { header('Location: ../privacy.php'); exit; }
 }
 
 // Already sent the screening (checked in the database, not just the session): no second try.

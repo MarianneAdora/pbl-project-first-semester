@@ -44,6 +44,14 @@ window.ADMIN = (function () {
         try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch (err) { return false; }
     }
 
+    function signalNotificationReadState() {
+        try {
+            localStorage.setItem('notification_read_sync', Date.now() + ':' + Math.random());
+        } catch (err) {
+            console.warn('Could not broadcast notification read state across tabs.', err);
+        }
+    }
+
     const readSettings = () => Object.assign({}, SETTINGS_DEFAULTS, readJSON(SETTINGS_KEY));
     const readProfile = () => readJSON(PROFILE_KEY);
 
@@ -107,7 +115,7 @@ window.ADMIN = (function () {
         return meta ? meta.content : '';
     }
 
-    function request(action, payload) {
+    function request(action, payload, retried) {
         return fetch(SERVER_API, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
@@ -119,7 +127,16 @@ window.ADMIN = (function () {
                 () => { throw new Error('Could not reach the server. Please check your connection and try again.'); }
             )
             .then(data => {
-                if (data.status !== 'success') throw new Error(data.message || 'Something went wrong. Please try again.');
+                    if (data.status !== 'success') {
+                        if (!retried && data.message && data.message.indexOf('Invalid CSRF token') === 0 && data.csrf_token) {
+                            const meta = document.querySelector('meta[name="csrf-token"]');
+                            if (meta) {
+                                meta.content = data.csrf_token;
+                                return request(action, payload, true);
+                            }
+                        }
+                        throw new Error(data.message || 'Something went wrong. Please try again.');
+                    }
                 if (data.data && data.data.archive) setExpiring(countExpiring(data.data.archive));   // keep the Archive badge right
                 return data;
             });
@@ -649,10 +666,11 @@ window.ADMIN = (function () {
         if (e.key === PROFILE_KEY) applyProfile();
         if (e.key === SEEN_KEY || e.key === NEW_HR_KEY) refreshBadges();
         if (e.key === 'ebsmi_activity_extra' || e.key === 'ebsmi_change_requests') refreshBadges();   // HR sent a change (other tab)
+        if (e.key === 'notification_read_sync') window.dispatchEvent(new CustomEvent('admin:notification-read-sync'));
     });
 
     return {
-        request, esc, formatDate, toast, confirm: confirmBox, icons, countUp, noMotion,
+        request, esc, formatDate, toast, confirm: confirmBox, icons, countUp, noMotion, signalNotificationReadState,
         menu: openMenu, closeMenu, pager, showing, flash, showFlash,
         flyToArchive, flyToNav, bumpArchive, bumpNav,
         hr: { note: noteNewHr, clear: clearNewHr, ids: readNewHr },
@@ -673,27 +691,105 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelLogout = document.getElementById('cancelLogout');
     const confirmLogout = document.getElementById('confirmLogout');
     const pageOverlay = document.getElementById('pageOverlay');
+    const sidebarHeader = sidebar ? sidebar.querySelector('.sidebar-header') : null;
+    const sidebarNav = sidebar ? sidebar.querySelector('.sidebar-nav') : null;
+    const sidebarProfile = sidebar ? sidebar.querySelector('.sidebar-profile') : null;
+    let notifWrap = document.querySelector('.content-header .notif-wrap');
+    let accountRow = null;
     let mobileNavToggle = null;
+    let positionNotifPanel = () => {};
 
     if (sidebar) {
+        if (!notifWrap && sidebarHeader) {
+            notifWrap = document.createElement('div');
+            notifWrap.className = 'notif-wrap mobile-notif-wrap';
+            notifWrap.innerHTML = '<button type="button" class="notif-bell" id="notifBell" aria-haspopup="true" aria-expanded="false" aria-controls="notifPanel" aria-label="Notifications" title="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg><span class="notif-count" id="notifBadge" hidden>0</span></button><div class="notif-panel" id="notifPanel" role="dialog" aria-label="Notifications" hidden><div class="notif-head"><h3>Notifications</h3><button type="button" class="notif-markall" id="notifMarkAll">Mark all as read</button></div><ul class="notif-list" id="notifList"></ul></div>';
+            sidebarHeader.appendChild(notifWrap);
+        }
+
         mobileNavToggle = document.createElement('button');
         mobileNavToggle.type = 'button';
         mobileNavToggle.className = 'mobile-nav-toggle';
-        mobileNavToggle.setAttribute('aria-label', 'Open navigation');
+        mobileNavToggle.setAttribute('aria-label', 'Expand navigation');
         mobileNavToggle.setAttribute('aria-expanded', 'false');
-        mobileNavToggle.innerHTML = '<img src="../assets/images/expertise2.png" alt="">';
-        document.body.appendChild(mobileNavToggle);
+        mobileNavToggle.innerHTML = '<svg class="menu-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg><svg class="close-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>';
+
+        if (sidebarNav) {
+            if (!sidebarNav.id) sidebarNav.id = 'mobileSidebarNav';
+            const sidebarFooter = sidebar.querySelector('.sidebar-footer');
+            const controlledIds = [sidebarNav.id];
+            if (sidebarFooter) {
+                if (!sidebarFooter.id) sidebarFooter.id = 'mobileSidebarFooter';
+                controlledIds.push(sidebarFooter.id);
+            }
+            mobileNavToggle.setAttribute('aria-controls', controlledIds.join(' '));
+        }
+
+        if (sidebarHeader) {
+            sidebarHeader.insertBefore(mobileNavToggle, sidebarHeader.firstChild);
+            accountRow = document.createElement('div');
+            accountRow.className = 'sidebar-account-row';
+            sidebarHeader.insertAdjacentElement('afterend', accountRow);
+            if (sidebarProfile) accountRow.appendChild(sidebarProfile);
+            if (notifWrap) {
+                notifWrap.classList.add('reveal');
+                accountRow.appendChild(notifWrap);
+            }
+        }
+
+        const notifPanel = notifWrap ? notifWrap.querySelector('.notif-panel') : null;
+        const notifBell = notifWrap ? notifWrap.querySelector('.notif-bell') : null;
+        if (notifPanel) {
+            notifPanel.classList.add('nav-notif-panel');
+            document.body.appendChild(notifPanel);
+            positionNotifPanel = () => {
+                if (notifPanel.hidden || !notifBell) return;
+                const isMobile = window.matchMedia('(max-width: 800px)').matches;
+                const bellRect = notifBell.getBoundingClientRect();
+                const viewportWidth = document.documentElement.clientWidth;
+                const panelWidth = Math.min(360, Math.max(0, viewportWidth - 24));
+                const panelHeight = Math.min(420, Math.max(0, window.innerHeight - 24));
+                let left = sidebar.getBoundingClientRect().right + 12;
+                let top = bellRect.top;
+
+                if (isMobile) {
+                    left = Math.max(12, Math.min(viewportWidth - panelWidth - 12, bellRect.right - panelWidth));
+                    top = sidebarHeader.getBoundingClientRect().bottom + 8;
+                } else if (left + panelWidth > viewportWidth - 12) {
+                    left = Math.max(12, bellRect.left - panelWidth - 8);
+                }
+
+                top = Math.min(Math.max(12, top), Math.max(12, window.innerHeight - panelHeight - 12));
+                notifPanel.style.left = left + 'px';
+                notifPanel.style.top = top + 'px';
+                notifPanel.style.right = 'auto';
+            };
+            if (notifBell) notifBell.addEventListener('click', () => setTimeout(positionNotifPanel, 0));
+            window.addEventListener('scroll', () => setTimeout(positionNotifPanel, 0), true);
+        }
     }
+
+    const syncMobileHeader = () => {
+        if (!sidebarHeader || !accountRow) return;
+        sidebarHeader.classList.toggle('has-profile', Boolean(sidebarProfile));
+        if (window.matchMedia('(max-width: 800px)').matches) {
+            sidebarHeader.insertBefore(mobileNavToggle, sidebarHeader.firstChild);
+            if (notifWrap) sidebarHeader.appendChild(notifWrap);
+            if (sidebarProfile) sidebarHeader.appendChild(sidebarProfile);
+        } else {
+            if (sidebarProfile) accountRow.appendChild(sidebarProfile);
+            if (notifWrap) accountRow.appendChild(notifWrap);
+        }
+    };
+
+    syncMobileHeader();
 
     const setDrawerOpen = (open) => {
         root.classList.toggle('drawer-open', open);
         document.body.classList.toggle('noscroll', open);
         if (mobileNavToggle) {
             mobileNavToggle.setAttribute('aria-expanded', String(open));
-            mobileNavToggle.setAttribute('aria-label', open ? 'Close navigation' : 'Open navigation');
-            mobileNavToggle.innerHTML = open
-                ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>'
-                : '<img src="../assets/images/expertise2.png" alt="">';
+            mobileNavToggle.setAttribute('aria-label', open ? 'Collapse navigation' : 'Expand navigation');
         }
     };
 
@@ -737,6 +833,15 @@ document.addEventListener('DOMContentLoaded', () => {
         params.delete('transition');
         const qs = params.toString();
         window.history.replaceState({}, document.title, window.location.pathname + (qs ? '?' + qs : ''));
+
+        // Defensive fallback: if a browser suppresses animationend, remove the
+        // transition classes so the red overlay cannot cover the dashboard.
+        setTimeout(() => {
+            root.classList.remove('is-transitioning', 'is-leaving');
+            root.classList.add('is-ready');
+            pageOverlay.classList.remove('sweep-in');
+            pageOverlay.classList.add('sweep-out');
+        }, 1400);
     } else {
         // Normal visit (no stripes): elements rise in right away
         requestAnimationFrame(() => root.classList.add('is-ready'));
@@ -771,8 +876,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     window.addEventListener('resize', () => {
+        syncMobileHeader();
         applySidebarPreference();
         if (!window.matchMedia('(max-width: 800px)').matches) setDrawerOpen(false);
+        setTimeout(positionNotifPanel, 0);
     });
 
     // Create (once) the drawer backdrop and wire its close + nav-link close behaviour
@@ -886,6 +993,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastEmailed = false;
 
     const fieldOf = (name) => form.querySelector('.field[data-field="' + name + '"]');
+    const adminPasswordField = fieldOf('admin_password');
+    const mfaCodeField = fieldOf('mfa_code');
+    const mfaHint = document.getElementById('mfaHint');
+    const resendMfaBtn = document.getElementById('resendMfaBtn');
+    let mfaChallenge = '';
+    let mfaResendMode = false;
 
     /* ---------- custom dropdowns (Role, Status): the same one as the HR filters ---------- */
     const dropdowns = [];
@@ -1030,6 +1143,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!v) return 'Please confirm the password.';
             if (v !== pass) return 'The passwords do not match.';
             return '';
+        },
+        admin_password(v) {
+            return isEdit || (mfaChallenge && !mfaResendMode) || v ? '' : 'Please enter your current Admin password.';
+        },
+        mfa_code(v) {
+            if (isEdit || !mfaChallenge || mfaResendMode) return '';
+            return /^\d{6}$/.test(v) ? '' : 'Enter the 6-digit code from your email.';
         }
     };
 
@@ -1055,7 +1175,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Typing: once a box has been used, it is re-checked on every keystroke, so the message appears the
     // moment something is wrong and goes away the moment it is fixed. Leaving a used box also checks it.
-    const FIELDS = ['name', 'email', 'password', 'password_confirm'];
+    const FIELDS = ['name', 'email', 'password', 'password_confirm'].concat(isEdit ? [] : ['admin_password', 'mfa_code']);
     const touched = new Set();
 
     FIELDS.forEach(name => {
@@ -1064,6 +1184,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fieldOf(name).querySelector('.field-error').id = name + 'Error';
 
         input.addEventListener('input', () => {
+            if (name === 'mfa_code') input.value = input.value.replace(/\D/g, '').slice(0, 6);
             touched.add(name);
             hideBanner();
             validateField(name, false);
@@ -1080,6 +1201,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function hideBanner() {
         banner.classList.remove('show');
+    }
+
+    function updateSaveLabel() {
+        const label = saveBtn.querySelector('.btn-label');
+        if (!label) return;
+        label.textContent = saving ? 'SAVING...' : isEdit ? 'SAVE CHANGES'
+            : mfaResendMode ? 'SEND NEW CODE'
+                : mfaChallenge ? 'VERIFY & CREATE HR' : 'SEND EMAIL CODE';
+    }
+
+    function updateMfaStage() {
+        if (isEdit) return;
+        const requestingCode = !mfaChallenge || mfaResendMode;
+        adminPasswordField.hidden = !requestingCode;
+        form.elements.admin_password.required = requestingCode;
+        mfaCodeField.hidden = !mfaChallenge;
+        resendMfaBtn.hidden = !mfaChallenge || mfaResendMode;
+        updateSaveLabel();
+    }
+
+    function resetMfaStage() {
+        mfaChallenge = '';
+        mfaResendMode = false;
+        form.elements.admin_password.value = '';
+        form.elements.mfa_code.value = '';
+        mfaHint.textContent = 'A verification code will be emailed to the address entered above.';
+        updateMfaStage();
+    }
+
+    updateMfaStage();
+    if (resendMfaBtn) {
+        resendMfaBtn.addEventListener('click', () => {
+            mfaResendMode = true;
+            setError('admin_password', '');
+            setError('mfa_code', '');
+            updateMfaStage();
+            form.elements.admin_password.focus();
+        });
     }
 
     /* ---------- start values ---------- */
@@ -1121,9 +1280,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 send_email: sendEmail.checked
             };
 
-            const res = isEdit
+            let res;
+            if (!isEdit && (!mfaChallenge || mfaResendMode)) {
+                account.admin_password = form.elements.admin_password.value;
+                res = await ADMIN.request('account_add_mfa_send', { account: account });
+                const challenge = res.result && res.result.challenge_token;
+                if (!challenge) throw new Error('The server did not return an email verification challenge.');
+                mfaChallenge = challenge;
+                mfaResendMode = false;
+                form.elements.mfa_code.value = '';
+                mfaHint.textContent = 'A 6-digit code was sent to ' + (res.result.email || 'your Admin email') + '. It expires in 5 minutes.';
+                updateMfaStage();
+                form.elements.mfa_code.focus();
+                ADMIN.toast(res.message || 'Verification code sent.', { duration: 4000 });
+                return;
+            }
+
+            res = isEdit
                 ? await ADMIN.request('account_update', { id: config.account.id, account: account })
-                : await ADMIN.request('account_add', { account: account });
+                : await ADMIN.request('account_add', {
+                    account: account,
+                    mfa_challenge: mfaChallenge,
+                    mfa_code: form.elements.mfa_code.value
+                });
 
             const saved = res.result || account;
 
@@ -1141,6 +1320,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {
             showServerError(err.message || 'Something went wrong. Please try again.');
         } finally {
+            if (!isEdit) form.elements.admin_password.value = '';
             setSaving(false);
         }
     });
@@ -1149,7 +1329,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function showServerError(message) {
         const lower = message.toLowerCase();
         let target = null;
-        if (lower.includes('match')) target = 'password_confirm';
+        if (lower.includes('could not send the verification code') || lower.includes('too many verification codes')) target = null;
+        else if (lower.includes('admin password')) target = 'admin_password';
+        else if (!isEdit && mfaChallenge && lower.includes('code')) target = 'mfa_code';
+        else if (lower.includes('match')) target = 'password_confirm';
         else if (lower.includes('password')) target = 'password';
         else if (lower.includes('email')) target = 'email';
         else if (lower.includes('name')) target = 'name';
@@ -1170,7 +1353,7 @@ document.addEventListener('DOMContentLoaded', () => {
         saving = state;
         saveBtn.disabled = state;
         saveBtn.classList.toggle('saving', state);
-        saveBtn.querySelector('.btn-label').textContent = state ? 'SAVING...' : (isEdit ? 'SAVE CHANGES' : 'SAVE');
+        updateSaveLabel();
         cancelBtn.disabled = state;
     }
 
@@ -1216,6 +1399,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('addAnother').addEventListener('click', () => {
         form.reset();
+        resetMfaStage();
         roleDD.setValue('HR Staff');
         statusDD.setValue('Active');
         sendEmail.checked = true;
@@ -1248,7 +1432,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 || form.elements.password_confirm.value !== ''
                 || !sendEmail.checked;
         }
-        return ['name', 'email', 'password', 'password_confirm'].some(n => form.elements[n].value.trim() !== '');
+        return mfaChallenge !== ''
+            || ['name', 'email', 'password', 'password_confirm', 'admin_password', 'mfa_code']
+                .some(n => form.elements[n].value.trim() !== '');
     };
 
     function leave() { window.location.href = 'hr-list.php'; }
@@ -3846,6 +4032,247 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 }
 
+if (document.documentElement.getAttribute('data-page') !== 'dashboardadmin') {
+document.addEventListener('DOMContentLoaded', () => {
+    const bell = document.getElementById('notifBell');
+    const panel = document.getElementById('notifPanel');
+    const badge = document.getElementById('notifBadge');
+    const list = document.getElementById('notifList');
+    const markAll = document.getElementById('notifMarkAll');
+    if (!bell || !panel || !badge || !list || !markAll) return;
+
+    let data = window.ADMIN_NOTIFY || { recent: [] };
+    const readKeys = new Set();
+    let readStateReady = false;
+    const expandedKeys = new Set();
+    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    const esc = ADMIN.esc;
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    let lastCount = -1;
+    const ICONS = {
+        add: 'M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z',
+        remove: 'M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z',
+        restore: 'M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z',
+        download: 'M5 20h14v-2H5v2zm7-3 7-7h-4V3H9v7H5l7 7z',
+        event: 'M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z',
+        sync: 'M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z',
+        done: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z',
+        person: 'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z',
+        lock: 'M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z',
+        cancel: 'M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z'
+    };
+    const svg = (path) => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + path + '"/></svg>';
+    const look = (activity) => {
+        const value = String(activity).toLowerCase();
+        if (value.indexOf('dashboard report downloaded') !== -1) return { icon: ICONS.download, tone: 'tone-blue' };
+        if (value.indexOf('hr change') !== -1) {
+            if (value.indexOf('approved') !== -1) return { icon: ICONS.done, tone: 'tone-green' };
+            if (value.indexOf('rejected') !== -1) return { icon: ICONS.cancel, tone: 'tone-red' };
+            return { icon: ICONS.person, tone: 'tone-blue' };
+        }
+        if (value.indexOf('password') !== -1 && value.indexOf('approved') !== -1) return { icon: ICONS.done, tone: 'tone-green' };
+        if (value.indexOf('password') !== -1 && value.indexOf('rejected') !== -1) return { icon: ICONS.cancel, tone: 'tone-red' };
+        if (value.indexOf('password') !== -1) return { icon: ICONS.lock, tone: 'tone-amber' };
+        if (value.indexOf('profile') !== -1 || value.indexOf('name changed') !== -1 || value.indexOf('email changed') !== -1) return { icon: ICONS.person, tone: 'tone-blue' };
+        if (value.indexOf('forever') !== -1) return { icon: ICONS.remove, tone: 'tone-red' };
+        if (value.indexOf('deleted') !== -1) return { icon: ICONS.remove, tone: 'tone-amber' };
+        if (value.indexOf('restored') !== -1) return { icon: ICONS.restore, tone: 'tone-blue' };
+        if (value.indexOf('added') !== -1) return { icon: ICONS.add, tone: 'tone-green' };
+        if (value.indexOf('interview') !== -1) return { icon: ICONS.event, tone: 'tone-blue' };
+        if (value.indexOf('status') !== -1) return { icon: ICONS.sync, tone: 'tone-amber' };
+        return { icon: ICONS.sync, tone: 'tone-blue' };
+    };
+
+    const activityKey = (row) => {
+        if (row && row.id != null) return 'activity:' + String(row.id).replace(/[^A-Za-z0-9_-]/g, '');
+        const value = [row && row.at, row && row.activity, row && row.details, row && row.by].join('|');
+        let hash = 2166136261;
+        for (let i = 0; i < value.length; i++) hash = Math.imul(hash ^ value.charCodeAt(i), 16777619);
+        return 'activity:h' + (hash >>> 0).toString(36);
+    };
+    const allKeys = () => activities().map(activityKey);
+    const formatDate = (value) => {
+        const match = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(String(value || ''));
+        if (!match) return String(value || '');
+        let result = months[Number(match[2]) - 1] + ' ' + Number(match[3]) + ', ' + match[1];
+        if (match[4] !== undefined) {
+            const hour = Number(match[4]);
+            result += ' · ' + (hour % 12 || 12) + ':' + match[5] + ' ' + (hour >= 12 ? 'PM' : 'AM');
+        }
+        return result;
+    };
+    const activities = () => {
+        const rows = Array.isArray(data.recent) ? data.recent.slice() : [];
+        if (window.HRREQ && typeof HRREQ.activity === 'function') {
+            rows.push(...HRREQ.activity().filter((row) => String(row.by).toLowerCase() !== 'admin'));
+        }
+        const seen = new Set();
+        return rows.filter((row) => {
+            const key = activityKey(row);
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        }).sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 20);
+    };
+
+    async function readRequest(action, keys, retried) {
+        const response = await fetch('../api/notification-read.php', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ action, keys, csrf_token: csrfMeta ? csrfMeta.content : '' })
+        });
+        const result = await response.json().catch(() => { throw new Error('The server did not answer correctly. Please try again.'); });
+        if (!response.ok || result.status !== 'success') {
+            if (!retried && result.message && result.message.indexOf('Invalid CSRF token') === 0 && result.csrf_token && csrfMeta) {
+                csrfMeta.content = result.csrf_token;
+                return readRequest(action, keys, true);
+            }
+            throw new Error(result.message || 'Notification state could not be saved.');
+        }
+        return result;
+    }
+
+    async function syncReadState() {
+        const keys = Array.from(new Set(allKeys()));
+        for (let i = 0; i < keys.length; i += 500) {
+            const result = await readRequest('state', keys.slice(i, i + 500));
+            (result.read_keys || []).forEach((key) => readKeys.add(key));
+        }
+        readStateReady = true;
+    }
+
+    async function markRead(keys) {
+        const unique = Array.from(new Set(keys));
+        for (let i = 0; i < unique.length; i += 500) {
+            const result = await readRequest('mark_many', unique.slice(i, i + 500));
+            (result.read_keys || []).forEach((key) => readKeys.add(key));
+        }
+        ADMIN.signalNotificationReadState();
+        paint();
+    }
+
+    function paintBadge() {
+        if (!readStateReady) {
+            badge.hidden = true;
+            bell.classList.remove('has-notifications');
+            bell.setAttribute('aria-label', 'Notifications');
+            bell.title = 'Notifications';
+            return;
+        }
+        const unreadActivity = activities().filter((row) => !readKeys.has(activityKey(row))).length;
+        const total = unreadActivity;
+        badge.textContent = total > 99 ? '99+' : String(total);
+        badge.hidden = total === 0;
+        bell.classList.toggle('has-notifications', total > 0);
+        bell.setAttribute('aria-label', total ? 'Notifications, ' + total + ' new' : 'Notifications');
+        bell.title = total ? total + ' new notification' + (total === 1 ? '' : 's') : 'Notifications';
+        if (lastCount < 0 && total > 0 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            bell.classList.add('ring');
+            bell.addEventListener('animationend', () => bell.classList.remove('ring'), { once: true, capture: true });
+        }
+        if (total > lastCount && lastCount >= 0 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            bell.classList.remove('ring');
+            void bell.offsetWidth;
+            bell.classList.add('ring');
+            bell.addEventListener('animationend', () => bell.classList.remove('ring'), { once: true, capture: true });
+        }
+        lastCount = total;
+    }
+
+    function paintList() {
+        list.innerHTML = activities().map((row) => {
+            const key = activityKey(row);
+            const expanded = expandedKeys.has(key);
+            const icon = look(row.activity);
+            return '<li class="notif-entry' + (expanded ? ' is-expanded' : '') + '"><button type="button" class="notif-item' +
+                (readKeys.has(key) ? '' : ' is-new') + (expanded ? ' is-expanded' : '') + '" data-notification-key="' + esc(key) + '" aria-expanded="' + String(expanded) + '">' +
+                '<span class="notif-ico ' + icon.tone + '">' + svg(icon.icon) + '</span><span class="notif-text"><strong>' + esc(row.activity) +
+                '</strong><span class="notif-detail">' + esc(row.details) + '</span><span class="notif-time">' + esc(formatDate(row.at)) +
+                '</span>' + (expanded ? '<span class="notif-expanded-detail">Recorded by ' + esc(row.actor_name || row.by || 'the system') + '</span>' : '') +
+                '</span></button></li>';
+        }).join('') || '<li class="notif-empty">Nothing yet. HR activity shows up here.</li>';
+        paintBadge();
+        markAll.disabled = allKeys().every((key) => readKeys.has(key));
+    }
+
+    function paint() {
+        paintBadge();
+        if (!panel.hidden) paintList();
+    }
+
+    async function refresh() {
+        try {
+            const result = await ADMIN.request('notify');
+            data = result.data.notify;
+            await syncReadState();
+            paint();
+        } catch (error) {
+            console.error('Could not refresh Admin notifications.', error);
+            if (!panel.hidden) ADMIN.toast(error.message || 'Could not refresh notifications.', { error: true, duration: 6000 });
+        }
+    }
+
+    bell.addEventListener('click', (event) => {
+        event.stopPropagation();
+        panel.hidden = !panel.hidden;
+        bell.setAttribute('aria-expanded', String(!panel.hidden));
+        if (panel.hidden) paintBadge();
+        else { paintList(); refresh(); }
+    });
+    panel.addEventListener('click', (event) => event.stopPropagation());
+    list.addEventListener('click', async (event) => {
+        const button = event.target.closest('button[data-notification-key]');
+        if (!button) return;
+        const key = button.dataset.notificationKey;
+        const expanded = expandedKeys.has(key);
+        expanded ? expandedKeys.delete(key) : expandedKeys.add(key);
+        paintList();
+        if (!expanded) {
+            try { await markRead([key]); }
+            catch (error) { ADMIN.toast(error.message || 'Could not mark this notification as read.', { error: true, duration: 6000 }); }
+        }
+    });
+    pwList.addEventListener('click', async (event) => {
+        const button = event.target.closest('button.pw-expand[data-notification-key]');
+        if (!button) return;
+        const key = button.dataset.notificationKey;
+        const expanded = expandedKeys.has(key);
+        expanded ? expandedKeys.delete(key) : expandedKeys.add(key);
+        paintList();
+        if (!expanded) {
+            try { await markRead([key]); }
+            catch (error) { ADMIN.toast(error.message || 'Could not mark this notification as read.', { error: true, duration: 6000 }); }
+        }
+    });
+    markAll.addEventListener('click', async () => {
+        markAll.disabled = true;
+        try { await markRead(allKeys()); }
+        catch (error) { ADMIN.toast(error.message || 'Could not mark notifications as read.', { error: true, duration: 6000 }); }
+        finally { markAll.disabled = false; paintList(); }
+    });
+    document.addEventListener('click', () => {
+        panel.hidden = true;
+        bell.setAttribute('aria-expanded', 'false');
+        paintBadge();
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !panel.hidden) {
+            panel.hidden = true;
+            bell.setAttribute('aria-expanded', 'false');
+            bell.focus();
+        }
+    });
+
+    paint();
+    refresh();
+    window.addEventListener('pageshow', (event) => { if (event.persisted) refresh(); });
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refresh(); });
+    setInterval(() => { if (document.visibilityState === 'visible') refresh(); }, 30000);
+    window.addEventListener('admin:notification-read-sync', refresh);
+});
+}
+
 /* ===== PAGE : dashboardadmin.js (runs only on: dashboardadmin) ===== */
 if (document.documentElement.getAttribute('data-page') === 'dashboardadmin') {
 /* ==========================================================================
@@ -3858,21 +4285,10 @@ if (document.documentElement.getAttribute('data-page') === 'dashboardadmin') {
    }
    ========================================================================== */
 document.addEventListener('DOMContentLoaded', () => {
-    const data = window.ADMIN_DASH || { stats: { sections: [], questions: [], submissions: 0 }, activity: [], pw_requests: [] };
+    const data = window.ADMIN_DASH || { stats: { sections: [], questions: [], submissions: 0 }, activity: [] };
     const esc = ADMIN.esc;
     const SEEN_KEY = 'admin_activity_seen';
     const DASH_SEEN_KEY = 'admin_dashboard_last_seen_at';
-    const BELL_SEEN_KEY = 'admin_notification_seen_v2';
-    let bellSeenAt;
-    try {
-        bellSeenAt = localStorage.getItem(BELL_SEEN_KEY);
-        if (bellSeenAt === null) {
-            bellSeenAt = '';
-            localStorage.setItem(BELL_SEEN_KEY, bellSeenAt);
-        }
-    } catch (err) {
-        bellSeenAt = '';
-    }
 
     /* ---------- 0. Scroll hand-off: at the end of a scrollable card, the wheel scrolls the page ---------- */
     const pageScroll = document.querySelector('.main-content');
@@ -3892,6 +4308,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     handOff(document.getElementById('statsScroll'));
     handOff(document.querySelector('.activity-card .table-responsive'));
+
+    const activityFilter = document.getElementById('activityFilter');
+    if (activityFilter && activityFilter.form) {
+        activityFilter.addEventListener('change', () => activityFilter.form.submit());
+    }
 
     /* ---------- 1. Summary boxes: numbers count up, the activity box jumps to the list ---------- */
     const base = ADMIN.arrivedViaTransition ? 950 : 550;
@@ -3966,107 +4387,6 @@ document.addEventListener('DOMContentLoaded', () => {
         body.innerHTML = renderDashboardActivityRows(data.activity);
     }
 
-    /* ---------- 2b. HR password changes: click the line -> approve or reject ----------
-       Each "Password Change Requested" line carries its live request (row.req). The pop-up reads it, and the answer goes to
-       api/admin-action.php (action password_decide). HR sees the result in Settings and in the bell on the HR Dashboard. */
-    const requests = {};
-    data.activity.forEach(r => { if (r.req) requests[r.req.id] = r.req; });
-
-    const pendingChip = document.getElementById('pendingChip');
-    function paintPending() {
-        const n = Object.values(requests).filter(r => r.status === 'pending').length;
-        pendingChip.hidden = n === 0;
-        pendingChip.textContent = n + ' waiting for your approval';
-    }
-    paintPending();
-
-    const reqModal = document.getElementById('pwReqModal');
-    const reqApprove = document.getElementById('pwReqApprove');
-    const reqReject = document.getElementById('pwReqReject');
-    const reqReason = document.getElementById('pwReqReason');
-    let openId = null;
-    let reqBusy = false;
-    let reqFocus = null;
-
-    function openRequest(id) {
-        const r = requests[id];
-        if (!r) return;
-        openId = id;
-        reqFocus = document.activeElement;
-        const pending = r.status === 'pending';
-        document.getElementById('pwReqLead').textContent = r.name + ' (HR) asked for the changes below · ' + ADMIN.formatDate(r.requested_at);
-        document.getElementById('pwReqEmail').textContent = r.email;
-        document.getElementById('pwReqStatus').innerHTML = '<span class="req-pill is-' + esc(r.status) + '">' + esc(PILL[r.status] || r.status) + '</span>' +
-            (r.decided_at ? ' <small>' + esc(ADMIN.formatDate(r.decided_at)) + '</small>' : '') +
-            (r.status === 'rejected' && r.reason ? '<small class="req-why">Reason: ' + esc(r.reason) + '</small>' : '');
-        document.getElementById('pwReqReasonBox').hidden = !pending;
-        document.getElementById('pwReqReasonBox').open = false;
-        document.getElementById('pwReqNote').hidden = !pending;
-        reqApprove.hidden = !pending;
-        reqReject.hidden = !pending;
-        document.getElementById('pwReqClose').hidden = pending;
-        reqReason.value = '';
-        reqModal.classList.add('active');
-        setTimeout(() => (pending ? reqApprove : document.getElementById('pwReqClose')).focus(), 120);
-    }
-
-    function closeRequest() {
-        if (reqBusy) return;
-        reqModal.classList.remove('active');
-        openId = null;
-        if (reqFocus && reqFocus.focus) reqFocus.focus();
-    }
-
-    async function decide(decision) {
-        if (reqBusy || openId === null) return;
-        reqBusy = true;
-        reqApprove.disabled = reqReject.disabled = true;
-        const id = openId;
-        try {
-            const res = await ADMIN.request('password_decide', { id: id, decision: decision, reason: reqReason.value.trim() });
-            requests[id] = res.result;
-            // the line on the list shows the new status at once
-            const rowEl = body.querySelector('tr[data-req="' + id + '"]');
-            if (rowEl) {
-                const pill = rowEl.querySelector('[data-pill]');
-                if (pill) { pill.className = 'req-pill is-' + res.result.status; pill.textContent = PILL[res.result.status]; }
-            }
-            paintPending();
-            reqBusy = false;
-            closeRequest();
-            ADMIN.toast(res.message + ' HR can see the answer.', { duration: 4500 });
-        } catch (err) {
-            reqBusy = false;
-            ADMIN.toast(err.message, { error: true, duration: 6000 });
-        }
-        reqApprove.disabled = reqReject.disabled = false;
-    }
-
-    body.addEventListener('click', (e) => {
-        const tr = e.target.closest('tr[data-req]');
-        if (tr) openRequest(Number(tr.dataset.req));
-    });
-    body.addEventListener('keydown', (e) => {
-        if (e.key !== 'Enter' && e.key !== ' ') return;
-        const tr = e.target.closest('tr[data-req]');
-        if (tr) { e.preventDefault(); openRequest(Number(tr.dataset.req)); }
-    });
-    reqApprove.addEventListener('click', () => decide('approve'));
-    reqReject.addEventListener('click', () => decide('reject'));
-    document.getElementById('pwReqClose').addEventListener('click', closeRequest);
-    reqModal.addEventListener('click', (e) => { if (e.target === reqModal) closeRequest(); });
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && reqModal.classList.contains('active') && !document.getElementById('logoutModal').classList.contains('active')) closeRequest();
-    });
-    reqModal.addEventListener('keydown', (e) => {          // Tab stays inside the open pop-up
-        if (e.key !== 'Tab') return;
-        const items = Array.from(reqModal.querySelectorAll('button, textarea, summary')).filter(el => !el.disabled && !el.hidden && el.offsetParent !== null);
-        if (!items.length) return;
-        const first = items[0], last = items[items.length - 1];
-        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-    });
-
     // the list fades out at the bottom edge while there are more rows to scroll to (same as the HR Dashboard)
     const listScroll = document.querySelector('.activity-card .table-responsive');
     function updateListFade() {
@@ -4111,15 +4431,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     ADMIN.notify.markSeen(latestAt);
 
+    function markDashboardActivitiesRead() {
+        const newest = (data.activity || []).reduce((max, row) => (row.at && row.at > max ? row.at : max), seenAt || '');
+        if (!newest) return;
+
+        seenAt = newest;
+        try { localStorage.setItem(DASH_SEEN_KEY, newest); } catch (e) {}
+        try { localStorage.setItem(SEEN_KEY, newest); } catch (e) {}
+        ADMIN.notify.markSeen(newest);
+        if (body) body.innerHTML = renderDashboardActivityRows(data.activity);
+        if (chip) chip.hidden = true;
+    }
+
     /* ---------- 2b. Admin notification bell (recent activities + pending password approvals) ---------- */
     const abell = document.getElementById('notifBell');
     const apanel = document.getElementById('notifPanel');
     const abadge = document.getElementById('notifBadge');
     const alist = document.getElementById('notifList');
     const amarkAll = document.getElementById('notifMarkAll');
-    const apwWrap = document.getElementById('pwWrap');
-    const apwList = document.getElementById('pwList');
-    const apwMarkAll = document.getElementById('pwMarkAll');
     if (abell && apanel && abadge && alist && amarkAll) {
         const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         const ICONS = {
@@ -4166,11 +4495,22 @@ document.addEventListener('DOMContentLoaded', () => {
             return { icon: ICONS.sync, tone: 'tone-blue' };
         };
         const svg = (d) => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + d + '"/></svg>';
-        const SEEN_KEY = 'admin_activity_seen';
-        const pwReqs = {};                          // id -> request (pending pw changes)
-        (Array.isArray(data.pw_requests) ? data.pw_requests : []).forEach(r => { pwReqs[r.id] = r; });
-        let fresh = new Set();
         let lastCount = -1;
+        const accountId = Number(data.account_id) || 0;
+        const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        const readKeys = new Set();
+        let readStateReady = false;
+        const expandedKeys = new Set();
+
+        function rowActivityKey(row) {
+            if (row && row.id != null) return String(row.id);
+            const value = [row && row.at, row && row.activity, row && row.details, row && row.by].join('|');
+            let hash = 2166136261;
+            for (let i = 0; i < value.length; i++) hash = Math.imul(hash ^ value.charCodeAt(i), 16777619);
+            return 'h' + (hash >>> 0).toString(36);
+        }
+
+        const activityKey = row => 'activity:' + rowActivityKey(row).replace(/[^A-Za-z0-9_-]/g, '');
 
         const activityRows = () => {
             const serverRows = window.ADMIN_NOTIFY && Array.isArray(window.ADMIN_NOTIFY.recent) ? window.ADMIN_NOTIFY.recent : [];
@@ -4178,27 +4518,71 @@ document.addEventListener('DOMContentLoaded', () => {
             const rows = data.activity.concat(serverRows, hrRows);
             const seen = new Set();
             return rows.filter(row => {
-                const key = String(row.at) + '|' + rowActivityKey(row) + '|' + String(row.by).toLowerCase();
+                const key = activityKey(row);
                 if (seen.has(key)) return false;
                 seen.add(key);
                 return true;
             }).sort((a, b) => String(b.at).localeCompare(String(a.at)));
         };
-        const newActivity = () => activityRows().slice(0, 20).filter(row => String(row.at) > bellSeenAt);
-        const unreadPw = () => Object.values(pwReqs).filter(r => r.status === 'pending');
+        const unreadActivity = () => activityRows().slice(0, 20).filter(row => !readKeys.has(activityKey(row)));
+        const notificationKeys = () => activityRows().slice(0, 20).map(activityKey);
 
-        function markBellSeen() {
-            bellSeenAt = activityRows().reduce((seen, row) => String(row.at) > seen ? String(row.at) : seen, bellSeenAt);
-            try { localStorage.setItem(BELL_SEEN_KEY, bellSeenAt); } catch (err) { /* storage unavailable */ }
+        async function notificationRequest(action, keys, retried) {
+            const response = await fetch('../api/notification-read.php', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({ action: action, keys: keys, csrf_token: csrfMeta ? csrfMeta.content : '' })
+            });
+            const result = await response.json().catch(() => { throw new Error('The server did not answer correctly. Please try again.'); });
+            if (!response.ok || result.status !== 'success') {
+                if (!retried && result.message && result.message.indexOf('Invalid CSRF token') === 0 && result.csrf_token && csrfMeta) {
+                    csrfMeta.content = result.csrf_token;
+                    return notificationRequest(action, keys, true);
+                }
+                throw new Error(result.message || 'Notification state could not be saved.');
+            }
+            return result;
+        }
+
+        async function syncReadState() {
+            if (!accountId) throw new Error('Could not identify your admin account. Please log in again.');
+            const keys = Array.from(new Set(notificationKeys()));
+            for (let i = 0; i < keys.length; i += 500) {
+                const result = await notificationRequest('state', keys.slice(i, i + 500));
+                (result.read_keys || []).forEach(key => readKeys.add(key));
+            }
+            readStateReady = true;
+        }
+
+        async function markRead(keys) {
+            const unique = Array.from(new Set(keys));
+            for (let i = 0; i < unique.length; i += 500) {
+                const result = await notificationRequest('mark_many', unique.slice(i, i + 500));
+                (result.read_keys || []).forEach(key => readKeys.add(key));
+            }
+            ADMIN.signalNotificationReadState();
+            paintList();
         }
 
         function paintBadge() {
-            const total = newActivity().length + unreadPw().length;
+            if (!readStateReady) {
+                abadge.hidden = true;
+                abell.classList.remove('has-notifications');
+                abell.setAttribute('aria-label', 'Notifications');
+                abell.title = 'Notifications';
+                return;
+            }
+            const total = unreadActivity().length;
             abadge.textContent = total > 99 ? '99+' : String(total);
             abadge.hidden = total <= 0;
             abell.classList.toggle('has-notifications', total > 0);
             abell.setAttribute('aria-label', total > 0 ? 'Notifications, ' + total + ' new' : 'Notifications');
             abell.title = total > 0 ? total + ' new notification' + (total === 1 ? '' : 's') : 'Notifications';
+            if (lastCount < 0 && total > 0 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                abell.classList.add('ring');
+                abell.addEventListener('animationend', () => abell.classList.remove('ring'), { once: true, capture: true });
+            }
             if (total > lastCount && lastCount >= 0) {
                 abell.classList.remove('ring');
                 void abell.offsetWidth;
@@ -4213,119 +4597,102 @@ document.addEventListener('DOMContentLoaded', () => {
             let html = '';
             acts.forEach(row => {
                 const l = look(row.activity);
-                const isNew = fresh.has(String(row.at) + '|' + rowActivityKey(row));
-                html += '<li class="notif-item' + (isNew ? ' is-new' : '') + '">' +
+                const key = activityKey(row);
+                const expanded = expandedKeys.has(key);
+                html += '<li class="notif-entry' + (expanded ? ' is-expanded' : '') + '"><button type="button" class="notif-item' +
+                    (readKeys.has(key) ? '' : ' is-new') + (expanded ? ' is-expanded' : '') +
+                    '" data-notification-key="' + esc(key) + '" aria-expanded="' + String(expanded) + '">' +
                     '<span class="notif-ico ' + l.tone + '">' + svg(l.icon) + '</span>' +
                     '<span class="notif-text"><strong>' + esc(row.activity) + '</strong>' +
                     '<span class="notif-detail">' + esc(row.details) + '</span>' +
-                    '<span class="notif-time">' + esc(when(row.at)) + '</span></span></li>';
+                    '<span class="notif-time">' + esc(when(row.at)) + '</span>' +
+                    (expanded ? '<span class="notif-expanded-detail">Recorded by ' + esc(row.actor_name || row.by || 'the system') + '</span>' : '') +
+                    '</span></button></li>';
             });
-            if (!acts.length && Object.values(pwReqs).filter(r => r.status === 'pending').length === 0) {
+            if (!acts.length) {
                 html = '<li class="notif-empty">Nothing yet. HR activity shows up here.</li>';
             }
             alist.innerHTML = html;
-
-            // Password change requests
-            const pending = Object.values(pwReqs).filter(r => r.status === 'pending');
-            apwWrap.hidden = pending.length === 0;
-            let pwHtml = '';
-            pending.forEach(r => {
-                pwHtml += '<li class="pw-item">' +
-                    '<span class="notif-ico tone-amber">' + svg(ICONS.lock) + '</span>' +
-                    '<div class="pw-info"><strong>' + esc(r.name) + ' (HR)</strong><small>' + esc(r.email) + ' \u00b7 requested ' + esc(when(r.requested_at)) + '</small></div>' +
-                    '<div class="pw-actions">' +
-                    '<button type="button" class="pw-btn is-approve" data-id="' + r.id + '" title="Approve">' + esc(ICONS.done ? '\u2713' : 'Approve') + '</button>' +
-                    '<button type="button" class="pw-btn is-reject" data-id="' + r.id + '" title="Reject">' + esc('\u2716') + '</button>' +
-                    '</div></li>';
-            });
-            apwList.innerHTML = pwHtml;
             paintBadge();
-            if (amarkAll) {
-                const unreadChanges = window.HRREQ ? HRREQ.adminUnread().length : 0;
-                amarkAll.disabled = fresh.size === 0 && newActivity().length === 0 && unreadChanges === 0;
-            }
-            if (apwMarkAll) apwMarkAll.disabled = pending.length === 0;
+            if (amarkAll) amarkAll.disabled = unreadActivity().length === 0;
         }
 
-        function openPanel() {
-            fresh = new Set(newActivity().map(r => String(r.at) + '|' + rowActivityKey(r)));
+        async function openPanel() {
             apanel.hidden = false;
             abell.setAttribute('aria-expanded', 'true');
-            markBellSeen();
+            await refreshBell();
             paintList();
         }
-        function rowActivityKey(r) { return r.activity + '|' + r.details; }
 
         function closePanel() {
             if (apanel.hidden) return;
             apanel.hidden = true;
-            fresh = new Set();
             abell.setAttribute('aria-expanded', 'false');
             paintBadge();
         }
 
         abell.addEventListener('click', (e) => { e.stopPropagation(); if (apanel.hidden) openPanel(); else closePanel(); });
         apanel.addEventListener('click', (e) => e.stopPropagation());
+        async function expandNotification(button) {
+            const key = button.dataset.notificationKey;
+            const isExpanded = expandedKeys.has(key);
+            if (isExpanded) expandedKeys.delete(key);
+            else expandedKeys.add(key);
+            paintList();
+            if (!isExpanded) {
+                try {
+                    await markRead([key]);
+                } catch (err) {
+                    ADMIN.toast(err.message || 'Could not mark this notification as read.', { error: true, duration: 6000 });
+                }
+            }
+        }
+        alist.addEventListener('click', (e) => {
+            const button = e.target.closest('button[data-notification-key]');
+            if (button) expandNotification(button);
+        });
         document.addEventListener('click', closePanel);
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !apanel.hidden) { closePanel(); abell.focus(); } });
 
         if (amarkAll) {
-            amarkAll.addEventListener('click', () => {
-                fresh = new Set();
-                markBellSeen();
-                ADMIN.notify.markSeen();
-                paintList();
-            });
-        }
-        if (apwMarkAll) {
-            apwMarkAll.addEventListener('click', () => {
-                const pending = Object.values(pwReqs).filter(r => r.status === 'pending');
-                if (!pending.length) return;
-                apwMarkAll.disabled = true;
-                Promise.all(pending.map(r => ADMIN.request('password_decide', { id: r.id, decision: 'approve', reason: '' })))
-                    .then(res => { res.forEach(r2 => { if (r2 && r2.result) pwReqs[r2.result.id] = r2.result; }); paintList(); })
-                    .catch(() => { paintList(); apwMarkAll.disabled = false; });
+            amarkAll.addEventListener('click', async () => {
+                amarkAll.disabled = true;
+                try {
+                    await markRead(notificationKeys());
+                    markDashboardActivitiesRead();
+                } catch (err) {
+                    ADMIN.toast(err.message || 'Could not mark notifications as read.', { error: true, duration: 6000 });
+                    paintList();
+                }
             });
         }
 
-        // Inline approve / reject for pending password requests
-        apwList.addEventListener('click', async (e) => {
-            const btn = e.target.closest('.pw-btn');
-            if (!btn) return;
-            const id = Number(btn.dataset.id);
-            const r = pwReqs[id];
-            if (!r) return;
-            const decision = btn.classList.contains('is-approve') ? 'approve' : 'reject';
-            btn.disabled = true;
+        async function refreshBell() {
             try {
-                const res = await ADMIN.request('password_decide', { id: id, decision: decision, reason: '' });
-                if (res && res.result) pwReqs[res.result.id] = res.result;
+                const response = await ADMIN.request('notify');
+                const updated = response && response.data && response.data.notify;
+                if (!updated) throw new Error('The server returned an invalid notification response.');
+                window.ADMIN_NOTIFY = updated;
+                await syncReadState();
                 paintList();
             } catch (err) {
-                ADMIN.toast(err.message || 'Could not ' + decision + ' the request.', { error: true, duration: 6000 });
-                paintList();
+                console.error('Could not refresh admin notifications.', err);
+                if (!apanel.hidden) ADMIN.toast(err.message || 'Could not refresh notifications.', { error: true, duration: 6000 });
             }
-        });
-
-        function refreshBell() {
-            if (!apanel.hidden) newActivity().forEach(r => fresh.add(String(r.at) + '|' + rowActivityKey(r)));
-            paintList();
         }
 
         // Refresh when something changes elsewhere or a new server notification arrives.
-        document.addEventListener('storage', (e) => {
-            if (e.key === BELL_SEEN_KEY) bellSeenAt = e.newValue || '';
-            if (e.key === SEEN_KEY || e.key === BELL_SEEN_KEY || e.key === 'ebsmi_activity_extra' || e.key === 'ebsmi_change_requests') refreshBell();
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'ebsmi_activity_extra') refreshBell();
         });
+        window.addEventListener('admin:notification-read-sync', refreshBell);
         document.addEventListener('admin:badges', refreshBell);
         document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshBell(); });
         window.addEventListener('pageshow', (ev) => { if (ev.persisted) refreshBell(); });
+        setInterval(() => { if (document.visibilityState === 'visible') refreshBell(); }, 30000);
 
         paintList();
-        if (!abadge.hidden && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-            abell.classList.add('ring');
-            abell.addEventListener('animationend', () => abell.classList.remove('ring'), { once: true, capture: true });
-        }
+        refreshBell();
     }
 
     /* ---------- 3. Questionnaires Statistics: one bar per question, the answer most applicants chose ---------- */
@@ -4404,11 +4771,37 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ---------- Download stats: dashboard statistics (Recent Activities are intentionally excluded) ---------- */
     const pdfBtn = document.getElementById('statsDownloadBtn');
     if (pdfBtn) {
-        pdfBtn.addEventListener('click', () => {
-            if (!window.DashboardPdf || !window.DashboardPdf.recordDownload) {
+        pdfBtn.addEventListener('click', async () => {
+            if (!window.DashboardPdf || !window.DashboardPdf.recordDownload || !window.DashboardPdf.selectRecords) {
                 ADMIN.toast('The PDF maker is missing. Reload the dashboard and try again.', { error: true, duration: 5000 });
                 return;
             }
+            const groups = [
+                {
+                    label: 'Questionnaires Statistics',
+                    options: (Array.isArray(data.stats.sections) ? data.stats.sections : []).map(section => ({
+                        id: 'section:' + section.no,
+                        label: 'Section ' + section.no + ' \u2022 ' + section.name
+                    }))
+                },
+                {
+                    label: 'Other dashboard records',
+                    options: [
+                        { id: 'failure', label: 'Question-Level Failure Rate' },
+                        { id: 'risk', label: 'Risk Flag Breakdown by Factor' },
+                        { id: 'volume', label: 'Applicant Volume Over Time' }
+                    ]
+                }
+            ];
+            let selection;
+            try {
+                selection = await window.DashboardPdf.selectRecords('Choose Admin PDF records', groups, pdfBtn);
+            } catch (err) {
+                ADMIN.toast(err.message || 'Could not open the report filter.', { error: true, duration: 5000 });
+                return;
+            }
+            if (!selection) return;
+
             pdfBtn.disabled = true;
             pdfBtn.classList.add('is-busy');
             // a short moment so the button can show it is working
@@ -4423,9 +4816,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         overview: data.overview,
                         failure: data.failure,
                         risk: data.risk,
-                        volume: data.volume
-                    }, { generated: now, by: (document.getElementById('greeting') || {}).title ? document.getElementById('greeting').title.replace(/^Hello,\s*|!$/g, '') : 'Admin' });
-                    window.DashboardPdf.download(blob, 'Admin-Dashboard-Statistics-' + day + '.pdf');
+                        volume: data.volume,
+                        include: selection.include,
+                        includeAll: selection.includeAll
+                    }, {
+                        generated: now,
+                        by: (document.getElementById('greeting') || {}).title ? document.getElementById('greeting').title.replace(/^Hello,\s*|!$/g, '') : 'Admin',
+                        scope: data.overview && data.overview.scope
+                    });
+                    window.DashboardPdf.download(blob, 'Admin-Dashboard-Statistics' + (selection.includeAll ? '' : '-Selected') + '-' + day + '.pdf');
                     downloaded = true;
                     const recorded = await window.DashboardPdf.recordDownload('admin');
                     if (recorded && recorded.activity) {
@@ -4492,7 +4891,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const vol = data.volume || {};
         const volSub = document.getElementById('volSub');
         const volToggle = document.getElementById('volToggle');
-        const subs = { week: 'Applications received per week', month: 'Applications received per month' };
+        const volumeSubject = data.volume_subject || 'Applications received';
+        const subs = { week: volumeSubject + ' per week', month: volumeSubject + ' per month' };
         let mode = 'week';
         let firstDraw = true;
 
@@ -4735,3 +5135,59 @@ window.HRREQ = (function () {
     };
     return api;
 })();
+
+if (['archiveadmin', 'hrlist', 'questionlist'].includes(document.documentElement.getAttribute('data-page'))) {
+    document.addEventListener('DOMContentLoaded', () => {
+        const filterToggle = document.getElementById('filterToggle');
+        const filterPanel = document.getElementById('filterPanel');
+        const filterDot = document.getElementById('filterDot');
+        if (!filterToggle || !filterPanel || !filterDot) return;
+
+        const updateFilters = () => {
+            let activeCount = 0;
+            filterPanel.querySelectorAll('.filter-card').forEach((card) => {
+                const dropdown = card.querySelector('.dropdown');
+                const active = !!dropdown && dropdown.classList.contains('is-active');
+                card.classList.toggle('is-active', active);
+                const reset = card.querySelector('[data-filter-reset]');
+                if (reset) reset.hidden = !active;
+                if (active) activeCount++;
+            });
+            filterDot.hidden = activeCount === 0;
+            filterDot.textContent = String(activeCount);
+            filterToggle.title = activeCount ? activeCount + ' filter' + (activeCount === 1 ? '' : 's') + ' active' : 'Show or hide filters';
+        };
+
+        const observer = new MutationObserver(updateFilters);
+        filterPanel.querySelectorAll('.dropdown').forEach((dropdown) => {
+            observer.observe(dropdown, { attributes: true, attributeFilter: ['class'] });
+        });
+        updateFilters();
+
+        filterToggle.addEventListener('click', () => {
+            const willCollapse = !filterPanel.classList.contains('collapsed');
+            filterPanel.classList.remove('is-settled');
+            filterPanel.classList.toggle('collapsed', willCollapse);
+            filterToggle.setAttribute('aria-expanded', String(!willCollapse));
+            filterPanel.inert = willCollapse;
+            if (!willCollapse) {
+                window.setTimeout(() => {
+                    if (!filterPanel.classList.contains('collapsed')) filterPanel.classList.add('is-settled');
+                }, 400);
+            }
+        });
+
+        filterPanel.addEventListener('transitionend', (event) => {
+            if (event.target === filterPanel && event.propertyName === 'grid-template-rows' && !filterPanel.classList.contains('collapsed')) {
+                filterPanel.classList.add('is-settled');
+            }
+        });
+
+        filterPanel.addEventListener('click', (event) => {
+            const reset = event.target.closest('[data-filter-reset]');
+            if (!reset) return;
+            const allOption = reset.closest('.filter-card').querySelector('.dropdown-option[data-value="all"]');
+            if (allOption) allOption.click();
+        });
+    });
+}

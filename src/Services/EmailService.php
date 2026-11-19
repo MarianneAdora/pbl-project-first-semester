@@ -1,5 +1,12 @@
 <?php
 class EmailService {
+    private ?string $lastFailure = null;
+
+    public function lastFailure(): ?string
+    {
+        return $this->lastFailure;
+    }
+
     private function brevoApiKey(): string
     {
         require_once __DIR__ . '/../Helpers/env.php';
@@ -45,8 +52,10 @@ class EmailService {
 
     private function brevoSend(array $data, bool $echoError = true): bool
     {
+        $this->lastFailure = null;
         $apiKey = $this->brevoApiKey();
         if (empty($apiKey)) {
+            $this->lastFailure = 'missing_api_key';
             error_log('Brevo: BREVO_API_KEY is missing from your .env file.');
             return false;
         }
@@ -68,6 +77,7 @@ class EmailService {
         ]);
         $response = @file_get_contents($url, false, $context);
         if ($response === false) {
+            $this->lastFailure = 'transport';
             $err = error_get_last();
             error_log('Brevo request failed: ' . ($err['message'] ?? 'unknown error'));
             if ($echoError) echo "<strong>Brevo API Error:</strong> Request failed.<br>";
@@ -78,6 +88,7 @@ class EmailService {
             if (preg_match('/^HTTP\/[\d.]+\s+(\d+)/i', $header, $m)) $httpCode = (int) $m[1];
         }
         if ($httpCode === 201) return true;
+        $this->lastFailure = $httpCode === 401 ? 'unauthorized' : 'rejected';
         error_log("Brevo API error (HTTP $httpCode): " . $response);
         if ($echoError) echo "<strong>Brevo API Error:</strong> " . $response . "<br>";
         return false;
@@ -91,7 +102,7 @@ class EmailService {
 
         // 2. Prepare the email data
         $data = [
-            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@gmail.com"],
+            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@12495524.brevosend.com"],
             "to" => [["email" => $toEmail, "name" => "Test Applicant"]],
             "subject" => "Testing Brevo Integration",
             "htmlContent" => "<h1>It works!</h1><p>Your PHP code successfully connected to Brevo.</p>"
@@ -113,7 +124,7 @@ class EmailService {
         $htmlContent = str_replace('{{YEAR}}', date('Y'), $htmlContent);
 
         $data = [
-            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@gmail.com"],
+            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@12495524.brevosend.com"],
             "to" => [["email" => $toEmail, "name" => $toName]],
             "subject" => "Your Screening Verification Code",
             "htmlContent" => $htmlContent
@@ -122,11 +133,20 @@ class EmailService {
         return $this->brevoSend($data, false);
     }
 
+    public function sendAdminHrMfaEmail(string $toEmail, string $toName, string $otpCode): bool
+    {
+        $htmlContent = $this->loadTemplate('admin-hr-mfa-email.html');
+        $htmlContent = str_replace('{{FULL_NAME}}', htmlspecialchars($toName, ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $htmlContent = str_replace('{{OTP_CODE}}', htmlspecialchars($otpCode, ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $htmlContent = str_replace('{{YEAR}}', date('Y'), $htmlContent);
+
+        return $this->sendEmail($toEmail, 'HR account email verification code | Expertise', $htmlContent, $toName);
+    }
+
     public function sendInviteEmail($toEmail, $toName, $secureToken) {
         // $toName is the applicant's full name.
-        // 1. Build the personal link using the secure token
-        // NOTE: Change 'localhost' to your real domain when you deploy
-        $link = "http://localhost/pbl-project-first-semester/applicant/opening.php?token=" . $secureToken;
+        // Build the personal link from the app's public URL and secure token.
+        $link = self::applicationBaseUrl() . '/applicant/opening.php?token=' . rawurlencode((string) $secureToken);
 
         // 2. Load the HTML template from project root
         $htmlContent = $this->loadTemplate('shortlist-email.html');
@@ -138,13 +158,27 @@ class EmailService {
 
         // 4. Prepare Brevo payload
         $data = [
-            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@gmail.com"], // USE YOUR VERIFIED SENDER
+            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@12495524.brevosend.com"],
             "to" => [["email" => $toEmail, "name" => (string) $toName]],
             "subject" => "You've been shortlisted | Expertise",
             "htmlContent" => $htmlContent
         ];
 
         return $this->brevoSend($data, false);
+    }
+
+    private static function applicationBaseUrl(): string
+    {
+        if (defined('APP_URL') && trim((string) APP_URL) !== '') {
+            return rtrim((string) APP_URL, '/');
+        }
+
+        $https = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+        $host = (string) ($_SERVER['HTTP_HOST'] ?? 'localhost');
+        $script = (string) ($_SERVER['SCRIPT_NAME'] ?? '/hr/hr-data.php');
+        $root = rtrim(str_replace('\\', '/', dirname(dirname($script))), '/');
+
+        return ($https ? 'https://' : 'http://') . $host . $root;
     }
 
     public function sendPasswordResetEmail($toEmail, $toName, string $token): bool
@@ -157,7 +191,7 @@ class EmailService {
         $htmlContent = str_replace('{{YEAR}}', date('Y'), $htmlContent);
 
         $data = [
-            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@gmail.com"],
+            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@12495524.brevosend.com"],
             "to" => [["email" => $toEmail, "name" => (string) $toName]],
             "subject" => "Reset your password | Expertise",
             "htmlContent" => $htmlContent
@@ -190,7 +224,7 @@ class EmailService {
         $htmlContent = str_replace('{{YEAR}}', date('Y'), $htmlContent);
 
         $data = [
-            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@gmail.com"],
+            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@12495524.brevosend.com"],
             "to" => [["email" => $toEmail, "name" => $fullName]],
             "subject" => "Your interview is confirmed | Expertise",
             "htmlContent" => $htmlContent
@@ -210,7 +244,7 @@ class EmailService {
         $htmlContent = str_replace('{{YEAR}}', date('Y'), $htmlContent);
 
         $data = [
-            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@gmail.com"],
+            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@12495524.brevosend.com"],
             "to" => [["email" => $toEmail, "name" => $fullName]],
             "subject" => "New interview schedule | Expertise",
             "htmlContent" => $htmlContent
@@ -227,7 +261,7 @@ class EmailService {
         $htmlContent = str_replace('{{YEAR}}', date('Y'), $htmlContent);
 
         $data = [
-            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@gmail.com"],
+            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@12495524.brevosend.com"],
             "to" => [["email" => $toEmail, "name" => (string) $toName]],
             "subject" => "Your Expertise HR account credentials",
             "htmlContent" => $htmlContent
@@ -239,7 +273,7 @@ class EmailService {
     public function sendEmail(string $toEmail, string $subject, string $html, string $toName = ''): bool
     {
         $data = [
-            'sender'      => ['name' => 'Expertise BPO', 'email' => 'ebsmi.screening@gmail.com'],
+            'sender'      => ['name' => 'Expertise BPO', 'email' => 'ebsmi.screening@12495524.brevosend.com'],
             'to'          => [['email' => $toEmail, 'name' => $toName !== '' ? $toName : $toEmail]],
             'subject'     => $subject,
             'htmlContent' => $html,
@@ -261,7 +295,7 @@ class EmailService {
         $htmlContent = str_replace('{{YEAR}}', date('Y'), $htmlContent);
 
         $data = [
-            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@gmail.com"],
+            "sender" => ["name" => "Expertise BPO", "email" => "ebsmi.screening@12495524.brevosend.com"],
             "to" => [["email" => $toEmail, "name" => $fullName]],
             "subject" => "Your application update | Expertise",
             "htmlContent" => $htmlContent

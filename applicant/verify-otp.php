@@ -41,6 +41,10 @@ if ($applicantId > 0 && $email !== '') {
         $otpDbError = 'Could not reach the verification service. Please try again.';
     }
 }
+$verificationUnavailable = $applicantId > 0 && !$otpDb;
+if ($applicantId > 0 && $email === '') {
+    $otpDbError = 'Your email address is missing. Please reopen your invite link.';
+}
 
 /** Log an OTP request timestamp to otp_request_log (best-effort). */
 $logOtpRequest = function () use ($applicantId): void {
@@ -64,6 +68,30 @@ $issueDbOtp = function () use ($otpDb, $applicantId, $email, $applicantName, $lo
         error_log('verify-otp send error: ' . $e->getMessage());
         return 'We could not send the code. Please try again.';
     }
+};
+
+/** Issue a session-backed code only after the email provider accepts it. */
+$issueSessionOtp = function () use ($email, $applicantName, $otpLifetime): string {
+    if ($email === '') {
+        return 'Your email address is missing. Please reopen your invite link.';
+    }
+
+    $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+    try {
+        $sent = (new EmailService())->sendOtpEmail($email, $applicantName !== '' ? $applicantName : $email, $code);
+    } catch (Throwable $e) {
+        error_log('verify-otp session email error: ' . $e->getMessage());
+        $sent = false;
+    }
+    if (!$sent) {
+        return 'We could not send the code. Please try again.';
+    }
+
+    $_SESSION['otp'] = $code;
+    $_SESSION['otp_expires'] = time() + $otpLifetime;
+    $_SESSION['otp_sent_at'] = time();
+    $_SESSION['resend_log'][] = time();
+    return '';
 };
 
 /** Timestamps of every code sent in the last hour (the first one is the initial send). */
@@ -118,6 +146,9 @@ if ($otpDb) {
         }
     }
     if ($row) $attemptsLeft = max(0, $maxAttempts - (int) $row['attempt_count']);
+} elseif ($verificationUnavailable) {
+    $locked = false;
+    $attemptsLeft = $maxAttempts;
 } else {
     if (!empty($_SESSION['otp_locked_until']) && time() >= $_SESSION['otp_locked_until']) {
         unset($_SESSION['otp_locked_until'], $_SESSION['otp'], $_SESSION['otp_expires'], $_SESSION['otp_sent_at']);
@@ -126,16 +157,12 @@ if ($otpDb) {
     $locked = !empty($_SESSION['otp_locked_until']) && time() < $_SESSION['otp_locked_until'];
     if (!$locked) {
         if (!isset($_SESSION['otp'], $_SESSION['otp_expires'])) {
-            $_SESSION['otp'] = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-            $_SESSION['otp_expires'] = time() + $otpLifetime;
-            $_SESSION['otp_sent_at'] = time();
-            $_SESSION['resend_log'][] = time();   // initial send counts as the start of the resend clock
+            $sendError = $issueSessionOtp();
+            if ($sendError !== '') $otpDbError = $sendError;
         }
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST' && time() > $_SESSION['otp_expires']) {
-            $_SESSION['otp'] = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-            $_SESSION['otp_expires'] = time() + $otpLifetime;
-            $_SESSION['otp_sent_at'] = time();
-            $_SESSION['resend_log'][] = time();
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST' && isset($_SESSION['otp_expires']) && time() > $_SESSION['otp_expires']) {
+            $sendError = $issueSessionOtp();
+            if ($sendError !== '') $otpDbError = $sendError;
         }
     }
     $attemptsLeft = max(0, $maxAttempts - (int) $_SESSION['otp_attempts']);
@@ -145,7 +172,7 @@ if ($otpDb) {
 $error  = $otpDbError;
 $notice = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$locked) {      // a locked page ignores every submit
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$locked && !$verificationUnavailable) { // a locked page ignores every submit
     if (isset($_POST['resend'])) {
         $rs = $resendState($getRequestStamps());
         if ($rs['blocked']) {
@@ -158,11 +185,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$locked) {      // a locked page i
             if ($sendError !== '') $error = $sendError;
             else $notice = 'A new code has been sent to your email.';
         } else {
-            $_SESSION['otp'] = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-            $_SESSION['otp_expires'] = time() + $otpLifetime;
-            $_SESSION['otp_sent_at'] = time();
-            $_SESSION['resend_log'][] = time();    // session-fallback log
-            $notice = 'A new code has been sent to your email.';
+            $sendError = $issueSessionOtp();
+            if ($sendError !== '') $error = $sendError;
+            else $notice = 'A new code has been sent to your email.';
         }
     } else {
         $digits = array_filter((array) ($_POST['otp'] ?? []), 'is_string');
@@ -341,19 +366,20 @@ $logoSrc = is_file(__DIR__ . '/../assets/images/expertise.png') ? '../assets/ima
                             pattern="[0-9]*"
                             maxlength="1"
                             aria-label="Digit <?= $i + 1 ?>"
+                            <?= $verificationUnavailable ? 'disabled' : '' ?>
                             <?= $i === 0 ? 'autocomplete="one-time-code"' : '' ?>
                         >
                     </span>
                 <?php endfor; ?>
             </div>
 
-            <button type="submit" class="otp__submit reveal" id="verifyBtn" style="--i:8.8">
+            <button type="submit" class="otp__submit reveal" id="verifyBtn" style="--i:8.8" <?= $verificationUnavailable ? 'disabled' : '' ?>>
                 <span class="otp__submit-label">Verify OTP</span>
                 <span class="otp__submit-arrow" aria-hidden="true">&rarr;</span>
             </button>
 
             <div class="resend reveal" style="--i:9.8">
-                <button type="submit" name="resend" value="1" class="resend__btn" id="resendBtn" data-cooldown="<?= (int) $cooldown ?>" <?= $cooldown > 0 ? 'disabled' : '' ?>>Resend Code</button>
+                <button type="submit" name="resend" value="1" class="resend__btn" id="resendBtn" data-cooldown="<?= (int) $cooldown ?>" <?= $cooldown > 0 || $verificationUnavailable ? 'disabled' : '' ?>>Resend Code</button>
                 <p class="resend__timer">
                     <span id="timer" data-remaining="<?= (int) $remaining ?>"><?= $timerText ?></span>
                     <span id="timerSuffix"><?= $remaining > 0 ? 'remaining' : 'expired' ?></span>

@@ -16,9 +16,8 @@
    Applicant pages: shared base + entrance animation.
    Link this file BEFORE the page's own css.   Used by: opening, instruction, verify-otp
 
-   The pages never scroll on a computer: everything is sized in rem and the root font size
-   follows the window (a short window = a slightly smaller page), so it always fits.
-   Phones (under 800px) are allowed to scroll.
+   The shared root font size scales within a readable range. Short screens and phones can scroll
+   instead of shrinking or clipping the screening content.
 
    Folders (same as the HR side):   project/assets/images/expertise.png   project/assets/images/Short BG.png
    This file lives in project/assets/css/, so the images folder is  ../images/
@@ -60,10 +59,9 @@
 
 [hidden] { display: none !important; }
 
-/* 1rem follows the window (about 20px on a 1080p screen, up to 26px), so the page is sized
-   like the wireframe and always fits. The background image is on <html> itself. */
+/* Keep desktop sizing fluid, but prevent small viewports and large displays from extreme scaling. */
 html {
-    font-size: clamp(11px, min(1.95vh, 1.4vw), 26px);
+    font-size: clamp(14px, min(1.2vw, 1.8vh), 20px);
     background: #f4f4f5 url("../images/Short%20BG.png") no-repeat right center / cover;
     background-attachment: fixed;
 }
@@ -82,7 +80,8 @@ body {
 .stage {
     position: relative;
     min-height: 100dvh;
-    overflow: clip;              /* entrance animations never create a scrollbar */
+    overflow-x: clip;            /* keep entrance animations from creating horizontal scroll */
+    overflow-y: visible;
 }
 
 /* ---------- Logo: always above left ---------- */
@@ -464,10 +463,60 @@ html:where([data-page="application-status"]).js.is-ready .step.is-current .step_
 
 /* ===== Phones: allowed to scroll ===== */
 @media (max-width: 800px) {
-    :where(html[data-page="application-status"]) .page { align-items: flex-start; padding: 6rem 1.25rem 2rem; }
-    :where(html[data-page="application-status"]) .big-check, :where(html[data-page="application-status"]) .eval-spin { width: 6rem; height: 6rem; }
-    :where(html[data-page="application-status"]) .status__title { font-size: 2rem; }
-    :where(html[data-page="application-status"]) .status__text { font-size: 1.1rem; }
+    :where(html[data-page="application-status"]) .page {
+        align-items: center;
+        padding: 5.5rem 1rem 2rem;
+    }
+
+    :where(html[data-page="application-status"]) .corner-logo {
+        position: absolute;
+        top: 1.25rem;
+        left: 1.25rem;
+        width: 8.5rem;
+        margin: 0;
+    }
+
+    :where(html[data-page="application-status"]) .status {
+        width: min(100%, 32rem);
+        margin: 0 auto;
+    }
+
+    :where(html[data-page="application-status"]) .big-check,
+    :where(html[data-page="application-status"]) .eval-spin {
+        width: 6rem;
+        height: 6rem;
+    }
+
+    :where(html[data-page="application-status"]) .status__title {
+        font-size: clamp(2rem, 7vw, 2.7rem);
+        line-height: 1.1;
+    }
+
+    :where(html[data-page="application-status"]) .status__text {
+        max-width: 22rem;
+        font-size: 1.1rem;
+    }
+
+    :where(html[data-page="application-status"]) .panel,
+    :where(html[data-page="application-status"]) .schedule,
+    :where(html[data-page="application-status"]) .btn--wide {
+        width: min(100%, 32rem);
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    :where(html[data-page="application-status"]) .schedule {
+        gap: 0.7rem;
+    }
+
+    :where(html[data-page="application-status"]) .panel__title {
+        font-size: 1.4rem;
+        line-height: 1.2;
+    }
+
+    :where(html[data-page="application-status"]) .panel__sub {
+        font-size: 1rem;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1563,6 +1612,102 @@ html:where([data-page="instruction"]).js.is-ready .requirement__icon {
 :where(html[data-page="instruction"]) .start__btn.is-loading {
     pointer-events: none;
     opacity: 0.8;
+}
+
+:where(html[data-page="instruction"]) .start__consent {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    padding: 0.75rem 0.9rem;
+    border: 1px solid rgba(37, 45, 59, 0.14);
+    border-radius: 0.75rem;
+    background: rgba(255, 255, 255, 0.82);
+    color: var(--text);
+    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+:where(html[data-page="instruction"]) .start__consent.is-error {
+    border-color: var(--red);
+    background: #fff1f3;
+    box-shadow: 0 0 0 4px rgba(227, 24, 55, 0.13);
+    animation: consent-row-highlight 0.42s ease-out;
+}
+
+:where(html[data-page="instruction"]) .start__consent input {
+    width: 1.1rem;
+    height: 1.1rem;
+    margin: 0 0.25rem 0 0;
+    accent-color: var(--red);
+}
+
+:where(html[data-page="instruction"]) .start__consent input.is-error {
+    outline: 2px solid var(--red-dark);
+    outline-offset: 3px;
+    box-shadow: 0 0 0 3px rgba(227, 24, 55, 0.2);
+}
+
+:where(html[data-page="instruction"]) .start__consent a {
+    color: var(--red-dark);
+    font-weight: 600;
+    text-underline-offset: 0.15em;
+}
+
+:where(html[data-page="instruction"]) .start__consent-error {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    margin: -0.35rem 0 0;
+    padding: 0.8rem 0.95rem;
+    border: 1px solid rgba(196, 18, 45, 0.2);
+    border-left: 4px solid var(--red-dark);
+    border-radius: 0.65rem;
+    background: #fff4f5;
+    color: var(--red-dark);
+    font-size: 0.94rem;
+    font-weight: 600;
+    line-height: 1.45;
+    box-shadow: 0 0.35rem 1rem rgba(120, 15, 35, 0.08);
+}
+
+:where(html[data-page="instruction"]) .start__consent-error[hidden] {
+    display: none;
+}
+
+:where(html[data-page="instruction"]) .start__consent-error svg {
+    flex: 0 0 1.15rem;
+    width: 1.15rem;
+    height: 1.15rem;
+    margin-top: 0.08rem;
+    fill: currentColor;
+    stroke: #fff;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+@keyframes consent-error {
+    0% { opacity: 0; transform: translateY(-0.45rem); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes consent-row-highlight {
+    0% { transform: scale(0.99); }
+    60% { transform: scale(1.015); }
+    100% { transform: scale(1); }
+}
+
+:where(html[data-page="instruction"]) .start__consent-error.is-animated {
+    animation: consent-error 0.35s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :where(html[data-page="instruction"]) .start__consent-error.is-animated {
+        animation: none;
+    }
+    :where(html[data-page="instruction"]) .start__consent.is-error {
+        animation: none;
+    }
 }
 
 /* ===== Tablet ===== */
@@ -4720,4 +4865,183 @@ html:where([data-page="verify-otp"]).js.is-ready .verify__icon {
     }
     input, textarea, select { font-size: 16px; } /* prevents iOS zoom on focus */
     .stage { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+/* ===== Shared responsive layout for every screening page ===== */
+@media (max-width: 800px) {
+    html { font-size: clamp(15px, 4vw, 16px); }
+
+    body {
+        width: 100%;
+        overflow-x: clip;
+    }
+
+    .stage {
+        width: 100%;
+        height: auto;
+        min-height: 100svh;
+        overflow-x: clip;
+        overflow-y: visible;
+        padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    }
+
+    :where(html[data-page]) .page {
+        width: 100%;
+        min-width: 0;
+        padding-left: max(clamp(0.75rem, 4vw, 1.25rem), env(safe-area-inset-left));
+        padding-right: max(clamp(0.75rem, 4vw, 1.25rem), env(safe-area-inset-right));
+    }
+
+    :where(html[data-page]) .page > *,
+    :where(html[data-page]) .wrap,
+    :where(html[data-page]) .main,
+    :where(html[data-page]) .glass,
+    :where(html[data-page]) .qcard,
+    :where(html[data-page]) .invite__content,
+    :where(html[data-page]) .verify,
+    :where(html[data-page]) .status,
+    :where(html[data-page]) .schedule,
+    :where(html[data-page]) .panel {
+        min-width: 0;
+    }
+
+    :where(html[data-page]) .stepper {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        --dot: clamp(1.8rem, 8vw, 2.2rem);
+    }
+
+    :where(html[data-page]) .step {
+        min-width: 0;
+    }
+
+    :where(html[data-page]) .step__label {
+        max-width: 100%;
+        font-size: clamp(0.6rem, 2.4vw, 0.65rem);
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    :where(html[data-page]) .step:not(.is-current) .step__label {
+        visibility: hidden;
+    }
+
+    :where(html[data-page]) .topbar {
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    :where(html[data-page]) img,
+    :where(html[data-page]) video,
+    :where(html[data-page]) button,
+    :where(html[data-page]) input,
+    :where(html[data-page]) textarea,
+    :where(html[data-page]) select {
+        max-width: 100%;
+    }
+
+    :where(html[data-page]) .filecard__name,
+    :where(html[data-page]) .verify__email,
+    :where(html[data-page]) .status__text,
+    :where(html[data-page]) .detail__value,
+    :where(html[data-page]) .intro__instruction,
+    :where(html[data-page]) .q__text,
+    :where(html[data-page]) .requirement__desc {
+        overflow-wrap: anywhere;
+    }
+}
+
+@media (max-width: 360px) {
+    :where(html[data-page="questionnaire"]) .qcard {
+        padding-left: 0.85rem;
+        padding-right: 0.85rem;
+    }
+
+    :where(html[data-page="questionnaire"]) .scale {
+        --dot: 2.65rem;
+    }
+
+    :where(html[data-page="questionnaire"]) .scale__labels {
+        gap: 0.4rem;
+        font-size: 0.8rem;
+    }
+
+    :where(html[data-page="verify-otp"]) .otp__boxes {
+        gap: 0.55rem;
+    }
+}
+
+/* Keep forms reachable on short desktop/tablet viewports rather than clipping their lower content. */
+@media (min-width: 801px) and (max-height: 760px) {
+    body { overflow-y: auto; }
+
+    .stage {
+        height: auto;
+        min-height: 100dvh;
+        overflow-x: clip;
+        overflow-y: visible;
+    }
+
+    :where(html[data-page]) .page { min-height: 100dvh; }
+}
+
+@media (max-width: 900px) {
+    html[data-page] button,
+    html[data-page] input[type="submit"],
+    html[data-page] input[type="button"],
+    html[data-page] input[type="reset"],
+    html[data-page] [role="button"],
+    html[data-page] .btn,
+    html[data-page] a[class*="btn"],
+    html[data-page] a.back-link,
+    html[data-page] a.continue {
+        box-sizing: border-box;
+        min-width: 0;
+        max-width: 100%;
+        height: auto;
+        min-height: 44px;
+        white-space: normal;
+        overflow-wrap: break-word;
+        line-height: 1.3;
+    }
+
+    html[data-page] button span,
+    html[data-page] .btn span,
+    html[data-page] [role="button"] span,
+    html[data-page] a[class*="btn"] span,
+    html[data-page] a.back-link span,
+    html[data-page] a.continue span {
+        min-width: 0;
+        max-width: 100%;
+        flex-shrink: 1;
+        white-space: normal;
+        overflow-wrap: break-word;
+    }
+
+    html[data-page] button:not(.scale__dot):not(.cal__nav):not(.cal__day):not(.pcal__nav):not(.pcal__day):not(.vmodal__close),
+    html[data-page] input[type="submit"],
+    html[data-page] input[type="button"],
+    html[data-page] input[type="reset"],
+    html[data-page] [role="button"],
+    html[data-page] .btn,
+    html[data-page] a[class*="btn"],
+    html[data-page] a.back-link,
+    html[data-page] a.continue {
+        font-size: clamp(0.75rem, 3.4vw, 0.9375rem);
+    }
+
+    html[data-page] button.scale__dot,
+    html[data-page] button.cal__nav,
+    html[data-page] button.cal__day,
+    html[data-page] button.pcal__nav,
+    html[data-page] button.pcal__day,
+    html[data-page] button.vmodal__close {
+        min-width: 0;
+        min-height: 0;
+        height: auto;
+        aspect-ratio: 1;
+    }
 }

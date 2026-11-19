@@ -4,8 +4,9 @@ require_once __DIR__ . '/../src/Helpers/security.php';
 $csrf = csrf_token();
 
 // ---- Settings ---------------------------------------------------------------
-$nextPage      = 'questionnaire.php';
+$nextPage      = 'privacy.php';
 $estimatedTime = '15–20 minutes';
+$privacyAccepted = !empty($_SESSION['screening_privacy_accepted_at']);
 
 // Already sent the screening (checked in the database, not just the session): no second try.
 require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
@@ -65,6 +66,27 @@ $reminders = [
 
     <!-- applicant.css = shared applicant styles + every applicant page (this page is picked by data-page="instruction" on <html>) -->
     <link rel="stylesheet" href="../assets/css/applicant.css?v=<?= @filemtime(__DIR__ . '/../assets/css/applicant.css') ?>">
+    <style>
+        .privacy-modal { position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:min(1000px, calc(100vw - 32px)); height:min(92vh, 940px); max-width:none; max-height:none; margin:0; padding:0; overflow:hidden; border:0; border-radius:18px; background:#fff; box-shadow:0 28px 90px rgba(13, 20, 35, .36); }
+        .privacy-modal[open] { display:flex; flex-direction:column; animation:privacy-modal-enter .24s ease-out; }
+        .privacy-modal::backdrop { background:rgba(15, 20, 32, .7); backdrop-filter:blur(4px); }
+        .privacy-modal__head { min-height:72px; display:flex; align-items:center; justify-content:space-between; gap:16px; padding:12px 22px; background:linear-gradient(115deg, #e11d38, #b71430); color:#fff; border-bottom:1px solid #a90f29; font:700 17px/1.2 "Plus Jakarta Sans","Segoe UI",sans-serif; }
+        .privacy-modal__title { display:flex; flex-direction:column; gap:4px; }
+        .privacy-modal__subtitle { color:rgba(255,255,255,.82); font:500 12px/1.2 "Inter","Segoe UI",sans-serif; }
+        .privacy-modal__close { flex:0 0 40px; width:40px; height:40px; border:1px solid rgba(255,255,255,.35); border-radius:50%; background:rgba(255,255,255,.14); color:#fff; font-size:24px; cursor:pointer; transition:background .18s ease, transform .18s ease; }
+        .privacy-modal__close:hover { background:rgba(255,255,255,.26); transform:rotate(90deg); }
+        .privacy-modal__close:focus-visible { outline:3px solid #fff; outline-offset:3px; }
+        .privacy-modal iframe { display:block; flex:1; min-height:0; width:100%; border:0; background:#f8f8f9; }
+        @keyframes privacy-modal-enter { from { opacity:0; transform:translate(-50%, -48%) scale(.985); } to { opacity:1; transform:translate(-50%, -50%) scale(1); } }
+        @media (max-width:600px) {
+            .privacy-modal { width:calc(100vw - 16px); height:94vh; border-radius:14px; }
+            .privacy-modal__head { min-height:64px; padding:10px 14px; }
+        }
+        @media (prefers-reduced-motion:reduce) {
+            .privacy-modal[open] { animation:none; }
+            .privacy-modal__close { transition:none; }
+        }
+    </style>
 </head>
 <body>
 
@@ -124,15 +146,37 @@ $reminders = [
                     Estimated Time: <?= htmlspecialchars($estimatedTime) ?>
                 </p>
 
-                <a href="<?= $nextPage ?>" class="start__btn reveal" id="beginBtn" data-leave style="--i:15.5">
+                <div class="start__consent">
+                    <input type="checkbox" id="privacyAgreement" aria-describedby="privacyError"
+                        data-accepted="<?= $privacyAccepted ? 'true' : 'false' ?>"
+                        <?= $privacyAccepted ? 'checked disabled' : '' ?>>
+                    <label for="privacyAgreement">I have read and agree to the</label>
+                    <a href="<?= $nextPage ?>" id="privacyLink">Privacy Policy</a>
+                </div>
+                <a href="<?= $nextPage ?>" class="start__btn reveal" id="beginBtn" style="--i:15.5">
                     <span class="start__btn-label">Begin Screening</span>
                     <span class="start__btn-arrow" aria-hidden="true">&rarr;</span>
                 </a>
+                <p class="start__consent-error" id="privacyError" role="alert" hidden>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 22 20.5H2L12 3.5Z"/><path d="M12 9v5M12 17.2v.1"/></svg>
+                    <span>Please review and agree to the Privacy Policy before beginning the screening.</span>
+                </p>
             </div>
 
         </div>
     </div>
 </main>
+
+<dialog class="privacy-modal" id="privacyModal" aria-label="Privacy policy">
+    <div class="privacy-modal__head">
+        <div class="privacy-modal__title">
+            <span>Privacy Policy</span>
+            <span class="privacy-modal__subtitle">Please review how your information is used</span>
+        </div>
+        <button type="button" class="privacy-modal__close" id="closePrivacy" aria-label="Close privacy policy">&times;</button>
+    </div>
+    <iframe id="privacyFrame" title="Privacy policy and consent"></iframe>
+</dialog>
 
 <script src="../assets/js/applicant.js?v=<?= @filemtime(__DIR__ . '/../assets/js/applicant.js') ?>"></script>
 </body>

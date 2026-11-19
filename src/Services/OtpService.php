@@ -60,36 +60,46 @@ class OtpService {
 
         $this->ensureSchema();
 
-        // 4. Save to database (one row per applicant: resends bump request_count, clear any lock)
-        // Legacy fallback: pre-migration tables have no locked_until / unique constraint —
-        // delete-then-insert behaves like the upsert without needing either.
-        try {
-            $stmt = $this->pdo->prepare(
-                "INSERT INTO otp (applicant_id, otp_code_hash, request_count, attempt_count, expires_at, locked_until)" .
-                " VALUES (?, ?, 1, 0, ?, NULL)" .
-                " ON CONFLICT (applicant_id) DO UPDATE SET" .
-                " otp_code_hash = EXCLUDED.otp_code_hash," .
-                " request_count = otp.request_count + 1," .
-                " attempt_count = 0," .
-                " expires_at = EXCLUDED.expires_at," .
-                " locked_until = NULL"
-            );
-            $stmt->execute([$applicantId, $otpHash, $expiresAt]);
-        } catch (PDOException $e) {
-            if (!$this->isMissingColumnOrConflict($e)) throw $e;
-            error_log('OtpService legacy otp table, using delete+insert: ' . $e->getMessage());
-            $this->hasLockedUntil = false;
-            $del = $this->pdo->prepare("DELETE FROM otp WHERE applicant_id = ?");
-            $del->execute([$applicantId]);
-            $ins = $this->pdo->prepare(
-                "INSERT INTO otp (applicant_id, otp_code_hash, request_count, attempt_count, expires_at)" .
-                " VALUES (?, ?, 1, 0, ?)"
-            );
-            $ins->execute([$applicantId, $otpHash, $expiresAt]);
-        }
+        $ownsTransaction = !$this->pdo->inTransaction();
+        if ($ownsTransaction) $this->pdo->beginTransaction();
 
-        // 5. Send the email (return true/false)
-        return $this->emailService->sendOtpEmail($email, $name, $otpCode);
+        try {
+            // Save the code transactionally so failed email delivery preserves the old code.
+            try {
+                $stmt = $this->pdo->prepare(
+                    "INSERT INTO otp (applicant_id, otp_code_hash, request_count, attempt_count, expires_at, locked_until)" .
+                    " VALUES (?, ?, 1, 0, ?, NULL)" .
+                    " ON CONFLICT (applicant_id) DO UPDATE SET" .
+                    " otp_code_hash = EXCLUDED.otp_code_hash," .
+                    " request_count = otp.request_count + 1," .
+                    " attempt_count = 0," .
+                    " expires_at = EXCLUDED.expires_at," .
+                    " locked_until = NULL"
+                );
+                $stmt->execute([$applicantId, $otpHash, $expiresAt]);
+            } catch (PDOException $e) {
+                if (!$this->isMissingColumnOrConflict($e)) throw $e;
+                error_log('OtpService legacy otp table, using delete+insert: ' . $e->getMessage());
+                $this->hasLockedUntil = false;
+                $del = $this->pdo->prepare("DELETE FROM otp WHERE applicant_id = ?");
+                $del->execute([$applicantId]);
+                $ins = $this->pdo->prepare(
+                    "INSERT INTO otp (applicant_id, otp_code_hash, request_count, attempt_count, expires_at)" .
+                    " VALUES (?, ?, 1, 0, ?)"
+                );
+                $ins->execute([$applicantId, $otpHash, $expiresAt]);
+            }
+
+            if (!$this->emailService->sendOtpEmail($email, $name, $otpCode)) {
+                if ($ownsTransaction) $this->pdo->rollBack();
+                return false;
+            }
+            if ($ownsTransaction) $this->pdo->commit();
+            return true;
+        } catch (Throwable $e) {
+            if ($ownsTransaction && $this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $e;
+        }
     }
 
     /** True when the PDO error is "column locked_until missing" or "no unique constraint for ON CONFLICT". */

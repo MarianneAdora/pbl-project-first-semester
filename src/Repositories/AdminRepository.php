@@ -5,13 +5,13 @@
 require_once __DIR__ . '/../Helpers/db.php';
 require_once __DIR__ . '/ActivityRepository.php';
 
-function repo_admin_overview(?PDO $pdo = null): array
+function repo_admin_overview(?PDO $pdo = null, ?string $activityActorName = null, bool $hrActivityOnly = false): array
 {
     $pdo = $pdo ?: db();
     $hrTotal = (int) $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'hr' AND deleted_at IS NULL")->fetchColumn();
     $questions = (int) $pdo->query("SELECT COUNT(*) FROM question_config WHERE deleted_at IS NULL AND is_active = TRUE")->fetchColumn();
     $sections = (int) $pdo->query("SELECT COUNT(DISTINCT section) FROM question_config WHERE deleted_at IS NULL AND is_active = TRUE")->fetchColumn();
-    $week = repo_activities_week($pdo);
+    $week = repo_activities_week($pdo, $activityActorName, $hrActivityOnly);
     return [
         'hr_active' => $hrTotal,
         'hr_total' => $hrTotal,
@@ -92,6 +92,36 @@ function repo_admin_questions_list(?PDO $pdo = null): array
             }
         }
         if (!empty($cfg['link'])) $q['link'] = $cfg['link'];
+
+        // Fields the Create/Edit Questionnaire form reads back (window.ADMIN_QFORM).
+        $q['no_note'] = (string) ($r['reminder_text'] ?? ($cfg['no_note'] ?? ''));
+        if ($type === 'yesno') {
+            $q['favorable'] = (string) ($cfg['favorable'] ?? 'Yes');
+        }
+        if (isset($cfg['followup_when']) || isset($cfg['followup_label']) || isset($cfg['followup_options'])) {
+            $q['followup'] = [
+                'when'    => (string) ($cfg['followup_when']    ?? 'Yes'),
+                'label'   => (string) ($cfg['followup_label']   ?? ''),
+                'options' => (array)  ($cfg['followup_options'] ?? []),
+            ];
+        }
+        if ($type === 'scale') {
+            if (isset($cfg['max']))    $q['max']    = (int) $cfg['max'];
+            if (isset($cfg['labels'])) $q['labels'] = (array) $cfg['labels'];
+        }
+        if ($type === 'date' && isset($cfg['hint'])) {
+            $q['hint'] = (string) $cfg['hint'];
+        }
+        if ($type === 'text') {
+            if (isset($cfg['hint']))        $q['hint']        = (string) $cfg['hint'];
+            if (isset($cfg['placeholder'])) $q['placeholder'] = (string) $cfg['placeholder'];
+            if (isset($cfg['min_chars']))   $q['min_chars']   = (int) $cfg['min_chars'];
+            if (isset($cfg['max_chars']))   $q['max_chars']   = (int) $cfg['max_chars'];
+        }
+        if ($type === 'consent') {
+            if (isset($cfg['body']))     $q['body']     = (array) $cfg['body'];
+            if (isset($cfg['checkbox'])) $q['checkbox'] = (string) $cfg['checkbox'];
+        }
         $out[] = $q;
     }
     return $out;
@@ -155,7 +185,7 @@ function repo_admin_notify(?PDO $pdo = null): array
 {
     $pdo = $pdo ?: db();
     $rows = $pdo->query(
-        "SELECT created_at FROM (SELECT created_at, log_id AS ord FROM activity_log WHERE actor IN ('HR', 'Admin') UNION ALL SELECT created_at, request_id AS ord FROM password_requests) act ORDER BY created_at DESC, ord DESC LIMIT 100"
+        "SELECT created_at FROM activity_log WHERE actor IN ('HR', 'Admin') ORDER BY created_at DESC LIMIT 100"
     )->fetchAll();
     $activity = array_map(fn($r) => date('Y-m-d H:i:s', strtotime((string) $r['created_at'])), $rows);
     $recent = repo_recent_activity($pdo, 100);
@@ -373,16 +403,34 @@ function repo_admin_response_meets_passing_answer(array $answers, int $questionI
     return true;
 }
 
+function repo_admin_submitted_responses(PDO $pdo, ?int $hrUserId = null, bool $hrOnly = false): array
+{
+    $sql = 'SELECT r.answers_json FROM response r' .
+        ' JOIN applicant a ON a.applicant_id = r.applicant_id' .
+        ' WHERE r.submitted_at IS NOT NULL';
+    $params = [];
+    if ($hrUserId !== null) {
+        $sql .= ' AND a.encoded_by_user_id = :user_id';
+        $params[':user_id'] = $hrUserId;
+    } elseif ($hrOnly) {
+        $sql .= " AND EXISTS (SELECT 1 FROM users u WHERE u.user_id = a.encoded_by_user_id AND u.role = 'hr')";
+    }
+
+    $st = $pdo->prepare($sql);
+    $st->execute($params);
+    return $st->fetchAll();
+}
+
 /**
  * Build the exact stats shape admin.js expects:
  * { submissions, sections: [{no,name,count}], questions: [{id,section_no,section,text,type,status,answered,top,top_count,share,options,note,expected}] }
  */
-function repo_admin_question_stats(?PDO $pdo = null): array
+function repo_admin_question_stats(?PDO $pdo = null, ?int $hrUserId = null, bool $hrOnly = false): array
 {
     $pdo = $pdo ?: db();
     $questions = repo_admin_questions($pdo);
 
-    $subs = $pdo->query("SELECT answers_json FROM response WHERE submitted_at IS NOT NULL")->fetchAll();
+    $subs = repo_admin_submitted_responses($pdo, $hrUserId, $hrOnly);
     $total = count($subs);
 
     // Section numbering: distinct section names in first-seen order -> 1..N
@@ -470,7 +518,7 @@ function repo_admin_question_stats(?PDO $pdo = null): array
 // ---------------------------------------------------------------------------
 
 // Active knock-out questions: share of submitted questionnaires that did not meet each passing rule.
-function repo_admin_failure_rates(int $limit = 5, ?PDO $pdo = null): array
+function repo_admin_failure_rates(int $limit = 5, ?PDO $pdo = null, ?int $hrUserId = null, bool $hrOnly = false): array
 {
     $pdo = $pdo ?: db();
 
@@ -480,7 +528,7 @@ function repo_admin_failure_rates(int $limit = 5, ?PDO $pdo = null): array
         ' ORDER BY section_no, display_order, question_id'
     )->fetchAll();
 
-    $subs = $pdo->query("SELECT answers_json FROM response WHERE submitted_at IS NOT NULL")->fetchAll();
+    $subs = repo_admin_submitted_responses($pdo, $hrUserId, $hrOnly);
     $totalSubs = count($subs);
 
     $rows = [];
@@ -523,7 +571,7 @@ function repo_admin_failure_rates(int $limit = 5, ?PDO $pdo = null): array
 
 // Risk Flag Breakdown by Factor: count flags by factor group and show each group's share of all flags.
 // Reads risk_flags_json from the score table (factors[].label + factors[].points).
-function repo_admin_risk_flags(?PDO $pdo = null): array
+function repo_admin_risk_flags(?PDO $pdo = null, ?int $hrUserId = null, bool $hrOnly = false): array
 {
     $pdo = $pdo ?: db();
 
@@ -553,7 +601,19 @@ function repo_admin_risk_flags(?PDO $pdo = null): array
         return 'other';
     };
 
-    $rows = $pdo->query("SELECT risk_flags_json FROM score")->fetchAll();
+    $sql = 'SELECT s.risk_flags_json FROM score s' .
+        ' JOIN response r ON r.response_id = s.response_id' .
+        ' JOIN applicant a ON a.applicant_id = r.applicant_id';
+    $params = [];
+    if ($hrUserId !== null) {
+        $sql .= ' WHERE a.encoded_by_user_id = :user_id';
+        $params[':user_id'] = $hrUserId;
+    } elseif ($hrOnly) {
+        $sql .= " WHERE EXISTS (SELECT 1 FROM users u WHERE u.user_id = a.encoded_by_user_id AND u.role = 'hr')";
+    }
+    $st = $pdo->prepare($sql);
+    $st->execute($params);
+    $rows = $st->fetchAll();
 
     $count = array_fill_keys(array_keys($groups), 0);
     $evaluations = count($rows);
@@ -593,11 +653,21 @@ function repo_admin_risk_flags(?PDO $pdo = null): array
 }
 
 // Applicant Volume Over Time: applications received per week / per month from the applicant table.
-function repo_admin_volume(?PDO $pdo = null): array
+function repo_admin_volume(?PDO $pdo = null, ?int $hrUserId = null, bool $hrOnly = false): array
 {
     $pdo = $pdo ?: db();
 
-    $rows = $pdo->query("SELECT created_at FROM applicant WHERE deleted_at IS NULL")->fetchAll();
+    $sql = 'SELECT a.created_at FROM applicant a WHERE a.deleted_at IS NULL';
+    $params = [];
+    if ($hrUserId !== null) {
+        $sql .= ' AND a.encoded_by_user_id = :user_id';
+        $params[':user_id'] = $hrUserId;
+    } elseif ($hrOnly) {
+        $sql .= " AND EXISTS (SELECT 1 FROM users u WHERE u.user_id = a.encoded_by_user_id AND u.role = 'hr')";
+    }
+    $st = $pdo->prepare($sql);
+    $st->execute($params);
+    $rows = $st->fetchAll();
 
     $days = [];
     foreach ($rows as $r) {
@@ -614,11 +684,11 @@ function repo_admin_volume(?PDO $pdo = null): array
     $monday = $now->modify('monday this week');
 
     $week = ['labels' => [], 'ranges' => [], 'values' => [], 'sample' => []];
-    for ($i = 5; $i >= 0; $i--) {
+    for ($i = 4; $i >= 0; $i--) {
         $start = $monday->modify('-' . $i . ' weeks');
         $end   = $start->modify('+7 days');
         $last  = $end->modify('-1 day');
-        $week['labels'][] = 'W' . (6 - $i);
+        $week['labels'][] = 'W' . (5 - $i);
         $week['ranges'][] = $start->format('M j') . ' to ' . ($start->format('M') === $last->format('M') ? $last->format('j') : $last->format('M j'));
         $week['values'][] = $countBetween($start, $end);
         $week['sample'][] = false;

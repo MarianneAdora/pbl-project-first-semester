@@ -7,11 +7,20 @@ secure_session(1800);
 session_start();
 send_security_headers(false);
 
+$rememberCookieSecure = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+    || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https');
+$rememberCookieOptions = [
+    'path' => '/',
+    'secure' => $rememberCookieSecure,
+    'httponly' => true,
+    'samesite' => 'Lax',
+];
+
 // Arriving from "Log out": end the old session so the dashboards can't be reopened with Back
 if (($_GET['transition'] ?? '') === 'out') {
     $_SESSION = [];
     session_regenerate_id(true);
-    setcookie('remember', '', time() - 3600, '/', '', true, true);
+    setcookie('remember', '', $rememberCookieOptions + ['expires' => time() - 3600]);
 }
 
 // Generate the form token after logout has reset the session.
@@ -144,13 +153,13 @@ try {
             $pdo->prepare(
                 "UPDATE users SET remember_token = :hash, remember_token_expires_at = :expires WHERE user_id = :id"
             )->execute([':hash' => $tokenHash, ':expires' => $expires, ':id' => $uid]);
-            setcookie('remember', $uid . '|' . $token, time() + 30 * 24 * 3600, '/', '', true, true);
+            setcookie('remember', $uid . '|' . $token, $rememberCookieOptions + ['expires' => time() + 30 * 24 * 3600]);
         } elseif (!$remember && $pdo instanceof PDO && !empty($credentials[$email]['user_id'])) {
             // User explicitly did NOT check remember me: clear any existing token
             $pdo->prepare(
                 "UPDATE users SET remember_token = NULL, remember_token_expires_at = NULL WHERE user_id = :id"
             )->execute([':id' => (int) $credentials[$email]['user_id']]);
-            setcookie('remember', '', time() - 3600, '/', '', true, true);
+            setcookie('remember', '', $rememberCookieOptions + ['expires' => time() - 3600]);
         }
 
         echo json_encode([
@@ -167,6 +176,7 @@ try {
         exit();
     }
 }
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -226,14 +236,14 @@ try {
     <input type="hidden" name="csrf_token" value="<?= attr($csrf) ?>">
                 <div class="form-group reveal" style="--i:4">
                     <label for="email">Email</label>
-                    <input type="email" id="email" name="email" class="form-control" aria-describedby="emailError" required>
+                    <input type="email" id="email" name="email" class="form-control" placeholder="name@example.com" aria-describedby="emailError" required>
                     <p class="field-error" id="emailError" role="alert"></p>
                 </div>
 
                 <div class="form-group reveal" style="--i:5">
                     <label for="password">Password</label>
                     <div class="input-wrapper">
-                        <input type="password" id="password" name="password" class="form-control" aria-describedby="passwordError" required>
+                        <input type="password" id="password" name="password" class="form-control" placeholder="Enter your password" aria-describedby="passwordError" required>
                         <svg class="eye-icon" id="togglePassword" viewBox="0 0 24 24">
                             <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
                         </svg>

@@ -52,37 +52,38 @@ require_once __DIR__ . '/../hr/hr-data.php';
 // Profile data for the sidebar picture (clicking it opens Settings)
 $profile = static_profile_for_page('../hr/data/avatars/');
 
-// Every number on this page is queried live from the database.
-$overview = repo_admin_overview();             // the three summary boxes
-$stats    = repo_admin_question_stats();       // Questionnaires Statistics: every question + the answer most applicants chose
-$requests = static_profile_requests();
-$all_log  = repo_recent_activity(null, 1000);
-$recent   = array_values(array_filter(
-    $all_log,
-    static fn(array $row): bool => $row['activity'] !== 'Password Change Requested'
-));
-foreach ($requests as $request) {
-    $recent[] = [
-        'at'       => $request['requested_at'] ? date('Y-m-d H:i:s', strtotime($request['requested_at'])) : '',
-        'activity' => 'Password Change Requested',
-        'details'  => $request['name'] . ' (HR) · ' . $request['email'],
-        'by'       => 'HR',
-        'actor_name' => $request['name'],
-        'actor'    => 'HR',
-        'kind'     => 'pw_request',
-        'req'      => $request
-    ];
+$hr_accounts = repo_admin_accounts();
+$activity_filter = trim((string) ($_GET['activity_filter'] ?? 'all'));
+$hr_actor_name = null;
+$hr_user_id = null;
+$hr_only = false;
+if ($activity_filter === 'hr') {
+    $hr_only = true;
+} elseif (strpos($activity_filter, 'account:') === 0) {
+    $requested_id = filter_var(substr($activity_filter, strlen('account:')), FILTER_VALIDATE_INT);
+    foreach ($hr_accounts as $account) {
+        if ($requested_id !== false && (int) $account['id'] === (int) $requested_id) {
+            $hr_user_id = (int) $account['id'];
+            $hr_actor_name = trim((string) $account['name']);
+            break;
+        }
+    }
+    if ($hr_user_id === null) {
+        $activity_filter = 'all';
+    }
+} else {
+    $activity_filter = 'all';
 }
-usort($recent, static fn(array $a, array $b): int => (strtotime($b['at']) ?: 0) <=> (strtotime($a['at']) ?: 0));
-$recent = array_slice($recent, 0, 10);
-// Total activity count (for the share bar on the summary box).
-$logTotal = count($all_log);
 
-$pending = count(array_filter($requests, static fn(array $request): bool => $request['status'] === 'pending'));
-
-$failure  = repo_admin_failure_rates(20);       // Question-Level Failure Rate (show all knockout questions)
-$risk     = repo_admin_risk_flags();           // Risk Flag Breakdown by Factor
-$volume   = repo_admin_volume();               // Applicant Volume Over Time
+// Applicant statistics are attributed to the HR account that added each applicant.
+$overview = repo_admin_overview(null, $hr_actor_name, $hr_only);
+$stats    = repo_admin_question_stats(null, $hr_user_id, $hr_only);
+$failure  = repo_admin_failure_rates(20, null, $hr_user_id, $hr_only);
+$risk     = repo_admin_risk_flags(null, $hr_user_id, $hr_only);
+$volume   = repo_admin_volume(null, $hr_user_id, $hr_only);
+$activity_feed = repo_admin_activity_feed($hr_actor_name, $hr_only, 10);
+$recent = $activity_feed['rows'];
+$activity_total = $activity_feed['total'];
 
 // Share of something, used by the little bar on each summary box
 function share(int $part, int $total): int
@@ -91,11 +92,17 @@ function share(int $part, int $total): int
 }
 
 $hr_pct  = share((int) $overview['hr_active'], (int) $overview['hr_total']);
-$log_pct = share((int) $overview['activities_week'], $logTotal);
+$log_pct = share((int) $overview['activities_week'], $activity_total);
 
 $hr_note  = 'out of ' . (int) $overview['hr_total'] . ' HR account' . ($overview['hr_total'] === 1 ? '' : 's');
 $q_note   = 'in ' . (int) $overview['sections'] . ' section' . ($overview['sections'] === 1 ? '' : 's');
 $log_note = 'in the last 7 days';
+$scope_label = $hr_user_id !== null
+    ? 'HR account: ' . $hr_actor_name
+    : ($hr_only ? 'All HR Accounts' : 'All Activities');
+$volume_subject = $hr_user_id !== null
+    ? 'Applications added by ' . $hr_actor_name
+    : ($hr_only ? 'Applications added by HR accounts' : 'Applications received');
 
 $q_count   = count($stats['questions']);
 $stats_sub = $q_count . ' question' . ($q_count === 1 ? '' : 's') . ' · ' . (
@@ -103,7 +110,7 @@ $stats_sub = $q_count . ' question' . ($q_count === 1 ? '' : 's') . ' · ' . (
         ? 'from ' . (int) $stats['submissions'] . ' submitted questionnaire' . ($stats['submissions'] === 1 ? '' : 's')
         : 'no applicant has submitted the questionnaire yet'
 );
-$log_count = $logTotal > 10 ? 'Latest 10 of ' . $logTotal : $logTotal . ' in total';
+$log_count = $activity_total > 10 ? 'Latest 10 of ' . $activity_total : $activity_total . ' in total';
 
 // Admin name from the session (set at login from the users table).
 $display_name = $_SESSION['user_name'] ?? 'Admin';
@@ -128,6 +135,18 @@ $greeting     = 'Hello, ' . $display_name . '!';
         } catch (e) {}
         if (new URLSearchParams(location.search).get('transition') === 'out') {
             document.documentElement.classList.add('is-transitioning');
+            // Never leave the page permanently covered if the shared admin script is
+            // slow to load or fails. The normal script removes this flag sooner.
+            window.setTimeout(function () {
+                var root = document.documentElement;
+                var overlay = document.getElementById('pageOverlay');
+                root.classList.remove('is-transitioning');
+                root.classList.add('is-ready');
+                if (overlay) {
+                    overlay.classList.remove('sweep-in');
+                    overlay.classList.add('sweep-out');
+                }
+            }, 1800);
         }
     </script>
 
@@ -161,34 +180,6 @@ $greeting     = 'Hello, ' . $display_name . '!';
             <div class="modal-actions">
                 <button type="button" class="modal-btn is-cancel" id="cancelLogout">Cancel</button>
                 <button type="button" class="modal-btn is-confirm" id="confirmLogout">Log Out</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- HR password change: opens when the Admin clicks a request in Recent Activities -->
-    <div class="modal-backdrop" id="pwReqModal" role="dialog" aria-modal="true" aria-labelledby="pwReqTitle">
-        <div class="modal-card req-card">
-            <h3 id="pwReqTitle">Approval needed</h3>
-            <p class="req-lead" id="pwReqLead"></p>
-            <p class="req-email" id="pwReqEmail"></p>
-            <div class="req-status" id="pwReqStatus"></div>
-
-            <section class="req-password-card" aria-label="Password change summary">
-                <h4>Password</h4>
-                <div class="req-password-row"><span>Current</span><strong>Verified</strong></div>
-                <div class="req-password-row"><span>New</span><strong>Change requested</strong></div>
-            </section>
-            <p class="req-note" id="pwReqNote">Passwords are stored securely and cannot be viewed here. If approved, the new password takes effect at the next login.</p>
-
-            <details class="req-reason" id="pwReqReasonBox">
-                <summary>Add a rejection reason <span>(optional)</span></summary>
-                <textarea id="pwReqReason" maxlength="200" rows="2" placeholder="This reason will be shared with HR."></textarea>
-            </details>
-
-            <div class="modal-actions req-actions">
-                <button type="button" class="modal-btn is-cancel" id="pwReqClose" hidden>Close</button>
-                <button type="button" class="modal-btn is-reject" id="pwReqReject">Reject</button>
-                <button type="button" class="modal-btn is-approve" id="pwReqApprove">Approve</button>
             </div>
         </div>
     </div>
@@ -267,7 +258,7 @@ $greeting     = 'Hello, ' . $display_name . '!';
                 <h1 id="greeting" title="<?php echo htmlspecialchars($greeting, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($greeting, ENT_QUOTES, 'UTF-8'); ?></h1>
             </div>
             <div class="header-tools">
-                <button type="button" class="stats-download" id="statsDownloadBtn" title="Download dashboard statistics">
+                <button type="button" class="stats-download" id="statsDownloadBtn" title="Download dashboard statistics" aria-label="Download dashboard statistics PDF">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
                     Download Stats
                 </button>
@@ -283,20 +274,27 @@ $greeting     = 'Hello, ' . $display_name . '!';
                             <button type="button" class="notif-markall" id="notifMarkAll">Mark all as read</button>
                         </div>
                         <ul class="notif-list" id="notifList"></ul>
-                        <div class="pw-wrap" id="pwWrap" hidden>
-                            <div class="pw-head">
-                                <h3>Password changes waiting for your approval</h3>
-                                <button type="button" class="pw-markall" id="pwMarkAll">Decide all</button>
-                            </div>
-                            <ul class="pw-list" id="pwList"></ul>
-                        </div>
-                        <p class="notif-foot">HR activity, including name, email, picture and password changes, also appears under Recent Activities.</p>
                     </div>
                 </div>
             </div>
         </header>
 
         <div class="admin-dashboard">
+
+            <div class="dashboard-scope">
+                <form class="dashboard-scope-filter" method="get">
+                    <label for="activityFilter">Dashboard view</label>
+                    <select id="activityFilter" name="activity_filter">
+                        <option value="all" <?= $activity_filter === 'all' ? 'selected' : '' ?>>All Activities</option>
+                        <option value="hr" <?= $activity_filter === 'hr' ? 'selected' : '' ?>>All HR Accounts</option>
+                        <?php foreach ($hr_accounts as $account): ?>
+                            <option value="<?= 'account:' . (int) $account['id'] ?>" <?= $hr_user_id === (int) $account['id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars(trim((string) $account['name']) . ' (' . (string) $account['email'] . ')', ENT_QUOTES, 'UTF-8') ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </form>
+            </div>
 
             <!-- Summary boxes (on top, like the HR dashboard) -->
             <div class="admin-metrics">
@@ -442,7 +440,7 @@ $greeting     = 'Hello, ' . $display_name . '!';
                     <div class="card-top">
                         <div>
                             <h3 id="volTitle">Applicant Volume Over Time</h3>
-                            <span class="chart-sub" id="volSub">Applications received per week</span>
+                            <span class="chart-sub" id="volSub"><?= htmlspecialchars($volume_subject, ENT_QUOTES, 'UTF-8') ?> per week</span>
                         </div>
                         <div class="vol-toggle" id="volToggle" role="group" aria-label="Group applications by">
                             <button type="button" data-mode="week" aria-pressed="true">Week</button>
@@ -460,8 +458,6 @@ $greeting     = 'Hello, ' . $display_name . '!';
                 <div class="card-top">
                     <div class="activity-title">
                         <h3 id="activityTitle">Recent Activities</h3>
-                        <!-- HR password changes waiting for you: the line is clickable (approve / reject) -->
-                        <span class="pending-chip" id="pendingChip" hidden></span>
                     </div>
                     <span class="activity-count"><?php echo htmlspecialchars($log_count, ENT_QUOTES, 'UTF-8'); ?></span>
                 </div>
@@ -496,14 +492,20 @@ $greeting     = 'Hello, ' . $display_name . '!';
             catch (Throwable $e) { echo json_encode(['activity' => [], 'recent' => [], 'expiring' => 0, 'days' => 7]); }
         ?>;
         window.ADMIN_DASH = <?php echo json_encode([
+            'account_id' => (int) ($_SESSION['user_id'] ?? 0),
             'stats' => $stats,
-            'overview' => ['hr_active' => $overview['hr_active'], 'questions' => $overview['questions'], 'sections' => $overview['sections']],
+            'overview' => [
+                'hr_active' => $overview['hr_active'],
+                'questions' => $overview['questions'],
+                'sections' => $overview['sections'],
+                'scope' => $scope_label,
+            ],
+            'volume_subject' => $volume_subject,
             'failure' => $failure,
             'risk' => $risk,
             'activity' => $recent,
             'volume' => $volume,
-            'pending' => $pending,
-            'pw_requests' => array_values(array_filter($requests, static fn(array $r): bool => $r['status'] === 'pending'))
+            'activity' => $recent,
         ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
     </script>
     <!-- Shared admin behaviour first, then this page's script -->

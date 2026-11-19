@@ -54,7 +54,7 @@ const STATIC_JOB_DESCRIPTION_URL = 'https://www.w3.org/WAI/ER/tests/xhtml/testfi
 // Every job position has its OWN job description PDF (HR adds it with the position in Add Applicant; see
 // "JOB POSITIONS" in hr/hr-data.php). The applicant is shown the PDF of the position they were added under.
 // A position without a PDF (or an applicant without a position) falls back to the placeholder above.
-// DATABASE (later): SELECT p.jd_url FROM applicants a JOIN job_positions p ON p.id = a.position_id WHERE a.id = ?
+// DATABASE (later): SELECT p.jd_url FROM applicants a JOIN job_positions p ON p.job_id = a.position_id WHERE a.id = ?
 function static_job_description_url(?array $applicant): string
 {
     if ($applicant && !empty($applicant['position_id'])) {
@@ -388,6 +388,9 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
 
     if (empty($_SESSION['otp_verified'])) {
         applicant_helpers_respond(['status' => 'error', 'message' => 'Your session has ended. Please open the link in your email again.'], 403);
+    }
+    if (empty($_SESSION['screening_privacy_accepted_at'])) {
+        applicant_helpers_respond(['status' => 'error', 'message' => 'Please review and accept the privacy statement before beginning screening.'], 403);
     }
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         applicant_helpers_respond(['status' => 'error', 'message' => 'Invalid request.'], 405);
