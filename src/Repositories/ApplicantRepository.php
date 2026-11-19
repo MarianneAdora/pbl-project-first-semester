@@ -727,10 +727,23 @@ function repo_applicants_archived(?PDO $pdo = null): array
 
 function repo_dashboard_stats(?PDO $pdo = null): array
 {
+    return repo_dashboard_stats_for_period($pdo, false);
+}
+
+function repo_dashboard_monthly_stats(?PDO $pdo = null): array
+{
+    return repo_dashboard_stats_for_period($pdo, true);
+}
+
+function repo_dashboard_stats_for_period(?PDO $pdo, bool $currentMonth): array
+{
     $pdo = $pdo ?: db();
+    $periodFilter = $currentMonth
+        ? " AND created_at >= date_trunc('month', NOW() AT TIME ZONE 'Asia/Manila')"
+        : "";
     $rows = $pdo->query(
         "SELECT LOWER(status) AS s, LOWER(COALESCE(result,'')) AS r, COUNT(*) AS c" .
-        " FROM applicant WHERE deleted_at IS NULL GROUP BY 1, 2"
+        " FROM applicant WHERE deleted_at IS NULL" . $periodFilter . " GROUP BY 1, 2"
     )->fetchAll();
 
     $stats = ['total' => 0, 'pending' => 0, 'in_progress' => 0, 'completed' => 0, 'passed' => 0, 'failed' => 0];

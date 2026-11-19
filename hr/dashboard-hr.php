@@ -63,6 +63,14 @@ try {
     $stats = ['total' => 0, 'pending' => 0, 'in_progress' => 0, 'completed' => 0, 'passed' => 0, 'failed' => 0];
 }
 
+// Summary cards count active applicants added during the current Manila calendar month.
+try {
+    $card_stats = repo_dashboard_monthly_stats();
+} catch (Throwable $e) {
+    error_log('dashboard monthly stats error: ' . $e->getMessage());
+    $card_stats = ['total' => 0, 'pending' => 0, 'in_progress' => 0, 'completed' => 0, 'passed' => 0, 'failed' => 0];
+}
+
 /* Original hard-coded numbers (kept for reference):
 $stats = [
     'total'       => 35,
@@ -81,9 +89,9 @@ function share(int $part, int $total): int
 }
 
 $pct = [
-    'pending'     => share($stats['pending'], $stats['total']),
-    'in_progress' => share($stats['in_progress'], $stats['total']),
-    'completed'   => share($stats['completed'], $stats['total'])
+    'pending'     => share($card_stats['pending'], $card_stats['total']),
+    'in_progress' => share($card_stats['in_progress'], $card_stats['total']),
+    'completed'   => share($card_stats['completed'], $card_stats['total'])
 ];
 
 $screened     = $stats['passed'] + $stats['failed'];
@@ -456,10 +464,10 @@ function status_badge(string $status): string
                         <span class="card-title">Total Applicants</span>
                         <svg class="stat-go" viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
                     </div>
-                    <div class="card-value" data-count="<?php echo (int) $stats['total']; ?>"><?php echo (int) $stats['total']; ?></div>
+                    <div class="card-value" data-count="<?php echo (int) $card_stats['total']; ?>"><?php echo (int) $card_stats['total']; ?></div>
                     <div class="stat-foot">
                         <div class="stat-bar"><span style="--w:100%"></span></div>
-                        <span class="stat-note">All registered applicants</span>
+                        <span class="stat-note">Applicants registered this month</span>
                     </div>
                 </div>
 
@@ -471,10 +479,10 @@ function status_badge(string $status): string
                         <span class="card-title">Pending</span>
                         <svg class="stat-go" viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
                     </div>
-                    <div class="card-value" data-count="<?php echo (int) $stats['pending']; ?>"><?php echo (int) $stats['pending']; ?></div>
+                    <div class="card-value" data-count="<?php echo (int) $card_stats['pending']; ?>"><?php echo (int) $card_stats['pending']; ?></div>
                     <div class="stat-foot">
                         <div class="stat-bar"><span style="--w:<?php echo $pct['pending']; ?>%"></span></div>
-                        <span class="stat-note"><?php echo $pct['pending']; ?>% waiting to start</span>
+                        <span class="stat-note"><?php echo $pct['pending']; ?>% of this month's applicants waiting to start</span>
                     </div>
                 </div>
 
@@ -486,10 +494,10 @@ function status_badge(string $status): string
                         <span class="card-title">In Progress</span>
                         <svg class="stat-go" viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
                     </div>
-                    <div class="card-value" data-count="<?php echo (int) $stats['in_progress']; ?>"><?php echo (int) $stats['in_progress']; ?></div>
+                    <div class="card-value" data-count="<?php echo (int) $card_stats['in_progress']; ?>"><?php echo (int) $card_stats['in_progress']; ?></div>
                     <div class="stat-foot">
                         <div class="stat-bar"><span style="--w:<?php echo $pct['in_progress']; ?>%"></span></div>
-                        <span class="stat-note"><?php echo $pct['in_progress']; ?>% taking the screening</span>
+                        <span class="stat-note"><?php echo $pct['in_progress']; ?>% of this month's applicants taking the screening</span>
                     </div>
                 </div>
 
@@ -502,10 +510,10 @@ function status_badge(string $status): string
                         <span class="new-chip" id="completedNewChip" hidden>0 new</span>
                         <svg class="stat-go" viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
                     </div>
-                    <div class="card-value" data-count="<?php echo (int) $stats['completed']; ?>"><?php echo (int) $stats['completed']; ?></div>
+                    <div class="card-value" data-count="<?php echo (int) $card_stats['completed']; ?>"><?php echo (int) $card_stats['completed']; ?></div>
                     <div class="stat-foot">
                         <div class="stat-bar"><span style="--w:<?php echo $pct['completed']; ?>%"></span></div>
-                        <span class="stat-note"><?php echo $pct['completed']; ?>% finished the screening</span>
+                        <span class="stat-note"><?php echo $pct['completed']; ?>% of this month's applicants finished the screening</span>
                     </div>
                 </div>
             </div>
