@@ -1357,7 +1357,7 @@ document.addEventListener('DOMContentLoaded', () => {
             deletePendingId = id;
             deletePendingName = name;
             deletePositionTitle.textContent = 'Delete job position "' + name + '"?';
-            deletePositionText.textContent = 'Its job description PDF will also be removed.';
+            deletePositionText.textContent = 'This position cannot be deleted while it is assigned to any applicant, including archived applicants. Its job description PDF will also be removed.';
             deletePositionModal.classList.add('active');
             cancelDeletePosition.focus();
             return;

@@ -995,6 +995,16 @@ function static_position_delete(int $id): array
     if (!$pos) throw new InvalidArgumentException('That job position was not found.');
     if (!empty($pos['archived_at'])) throw new InvalidArgumentException('That job position is already archived.');
 
+    $assigned = $pdo->prepare('SELECT COUNT(*) FROM applicant WHERE position_id = :id');
+    $assigned->execute([':id' => $id]);
+    $applicantCount = (int) $assigned->fetchColumn();
+    if ($applicantCount > 0) {
+        throw new InvalidArgumentException(
+            'This job position is assigned to ' . $applicantCount . ' applicant' . ($applicantCount === 1 ? '' : 's')
+            . ' (including archived applicants) and cannot be deleted.'
+        );
+    }
+
     // Delete the job description PDF from Cloudinary if it has one
     if (!empty($pos['jd_public_id'])) {
         try {
