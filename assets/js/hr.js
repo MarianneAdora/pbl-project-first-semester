@@ -321,6 +321,13 @@ window.HR = (function () {
         refreshDashboardBadge();
     }
 
+    function markAllCompletedSeen() {
+        const seen = new Set(readSeen());
+        readIds(COMPLETED_KEY).forEach(id => seen.add(id));
+        writeIds(SEEN_KEY, Array.from(seen));
+        refreshDashboardBadge();
+    }
+
     function ensureDashboardBadge() {
         let badge = document.getElementById('dashboardBadge');
         if (badge) return badge;
@@ -516,7 +523,7 @@ window.HR = (function () {
     return {
         archiveRequest, archiveRequestLocal, serverRequest, syncArchiveFromServer, readArchived, readArchivedAt, readDeleted, purgeExpired, ARCHIVE_DAYS,
         setArchiveBadge, bumpArchive, toast,
-        syncCompleted, isUnseen, markSeen, unseenCompleted, refreshDashboardBadge,
+        syncCompleted, isUnseen, markSeen, markAllCompletedSeen, unseenCompleted, refreshDashboardBadge,
         noteNewApplicant, clearNewApplicants, refreshApplicantBadges,
         settings: { get: readSettings, save: saveSettings, apply: applySettings, defaults: SETTINGS_DEFAULTS, profile: readProfile, saveProfile: saveProfile },
         arrivedViaTransition: false
@@ -2685,6 +2692,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     paintNew();
 
+    window.addEventListener('hr:notifications-marked-read', () => {
+        paintUnseen();
+        const latest = originalRows.reduce((max, row) => {
+            const updated = row.dataset.updated || '';
+            const timestamp = updated ? new Date(updated).getTime() : 0;
+            return timestamp > max ? timestamp : max;
+        }, readNewSeenAt());
+        writeNewSeenAt(latest);
+        paintNew();
+    });
+
     // the page can come back from the cache (Back button) or change in another tab
     window.addEventListener('pageshow', (e) => { if (e.persisted) { paintUnseen(); paintNew(); } });
     window.addEventListener('storage', () => { paintUnseen(); paintNew(); });
@@ -3310,6 +3328,9 @@ document.addEventListener('DOMContentLoaded', () => {
             markAllBtn.disabled = true;
             try {
                 await markRead(notificationKeys());
+                HR.markAllCompletedSeen();
+                HR.clearNewApplicants();
+                window.dispatchEvent(new CustomEvent('hr:notifications-marked-read'));
             } catch (err) {
                 HR.toast(err.message || 'Could not mark notifications as read.', { error: true, duration: 6000 });
                 paintList();
