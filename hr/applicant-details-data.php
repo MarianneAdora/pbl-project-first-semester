@@ -357,7 +357,13 @@ function details_questionnaire(array $submission, ?array $evaluation = null): ar
         }
 
         $no = (int) $q['section_no'];
-        if (!isset($sections[$no])) $sections[$no] = ['no' => $no, 'title' => $q['section'], 'items' => []];
+        if (!isset($sections[$no])) {
+            $sections[$no] = [
+                'no' => $no,
+                'title' => $no > 0 ? (string) $q['section'] : '',
+                'items' => []
+            ];
+        }
         $sections[$no]['items'][] = $view;
     }
     ksort($sections);

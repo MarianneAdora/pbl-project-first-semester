@@ -437,7 +437,7 @@ $pageData = [
 
                 <?php foreach ($questionnaire['sections'] as $sec): ?>
                     <div class="q-section">
-                        <h4 class="q-section-title"><span class="q-no">Section <?php echo (int) $sec['no']; ?></span><?php echo $h($sec['title']); ?></h4>
+                        <h4 class="q-section-title"><?php if ((int) $sec['no'] > 0): ?><span class="q-no">Section <?php echo (int) $sec['no']; ?></span><?php echo $h($sec['title']); ?><?php else: ?>Unassigned questions<?php endif; ?></h4>
                         <?php foreach ($sec['items'] as $it): ?>
                             <div class="q-row<?php echo $it['type'] === 'text' || $it['type'] === 'consent' ? ' is-wide' : ''; ?><?php echo $it['flag'] !== '' ? ' is-flag' : ''; ?><?php echo $it['ko_met'] === false ? ' is-fail' : ''; ?>">
                                 <div class="q-main">

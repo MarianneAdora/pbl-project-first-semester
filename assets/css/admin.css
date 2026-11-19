@@ -1596,6 +1596,42 @@ html:where([data-page="addhr"],[data-page="addquestion"])[data-theme="dark"] {
 /* the field whose dropdown is open sits above the fields below it */
 :where(html[data-page="addhr"],html[data-page="addquestion"]) .form-card .field.is-open { z-index: 20; }
 
+:where(html[data-page="addquestion"]) .section-select-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+:where(html[data-page="addquestion"]) .section-select-row > .dropdown { flex: 1; min-width: 0; }
+
+:where(html[data-page="addquestion"]) .section-delete-btn {
+    min-height: 46px;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 0 12px;
+    border: 1px solid color-mix(in srgb, var(--red) 28%, var(--edge));
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--red) 6%, var(--surface));
+    color: var(--red);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+:where(html[data-page="addquestion"]) .section-delete-btn[hidden] { display: none; }
+:where(html[data-page="addquestion"]) .section-delete-btn:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--red) 12%, var(--surface));
+    border-color: var(--red);
+}
+:where(html[data-page="addquestion"]) .section-delete-btn:active:not(:disabled) { transform: scale(0.97); }
+:where(html[data-page="addquestion"]) .section-delete-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+:where(html[data-page="addquestion"]) .section-delete-btn svg { width: 18px; height: 18px; fill: currentColor; }
+
 :where(html[data-page="addhr"],html[data-page="addquestion"]) .form-card .field > label {
     display: block;
     font-size: 13.5px;

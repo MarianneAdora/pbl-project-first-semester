@@ -50,7 +50,9 @@ $isEdit = $editing !== null;
 $sections = [];
 foreach ($current as $q) {
     $no = (int) $q['section_no'];
-    if (!isset($sections[$no])) $sections[$no] = ['no' => $no, 'name' => (string) $q['section']];
+    if ($no > 0 && trim((string) $q['section']) !== '' && !isset($sections[$no])) {
+        $sections[$no] = ['no' => $no, 'name' => (string) $q['section']];
+    }
 }
 ksort($sections);
 $sections = array_values($sections);
@@ -261,7 +263,13 @@ function q_dropdown(string $id, string $labelId, array $options, string $selecte
                     <!-- Section: pick an existing one (it can be renamed) ... -->
                     <div class="field" data-field="section">
                         <label id="sectionLabel">Section <span class="req">*</span></label>
-                        <?php q_dropdown('sectionDropdown', 'sectionLabel', $section_options, $isEdit ? (string) (int) $editing['section_no'] : '', 'Select Section'); ?>
+                        <div class="section-select-row">
+                            <?php q_dropdown('sectionDropdown', 'sectionLabel', $section_options, $isEdit ? (string) (int) $editing['section_no'] : '', 'Select Section'); ?>
+                            <button type="button" class="section-delete-btn" id="deleteSectionBtn" aria-label="Delete selected section" title="Delete selected section" hidden disabled>
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                                <span>Delete section</span>
+                            </button>
+                        </div>
                         <p class="field-error" role="alert"></p>
                     </div>
 

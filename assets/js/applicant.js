@@ -1454,7 +1454,9 @@ document.addEventListener('DOMContentLoaded', function () {
         var el = h('section', 'q' + (first ? ' q--first' : ''));
         el.dataset.id = q.id;
 
-        el.appendChild(h('p', 'q__section', 'Section ' + q.section_no + ' \u00B7 ' + q.section));
+        if (Number(q.section_no) > 0 && q.section) {
+            el.appendChild(h('p', 'q__section', 'Section ' + q.section_no + ' \u00B7 ' + q.section));
+        }
         var title = h('h1', 'q__text');
         questionText(title, q);
         el.appendChild(title);

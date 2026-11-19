@@ -468,13 +468,17 @@ function repo_admin_question_stats(?PDO $pdo = null, ?int $hrUserId = null, bool
     // Section numbering: distinct section names in first-seen order -> 1..N
     $secNo = [];
     foreach ($questions as $q) {
-        if (!isset($secNo[$q['section']])) $secNo[$q['section']] = count($secNo) + 1;
+        $name = trim((string) $q['section']);
+        if ($name !== '' && !isset($secNo[$name])) $secNo[$name] = count($secNo) + 1;
     }
     $sections = [];
     foreach ($secNo as $name => $no) {
         $sections[] = ['no' => $no, 'name' => $name, 'count' => 0];
     }
-    foreach ($questions as $q) $sections[$secNo[$q['section']] - 1]['count']++;
+    foreach ($questions as $q) {
+        $name = trim((string) $q['section']);
+        if ($name !== '' && isset($secNo[$name])) $sections[$secNo[$name] - 1]['count']++;
+    }
 
     $out = [];
     foreach ($questions as $q) {
@@ -512,7 +516,7 @@ function repo_admin_question_stats(?PDO $pdo = null, ?int $hrUserId = null, bool
 
         $row = [
             'id' => 'q' . $q['question_id'],
-            'section_no' => $secNo[$q['section']],
+            'section_no' => $secNo[trim((string) $q['section'])] ?? 0,
             'section' => (string) $q['section'],
             'text' => (string) $q['question_text'],
             'type' => $type,

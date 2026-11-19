@@ -132,20 +132,27 @@ function static_admin_clean_question(array $in, array $all, ?array $old = null):
     if (mb_strlen($text) > 400)    throw new InvalidArgumentException('The question is too long (400 characters at most).');
 
     $section = trim((string) ($in['section'] ?? ''));
-    if ($section === '')           throw new InvalidArgumentException('Please choose a section or write a new one.');
     if (mb_strlen($section) > 60)  throw new InvalidArgumentException('The section name is too long (60 characters at most).');
+
+    $keepUnassigned = $section === '' && $old !== null &&
+        (int) ($old['section_no'] ?? -1) === 0 && trim((string) ($old['section'] ?? '')) === '';
+    if ($section === '' && !$keepUnassigned) {
+        throw new InvalidArgumentException('Please choose a section or write a new one.');
+    }
 
     // An existing section keeps its number; a new section goes last
     $sectionNo = 0;
     $maxNo     = 0;
-    foreach ($all as $q) {
-        $maxNo = max($maxNo, (int) $q['section_no']);
-        if (strcasecmp((string) $q['section'], $section) === 0) {
-            $sectionNo = (int) $q['section_no'];
-            $section   = (string) $q['section'];
+    if (!$keepUnassigned) {
+        foreach ($all as $q) {
+            $maxNo = max($maxNo, (int) $q['section_no']);
+            if ($section !== '' && strcasecmp((string) $q['section'], $section) === 0) {
+                $sectionNo = (int) $q['section_no'];
+                $section   = (string) $q['section'];
+            }
         }
+        if ($sectionNo === 0) $sectionNo = $maxNo + 1;
     }
-    if ($sectionNo === 0) $sectionNo = $maxNo + 1;
 
     // Active (applicants see it) or Inactive (kept in the list, hidden from applicants)
     $status = (string) ($in['status'] ?? ($old['status'] ?? 'Active'));
@@ -755,7 +762,10 @@ function static_admin_overview(): array
     $accounts  = static_admin_accounts();
     $questions = static_admin_questions();
     $sections  = [];
-    foreach ($questions as $q) $sections[(int) $q['section_no']] = true;
+    foreach ($questions as $q) {
+        $no = (int) $q['section_no'];
+        if ($no > 0 && trim((string) $q['section']) !== '') $sections[$no] = true;
+    }
 
     $since = static_now()->modify('-7 days')->format('Y-m-d H:i');
     $week  = array_filter(static_activity(), fn($a) => $a['at'] >= $since);
@@ -854,6 +864,7 @@ function static_admin_chart(int $months = 6): array
     foreach (static_admin_questions() as $q) {
         if (!in_array($q['type'], ['yesno', 'scale'], true)) continue;
         $no = (int) $q['section_no'];
+        if ($no < 1 || trim((string) $q['section']) === '') continue;
         $sections[$no]['no']   = $no;
         $sections[$no]['name'] = (string) $q['section'];
         $sections[$no]['qs'][] = $q;
@@ -943,6 +954,7 @@ function static_admin_question_stats(): array
     $sections  = [];
     foreach ($questions as $q) {
         $no = (int) $q['section_no'];
+        if ($no < 1 || trim((string) $q['section']) === '') continue;
         if (!isset($sections[$no])) $sections[$no] = ['no' => $no, 'name' => (string) $q['section'], 'count' => 0];
         $sections[$no]['count']++;
     }

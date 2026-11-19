@@ -1494,6 +1494,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const titleInput = document.getElementById('sectionTitle');
     const titleLabel = document.getElementById('sectionTitleLabel');
     const sectionHint = document.getElementById('sectionHint');
+    const deleteSectionBtn = document.getElementById('deleteSectionBtn');
     const textInput = document.getElementById('text');
     const textCount = document.getElementById('textCount');
     const dataProtectionField = document.getElementById('dataProtectionField');
@@ -1517,12 +1518,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const valueEl = root.querySelector('.dropdown-value');
         const btnDot = btn.querySelector('.dot');
         const field = root.closest('.field');
-        const options = Array.from(menu.querySelectorAll('.dropdown-option'));
-        const start = options.find(o => o.getAttribute('aria-selected') === 'true') || options[0];
-        let value = start.dataset.value;
+        let options = [];
+        let value = '';
         let focusIdx = -1;
 
-        options.forEach(o => o.querySelector('.dot').style.setProperty('--dot', o.dataset.dot));
+        function bindOptions() {
+            options = Array.from(menu.querySelectorAll('.dropdown-option'));
+            options.forEach((o, i) => {
+                o.querySelector('.dot').style.setProperty('--dot', o.dataset.dot);
+                o.addEventListener('mousedown', (e) => e.preventDefault());
+                o.addEventListener('click', () => choose(i));
+                o.addEventListener('mouseenter', () => highlight(i));
+            });
+        }
 
         const isOpen = () => root.classList.contains('open');
 
@@ -1582,14 +1590,41 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        options.forEach((o, i) => {
-            o.addEventListener('mousedown', (e) => e.preventDefault());   // keep focus on the button
-            o.addEventListener('click', () => choose(i));
-            o.addEventListener('mouseenter', () => highlight(i));
-        });
+        function setOptions(nextOptions, selectedValue) {
+            menu.textContent = '';
+            nextOptions.forEach((option, i) => {
+                const item = document.createElement('li');
+                item.className = 'dropdown-option';
+                item.setAttribute('role', 'option');
+                item.dataset.value = String(option[0]);
+                item.dataset.dot = String(option[2]);
+                item.setAttribute('aria-selected', 'false');
+                item.style.setProperty('--k', String(i));
 
+                const dot = document.createElement('span');
+                dot.className = 'dot';
+                const label = document.createElement('span');
+                label.className = 'opt-label';
+                label.textContent = String(option[1]);
+                const check = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                check.classList.add('opt-check');
+                check.setAttribute('viewBox', '0 0 24 24');
+                check.setAttribute('aria-hidden', 'true');
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', 'M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z');
+                check.appendChild(path);
+                item.append(dot, label, check);
+                menu.appendChild(item);
+            });
+            bindOptions();
+            setValue(selectedValue, true);
+        }
+
+        bindOptions();
+        const selected = options.find(o => o.getAttribute('aria-selected') === 'true') || options[0];
+        value = selected ? selected.dataset.value : '';
         setValue(value, true);
-        const api = { root, btn, close, setValue, getValue: () => value };
+        const api = { root, btn, close, setValue, setOptions, getValue: () => value };
         dropdowns.push(api);
         return api;
     }
@@ -1627,6 +1662,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateSectionBox() {
         const picked = sectionByNo(sectionDD.getValue());
         const title = titleInput.value.trim();
+        deleteSectionBtn.hidden = !picked;
+        deleteSectionBtn.disabled = saving || !picked;
         if (picked) {
             titleLabel.textContent = 'Rename Section';
             titleInput.placeholder = 'Type a new title for Section ' + picked.no;
@@ -1634,12 +1671,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 ? 'Section ' + picked.no + ' will be renamed to \u201C' + title + '\u201D for every question in it.'
                 : 'Change the title to rename Section ' + picked.no + ' (it updates every question in it).';
         } else {
-            titleLabel.textContent = 'New Section';
-            titleInput.placeholder = 'Type New Section';
-            const same = matchSectionByTitle(title);
-            sectionHint.textContent = same
-                ? '\u201C' + same.name + '\u201D already exists (Section ' + same.no + '). The question goes into it.'
-                : 'Type only the title. It is added automatically as Section ' + config.nextNo + '.';
+            const existingUnassigned = isEdit && Number(Q.section_no) === 0 && !String(Q.section || '').trim();
+            if (existingUnassigned && !title) {
+                titleLabel.textContent = 'Unassigned Section';
+                titleInput.placeholder = 'Leave empty to keep it unassigned';
+                sectionHint.textContent = 'This question has no section. Choose a section or enter a new title to assign it.';
+            } else {
+                titleLabel.textContent = 'New Section';
+                titleInput.placeholder = 'Type New Section';
+                const same = matchSectionByTitle(title);
+                sectionHint.textContent = same
+                    ? '\u201C' + same.name + '\u201D already exists (Section ' + same.no + '). The question goes into it.'
+                    : 'Type only the title. It is added automatically as Section ' + config.nextNo + '.';
+            }
         }
     }
 
@@ -1650,6 +1694,54 @@ document.addEventListener('DOMContentLoaded', () => {
         setError('section_title', '');
         updateSectionBox();
     }
+
+    deleteSectionBtn.addEventListener('click', async () => {
+        const picked = sectionByNo(sectionDD.getValue());
+        if (!picked || saving) return;
+
+        const yes = await ADMIN.confirm({
+            title: 'Delete this section?',
+            message: 'Section ' + picked.no + ' · ' + picked.name + ' will be removed. Its questions will stay in the questionnaire with no section assigned.',
+            confirmLabel: 'Delete section',
+            danger: true,
+            icon: ADMIN.icons.trash
+        });
+        if (!yes || saving) return;
+
+        saving = true;
+        deleteSectionBtn.disabled = true;
+        saveBtn.disabled = true;
+        cancelBtn.disabled = true;
+        try {
+            const res = await ADMIN.request('section_delete', { section_no: Number(picked.no) });
+            const deleted = res.result || {};
+            const deletedIndex = sections.findIndex(section => section.no === picked.no);
+            if (deletedIndex !== -1) sections.splice(deletedIndex, 1);
+            if (Number.isInteger(Number(deleted.next_no)) && Number(deleted.next_no) > 0) {
+                config.nextNo = Number(deleted.next_no);
+            }
+
+            const palette = ['#8f8aea', '#74cfb9', '#f8a09a', '#f6c453', '#7ab8f0', '#c58ae0'];
+            const options = [['', 'Select Section', '#c5c9ce']].concat(sections.map(section => [
+                section.no,
+                'Sec ' + section.no + ' · ' + section.name,
+                palette[(Number(section.no) - 1 + palette.length) % palette.length]
+            ]));
+            sectionDD.setOptions(options, '');
+            titleInput.value = '';
+            updateSectionBox();
+            setError('section', '');
+            setError('section_title', '');
+            ADMIN.toast(res.message || 'Section deleted. Its questions remain unassigned.');
+        } catch (err) {
+            ADMIN.toast(err.message || 'Could not delete the section. Please try again.', { error: true });
+        } finally {
+            saving = false;
+            saveBtn.disabled = false;
+            cancelBtn.disabled = false;
+            updateSectionBox();
+        }
+    });
 
     /* ---------- Type: only the matching extra box is shown ---------- */
     const TYPE_FIELDS = {
@@ -1749,7 +1841,10 @@ document.addEventListener('DOMContentLoaded', () => {
             return '';
         },
         section() {
-            if (!sectionDD.getValue() && !titleInput.value.trim()) return 'Choose a section, or type the title of a new one.';
+            if (!sectionDD.getValue() && !titleInput.value.trim() &&
+                !(isEdit && Number(Q.section_no) === 0 && !String(Q.section || '').trim())) {
+                return 'Choose a section, or type the title of a new one.';
+            }
             return '';
         },
         section_title(v) {
@@ -2082,6 +2177,7 @@ document.addEventListener('DOMContentLoaded', () => {
         saveBtn.classList.toggle('saving', state);
         saveBtn.querySelector('.btn-label').textContent = state ? 'SAVING...' : (isEdit ? 'SAVE CHANGES' : 'SAVE');
         cancelBtn.disabled = state;
+        deleteSectionBtn.disabled = state || !sectionByNo(sectionDD.getValue());
     }
 
     /* ---------- Cancel / Back (asks first when something was typed) ---------- */
@@ -2144,7 +2240,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const plain = (q) => String(q.text || '').replace('{link}', (q.link && q.link.text) || 'link');
     function load(archive) {
         const accs = (archive.accounts || []).map(a => ({ kind: 'account', id: a.id, title: a.name, sub: a.email, deleted: a.deleted, left: Number(a.days_left) }));
-        const qs = (archive.questions || []).map(q => ({ kind: 'question', id: q.id, title: plain(q), sub: 'Sec ' + q.section_no + ' \u00B7 ' + q.section, deleted: q.deleted, left: Number(q.days_left) }));
+        const qs = (archive.questions || []).map(q => ({
+            kind: 'question',
+            id: q.id,
+            title: plain(q),
+            sub: Number(q.section_no) > 0 && q.section ? 'Sec ' + q.section_no + ' \u00B7 ' + q.section : 'Unassigned',
+            deleted: q.deleted,
+            left: Number(q.days_left)
+        }));
         items = accs.concat(qs).sort((a, b) => a.left - b.left || String(b.deleted).localeCompare(String(a.deleted)));
     }
     load(cfg.archive);
@@ -3025,10 +3128,17 @@ document.addEventListener('DOMContentLoaded', () => {
     function buildSectionOptions() {
         const menu = document.querySelector('#sectionDropdown .dropdown-menu');
         const seen = new Map();
-        questions.forEach(q => { if (!seen.has(String(q.section_no))) seen.set(String(q.section_no), q.section); });
+        questions.forEach(q => {
+            const sectionNo = String(q.section_no);
+            if (!seen.has(sectionNo)) seen.set(sectionNo, q.section);
+        });
         const list = [['all', 'All Sections', '#c5c9ce']];
         [...seen.entries()].sort((a, b) => Number(a[0]) - Number(b[0]))
-            .forEach(([no, name]) => list.push([no, 'Sec ' + no + ' \u00B7 ' + name, colorOf(no)]));
+            .forEach(([no, name]) => list.push([
+                no,
+                Number(no) > 0 && name ? 'Sec ' + no + ' \u00B7 ' + name : 'Unassigned',
+                Number(no) > 0 ? colorOf(no) : '#c5c9ce'
+            ]));
 
         menu.textContent = '';
         list.forEach(([value, label, dot]) => {
@@ -3151,7 +3261,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const dragHandle = el('button', 'question-drag-handle');
         dragHandle.type = 'button';
         dragHandle.draggable = true;
-        dragHandle.disabled = questions.filter(item => Number(item.section_no) === Number(q.section_no)).length < 2;
+        dragHandle.disabled = Number(q.section_no) < 1 ||
+            questions.filter(item => Number(item.section_no) === Number(q.section_no)).length < 2;
         dragHandle.title = 'Drag to reorder within this section';
         dragHandle.setAttribute('aria-label', 'Reorder question ' + number + ' within this section; use the arrow keys or drag');
         dragHandle.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm6-10a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>';
@@ -3202,10 +3313,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         const tdSec = el('td', 'cell-sec');
-        tdSec.title = 'Section ' + q.section_no + ' \u00B7 ' + q.section;
-        const dot = el('span', 'sec-dot');
-        dot.style.setProperty('--c', colorOf(q.section_no));
-        tdSec.append(dot, document.createTextNode('Sec ' + q.section_no));
+        if (Number(q.section_no) > 0 && q.section) {
+            tdSec.title = 'Section ' + q.section_no + ' \u00B7 ' + q.section;
+            const dot = el('span', 'sec-dot');
+            dot.style.setProperty('--c', colorOf(q.section_no));
+            tdSec.append(dot, document.createTextNode('Sec ' + q.section_no));
+        } else {
+            tdSec.title = 'No section assigned';
+            tdSec.appendChild(document.createTextNode('Unassigned'));
+        }
 
         const tdTitle = el('td', 'cell-name');
         tdTitle.title = plain(q);
@@ -4766,7 +4882,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         '<span class="q-badge">' + esc(q.id.toUpperCase()) + '</span>' +
                         '<div class="q-text"><span class="q-title" title="' + esc(q.text) + '">' + esc(q.text) + '</span>' +
                             '<div class="q-meta">' + answer + (q.status === 'Inactive' ? '<em class="q-tag">Inactive</em>' : '') +
-                            '<small>Section ' + esc(q.section_no) + ' · ' + esc(q.section) + (none ? '' : ' · ' + count) + '</small></div></div>' +
+                            '<small>' + (Number(q.section_no) > 0 && q.section
+                                ? 'Section ' + esc(q.section_no) + ' · ' + esc(q.section)
+                                : 'Unassigned') + (none ? '' : ' · ' + count) + '</small></div></div>' +
                     '</div>' +
                     '<div class="q-plot" aria-label="' + (none ? 'No answers yet' : pct(q.share) + ' chose the top answer') + '"><span class="q-bar" style="--w:' + w + '%"></span>' + val + '</div>' +
                 '</div>' +
