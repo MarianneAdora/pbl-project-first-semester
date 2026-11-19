@@ -35,6 +35,10 @@ function secure_session(int $lifetime = 1800): void
 {
     if (session_status() !== PHP_SESSION_NONE) return;
 
+    if (headers_sent($file, $line)) {
+        throw new RuntimeException('Could not start the secure session because output started at ' . $file . ':' . $line . '.');
+    }
+
     $https = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
         || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https');
     if (!session_set_cookie_params([
