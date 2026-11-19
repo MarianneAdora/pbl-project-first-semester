@@ -5045,3 +5045,36 @@ html:where([data-page="verify-otp"]).js.is-ready .verify__icon {
         aspect-ratio: 1;
     }
 }
+
+@media (max-width: 800px) {
+    html,
+    body {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    .stage,
+    .page,
+    .page > *,
+    .wrap,
+    .main,
+    .glass,
+    .qcard,
+    .invite__content,
+    .verify,
+    .status,
+    .schedule,
+    .panel {
+        box-sizing: border-box;
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .page img,
+    .page video,
+    .page canvas {
+        height: auto;
+        max-width: 100%;
+    }
+}

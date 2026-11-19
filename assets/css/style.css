@@ -552,3 +552,34 @@ html.js.is-ready.is-leaving .reveal {
         overflow-wrap: anywhere;
     }
 }
+
+@media (max-width: 767px) {
+    html,
+    body {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    .portal-wrapper,
+    .login-card,
+    .reset-input,
+    .reset-actions,
+    .forgot-link,
+    .form-control {
+        box-sizing: border-box;
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .portal-wrapper,
+    .login-card {
+        width: 100%;
+    }
+
+    .login-card h1,
+    .login-card p,
+    .pw-rules li {
+        overflow-wrap: anywhere;
+    }
+}
