@@ -127,6 +127,7 @@ $screening = [
                 <p class="intro__text">
                     Upload your completed video response, or record it right here with your camera. You can add one video only.
                 </p>
+                <p class="intro__instruction">Please say this script in your video:</p>
                 <p class="intro__instruction"><?= htmlspecialchars($videoIntroText, ENT_QUOTES, 'UTF-8') ?></p>
                 <p class="tenbadge">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4.5l3 1.8M9.5 3h5"/></svg>
