@@ -3020,6 +3020,8 @@ html:where([data-page="archiveadmin"],[data-page="hrlist"],[data-page="questionl
     top: calc(100% + 8px);
     left: 0;
     right: 0;
+    width: 100%;
+    box-sizing: border-box;
     margin: 0;
     padding: 6px;
     list-style: none;
@@ -3046,7 +3048,8 @@ html:where([data-page="archiveadmin"],[data-page="hrlist"],[data-page="questionl
     display: flex;
     align-items: center;
     gap: 10px;
-    height: 42px;
+    min-height: 42px;
+    box-sizing: border-box;
     padding: 0 12px;
     border-radius: 9px;
     font-size: 14px;
@@ -3073,7 +3076,13 @@ html:where([data-page="archiveadmin"],[data-page="hrlist"],[data-page="questionl
     font-weight: 800;
 }
 
-:where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .opt-label { flex: 1; }
+:where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .opt-label {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 
 :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .opt-count {
     min-width: 26px;
@@ -3656,6 +3665,18 @@ html:where([data-page="archiveadmin"],[data-page="hrlist"],[data-page="questionl
     :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .filter-label svg { width: 24px; height: 24px; padding: 5px; }
     :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .dropdown-btn { gap: 6px; padding: 0 8px; font-size: 12px; }
     :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .dropdown-chevron { width: 20px; height: 20px; }
+    :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .dropdown-option {
+        height: 38px;
+        min-height: 38px;
+        gap: 7px;
+        padding: 0 8px;
+        font-size: 12px;
+    }
+    :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .dropdown-menu { padding: 5px; }
+    :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .opt-count { display: none; }
+    :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .opt-check { width: 16px; height: 16px; }
+    :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .dropdown-option:hover,
+    :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .dropdown-option.is-focused { transform: none; }
     :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .page-head .btn-add span { display: none; }
 }
 
