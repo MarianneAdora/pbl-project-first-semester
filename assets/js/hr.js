@@ -1534,14 +1534,23 @@ document.addEventListener('DOMContentLoaded', () => {
             try { data = await res.json(); } catch (err) { throw new Error('The server did not answer correctly. Please try again.'); }
             if (data.status !== 'success') throw new Error(data.message || 'Something went wrong. Please try again.');
 
+            const addedPosition = data.position;
+            const savedPosition = Array.isArray(data.positions)
+                ? data.positions.find(p => String(p.id) === String(addedPosition && addedPosition.id))
+                    || data.positions.find(p => typeof p.name === 'string' && p.name.trim().toLowerCase() === positionName.value.trim().replace(/\s+/g, ' ').toLowerCase())
+                : addedPosition;
+            if (!savedPosition || !savedPosition.id || typeof savedPosition.name !== 'string' || !savedPosition.name.trim()) {
+                throw new Error('The position was saved, but its name could not be loaded. Please refresh the page.');
+            }
+
             // the new position goes in right above "+ Add job position", and is chosen
-            addPosOption(data.position);
-            setPosition(String(data.position.id), data.position.name);
+            addPosOption(savedPosition);
+            setPosition(String(savedPosition.id), savedPosition.name);
             setError('position', '');
 
             savingPosition = false;
             closePositionModal();
-            HR.toast('Job position "' + data.position.name + '" added' + (data.position.has_jd ? ' with its job description.' : '. No job description PDF yet: applicants see the sample one.'), { duration: 5000 });
+            HR.toast('Job position "' + savedPosition.name + '" added' + (savedPosition.has_jd ? ' with its job description.' : '. No job description PDF yet: applicants see the sample one.'), { duration: 5000 });
         } catch (err) {
             const msg = err.message || 'Something went wrong. Please try again.';
             setPosError(/PDF|job description/i.test(msg) ? 'jd' : 'name', msg);
