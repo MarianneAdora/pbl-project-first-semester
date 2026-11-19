@@ -233,20 +233,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !csrf_verify((string) ($_POST['csrf
     $error = 'Your verification page has expired. Refresh and try again.';
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && !$locked && !$verificationUnavailable) { // a locked page ignores every submit
     if (isset($_POST['resend'])) {
-        $rs = $resendState($getRequestStamps());
-        if ($rs['blocked']) {
-            $error = 'You have reached the maximum number of resends. Please try again in '
-                   . max(1, (int) ceil($rs['wait'] / 60)) . ' minute(s).';
-        } elseif ($rs['wait'] > 0) {
-            $error = 'Please wait ' . $rs['wait'] . ' second' . ($rs['wait'] === 1 ? '' : 's') . ' before asking for a new code.';
-        } elseif ($otpDb) {
-            $sendError = $issueDbOtp();            // this also logs the request
+        if ($otpDb && !$row) {
+            $sendError = $issueDbOtp();
             if ($sendError !== '') $error = $sendError;
-            else $notice = 'A new code has been sent to your email.';
+            else {
+                $error = '';
+                $notice = 'A new code has been sent to your email.';
+            }
         } else {
-            $sendError = $issueSessionOtp();
-            if ($sendError !== '') $error = $sendError;
-            else $notice = 'A new code has been sent to your email.';
+            $rs = $resendState($getRequestStamps());
+            if ($rs['blocked']) {
+                $error = 'You have reached the maximum number of resends. Please try again in '
+                       . max(1, (int) ceil($rs['wait'] / 60)) . ' minute(s).';
+            } elseif ($rs['wait'] > 0) {
+                $error = 'Please wait ' . $rs['wait'] . ' second' . ($rs['wait'] === 1 ? '' : 's') . ' before asking for a new code.';
+            } elseif ($otpDb) {
+                $sendError = $issueDbOtp();        // this also logs the request
+                if ($sendError !== '') $error = $sendError;
+                else {
+                    $error = '';
+                    $notice = 'A new code has been sent to your email.';
+                }
+            } else {
+                $sendError = $issueSessionOtp();
+                if ($sendError !== '') $error = $sendError;
+                else {
+                    $error = '';
+                    $notice = 'A new code has been sent to your email.';
+                }
+            }
         }
     } else {
         $digits = array_filter((array) ($_POST['otp'] ?? []), 'is_string');
@@ -338,6 +353,10 @@ if ($otpDb) {
 $stamps         = $getRequestStamps();
 $rs             = $resendState($stamps);
 $resendsUsed    = max(0, count($stamps) - 1);                 // every click on "Resend Code" uses one attempt (the first send is free)
+if ($otpDb && !$row && !$otpRateLogUnavailable) {
+    $rs = ['blocked' => false, 'wait' => 0];
+    $resendsUsed = 0;
+}
 $attemptsLeft   = max(0, $resendMax - $resendsUsed);
 $resendBlocked  = $rs['blocked'];
 $cooldown       = $locked ? 0 : $rs['wait'];
