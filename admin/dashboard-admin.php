@@ -1,10 +1,7 @@
-    <?php
-    require_once __DIR__ . '/../src/Helpers/security.php';
-    start_secure_session(1800);
-    restore_remembered_session();
-    require_once __DIR__ . '/../src/Helpers/db.php';
-
+<?php
 require_once __DIR__ . '/../src/Helpers/security.php';
+start_secure_session(1800);
+restore_remembered_session();
 $csrf = csrf_token();
 
 // No caching, so the Back button after logout never shows this page
