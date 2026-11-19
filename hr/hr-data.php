@@ -873,8 +873,8 @@ function static_position_find(int $id): ?array
 function static_position_public(array $p): array
 {
     return [
-        'id' => (int) $p['job_id'],
-        'name'    => (string) $p['job_name'],
+        'id' => (int) ($p['id'] ?? $p['job_id'] ?? 0),
+        'name'    => (string) ($p['name'] ?? $p['job_name'] ?? ''),
         'has_jd'  => !empty($p['jd']['url']),
         'jd_name' => !empty($p['jd']['name']) ? (string) $p['jd']['name'] : '',
         'jd_url'  => !empty($p['jd']['url']) ? (string) $p['jd']['url'] : ''
