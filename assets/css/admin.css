@@ -6510,6 +6510,22 @@ html[data-motion="off"] .nav-notif-panel:not([hidden]) { animation: none; }
         overflow-y: auto;
         margin: auto;
     }
+
+    :where(html[data-page="hrlist"]) body { align-items: flex-start; }
+    :where(html[data-page="hrlist"]) .main-content {
+        height: auto;
+        min-height: 100svh;
+        overflow-y: visible;
+    }
+    :where(html[data-page="hrlist"]) .table-card {
+        flex: 0 0 auto;
+        min-height: 0;
+        overflow: visible;
+    }
+    :where(html[data-page="hrlist"]) .table-scroll {
+        flex: 0 0 auto;
+        overflow: visible;
+    }
 }
 
 @media (max-width: 380px) {
