@@ -3678,6 +3678,111 @@ html:where([data-page="archiveadmin"],[data-page="hrlist"],[data-page="questionl
     :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .dropdown-option:hover,
     :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .dropdown-option.is-focused { transform: none; }
     :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .page-head .btn-add span { display: none; }
+
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .table-scroll { overflow-x: hidden; }
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table { display: block; table-layout: auto; }
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table tbody {
+        display: grid;
+        gap: 10px;
+        padding: 10px;
+    }
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table tbody tr {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0 12px;
+        padding: 8px 10px;
+        background: var(--surface);
+        border: 1px solid var(--edge);
+        border-radius: 12px;
+    }
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table tbody tr:hover td:first-child { box-shadow: none; }
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table tbody td {
+        display: grid;
+        grid-template-columns: minmax(48px, 32%) minmax(0, 1fr);
+        align-items: start;
+        gap: 6px;
+        width: auto;
+        height: auto !important;
+        min-width: 0;
+        padding: 7px 0;
+        overflow: visible;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        text-overflow: clip;
+        border-bottom: 1px solid var(--surface-2);
+        font-size: 12px;
+        line-height: 1.4;
+    }
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table tbody td::before {
+        color: var(--ink-soft);
+        font-size: 10px;
+        font-weight: 700;
+        line-height: 1.4;
+    }
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table tbody td > * { min-width: 0; max-width: 100%; }
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table tbody td .cell-name,
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table tbody td strong { overflow-wrap: anywhere; white-space: normal; }
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table tbody td.col-action {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        grid-column: 1 / -1;
+        padding-right: 0;
+        overflow: visible;
+        border-bottom: 0;
+    }
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table tbody td.col-action::before { content: "Actions"; }
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table tbody td.col-num { color: var(--ink); }
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table tbody td .status-pill { justify-self: start; }
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table tbody tr:last-child td { border-bottom: 1px solid var(--surface-2); }
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table tbody tr:last-child td.col-action { border-bottom: 0; }
+
+    :where(html[data-page="hrlist"]) .hr-table tbody td:nth-child(1) { display: none; }
+    :where(html[data-page="hrlist"]) .hr-table tbody td:nth-child(2) { grid-column: 1 / -1; }
+    :where(html[data-page="hrlist"]) .hr-table tbody td:nth-child(2)::before { content: "Full name"; }
+    :where(html[data-page="hrlist"]) .hr-table tbody td:nth-child(2) .new-dot { display: none; }
+    :where(html[data-page="hrlist"]) .hr-table tbody td:nth-child(2) .new-tag { grid-column: 2; justify-self: start; }
+    :where(html[data-page="hrlist"]) .hr-table tbody td:nth-child(3) { display: grid; grid-column: 1 / -1; }
+    :where(html[data-page="hrlist"]) .hr-table tbody td:nth-child(3)::before { content: "Email"; }
+    :where(html[data-page="hrlist"]) .hr-table tbody td:nth-child(4) { display: grid; grid-column: 1; }
+    :where(html[data-page="hrlist"]) .hr-table tbody td:nth-child(4)::before { content: "Role"; }
+    :where(html[data-page="hrlist"]) .hr-table tbody td:nth-child(5) { display: grid; grid-column: 2; }
+    :where(html[data-page="hrlist"]) .hr-table tbody td:nth-child(5)::before { content: "Status"; }
+
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(1) {
+        display: flex;
+        align-items: center;
+        grid-column: 1;
+        grid-row: 2;
+        gap: 4px;
+    }
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(1)::before { content: "Order"; margin-right: auto; }
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(2) { display: grid; grid-column: 2; grid-row: 2; }
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(2)::before { content: "Section"; }
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(3) {
+        display: grid;
+        grid-column: 1 / -1;
+        grid-row: 1;
+        grid-template-columns: minmax(42px, 24%) minmax(0, 1fr);
+    }
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(3)::before { content: "Title"; }
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(3) > strong,
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(3) > .ko-tag { grid-column: 2; }
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(4) { display: grid; grid-column: 1; grid-row: 3; }
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(4)::before { content: "Created"; }
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(5) { grid-column: 2; grid-row: 3; }
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(5)::before { content: "Status"; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -3782,10 +3887,12 @@ html:where([data-page="archiveadmin"],[data-page="hrlist"],[data-page="questionl
 :where(html[data-page="questionlist"]) .q-table tbody tr:hover .sec-dot { transform: scale(1.35); }
 
 /* hrlist.css hides its 3rd and 4th columns on a narrow card; here the 3rd one is the Title, so the Section goes instead */
-@container tbl (max-width: 600px) {
-    :where(html[data-page="questionlist"]) .hr-table.q-table col.c-title { display: table-column; }
-    :where(html[data-page="questionlist"]) .hr-table.q-table th:nth-child(3), :where(html[data-page="questionlist"]) .hr-table.q-table td:nth-child(3) { display: table-cell; }
-    :where(html[data-page="questionlist"]) .hr-table.q-table col.c-sec, :where(html[data-page="questionlist"]) .hr-table.q-table th:nth-child(2), :where(html[data-page="questionlist"]) .hr-table.q-table td:nth-child(2) { display: none; }
+@media (min-width: 801px) {
+    @container tbl (max-width: 600px) {
+        :where(html[data-page="questionlist"]) .hr-table.q-table col.c-title { display: table-column; }
+        :where(html[data-page="questionlist"]) .hr-table.q-table th:nth-child(3), :where(html[data-page="questionlist"]) .hr-table.q-table td:nth-child(3) { display: table-cell; }
+        :where(html[data-page="questionlist"]) .hr-table.q-table col.c-sec, :where(html[data-page="questionlist"]) .hr-table.q-table th:nth-child(2), :where(html[data-page="questionlist"]) .hr-table.q-table td:nth-child(2) { display: none; }
+    }
 }
 
 /* ==========================================================================
