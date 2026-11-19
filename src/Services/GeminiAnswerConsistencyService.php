@@ -63,8 +63,115 @@ PROMPT;
             return $this->parse($raw);
         } catch (Throwable $e) {
             error_log('GeminiAnswerConsistencyService error: ' . $e->getMessage());
-            return $this->fallback('Gemini unavailable; consistency not evaluated.');
+            // Rule-based fallback when Gemini is unavailable (missing API key, network, rate limit, etc.)
+            return $this->ruleBasedEvaluate($questions, $answers);
         }
+    }
+
+    /**
+     * Rule-based consistency evaluation used when Gemini is unavailable.
+     * Checks for placeholder/irrelevant answers, too-short free-text, and
+     * obvious logistics contradictions (employed but no notice period,
+     * start date in the past). No AI key required.
+     */
+    private function ruleBasedEvaluate(array $questions, array $answers): array
+    {
+        $points = 0;
+        $issues = [];
+        $logisticsPoints = 0;
+        $logisticsIssues = [];
+
+        foreach ($questions as $q) {
+            $qid = (string) ($q['id'] ?? '');
+            $type = (string) ($q['type'] ?? '');
+            $text = trim((string) ($q['text'] ?? ''));
+            if ($qid === '' || $text === '') continue;
+            if ($type === 'consent') continue;
+
+            $given = $this->answerFor($answers, $qid);
+            if ($given === null || $given === '') continue;
+
+            $answerStr = $this->formatAnswer($given, $q, $answers, $qid);
+
+            // ---- relevance / quality (points 0-3) ----
+            // Placeholder / irrelevant answers
+            if ($this->isPlaceholderAnswer($answerStr)) {
+                $points += 1;
+                $issues[] = 'Placeholder or irrelevant answer: ' . substr($text, 0, 50);
+            }
+
+            // Free-text answer too short vs. min_chars
+            if ($type === 'text' && is_string($given)) {
+                $len = strlen(trim($given));
+                $minChars = (int) ($q['min_chars'] ?? 0);
+                if ($minChars > 0 && $len < $minChars) {
+                    $points += 1;
+                    $issues[] = 'Free-text answer too short: ' . substr($text, 0, 50);
+                }
+            }
+
+            // ---- logistics contradictions (logistics_points 0-3) ----
+            // q7: employed but no notice period given
+            if ($qid === 'q7' && $type === 'yesno_select') {
+                if ($given === true || $given === 'Yes') {
+                    $followKey = $qid . ':follow';
+                    $followVal = $answers[$followKey] ?? null;
+                    if ($followVal === null || $followVal === '') {
+                        $logisticsPoints += 1;
+                        $logisticsIssues[] = 'Employed but no notice period provided.';
+                    }
+                }
+            }
+
+            // q6: start date in the past
+            if ($qid === 'q6' && $type === 'date' && is_string($given)) {
+                $date = strtotime(trim($given));
+                if ($date !== false && $date < strtotime('today')) {
+                    $logisticsPoints += 1;
+                    $logisticsIssues[] = 'Start date is in the past.';
+                }
+            }
+        }
+
+        $points = max(0, min(3, $points));
+        $logisticsPoints = max(0, min(3, $logisticsPoints));
+
+        $reason = $points > 0
+            ? (count($issues) ? implode(' ', $issues) : 'Inconsistent or irrelevant answers detected.')
+            : 'No inconsistent or irrelevant answers detected.';
+        $logisticsReason = $logisticsPoints > 0
+            ? (count($logisticsIssues) ? implode(' ', $logisticsIssues) : 'Contradictory logistics answers detected.')
+            : 'The logistics answers are consistent.';
+
+        return [
+            'points' => $points,
+            'reason' => $reason,
+            'issues' => $issues,
+            'logistics_points' => $logisticsPoints,
+            'logistics_reason' => $logisticsReason,
+            'logistics_issues' => $logisticsIssues,
+        ];
+    }
+
+    /**
+     * Returns true when the answer looks like a placeholder or gibberish
+     * rather than a real response.
+     */
+    private function isPlaceholderAnswer(string $answer): bool
+    {
+        $placeholders = [
+            'test', 'asdf', 'qwerty', 'n/a', 'na', 'none', 'nil', 'placeholder',
+            'lorem', 'xxx', 'aaa', 'bbb', '123', 'abc', 'zzz', 'foo', 'bar',
+        ];
+        $lower = strtolower(trim($answer));
+        if (in_array($lower, $placeholders, true)) {
+            return true;
+        }
+        // Single-character or 2-char alphanumeric answers are likely placeholders
+        if (strlen($lower) <= 2 && ctype_alnum($lower)) {
+            return true;
+        }
+        return false;
     }
 
     private function buildPairs(array $questions, array $answers): array
