@@ -80,18 +80,35 @@ $reserveOtpRequest = function () use ($applicantId, $resendBase, $resendStep, $r
             return ['allowed' => false, 'blocked' => false, 'wait' => $wait];
         }
 
-        $pdo->prepare("INSERT INTO otp_request_log (applicant_id, requested_at) VALUES (:applicant_id, NOW())")
-            ->execute([':applicant_id' => $applicantId]);
+        $insert = $pdo->prepare(
+            "INSERT INTO otp_request_log (applicant_id, requested_at) VALUES (:applicant_id, NOW()) RETURNING log_id"
+        );
+        $insert->execute([':applicant_id' => $applicantId]);
+        $requestId = (int) $insert->fetchColumn();
         if ($ownsTransaction) $pdo->commit();
-        return ['allowed' => true, 'blocked' => false, 'wait' => 0];
+        return ['allowed' => true, 'blocked' => false, 'wait' => 0, 'request_id' => $requestId];
     } catch (Throwable $e) {
         if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
         throw $e;
     }
 };
 
+/** Remove a reserved cooldown slot when the email send fails and no usable code was issued. */
+$releaseOtpRequest = function (int $requestId) use ($applicantId): bool {
+    try {
+        $stmt = db()->prepare(
+            "DELETE FROM otp_request_log WHERE log_id = :log_id AND applicant_id = :applicant_id"
+        );
+        $stmt->execute([':log_id' => $requestId, ':applicant_id' => $applicantId]);
+        return $stmt->rowCount() === 1;
+    } catch (Throwable $e) {
+        error_log('OTP send reservation cleanup error: ' . $e->getMessage());
+        return false;
+    }
+};
+
 /** Send a fresh code through the DB (hash stored, email via Brevo). Returns error message or ''. */
-$issueDbOtp = function () use ($otpDb, $applicantId, $email, $applicantName, $reserveOtpRequest): string {
+$issueDbOtp = function () use ($otpDb, $applicantId, $email, $applicantName, $reserveOtpRequest, $releaseOtpRequest): string {
     try {
         $reservation = $reserveOtpRequest();
     } catch (Throwable $e) {
@@ -106,12 +123,20 @@ $issueDbOtp = function () use ($otpDb, $applicantId, $email, $applicantName, $re
         return 'Please wait ' . $reservation['wait'] . ' second(s) before asking for a new code.';
     }
 
+    $requestId = (int) ($reservation['request_id'] ?? 0);
     try {
         $ok = $otpDb->generateAndSendOtp($applicantId, $email, $applicantName !== '' ? $applicantName : $email);
-        return $ok ? '' : 'We could not send the code. Please try again later.';
+        if ($ok) return '';
+        $released = $requestId > 0 && $releaseOtpRequest($requestId);
+        return $released
+            ? 'We could not send the code. Please try again.'
+            : 'We could not send the code. Please wait briefly, then try again.';
     } catch (Throwable $e) {
         error_log('verify-otp send error: ' . $e->getMessage());
-        return 'We could not send the code. Please try again later.';
+        $released = $requestId > 0 && $releaseOtpRequest($requestId);
+        return $released
+            ? 'We could not send the code. Please try again.'
+            : 'We could not send the code. Please wait briefly, then try again.';
     }
 };
 
