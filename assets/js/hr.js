@@ -16,6 +16,9 @@
    ========================================================================== */
 
 /* ---------- PART 1: shared helpers (window.HR) ---------- */
+// Compatibility guard for tabs that loaded an older copy while the portal was updated.
+window.refreshSettingsBadge = window.refreshSettingsBadge || function () {};
+
 window.HR = (function () {
     // Archive data is kept in this browser (localStorage) for now.
     // When the database is ready, replace archiveRequest() with a fetch() to your PHP, and
@@ -126,7 +129,6 @@ window.HR = (function () {
         applySettings(next, true);
         refreshDashboardBadge();               // badges appear / disappear right away
         refreshApplicantBadges();
-        refreshSettingsBadge();
         document.dispatchEvent(new CustomEvent('hr:settings-changed', { detail: next }));
         return ok;
     }

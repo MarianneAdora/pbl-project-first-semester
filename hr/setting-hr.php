@@ -4,6 +4,7 @@ session_start();
 // No caching, so the Back button after logout never shows this page
 header('Cache-Control: no-store, no-cache, must-revalidate');
 header('Pragma: no-cache');
+header('Expires: 0');
 
 // Protection: Ensure only HR users can access this page
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'hr') {
@@ -345,7 +346,7 @@ $account_avatar_url = $profile['avatar_url'];
         'avatar' => $account_avatar, 'avatarUrl' => $account_avatar_url, 'avatarBase' => $profile['avatar_base'],
         'initials' => $profile['initials'], 'role' => 'hr', 'endpoint' => 'hr-data.php'
     ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;</script>
-    <script src="../assets/js/hr.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/hr.js'); ?>"></script>
+    <script src="../assets/js/hr.js?v=settings-20261119-3"></script>
 </body>
 </html>
 

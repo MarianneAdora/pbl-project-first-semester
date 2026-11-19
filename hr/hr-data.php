@@ -1558,6 +1558,26 @@ function static_profile_save(array $in, ?array $upload): array
     }
 
     $avatarUrl = $me['avatar'] ?? null;
+    $avatarPublicId = null;
+
+    if (!empty($in['avatar_remove'])) {
+        $avatarUrl = null;
+        if ($me['role'] === 'admin') {
+            $stmt = $pdo->prepare("SELECT avatar_public_id FROM users WHERE role = 'admin' AND deleted_at IS NULL");
+            $stmt->execute();
+        } else {
+            $stmt = $pdo->prepare("SELECT avatar_public_id FROM users WHERE user_id = :id");
+            $stmt->execute([':id' => $me['id']]);
+        }
+        $old = $stmt->fetch();
+        if ($old && !empty($old['avatar_public_id'])) {
+            try {
+                require_once __DIR__ . '/../src/Services/CloudinaryService.php';
+                $cloud = new CloudinaryService();
+                $cloud->deleteResource((string) $old['avatar_public_id'], 'image', 'upload');
+            } catch (Throwable $e) { /* continue saving even if Cloudinary cleanup fails */ }
+        }
+    }
 
     // handle avatar upload
     if ($upload && !empty($upload['tmp_name']) && is_uploaded_file($upload['tmp_name'])) {
@@ -1588,6 +1608,7 @@ function static_profile_save(array $in, ?array $upload): array
                 $mimeType   // confirmed MIME type instead of relying on mime_content_type()
             );
             $avatarUrl = $uploaded['url'];
+            $avatarPublicId = (string) ($uploaded['public_id'] ?? '');
             @unlink($tmpFile);
 
             // delete old avatar from Cloudinary if it had a public_id
@@ -1615,22 +1636,36 @@ function static_profile_save(array $in, ?array $upload): array
     // update the database
     if ($me['role'] === 'admin') {
         // Admin id is 0 (synthetic); update by role instead
-        $stmt = $pdo->prepare("UPDATE users SET name = :name, email = :email, email_normalized = :en, avatar_url = :avatar_url WHERE role = 'admin' AND deleted_at IS NULL");
-        $stmt->execute([
+        $params = [
             ':name' => $name,
             ':email' => $email,
             ':en' => strtolower(trim($email)),
             ':avatar_url' => $avatarUrl,
-        ]);
+        ];
+        $sql = "UPDATE users SET name = :name, email = :email, email_normalized = :en, avatar_url = :avatar_url";
+        if (!empty($in['avatar_remove']) || $avatarPublicId !== null) {
+            $sql .= ", avatar_public_id = :avatar_public_id";
+            $params[':avatar_public_id'] = $avatarPublicId;
+        }
+        $sql .= " WHERE role = 'admin' AND deleted_at IS NULL";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
     } else {
-        $stmt = $pdo->prepare("UPDATE users SET name = :name, email = :email, email_normalized = :en, avatar_url = :avatar_url WHERE user_id = :id");
-        $stmt->execute([
+        $params = [
             ':name' => $name,
             ':email' => $email,
             ':en' => strtolower(trim($email)),
             ':avatar_url' => $avatarUrl,
             ':id' => $me['id']
-        ]);
+        ];
+        $sql = "UPDATE users SET name = :name, email = :email, email_normalized = :en, avatar_url = :avatar_url";
+        if (!empty($in['avatar_remove']) || $avatarPublicId !== null) {
+            $sql .= ", avatar_public_id = :avatar_public_id";
+            $params[':avatar_public_id'] = $avatarPublicId;
+        }
+        $sql .= " WHERE user_id = :id";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
     }
 
     try { repo_log_activity('Updated ' . ucfirst($me['role']) . ' Profile', $name . ' (' . $email . ')'); } catch (Throwable $e) {}

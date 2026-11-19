@@ -6,6 +6,7 @@ $csrf = csrf_token();
 // No caching, so the Back button after logout never shows this page
 header('Cache-Control: no-store, no-cache, must-revalidate');
 header('Pragma: no-cache');
+header('Expires: 0');
 
 // Protection: Ensure only the Admin can access this page
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
@@ -375,6 +376,6 @@ $account_avatar_url = $profile['avatar_url'];
 
     </script>
     <!-- Shared admin behaviour first, then this page's script -->
-    <script src="../assets/js/admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/admin.js'); ?>"></script>
+    <script src="../assets/js/admin.js?v=settings-20261119-3"></script>
 </body>
 </html>
