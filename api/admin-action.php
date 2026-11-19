@@ -10,6 +10,7 @@ date_default_timezone_set('Asia/Manila');
 
 require_once __DIR__ . '/../src/Repositories/AdminRepository.php';
 require_once __DIR__ . '/../src/Services/EmailService.php';
+require_once __DIR__ . '/../src/Helpers/admin_mfa.php';
 require_once __DIR__ . '/../src/Helpers/db.php';
 require_once __DIR__ . '/../hr/hr-data.php';
 
@@ -18,6 +19,31 @@ function admin_respond(array $data, int $code = 200): void
     http_response_code($code);
     echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
     exit;
+}
+
+function admin_action_hr_create_data(array $account): array
+{
+    $name = trim((string) ($account['name'] ?? ''));
+    $email = strtolower(trim((string) ($account['email'] ?? '')));
+    $password = (string) ($account['password'] ?? '');
+    $passwordConfirm = (string) ($account['password_confirm'] ?? '');
+    $status = ($account['status'] ?? 'Active') === 'Inactive' ? 'Inactive' : 'Active';
+    $sendMail = !empty($account['send_email']);
+
+    if ($name === '' || mb_strlen($name, 'UTF-8') > 100) {
+        admin_respond(['status' => 'error', 'message' => 'Please enter a valid full name (100 characters maximum).'], 422);
+    }
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 150) {
+        admin_respond(['status' => 'error', 'message' => 'Please enter a valid email address.'], 422);
+    }
+    if (strlen($password) < 8 || !preg_match('/[A-Za-z]/', $password) || !preg_match('/\d/', $password)) {
+        admin_respond(['status' => 'error', 'message' => 'Password must be at least 8 characters with letters and a number.'], 422);
+    }
+    if ($passwordConfirm !== $password) {
+        admin_respond(['status' => 'error', 'message' => 'The passwords do not match.'], 422);
+    }
+
+    return ['name' => $name, 'email' => $email, 'password' => $password, 'status' => $status, 'send_email' => $sendMail];
 }
 
 // CSRF + auth guard for all state-changing POSTs
@@ -45,39 +71,119 @@ try {
     $missing = 'That item was not found. It may have been removed already.';
 
     switch ($action) {
-        case 'account_add':
-            $acc = $input['account'] ?? [];
-            $name     = trim((string) ($acc['name']     ?? ''));
-            $email    = strtolower(trim((string) ($acc['email']    ?? '')));
-            $password = (string) ($acc['password'] ?? '');
-            $status   = ($acc['status'] ?? 'Active') === 'Inactive' ? 'Inactive' : 'Active';
-            $sendMail = !empty($acc['send_email']);
+        case 'account_add_mfa_send':
+            $acc = (array) ($input['account'] ?? []);
+            $account = admin_action_hr_create_data($acc);
+            $adminPassword = (string) ($acc['admin_password'] ?? '');
+            if ($adminPassword === '' || strlen($adminPassword) > 1024) {
+                admin_respond(['status' => 'error', 'message' => 'Enter your current Admin password to continue.'], 422);
+            }
 
-            if (!$name)  admin_respond(['status' => 'error', 'message' => 'Please enter the full name.'], 422);
-            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) admin_respond(['status' => 'error', 'message' => 'Please enter a valid email address.'], 422);
-            if (strlen($password) < 8 || !preg_match('/[A-Za-z]/', $password) || !preg_match('/\d/', $password))
-                admin_respond(['status' => 'error', 'message' => 'Password must be at least 8 characters with letters and a number.'], 422);
+            $adminId = (int) ($_SESSION['user_id'] ?? 0);
+            if ($adminId <= 0) {
+                admin_respond(['status' => 'error', 'message' => 'Your session has ended. Please log in again.'], 403);
+            }
+            $sendLimit = rate_limit('admin-hr-mfa-send:' . $adminId, 5, 15 * 60);
+            if (!$sendLimit['allowed']) {
+                admin_respond([
+                    'status' => 'error',
+                    'message' => 'Too many verification codes were requested. Try again in ' . $sendLimit['retry_after'] . ' seconds.',
+                ], 429);
+            }
 
             $pdo = db();
+            $adminStmt = $pdo->prepare(
+                "SELECT name, email, password_hash FROM users
+                 WHERE user_id = :id AND role = 'admin' AND status = 'Active' AND deleted_at IS NULL"
+            );
+            $adminStmt->execute([':id' => $adminId]);
+            $admin = $adminStmt->fetch();
+            if (!$admin || !password_verify($adminPassword, (string) ($admin['password_hash'] ?? ''))) {
+                admin_respond(['status' => 'error', 'message' => 'The current Admin password is incorrect.'], 403);
+            }
+
             $exists = $pdo->prepare("SELECT 1 FROM users WHERE email = :e AND deleted_at IS NULL");
-            $exists->execute([':e' => $email]);
+            $exists->execute([':e' => $account['email']]);
+            if ($exists->fetchColumn()) {
+                admin_respond(['status' => 'error', 'message' => 'That email address is already in use.'], 422);
+            }
+
+            $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            $challengeToken = admin_mfa_issue_challenge($pdo, $adminId, session_id(), $code, $account);
+            $emailService = new EmailService();
+            if (!$emailService->sendAdminHrMfaEmail($account['email'], $account['name'], $code)) {
+                admin_mfa_delete_challenge($pdo, $challengeToken);
+                error_log('Admin HR creation MFA email failed: ' . ($emailService->lastFailure() ?? 'unknown'));
+                admin_respond(['status' => 'error', 'message' => 'Could not send the verification code. Check email configuration and try again.'], 502);
+            }
+
+            admin_mfa_invalidate_other_challenges($pdo, $adminId, session_id(), $challengeToken);
+            admin_respond([
+                'status' => 'success',
+                'message' => 'A verification code was sent to the email address entered for this HR account.',
+                'result' => [
+                    'challenge_token' => $challengeToken,
+                    'email' => admin_mfa_mask_email($account['email']),
+                ],
+            ]);
+            break;
+
+        case 'account_add':
+            $acc = (array) ($input['account'] ?? []);
+            $account = admin_action_hr_create_data($acc);
+            $adminId = (int) ($_SESSION['user_id'] ?? 0);
+            if ($adminId <= 0) {
+                admin_respond(['status' => 'error', 'message' => 'Your session has ended. Please log in again.'], 403);
+            }
+            $pdo = db();
+            $activeAdmin = $pdo->prepare(
+                "SELECT 1 FROM users WHERE user_id = :id AND role = 'admin' AND status = 'Active' AND deleted_at IS NULL"
+            );
+            $activeAdmin->execute([':id' => $adminId]);
+            if (!$activeAdmin->fetchColumn()) {
+                admin_respond(['status' => 'error', 'message' => 'Your Admin account is no longer active.'], 403);
+            }
+
+            $exists = $pdo->prepare("SELECT 1 FROM users WHERE email = :e AND deleted_at IS NULL");
+            $exists->execute([':e' => $account['email']]);
             if ($exists->fetchColumn()) admin_respond(['status' => 'error', 'message' => 'That email address is already in use.'], 422);
 
-            $hash = password_hash($password, PASSWORD_DEFAULT);
+            $verification = admin_mfa_verify_challenge(
+                $pdo,
+                $adminId,
+                session_id(),
+                (string) ($input['mfa_challenge'] ?? ''),
+                (string) ($input['mfa_code'] ?? ''),
+                $account
+            );
+            if (!$verification['ok']) {
+                $statusCode = !empty($verification['locked'])
+                    ? 429
+                    : (strpos(strtolower($verification['error']), 'invalid') !== false ? 403 : 422);
+                admin_respond(['status' => 'error', 'message' => $verification['error']], $statusCode);
+            }
+
+            $hash = password_hash($account['password'], PASSWORD_DEFAULT);
             $ins = $pdo->prepare("INSERT INTO users (name, email, email_normalized, password_hash, role, status, created_at) VALUES (:n, :e, :en, :p, 'hr', :s, NOW()) RETURNING user_id");
-            $ins->execute([':n' => $name, ':e' => $email, ':en' => $email, ':p' => $hash, ':s' => $status]);
+            $ins->execute([
+                ':n' => $account['name'],
+                ':e' => $account['email'],
+                ':en' => $account['email'],
+                ':p' => $hash,
+                ':s' => $account['status'],
+            ]);
             $newId = (int) $ins->fetchColumn();
-            repo_log_activity('HR Account Added', $name . ' (HR) · ' . $email);
+            repo_log_activity('HR Account Added', $account['name'] . ' (HR) · ' . $account['email']);
 
             $emailed = false;
-            if ($sendMail) {
-                $emailed = (new EmailService())->sendHrCredentialsEmail($email, $name, $password);
+            if ($account['send_email']) {
+                $emailed = (new EmailService())->sendHrCredentialsEmail($account['email'], $account['name'], $account['password']);
             }
 
             admin_respond([
                 'status'  => 'success',
                 'message' => 'HR account created.',
-                'result'  => ['id' => $newId, 'name' => $name, 'email' => $email, 'role' => 'HR Staff', 'emailed' => $emailed],
+                'result'  => ['id' => $newId, 'name' => $account['name'], 'email' => $account['email'], 'role' => 'HR Staff', 'emailed' => $emailed],
                 'data'    => ['accounts' => repo_admin_accounts(), 'questions' => repo_admin_questions_list(), 'archive' => repo_admin_archive()],
             ]);
             break;

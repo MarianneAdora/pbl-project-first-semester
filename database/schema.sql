@@ -34,6 +34,27 @@ CREATE INDEX idx_users_remember_token ON users(remember_token) WHERE remember_to
 CREATE INDEX idx_users_status ON users(status);
 
 -- ------------------------------------------------------------
+-- ADMIN MFA CHALLENGES
+-- Short-lived email OTP challenges for sensitive Admin actions.
+-- ------------------------------------------------------------
+CREATE TABLE admin_mfa_challenges (
+    challenge_id   BIGSERIAL PRIMARY KEY,
+    admin_user_id  INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    purpose        VARCHAR(40) NOT NULL,
+    session_hash   CHAR(64) NOT NULL,
+    token_hash     CHAR(64) NOT NULL UNIQUE,
+    code_hash      VARCHAR(255) NOT NULL,
+    operation_hash CHAR(64) NOT NULL,
+    attempt_count  SMALLINT NOT NULL DEFAULT 0,
+    expires_at     TIMESTAMPTZ NOT NULL,
+    consumed_at    TIMESTAMPTZ,
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_admin_mfa_challenges_owner
+    ON admin_mfa_challenges (admin_user_id, purpose, created_at DESC);
+
+-- ------------------------------------------------------------
 -- JOB POSITIONS
 -- One row per job position; each position has its own job
 -- description PDF stored in Cloudinary (jd_url). HR adds

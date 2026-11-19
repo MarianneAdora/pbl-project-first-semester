@@ -993,6 +993,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastEmailed = false;
 
     const fieldOf = (name) => form.querySelector('.field[data-field="' + name + '"]');
+    const adminPasswordField = fieldOf('admin_password');
+    const mfaCodeField = fieldOf('mfa_code');
+    const mfaHint = document.getElementById('mfaHint');
+    const resendMfaBtn = document.getElementById('resendMfaBtn');
+    let mfaChallenge = '';
+    let mfaResendMode = false;
 
     /* ---------- custom dropdowns (Role, Status): the same one as the HR filters ---------- */
     const dropdowns = [];
@@ -1137,6 +1143,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!v) return 'Please confirm the password.';
             if (v !== pass) return 'The passwords do not match.';
             return '';
+        },
+        admin_password(v) {
+            return isEdit || (mfaChallenge && !mfaResendMode) || v ? '' : 'Please enter your current Admin password.';
+        },
+        mfa_code(v) {
+            if (isEdit || !mfaChallenge || mfaResendMode) return '';
+            return /^\d{6}$/.test(v) ? '' : 'Enter the 6-digit code from your email.';
         }
     };
 
@@ -1162,7 +1175,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Typing: once a box has been used, it is re-checked on every keystroke, so the message appears the
     // moment something is wrong and goes away the moment it is fixed. Leaving a used box also checks it.
-    const FIELDS = ['name', 'email', 'password', 'password_confirm'];
+    const FIELDS = ['name', 'email', 'password', 'password_confirm'].concat(isEdit ? [] : ['admin_password', 'mfa_code']);
     const touched = new Set();
 
     FIELDS.forEach(name => {
@@ -1171,6 +1184,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fieldOf(name).querySelector('.field-error').id = name + 'Error';
 
         input.addEventListener('input', () => {
+            if (name === 'mfa_code') input.value = input.value.replace(/\D/g, '').slice(0, 6);
             touched.add(name);
             hideBanner();
             validateField(name, false);
@@ -1187,6 +1201,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function hideBanner() {
         banner.classList.remove('show');
+    }
+
+    function updateSaveLabel() {
+        const label = saveBtn.querySelector('.btn-label');
+        if (!label) return;
+        label.textContent = saving ? 'SAVING...' : isEdit ? 'SAVE CHANGES'
+            : mfaResendMode ? 'SEND NEW CODE'
+                : mfaChallenge ? 'VERIFY & CREATE HR' : 'SEND EMAIL CODE';
+    }
+
+    function updateMfaStage() {
+        if (isEdit) return;
+        const requestingCode = !mfaChallenge || mfaResendMode;
+        adminPasswordField.hidden = !requestingCode;
+        form.elements.admin_password.required = requestingCode;
+        mfaCodeField.hidden = !mfaChallenge;
+        resendMfaBtn.hidden = !mfaChallenge || mfaResendMode;
+        updateSaveLabel();
+    }
+
+    function resetMfaStage() {
+        mfaChallenge = '';
+        mfaResendMode = false;
+        form.elements.admin_password.value = '';
+        form.elements.mfa_code.value = '';
+        mfaHint.textContent = 'A verification code will be emailed to the address entered above.';
+        updateMfaStage();
+    }
+
+    updateMfaStage();
+    if (resendMfaBtn) {
+        resendMfaBtn.addEventListener('click', () => {
+            mfaResendMode = true;
+            setError('admin_password', '');
+            setError('mfa_code', '');
+            updateMfaStage();
+            form.elements.admin_password.focus();
+        });
     }
 
     /* ---------- start values ---------- */
@@ -1228,9 +1280,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 send_email: sendEmail.checked
             };
 
-            const res = isEdit
+            let res;
+            if (!isEdit && (!mfaChallenge || mfaResendMode)) {
+                account.admin_password = form.elements.admin_password.value;
+                res = await ADMIN.request('account_add_mfa_send', { account: account });
+                const challenge = res.result && res.result.challenge_token;
+                if (!challenge) throw new Error('The server did not return an email verification challenge.');
+                mfaChallenge = challenge;
+                mfaResendMode = false;
+                form.elements.mfa_code.value = '';
+                mfaHint.textContent = 'A 6-digit code was sent to ' + (res.result.email || 'your Admin email') + '. It expires in 5 minutes.';
+                updateMfaStage();
+                form.elements.mfa_code.focus();
+                ADMIN.toast(res.message || 'Verification code sent.', { duration: 4000 });
+                return;
+            }
+
+            res = isEdit
                 ? await ADMIN.request('account_update', { id: config.account.id, account: account })
-                : await ADMIN.request('account_add', { account: account });
+                : await ADMIN.request('account_add', {
+                    account: account,
+                    mfa_challenge: mfaChallenge,
+                    mfa_code: form.elements.mfa_code.value
+                });
 
             const saved = res.result || account;
 
@@ -1248,6 +1320,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {
             showServerError(err.message || 'Something went wrong. Please try again.');
         } finally {
+            if (!isEdit) form.elements.admin_password.value = '';
             setSaving(false);
         }
     });
@@ -1256,7 +1329,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function showServerError(message) {
         const lower = message.toLowerCase();
         let target = null;
-        if (lower.includes('match')) target = 'password_confirm';
+        if (lower.includes('could not send the verification code') || lower.includes('too many verification codes')) target = null;
+        else if (lower.includes('admin password')) target = 'admin_password';
+        else if (!isEdit && mfaChallenge && lower.includes('code')) target = 'mfa_code';
+        else if (lower.includes('match')) target = 'password_confirm';
         else if (lower.includes('password')) target = 'password';
         else if (lower.includes('email')) target = 'email';
         else if (lower.includes('name')) target = 'name';
@@ -1277,7 +1353,7 @@ document.addEventListener('DOMContentLoaded', () => {
         saving = state;
         saveBtn.disabled = state;
         saveBtn.classList.toggle('saving', state);
-        saveBtn.querySelector('.btn-label').textContent = state ? 'SAVING...' : (isEdit ? 'SAVE CHANGES' : 'SAVE');
+        updateSaveLabel();
         cancelBtn.disabled = state;
     }
 
@@ -1323,6 +1399,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('addAnother').addEventListener('click', () => {
         form.reset();
+        resetMfaStage();
         roleDD.setValue('HR Staff');
         statusDD.setValue('Active');
         sendEmail.checked = true;
@@ -1355,7 +1432,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 || form.elements.password_confirm.value !== ''
                 || !sendEmail.checked;
         }
-        return ['name', 'email', 'password', 'password_confirm'].some(n => form.elements[n].value.trim() !== '');
+        return mfaChallenge !== ''
+            || ['name', 'email', 'password', 'password_confirm', 'admin_password', 'mfa_code']
+                .some(n => form.elements[n].value.trim() !== '');
     };
 
     function leave() { window.location.href = 'hr-list.php'; }

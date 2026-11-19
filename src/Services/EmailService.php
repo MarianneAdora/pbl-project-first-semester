@@ -133,6 +133,16 @@ class EmailService {
         return $this->brevoSend($data, false);
     }
 
+    public function sendAdminHrMfaEmail(string $toEmail, string $toName, string $otpCode): bool
+    {
+        $htmlContent = $this->loadTemplate('admin-hr-mfa-email.html');
+        $htmlContent = str_replace('{{FULL_NAME}}', htmlspecialchars($toName, ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $htmlContent = str_replace('{{OTP_CODE}}', htmlspecialchars($otpCode, ENT_QUOTES, 'UTF-8'), $htmlContent);
+        $htmlContent = str_replace('{{YEAR}}', date('Y'), $htmlContent);
+
+        return $this->sendEmail($toEmail, 'HR account email verification code | Expertise', $htmlContent, $toName);
+    }
+
     public function sendInviteEmail($toEmail, $toName, $secureToken) {
         // $toName is the applicant's full name.
         // Build the personal link from the app's public URL and secure token.

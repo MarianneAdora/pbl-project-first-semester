@@ -302,6 +302,28 @@ $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
                     </div>
                 </div>
 
+                <?php if (!$isEdit): ?>
+                <div class="field" data-field="admin_password">
+                    <label for="admin_password">Confirm Your Admin Password <span class="req">*</span></label>
+                    <div class="input-box">
+                        <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8h-1V6a5 5 0 0 0-10 0v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2zm-9-2a3 3 0 0 1 6 0v2H9zm9 14H6V10h12z"/></svg>
+                        <input type="password" id="admin_password" name="admin_password" placeholder="Enter your current Admin password" maxlength="1024" autocomplete="current-password" required>
+                    </div>
+                    <p class="field-error" role="alert"></p>
+                    <p class="field-hint">Required to authorize creating a new HR account.</p>
+                </div>
+                <div class="field" data-field="mfa_code" hidden>
+                    <label for="mfa_code">Email Verification Code <span class="req">*</span></label>
+                    <div class="input-box">
+                        <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 4-8 5-8-5V6l8 5 8-5z"/></svg>
+                        <input type="text" id="mfa_code" name="mfa_code" placeholder="Enter the 6-digit code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}">
+                    </div>
+                    <p class="field-error" role="alert"></p>
+                    <p class="field-hint" id="mfaHint">A verification code will be emailed to the address entered above.</p>
+                    <button type="button" class="btn btn-outline" id="resendMfaBtn" hidden>Send a new code</button>
+                </div>
+                <?php endif; ?>
+
                 <div class="send-row">
                     <label class="check-row">
                         <input type="checkbox" id="sendEmail" name="send_email" checked>

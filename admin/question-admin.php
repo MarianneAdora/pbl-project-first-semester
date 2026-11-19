@@ -1179,9 +1179,10 @@ function static_admin_notify(): array
        question_add | question_update   the question fields (see static_admin_clean_question), id for update
                                         optional question.section_rename = a new title for the section named in question.section
        question_archive | question_restore | question_purge   id = 'q14'
-       account_add | account_update     name, email, password (new password; empty on update = unchanged),
-                                        status (update), id for update
+       account_update     name, email, password (new password; empty on update = unchanged),
+                          status (update), id for update
        account_archive | account_restore | account_purge      id = 3
+       HR account creation is handled only by api/admin-action.php, which requires email OTP verification.
    Response (JSON):  { status: 'success', message: '...', result: {the saved row, or null}, data: { questions, accounts, archive, types } }
                      { status: 'error', message: '...' }
    ========================================================================== */
@@ -1239,9 +1240,10 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
                 break;
 
             case 'account_add':
-                $result = static_admin_add_account((array) ($input['account'] ?? []));
-                $message = 'HR account added.';
-                break;
+                static_admin_respond([
+                    'status' => 'error',
+                    'message' => 'HR accounts must be created through the secure admin workflow.'
+                ], 403);
             case 'account_update':
                 $result = static_admin_update_account((int) ($input['id'] ?? 0), (array) ($input['account'] ?? []));
                 $message = 'HR account saved.';
