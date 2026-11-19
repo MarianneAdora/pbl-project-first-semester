@@ -636,8 +636,16 @@ function static_add_applicant(array $in, ?array $cvUpload = null): array
     $email   = trim((string) ($in['email'] ?? ''));
     $contact = trim((string) ($in['contact'] ?? ''));
     if (mb_strlen($name) > 100)                       throw new InvalidArgumentException('The full name is too long (100 characters at most).');
+    if (strlen($email) > 150)                          throw new InvalidArgumentException('The email is too long (150 characters at most).');
     if (!filter_var($email, FILTER_VALIDATE_EMAIL))   throw new InvalidArgumentException('Enter a valid email address (example: name@gmail.com).');
     if ($contact === '')                              throw new InvalidArgumentException('Please enter the contact number.');
+    if (strlen($contact) > 20 || !preg_match('/^\+?[0-9][0-9\s-]*$/', $contact)) {
+        throw new InvalidArgumentException('Use digits only (you may start with + and use spaces or dashes).');
+    }
+    $contactDigits = strlen(preg_replace('/\D/', '', $contact));
+    if ($contactDigits < 7 || $contactDigits > 15) {
+        throw new InvalidArgumentException('The contact number must contain 7 to 15 digits.');
+    }
 
     $position = static_position_find((int) ($in['position_id'] ?? 0));
     if ($position === null)                           throw new InvalidArgumentException('Please choose a job position.');
@@ -1705,10 +1713,10 @@ function static_profile_current_password_ok(array $me, string $given): bool
 function static_profile_check_new_password(string $new, string $current): void
 {
     if ($new === '') throw new StaticProfileError('Enter a new password.', 'pwNew');
+    if (strlen($new) > 72) throw new StaticProfileError('The new password must be 72 bytes or fewer.', 'pwNew');
     if (strlen($new) < 8 || !preg_match('/[a-z]/', $new) || !preg_match('/[A-Z]/', $new) || !preg_match('/\d/', $new)) {
         throw new StaticProfileError('The new password does not meet all the requirements.', 'pwNew');
     }
-    if (strlen($new) > 72)    throw new StaticProfileError('The new password is too long (72 characters at most).', 'pwNew');
     if ($new === $current)    throw new StaticProfileError('The new password must be different from the current one.', 'pwNew');
 }
 

@@ -51,7 +51,7 @@ try {
     switch ($action) {
         case 'request': {
             $email = strtolower(trim((string) ($input['email'] ?? '')));
-            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            if (strlen($email) > 150 || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 respond(['status' => 'success', 'message' => 'If the email exists, a reset link has been sent.']);
             }
 
@@ -105,6 +105,9 @@ try {
             }
             if ($password === '' || $password !== $confirm) {
                 respond(['status' => 'error', 'message' => 'Please enter the same password in both fields.'], 422);
+            }
+            if (strlen($password) > 72) {
+                respond(['status' => 'error', 'message' => 'The password must be 72 bytes or fewer.'], 422);
             }
             if (strlen($password) < 8 || !preg_match('/[a-z]/', $password) || !preg_match('/[A-Z]/', $password) || !preg_match('/\d/', $password)) {
                 respond(['status' => 'error', 'message' => 'The password must be at least 8 characters and include upper and lower case letters and a number.'], 422);

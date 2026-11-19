@@ -126,6 +126,7 @@ try {
         if ($password === '') $password = $body['password'] ?? '';
     }
 
+    if (strlen($email) > 150) $email = '';
     $email = strtolower($email);
     $account = $credentials[$email] ?? null;
     $passwordOk = false;
@@ -236,7 +237,7 @@ try {
     <input type="hidden" name="csrf_token" value="<?= attr($csrf) ?>">
                 <div class="form-group reveal" style="--i:4">
                     <label for="email">Email</label>
-                    <input type="email" id="email" name="email" class="form-control" placeholder="name@example.com" aria-describedby="emailError" required>
+                    <input type="email" id="email" name="email" class="form-control" maxlength="150" placeholder="name@example.com" aria-describedby="emailError" required>
                     <p class="field-error" id="emailError" role="alert"></p>
                 </div>
 

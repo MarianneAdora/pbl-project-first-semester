@@ -685,6 +685,11 @@ function repo_set_status(int $id, string $status, ?string $result = null): bool
  */
 function repo_reject_applicant(int $id, string $reason = ''): bool
 {
+    $reason = trim($reason);
+    if (mb_strlen($reason, 'UTF-8') > 2000) {
+        throw new InvalidArgumentException('The rejection reason must be 2000 characters or fewer.');
+    }
+
     $pdo = db();
     // Self-heal: add rejection_reason column on older databases.
     try {
@@ -705,7 +710,7 @@ function repo_reject_applicant(int $id, string $reason = ''): bool
         . "restored_at = CASE WHEN restored_at IS NOT NULL THEN NOW() AT TIME ZONE 'Asia/Manila' END "
         . "WHERE applicant_id = :id AND deleted_at IS NULL"
     );
-    $st->execute([':id' => $id, ':reason' => trim($reason)]);
+    $st->execute([':id' => $id, ':reason' => $reason]);
     return $st->rowCount() > 0;
 }
 

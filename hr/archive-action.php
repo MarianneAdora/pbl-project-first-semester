@@ -114,6 +114,8 @@ try {
         "archived" => count($archived),
         "archive" => $sync,
     ]);
+} catch (InvalidArgumentException $e) {
+    $respond(["status" => "error", "message" => $e->getMessage()], 422);
 } catch (Throwable $e) {
     error_log("archive-action DB error: " . $e->getMessage());
     $respond(["status" => "error", "message" => "Something went wrong while saving. Please try again."], 500);

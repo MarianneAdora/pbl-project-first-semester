@@ -331,7 +331,7 @@ function q_dropdown(string $id, string $labelId, array $options, string $selecte
                         </div>
                         <div class="field" data-field="followup_options">
                             <label for="followup_options">Choices in the list <span class="req">*</span></label>
-                            <textarea class="textarea" id="followup_options" name="followup_options" rows="4" placeholder="One choice per line"></textarea>
+                            <textarea class="textarea" id="followup_options" name="followup_options" rows="4" maxlength="2000" placeholder="One choice per line"></textarea>
                             <p class="field-error" role="alert"></p>
                             <p class="field-hint">One choice per line, from 2 up to 12 choices.</p>
                         </div>
@@ -399,7 +399,7 @@ function q_dropdown(string $id, string $labelId, array $options, string $selecte
                         <p class="sub-title">Statement + checkbox</p>
                         <div class="field" data-field="body">
                             <label for="body">Statement the applicant reads <span class="req">*</span></label>
-                            <textarea class="textarea" id="body" name="body" rows="5" placeholder="Write the statement here"></textarea>
+                            <textarea class="textarea" id="body" name="body" rows="5" maxlength="10000" placeholder="Write the statement here"></textarea>
                             <p class="field-error" role="alert"></p>
                             <p class="field-hint">Leave an empty line between paragraphs.</p>
                         </div>

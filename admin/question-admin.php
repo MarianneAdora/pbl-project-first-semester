@@ -168,7 +168,13 @@ function static_admin_clean_question(array $in, array $all, ?array $old = null):
     }
     $q['is_data_protection'] = $isDataProtection;
 
-    $line = fn(string $key, int $limit = 200): string => mb_substr(trim((string) ($in[$key] ?? '')), 0, $limit);
+    $line = function (string $key, int $limit = 200, string $label = 'This value') use ($in): string {
+        $value = trim((string) ($in[$key] ?? ''));
+        if (mb_strlen($value, 'UTF-8') > $limit) {
+            throw new InvalidArgumentException($label . ' must be ' . $limit . ' characters or fewer.');
+        }
+        return $value;
+    };
 
     switch ($type) {
         case 'yesno':
@@ -183,11 +189,20 @@ function static_admin_clean_question(array $in, array $all, ?array $old = null):
             break;
 
         case 'yesno_select':
-            $label   = $line('followup_label', 80);
-            $options = array_values(array_filter(array_map('trim', preg_split('/\R/', (string) ($in['followup_options'] ?? ''))), fn($o) => $o !== ''));
+            $label = $line('followup_label', 80, 'The list label');
+            $optionsText = (string) ($in['followup_options'] ?? '');
+            if (mb_strlen($optionsText, 'UTF-8') > 2000) {
+                throw new InvalidArgumentException('The choices must be 2000 characters or fewer in total.');
+            }
+            $options = array_values(array_filter(array_map('trim', preg_split('/\R/', $optionsText)), fn($o) => $o !== ''));
             if ($label === '')        throw new InvalidArgumentException('Please write the label above the list (example: Your notice period).');
             if (count($options) < 2)  throw new InvalidArgumentException('Add at least two choices for the list, one per line.');
             if (count($options) > 12) throw new InvalidArgumentException('The list can have 12 choices at most.');
+            foreach ($options as $option) {
+                if (mb_strlen($option, 'UTF-8') > 100) {
+                    throw new InvalidArgumentException('Each choice must be 100 characters or fewer.');
+                }
+            }
             $q['followup'] = [
                 'when'    => (($in['followup_when'] ?? 'Yes') === 'No') ? 'No' : 'Yes',
                 'label'   => $label,
@@ -202,25 +217,35 @@ function static_admin_clean_question(array $in, array $all, ?array $old = null):
             break;
 
         case 'scale':
-            $max = (int) ($in['max'] ?? 5);
+            $rawMax = trim((string) ($in['max'] ?? '5'));
+            if (!ctype_digit($rawMax)) throw new InvalidArgumentException('The rating scale must be a whole number from 3 to 10.');
+            $max = (int) $rawMax;
             if ($max < 3 || $max > 10) throw new InvalidArgumentException('The rating scale must go from 3 up to 10.');
             $q['max']         = $max;
-            $q['labels']      = [$line('label_left', 40), $line('label_right', 40)];
+            $q['labels']      = [
+                $line('label_left', 40, 'The left rating label'),
+                $line('label_right', 40, 'The right rating label')
+            ];
             $q['answer_config'] = ['max' => $max, 'labels' => $q['labels']];
             break;
 
         case 'date':
-            $hint = $line('date_hint');
+            $hint = $line('date_hint', 200, 'The date hint');
             if ($hint !== '') { $q['hint'] = $hint; $q['answer_config'] = ['hint' => $hint]; }
             break;
 
         case 'text':
-            $min  = max(0, (int) ($in['min_chars'] ?? 0));
-            $maxc = (int) ($in['max_chars'] ?? 500);
+            $rawMin = trim((string) ($in['min_chars'] ?? '0'));
+            $rawMax = trim((string) ($in['max_chars'] ?? '500'));
+            if (!ctype_digit($rawMin)) throw new InvalidArgumentException('The shortest answer must be a whole number of 0 or more.');
+            if (!ctype_digit($rawMax)) throw new InvalidArgumentException('The longest answer must be a whole number.');
+            $min  = (int) $rawMin;
+            $maxc = (int) $rawMax;
             if ($maxc < 10 || $maxc > 2000) throw new InvalidArgumentException('The longest answer must be between 10 and 2000 characters.');
             if ($min > $maxc)               throw new InvalidArgumentException('The shortest answer cannot be longer than the longest answer.');
-            $hint = $line('text_hint');
-            $ph   = $line('placeholder') !== '' ? $line('placeholder') : 'Type your answer here...';
+            $hint = $line('text_hint', 200, 'The answer hint');
+            $ph = $line('placeholder', 200, 'The answer placeholder');
+            if ($ph === '') $ph = 'Type your answer here...';
             if ($hint !== '') $q['hint'] = $hint;
             $q['placeholder']   = $ph;
             $q['min_chars']     = $min;
@@ -229,11 +254,16 @@ function static_admin_clean_question(array $in, array $all, ?array $old = null):
             break;
 
         case 'consent':
-            $body = array_values(array_filter(array_map('trim', preg_split('/\R{2,}/', trim((string) ($in['body'] ?? '')))), fn($p) => $p !== ''));
+            $bodyText = trim((string) ($in['body'] ?? ''));
+            if (mb_strlen($bodyText, 'UTF-8') > 10000) {
+                throw new InvalidArgumentException('The statement must be 10000 characters or fewer.');
+            }
+            $body = array_values(array_filter(array_map('trim', preg_split('/\R{2,}/', $bodyText)), fn($p) => $p !== ''));
             if (!$body)                 throw new InvalidArgumentException('Please write the statement the applicant has to read.');
-            if ($line('checkbox') === '') throw new InvalidArgumentException('Please write the text next to the checkbox (example: I agree).');
+            $checkbox = $line('checkbox', 200, 'The checkbox label');
+            if ($checkbox === '') throw new InvalidArgumentException('Please write the text next to the checkbox (example: I agree).');
             $q['body']          = $body;
-            $q['checkbox']      = $line('checkbox');
+            $q['checkbox']      = $checkbox;
             $q['answer_config'] = ['body' => $body, 'checkbox' => $q['checkbox']];
             break;
     }
@@ -272,8 +302,8 @@ function static_admin_clean_question(array $in, array $all, ?array $old = null):
 
     // {link} inside the question text: the word that is clickable + where it goes
     if (strpos($text, '{link}') !== false) {
-        $linkText = $line('link_text', 60);
-        $linkUrl  = $line('link_url', 500);
+        $linkText = $line('link_text', 60, 'The link text');
+        $linkUrl  = $line('link_url', 500, 'The link URL');
         if ($linkText === '' || !preg_match('#^https?://#i', $linkUrl) || !filter_var($linkUrl, FILTER_VALIDATE_URL)) {
             throw new InvalidArgumentException('The question has {link}. Add the link text and a web address that starts with http:// or https://.');
         }
@@ -497,7 +527,11 @@ function static_admin_check_account(array $in, array $list, ?int $skipId, bool $
 
     if ($name === '')                                throw new InvalidArgumentException('Please enter the full name.');
     if (mb_strlen($name) > 100)                      throw new InvalidArgumentException('The name is too long (100 characters at most).');
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL))  throw new InvalidArgumentException('Enter a valid email address (example: name@expertise.com).');
+    if (preg_match('/\d/', $name) || !preg_match("/^[\\p{L}\\p{M}'.\\- ]+$/u", $name)) {
+        throw new InvalidArgumentException('Use letters only (spaces, apostrophes, periods and hyphens are fine).');
+    }
+    if (preg_match_all('/\p{L}/u', $name) < 2)       throw new InvalidArgumentException('The name is too short (at least 2 letters).');
+    if (strlen($email) > 150 || !filter_var($email, FILTER_VALIDATE_EMAIL)) throw new InvalidArgumentException('Enter a valid email address (150 characters maximum).');
     if ($email === 'admin@expertise.com' || $email === static_profile_admin_email()) throw new InvalidArgumentException('That email belongs to the Admin account.');
 
     foreach ($list as $a) {
@@ -510,6 +544,12 @@ function static_admin_check_account(array $in, array $list, ?int $skipId, bool $
     }
 
     if ($passwordRequired || $pass !== '') {
+        if (strlen($pass) > 72) {
+            throw new InvalidArgumentException('The password must be 72 bytes or fewer.');
+        }
+        if (preg_match('/\s/', $pass)) {
+            throw new InvalidArgumentException('The password cannot contain spaces.');
+        }
         if (strlen($pass) < 8 || !preg_match('/[A-Za-z]/', $pass) || !preg_match('/\d/', $pass)) {
             throw new InvalidArgumentException('The password needs at least 8 characters, with letters and a number.');
         }

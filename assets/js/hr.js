@@ -5538,6 +5538,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const checks = pwChecks(pwNew.value);
         const problems = {
             pwNew: !pwNew.value ? 'Enter a new password.'
+                : new Blob([pwNew.value]).size > 72 ? 'The new password must be 72 bytes or fewer.'
                 : !(checks.len && checks.case && checks.num) ? 'The new password does not meet all the requirements.' : '',
             pwConfirm: !pwConfirm.value ? 'Type the new password again.'
                 : pwConfirm.value !== pwNew.value ? 'The passwords do not match.' : ''

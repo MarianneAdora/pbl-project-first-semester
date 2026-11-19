@@ -63,9 +63,9 @@ try {
             $name  = trim((string) ($input['name'] ?? ''));
             $email = strtolower(trim((string) ($input['email'] ?? '')));
 
-            if ($name === '' || mb_strlen($name) > 100 || preg_match('/\d/', $name) || !preg_match("/^[\\p{L}\\p{M}'.\\- ]+$/u", $name))
+            if ($name === '' || mb_strlen($name) > 100 || preg_match('/\d/', $name) || !preg_match("/^[\\p{L}\\p{M}'.\\- ]+$/u", $name) || preg_match_all('/\p{L}/u', $name) < 2)
                 hr_respond(['status' => 'error', 'field' => 'name', 'message' => 'Please enter a valid name (letters only).'], 422);
-            if (!filter_var($email, FILTER_VALIDATE_EMAIL))
+            if (strlen($email) > 150 || !filter_var($email, FILTER_VALIDATE_EMAIL))
                 hr_respond(['status' => 'error', 'field' => 'email', 'message' => 'Enter a valid email address (example: name@gmail.com).'], 422);
 
             $changes = ['name_changed' => false, 'email_requested' => false];
@@ -103,6 +103,8 @@ try {
 
             if (!password_verify($current, (string) $user['password_hash']))
                 hr_respond(['status' => 'error', 'field' => 'pwCurrent', 'message' => 'Your current password is not correct.'], 422);
+            if (strlen($next) > 72)
+                hr_respond(['status' => 'error', 'field' => 'pwNew', 'message' => 'The new password must be 72 bytes or fewer.'], 422);
             if (strlen($next) < 8 || !preg_match('/[a-z]/', $next) || !preg_match('/[A-Z]/', $next) || !preg_match('/\d/', $next))
                 hr_respond(['status' => 'error', 'field' => 'pwNew', 'message' => 'The new password does not meet all the requirements.'], 422);
             if ($next === $current)
