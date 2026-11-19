@@ -76,20 +76,27 @@ $issueDbOtp = function () use ($otpDb, $applicantId, $email, $applicantName, $re
 
         $existingOtp = $pdo->prepare("SELECT 1 FROM otp WHERE applicant_id = :applicant_id LIMIT 1");
         $existingOtp->execute([':applicant_id' => $applicantId]);
-        if (!$existingOtp->fetchColumn()) {
-            $pdo->prepare("DELETE FROM otp_request_log WHERE applicant_id = :applicant_id")
-                ->execute([':applicant_id' => $applicantId]);
-        }
+        $hasExistingOtp = (bool) $existingOtp->fetchColumn();
 
-        $stmt = $pdo->prepare(
-            "SELECT EXTRACT(EPOCH FROM (clock_timestamp() - requested_at))::int AS age_seconds
-             FROM otp_request_log
-             WHERE applicant_id = :applicant_id
-               AND requested_at > clock_timestamp() - (CAST(:window_seconds AS INTEGER) * INTERVAL '1 second')
-             ORDER BY requested_at ASC"
-        );
-        $stmt->execute([':applicant_id' => $applicantId, ':window_seconds' => $resendWindow]);
-        $ages = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+        $ages = [];
+        if ($hasExistingOtp) {
+            $stmt = $pdo->prepare(
+                "SELECT EXTRACT(EPOCH FROM (clock_timestamp() - requested_at))::int AS age_seconds
+                 FROM otp_request_log
+                 WHERE applicant_id = :applicant_id
+                   AND requested_at >= (
+                       SELECT created_at FROM otp WHERE applicant_id = :otp_applicant_id
+                   )
+                   AND requested_at > clock_timestamp() - (CAST(:window_seconds AS INTEGER) * INTERVAL '1 second')
+                 ORDER BY requested_at ASC"
+            );
+            $stmt->execute([
+                ':applicant_id' => $applicantId,
+                ':otp_applicant_id' => $applicantId,
+                ':window_seconds' => $resendWindow,
+            ]);
+            $ages = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+        }
 
         $resends = max(0, count($ages) - 1);
         $lastAge = $ages ? max(0, min($ages)) : 0;
@@ -159,10 +166,13 @@ $getRequestStamps = function () use ($otpDb, $applicantId, $resendWindow, &$otpR
                 "SELECT EXTRACT(EPOCH FROM (NOW() - requested_at))::int AS age_seconds
                  FROM otp_request_log
                  WHERE applicant_id = ?
+                   AND requested_at >= (
+                       SELECT created_at FROM otp WHERE applicant_id = ?
+                   )
                    AND requested_at > NOW() - (CAST(? AS INTEGER) * INTERVAL '1 second')
                  ORDER BY requested_at ASC"
             );
-            $st->execute([$applicantId, $resendWindow]);
+            $st->execute([$applicantId, $applicantId, $resendWindow]);
             $now = time();
             return array_map(fn($age) => $now - (int) $age, $st->fetchAll(PDO::FETCH_COLUMN));
         } catch (Throwable $e) {
