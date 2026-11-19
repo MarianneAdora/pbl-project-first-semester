@@ -627,8 +627,12 @@ function static_admin_archive_account(int $id): bool
 {
     return static_store_update(function (array &$store) use ($id) {
         $list = isset($store['hr_accounts']) && is_array($store['hr_accounts']) ? $store['hr_accounts'] : static_seed_hr_accounts();
+        $unarchivedCount = count(array_filter($list, fn($a) => empty($a['archived_at'])));
         foreach ($list as &$a) {
             if ((int) $a['id'] === $id && empty($a['archived_at'])) {
+                if ($unarchivedCount <= 1) {
+                    throw new InvalidArgumentException('At least one HR account must remain outside the Archive.');
+                }
                 $a['archived_at'] = static_now()->format('Y-m-d H:i:s');
                 $label = $a['name'] . ' (HR) · ' . $a['email'];
                 unset($a);
@@ -670,6 +674,9 @@ function static_admin_purge_account(int $id): bool
             $keep[] = $a;
         }
         if ($label === '') return false;
+        if (count(array_filter($list, fn($a) => empty($a['archived_at']))) === 0) {
+            throw new InvalidArgumentException('Restore or add an HR account before permanently deleting archived HR accounts.');
+        }
         $store['hr_accounts'] = $keep;
         static_log_into($store, 'HR Account Deleted Forever', $label, 'Admin');
         return true;
@@ -688,6 +695,7 @@ function static_admin_purge_expired(): void
     $changed = false;
     foreach (['questions', 'hr_accounts'] as $key) {
         if (!isset($store[$key]) || !is_array($store[$key])) continue;
+        if ($key === 'hr_accounts' && count(array_filter($store[$key], fn($a) => empty($a['archived_at']))) === 0) continue;
         $kept = array_values(array_filter($store[$key], fn($row) => empty($row['archived_at']) || $row['archived_at'] > $limit));
         if (count($kept) !== count($store[$key])) { $store[$key] = $kept; $changed = true; }
     }

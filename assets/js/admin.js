@@ -2735,7 +2735,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (busy) return;
         const yes = await ADMIN.confirm({
             title: 'Delete this HR account?',
-            message: a.name + ' will be moved to the Archive and can no longer log in. You can restore the account within 30 days.',
+            message: a.name + ' will be moved to the Archive and can no longer log in. You can restore the account within 30 days. At least one HR account must remain outside the Archive.',
             confirmLabel: 'Delete',
             icon: ADMIN.icons.trash
         });
