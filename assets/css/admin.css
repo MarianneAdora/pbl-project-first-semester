@@ -1326,7 +1326,7 @@ html[data-motion="off"] .new-dot { animation: none !important; }
     .page-overlay .overlay-stripe { animation-delay: 0s !important; }
     html.js.is-ready .reveal,
     html.js.is-ready.is-leaving .reveal { animation: none !important; opacity: 1; }
-    .toast, .nav-badge.pop, .nav-item.bump .nav-icon, .row-in, .sub-fields { transition: none; animation: none !important; }
+    .toast, .nav-badge.pop, .nav-item.bump .nav-icon, .row-in, .activity-row-in, .sub-fields { transition: none; animation: none !important; }
     .nav-badge.alert::after, .new-dot { animation: none; }
 }
 
@@ -2886,6 +2886,14 @@ html:where([data-page="dashboardadmin"])[data-theme="dark"] .vol-chart { --vc: #
 :where(html[data-page="dashboardadmin"]) .activity-card .data-table td:nth-child(3) { white-space: normal; text-overflow: clip; }
 :where(html[data-page="dashboardadmin"]) .activity-card .data-table th { position: sticky; top: 0; z-index: 2; }
 :where(html[data-page="dashboardadmin"]) .activity-card .data-table tbody tr { cursor: default; }
+:where(html[data-page="dashboardadmin"]) .activity-card .data-table tbody tr.activity-row-in {
+    animation: activityRowIn 0.5s var(--ease-out) both;
+    animation-delay: calc(var(--r, 0) * 55ms);
+}
+@keyframes activityRowIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
 :where(html[data-page="dashboardadmin"]) .activity-card .data-table td:first-child { padding-left: 20px; }
 :where(html[data-page="dashboardadmin"]) .activity-card .data-table th:last-child, :where(html[data-page="dashboardadmin"]) .activity-card .data-table td:last-child { padding-right: 20px; }
 

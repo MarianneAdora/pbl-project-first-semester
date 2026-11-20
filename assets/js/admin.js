@@ -4484,7 +4484,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // A "Password Change Requested" line opens the approve / reject pop-up (it shows what happened to it, too)
             const req = row.kind === 'pw_request' && row.req ? row.req : null;
             const pill = req ? ' <span class="req-pill is-' + esc(req.status) + '" data-pill>' + esc(PILL[req.status] || req.status) + '</span>' : '';
-            return '<tr class="row-in' + (isNew ? ' is-new' : '') + (req ? ' is-click' : '') + '" style="--r:' + i + '"' +
+            return '<tr class="activity-row-in' + (isNew ? ' is-new' : '') + (req ? ' is-click' : '') + '" style="--r:' + i + '"' +
                 (req ? ' data-req="' + Number(req.id) + '" tabindex="0" role="button" title="Click to review this request"' : '') + '>' +
                 '<td>' + (isNew ? '<span class="new-dot" title="New since your last visit"></span>' : '') + esc(ADMIN.formatDate(row.at)) + '</td>' +
                 '<td title="' + esc(row.activity) + '"><strong>' + esc(row.activity) + '</strong></td>' +
