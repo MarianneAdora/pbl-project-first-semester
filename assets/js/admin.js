@@ -4292,6 +4292,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return 'activity:h' + (hash >>> 0).toString(36);
     };
     const allKeys = () => activities().map(activityKey);
+    const unreadTotal = () => activities().filter(row => !readKeys.has(activityKey(row))).length;
     const formatDate = (value) => {
         const match = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(String(value || ''));
         if (!match) return String(value || '');
@@ -4313,7 +4314,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (seen.has(key)) return false;
             seen.add(key);
             return true;
-        }).sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 20);
+        }).sort((a, b) => String(b.at).localeCompare(String(a.at)));
     };
 
     async function readRequest(action, keys, retried) {
@@ -4336,8 +4337,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function syncReadState() {
         const keys = Array.from(new Set(allKeys()));
-        for (let i = 0; i < keys.length; i += 500) {
-            const result = await readRequest('state', keys.slice(i, i + 500));
+        const batches = keys.length ? Array.from({ length: Math.ceil(keys.length / 500) }, (_, i) => keys.slice(i * 500, (i + 1) * 500)) : [[]];
+        for (const batch of batches) {
+            const result = await readRequest('state', batch);
             (result.read_keys || []).forEach((key) => readKeys.add(key));
         }
         readStateReady = true;
@@ -4361,8 +4363,7 @@ document.addEventListener('DOMContentLoaded', () => {
             bell.title = 'Notifications';
             return;
         }
-        const unreadActivity = activities().filter((row) => !readKeys.has(activityKey(row))).length;
-        const total = unreadActivity;
+        const total = unreadTotal();
         badge.textContent = total > 99 ? '99+' : String(total);
         badge.hidden = total === 0;
         bell.classList.toggle('has-notifications', total > 0);
@@ -4382,7 +4383,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function paintList() {
-        list.innerHTML = activities().map((row) => {
+        list.innerHTML = activities().slice(0, 20).map((row) => {
             const key = activityKey(row);
             const expanded = expandedKeys.has(key);
             const icon = look(row.activity);
@@ -4394,7 +4395,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 '</span></button></li>';
         }).join('') || '<li class="notif-empty">Nothing yet. HR activity shows up here.</li>';
         paintBadge();
-        markAll.disabled = allKeys().every((key) => readKeys.has(key));
+        markAll.disabled = !readStateReady || unreadTotal() === 0;
     }
 
     function paint() {
@@ -4550,6 +4551,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const PILL = { pending: 'Needs approval', approved: 'Approved', rejected: 'Rejected', cancelled: 'Cancelled' };
     const body = document.getElementById('activityBody');
+    const dashboardReadKeys = new Set();
+    let dashboardReadStateReady = false;
+
+    function activityNotificationKey(row) {
+        const rowKey = row && row.id != null
+            ? String(row.id)
+            : (() => {
+                const value = [row && row.at, row && row.activity, row && row.details, row && row.by].join('|');
+                let hash = 2166136261;
+                for (let i = 0; i < value.length; i++) hash = Math.imul(hash ^ value.charCodeAt(i), 16777619);
+                return 'h' + (hash >>> 0).toString(36);
+            })();
+        return 'activity:' + rowKey.replace(/[^A-Za-z0-9_-]/g, '');
+    }
 
     const latestAt = (data.activity || []).reduce((max, r) => (r.at && r.at > max ? r.at : max), seenAt || '');
 
@@ -4557,12 +4572,14 @@ document.addEventListener('DOMContentLoaded', () => {
         return rows && rows.length
             ? rows.map((row, i) => {
             const role = String(row.actor || (String(row.by).toLowerCase() === 'admin' ? 'Admin' : 'HR')).toLowerCase();
-            const isNew = Boolean(seenAt && row.at && row.at > seenAt);
+            const key = activityNotificationKey(row);
+            const isNew = dashboardReadStateReady && !dashboardReadKeys.has(key);
             const who = role === 'admin' ? 'admin' : 'hr';
             // A "Password Change Requested" line opens the approve / reject pop-up (it shows what happened to it, too)
             const req = row.kind === 'pw_request' && row.req ? row.req : null;
             const pill = req ? ' <span class="req-pill is-' + esc(req.status) + '" data-pill>' + esc(PILL[req.status] || req.status) + '</span>' : '';
             return '<tr class="activity-row-in' + (isNew ? ' is-new' : '') + (req ? ' is-click' : '') + '" style="--r:' + i + '"' +
+                ' data-notification-key="' + esc(key) + '"' +
                 (req ? ' data-req="' + Number(req.id) + '" tabindex="0" role="button" title="Click to review this request"' : '') + '>' +
                 '<td>' + (isNew ? '<span class="new-dot" title="New since your last visit"></span>' : '') + esc(ADMIN.formatDate(row.at)) + '</td>' +
                 '<td title="' + esc(row.activity) + '"><strong>' + esc(row.activity) + '</strong></td>' +
@@ -4571,6 +4588,23 @@ document.addEventListener('DOMContentLoaded', () => {
             '</tr>';
         }).join('')
         : '<tr><td colspan="4" class="empty-row">No activity yet.</td></tr>';
+    }
+    function paintDashboardActivityReadState() {
+        if (!body || !dashboardReadStateReady) return;
+        body.querySelectorAll('tr[data-notification-key]').forEach(row => {
+            const unread = !dashboardReadKeys.has(row.dataset.notificationKey);
+            row.classList.toggle('is-new', unread);
+            const dateCell = row.cells[0];
+            let dot = dateCell.querySelector('.new-dot');
+            if (unread && !dot) {
+                dot = document.createElement('span');
+                dot.className = 'new-dot';
+                dot.title = 'Unread activity';
+                dateCell.insertBefore(dot, dateCell.firstChild);
+            } else if (!unread && dot) {
+                dot.remove();
+            }
+        });
     }
     if (body) {
         body.innerHTML = renderDashboardActivityRows(data.activity);
@@ -4687,19 +4721,10 @@ document.addEventListener('DOMContentLoaded', () => {
         let lastCount = -1;
         const accountId = Number(data.account_id) || 0;
         const csrfMeta = document.querySelector('meta[name="csrf-token"]');
-        const readKeys = new Set();
-        let readStateReady = false;
+        const readKeys = dashboardReadKeys;
         const expandedKeys = new Set();
 
-        function rowActivityKey(row) {
-            if (row && row.id != null) return String(row.id);
-            const value = [row && row.at, row && row.activity, row && row.details, row && row.by].join('|');
-            let hash = 2166136261;
-            for (let i = 0; i < value.length; i++) hash = Math.imul(hash ^ value.charCodeAt(i), 16777619);
-            return 'h' + (hash >>> 0).toString(36);
-        }
-
-        const activityKey = row => 'activity:' + rowActivityKey(row).replace(/[^A-Za-z0-9_-]/g, '');
+        const activityKey = activityNotificationKey;
 
         const activityRows = () => {
             const serverRows = window.ADMIN_NOTIFY && Array.isArray(window.ADMIN_NOTIFY.recent) ? window.ADMIN_NOTIFY.recent : [];
@@ -4713,8 +4738,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 return true;
             }).sort((a, b) => String(b.at).localeCompare(String(a.at)));
         };
-        const unreadActivity = () => activityRows().slice(0, 20).filter(row => !readKeys.has(activityKey(row)));
-        const notificationKeys = () => activityRows().slice(0, 20).map(activityKey);
+        const unreadActivity = () => activityRows().filter(row => !readKeys.has(activityKey(row)));
+        const notificationKeys = () => activityRows().map(activityKey);
 
         async function notificationRequest(action, keys, retried) {
             const response = await fetch('../api/notification-read.php', {
@@ -4741,7 +4766,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const result = await notificationRequest('state', keys.slice(i, i + 500));
                 (result.read_keys || []).forEach(key => readKeys.add(key));
             }
-            readStateReady = true;
+            dashboardReadStateReady = true;
         }
 
         async function markRead(keys) {
@@ -4755,7 +4780,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         function paintBadge() {
-            if (!readStateReady) {
+            if (!dashboardReadStateReady) {
                 abadge.hidden = true;
                 abell.classList.remove('has-notifications');
                 abell.setAttribute('aria-label', 'Notifications');
@@ -4803,7 +4828,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             alist.innerHTML = html;
             paintBadge();
-            if (amarkAll) amarkAll.disabled = unreadActivity().length === 0;
+            paintDashboardActivityReadState();
+            if (amarkAll) amarkAll.disabled = !dashboardReadStateReady || unreadActivity().length === 0;
         }
 
         async function openPanel() {
