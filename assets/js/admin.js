@@ -4277,12 +4277,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function paintBadge() {
         if (!readStateReady) {
-            const pending = ADMIN.notify.unseen().length + ADMIN.notify.unreadChanges();
-            badge.textContent = pending > 99 ? '99+' : String(pending);
-            badge.hidden = pending === 0;
-            bell.classList.toggle('has-notifications', pending > 0);
-            bell.setAttribute('aria-label', pending ? 'Notifications, ' + pending + ' new' : 'Notifications');
-            bell.title = pending ? pending + ' new notification' + (pending === 1 ? '' : 's') : 'Notifications';
+            badge.hidden = true;
+            bell.classList.remove('has-notifications');
+            bell.setAttribute('aria-label', 'Notifications');
+            bell.title = 'Notifications';
             return;
         }
         const unreadActivity = activities().filter((row) => !readKeys.has(activityKey(row))).length;
@@ -4680,12 +4678,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         function paintBadge() {
             if (!readStateReady) {
-                const pending = ADMIN.notify.unseen().length + ADMIN.notify.unreadChanges();
-                abadge.textContent = pending > 99 ? '99+' : String(pending);
-                abadge.hidden = pending === 0;
-                abell.classList.toggle('has-notifications', pending > 0);
-                abell.setAttribute('aria-label', pending ? 'Notifications, ' + pending + ' new' : 'Notifications');
-                abell.title = pending ? pending + ' new notification' + (pending === 1 ? '' : 's') : 'Notifications';
+                abadge.hidden = true;
+                abell.classList.remove('has-notifications');
+                abell.setAttribute('aria-label', 'Notifications');
+                abell.title = 'Notifications';
                 return;
             }
             const total = unreadActivity().length;
