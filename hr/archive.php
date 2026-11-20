@@ -50,6 +50,34 @@ $archive_sync = ['ids' => array_map(fn($a) => (int) $a['id'], $applicants), 'at'
 foreach ($applicants as $a) {
     if (!empty($a['archived_at'])) $archive_sync['at'][(int) $a['id']] = (int) (strtotime((string) $a['archived_at']) * 1000);
 }
+
+// Notification bell data: completed applicants to review + HR's recent activity
+require_once __DIR__ . '/hr-data.php';
+$completed_ids = [];
+try {
+    foreach (repo_applicants_active() as $a) {
+        if (($a['status'] ?? '') === 'Completed') $completed_ids[] = (int) $a['id'];
+    }
+} catch (Throwable $e) {
+    $completed_ids = [];
+}
+
+$hr_feed = [];
+try {
+    foreach (repo_recent_activity(null, 30) as $row) {
+        if (strcasecmp((string) ($row['by'] ?? ''), 'Admin') === 0) continue;
+        $hr_feed[] = [
+            'id'       => (int) ($row['id'] ?? 0),
+            'at'       => (string) ($row['at'] ?? ''),
+            'activity' => (string) ($row['activity'] ?? ''),
+            'details'  => (string) ($row['details'] ?? ''),
+            'by'       => (string) ($row['by'] ?? ''),
+        ];
+        if (count($hr_feed) >= 30) break;
+    }
+} catch (Throwable $e) {
+    $hr_feed = [];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en" data-page="archive">
@@ -184,8 +212,27 @@ foreach ($applicants as $a) {
 
     <!-- Main Content -->
     <main class="main-content archive-page">
-        <header class="content-header reveal" style="--i:1">
-            <h1>Archive</h1>
+        <header class="content-header has-bell reveal" style="--i:1">
+            <div class="header-start">
+                <div class="header-text">
+                    <h1>Archive</h1>
+                </div>
+            </div>
+            <div class="header-tools">
+                <div class="notif-wrap">
+                    <button type="button" class="notif-bell" id="notifBell" aria-haspopup="true" aria-expanded="false" aria-controls="notifPanel" aria-label="Notifications" title="Notifications">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+                        <span class="notif-count" id="notifBadge" hidden>0</span>
+                    </button>
+                    <div class="notif-panel" id="notifPanel" role="dialog" aria-label="Notifications" hidden>
+                        <div class="notif-head">
+                            <h3>Notifications</h3>
+                            <button type="button" class="notif-markall" id="notifMarkAll">Mark all as read</button>
+                        </div>
+                        <ul class="notif-list" id="notifList"></ul>
+                    </div>
+                </div>
+            </div>
         </header>
 
         <!-- Search + select all + filter toggle -->
@@ -369,6 +416,8 @@ foreach ($applicants as $a) {
     <!-- Shared HR behaviour first, then this page's script -->
     <script>window.HR_SERVER_ARCHIVE = <?php echo json_encode($archive_sync, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
     <script>window.HR_ACCOUNT = <?php echo json_encode(['id' => (int) ($_SESSION['user_id'] ?? 0)], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
+    <script>window.HR_COMPLETED_IDS = <?php echo json_encode(array_map('intval', $completed_ids)); ?>;</script>
+    <script>window.HR_ACTIVITY = <?php echo json_encode($hr_feed, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;</script>
     <script src="../assets/js/hr.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/hr.js'); ?>"></script>
 </body>
 </html>

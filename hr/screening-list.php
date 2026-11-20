@@ -19,11 +19,39 @@ header('Pragma: no-cache');
 // DB status (pending/in_progress/submitted/reviewed/rejected/accepted) is mapped to the
 // UI labels Pending / In Progress / Completed (+ Passed/Rejected) in src/Helpers/display.php.
 require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
+require_once __DIR__ . '/hr-data.php';
 
 try {
     repo_auto_archive_terminal_applicants();
 } catch (Throwable $e) {
     error_log('screeninglist auto-archive error: ' . $e->getMessage());
+}
+
+// Notification bell data: completed applicants to review + HR's recent activity
+$completed_ids = [];
+try {
+    foreach (repo_applicants_active() as $a) {
+        if (($a['status'] ?? '') === 'Completed') $completed_ids[] = (int) $a['id'];
+    }
+} catch (Throwable $e) {
+    $completed_ids = [];
+}
+
+$hr_feed = [];
+try {
+    foreach (repo_recent_activity(null, 30) as $row) {
+        if (strcasecmp((string) ($row['by'] ?? ''), 'Admin') === 0) continue;
+        $hr_feed[] = [
+            'id'       => (int) ($row['id'] ?? 0),
+            'at'       => (string) ($row['at'] ?? ''),
+            'activity' => (string) ($row['activity'] ?? ''),
+            'details'  => (string) ($row['details'] ?? ''),
+            'by'       => (string) ($row['by'] ?? ''),
+        ];
+        if (count($hr_feed) >= 30) break;
+    }
+} catch (Throwable $e) {
+    $hr_feed = [];
 }
 
 // Rows per page
@@ -184,24 +212,32 @@ foreach ($archived_rows as $a) {
 
     <!-- Main Content -->
     <main class="main-content">
-        <header class="content-header reveal" style="--i:1">
-            <h1>Applicants Screening List</h1>
+        <header class="content-header has-bell reveal" style="--i:1">
+            <div class="header-start">
+                <div class="header-text">
+                    <h1>Applicants Screening List</h1>
+                </div>
+            </div>
+            <div class="header-tools">
+                <a href="add-applicants.php" class="btn-add-applicant" title="Add applicant" aria-label="Add applicant">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                    <span>Add Applicant</span>
+                </a>
+                <div class="notif-wrap">
+                    <button type="button" class="notif-bell" id="notifBell" aria-haspopup="true" aria-expanded="false" aria-controls="notifPanel" aria-label="Notifications" title="Notifications">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+                        <span class="notif-count" id="notifBadge" hidden>0</span>
+                    </button>
+                    <div class="notif-panel" id="notifPanel" role="dialog" aria-label="Notifications" hidden>
+                        <div class="notif-head">
+                            <h3>Notifications</h3>
+                            <button type="button" class="notif-markall" id="notifMarkAll">Mark all as read</button>
+                        </div>
+                        <ul class="notif-list" id="notifList"></ul>
+                    </div>
+                </div>
+            </div>
         </header>
-
-        <!-- Search + select all + filter toggle -->
-        <div class="toolbar reveal" id="toolbar" style="--i:2">
-            <label class="search-box" for="searchInput">
-                <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-                <input type="search" id="searchInput" maxlength="200" placeholder="Search Applicants..." autocomplete="off" aria-label="Search applicants by name, email or contact">
-                <button type="button" class="search-clear" id="searchClear" aria-label="Clear search" hidden>
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-                </button>
-            </label>
-
-            <a href="add-applicants.php" class="btn-add-applicant" title="Add applicant" aria-label="Add applicant">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-                <span>Add Applicant</span>
-            </a>
 
             <!-- Select all  <->  Cancel / Delete: one slot, so nothing else in the toolbar jumps -->
             <div class="select-swap" id="selectSwap">
@@ -358,6 +394,8 @@ foreach ($archived_rows as $a) {
     <!-- Shared HR behaviour first, then this page's script -->
     <script>window.HR_SERVER_ARCHIVE = <?php echo json_encode($archive_sync, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
     <script>window.HR_ACCOUNT = <?php echo json_encode(['id' => (int) ($_SESSION['user_id'] ?? 0)], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
+    <script>window.HR_COMPLETED_IDS = <?php echo json_encode(array_map('intval', $completed_ids)); ?>;</script>
+    <script>window.HR_ACTIVITY = <?php echo json_encode($hr_feed, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;</script>
     <script src="../assets/js/hr.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/hr.js'); ?>"></script>
 </body>
 </html>
