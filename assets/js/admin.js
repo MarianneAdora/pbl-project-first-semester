@@ -3037,7 +3037,7 @@ document.addEventListener('DOMContentLoaded', () => {
 /* ===== PAGE : questionlist.js (runs only on: questionlist) ===== */
 if (document.documentElement.getAttribute('data-page') === 'questionlist') {
 /* ==========================================================================
-   Questionnaires (admin): search, section + status filters, rows that fit the window, page buttons, reorder + undo.
+   Questionnaires (admin): search, section + status filters, scrollable results, reorder + undo.
    Same behaviour as the HR Accounts page (assets/js/hrlist.js). Shared helpers (window.ADMIN: requests, toast,
    confirm box, flyToArchive, badges), the sidebar and logout live in admin-common.js (loaded BEFORE this script).
    This page's markup + data come from admin/question-list.php (window.ADMIN_Q).
@@ -3061,11 +3061,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const emptyText = document.getElementById('emptyText');
     const clearFilters = document.getElementById('clearFilters');
     const showingText = document.getElementById('showingText');
-    const pagination = document.getElementById('pagination');
 
-    const state = { q: '', status: 'all', section: 'all', page: 1 };
-    let perPage = 8;                  // fitPerPage() adjusts it to the window height
-    let visible = [];                 // rows on the current page
+    const state = { q: '', status: 'all', section: 'all' };
     let animateRows = false;          // the first render comes with the card entrance
     let busy = false;                 // a delete / undo / reorder request is running
     let flashPending = '';            // the row that glows once (the one just saved / restored)
@@ -3191,10 +3188,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const statusDD = createDropdown(document.getElementById('statusDropdown'), (v) => {
-        state.status = v; state.page = 1; render();
+        state.status = v; render();
     });
     const sectionDD = createDropdown(document.getElementById('sectionDropdown'), (v) => {
-        state.section = v; state.page = 1; render();
+        state.section = v; render();
     });
 
     const CHECK = '<svg class="opt-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>';
@@ -3246,35 +3243,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ---------- rows per page: as many as fit, so the card has no empty band ----------
-    const MIN_ROWS = 4;
-    const MAX_ROWS = 15;
-
-    function fitPerPage() {
-        tableScroll.style.removeProperty('--row-h');
-        const firstRow = tableBody.querySelector('tr');
-        const rowHeight = firstRow ? Math.ceil(firstRow.getBoundingClientRect().height) : 53;
-        const head = tableScroll.querySelector('thead');
-        const room = tableScroll.clientHeight - (head ? head.offsetHeight : 46);
-        if (!rowHeight || room <= 0) return perPage;
-        const rows = Math.min(MAX_ROWS, Math.max(MIN_ROWS, Math.floor((room - 4) / rowHeight)));
-        tableScroll.style.setProperty('--row-h', Math.max(rowHeight, Math.floor((room - 2) / rows)) + 'px');
-        return rows;
-    }
-
-    // Window changed size: re-fit, keeping the first visible question in view
-    function refit() {
-        const next = fitPerPage();
-        if (next === perPage) return;
-        const firstIndex = (state.page - 1) * perPage;
-        perPage = next;
-        state.page = Math.floor(firstIndex / perPage) + 1;
-        const wasAnimating = animateRows;
-        animateRows = false;
-        render();
-        animateRows = wasAnimating;
-    }
-
     // ---------- filtering ----------
     function getFiltered() {
         const q = state.q.trim().toLowerCase();
@@ -3287,19 +3255,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ---------- rendering ----------
-    function render() {
+    function render(preserveScroll = false) {
         updateCounts();
         const filtered = getFiltered();
         const total = filtered.length;
-        const pages = Math.max(1, Math.ceil(total / perPage));
-        state.page = Math.min(Math.max(1, state.page), pages);
-
-        const start = (state.page - 1) * perPage;
-        visible = filtered.slice(start, start + perPage);
-
+        const scrollTop = preserveScroll ? tableScroll.scrollTop : 0;
         tableBody.textContent = '';
-        visible.forEach((q, index) => tableBody.appendChild(buildRow(q, index, start + index + 1)));
-        tableScroll.scrollTop = 0;
+        filtered.forEach((q, index) => tableBody.appendChild(buildRow(q, index, index + 1)));
+        tableScroll.scrollTop = scrollTop;
 
         emptyState.hidden = total !== 0;
         if (total === 0) {
@@ -3309,8 +3272,7 @@ document.addEventListener('DOMContentLoaded', () => {
             clearFilters.hidden = none;
         }
 
-        renderShowing(total, start);
-        renderPagination(pages, total);
+        renderShowing(total);
         searchClear.hidden = state.q === '';
         syncUrl();
     }
@@ -3460,7 +3422,7 @@ document.addEventListener('DOMContentLoaded', () => {
         questions = questions.filter(item => Number(item.section_no) !== sectionNo);
         questions.splice(firstSectionIndex, 0, ...orderedSection);
         busy = true;
-        render();
+        render(true);
         if (keepFocus) {
             const movedRow = Array.from(tableBody.querySelectorAll('tr')).find(row => row.dataset.id === draggedId);
             if (movedRow) movedRow.querySelector('.question-drag-handle').focus();
@@ -3494,7 +3456,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 question_ids: questionIds
             });
             questions = res.data.questions;
-            render();
+            render(true);
             ADMIN.toast('Question order restored.', { duration: 4000 });
         } catch (err) {
             ADMIN.toast(err.message || 'Could not undo the question order.', { error: true, duration: 6000 });
@@ -3503,73 +3465,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function renderShowing(total, start) {
+    function renderShowing(total) {
         if (total === 0) {
             showingText.textContent = questions.length === 0 ? 'No questionnaires yet' : 'No questionnaires found';
             return;
         }
-        showingText.textContent = 'Showing ' + (start + 1) + '\u2013' + (start + visible.length) + ' of ' + total;
-    }
-
-    function pageList(current, pages) {
-        if (pages <= 7) return Array.from({ length: pages }, (_, i) => i + 1);
-        const keep = new Set([1, pages, current - 1, current, current + 1]);
-        const nums = [...keep].filter(n => n >= 1 && n <= pages).sort((a, b) => a - b);
-        const out = [];
-        nums.forEach((n, i) => {
-            if (i > 0) {
-                const gap = n - nums[i - 1];
-                if (gap === 2) out.push(n - 1);
-                else if (gap > 2) out.push('gap');
-            }
-            out.push(n);
-        });
-        return out;
-    }
-
-    const CHEVRON_LEFT = 'M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z';
-    const CHEVRON_RIGHT = 'M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z';
-    const DOUBLE_LEFT = 'M17.59 18 19 16.59 14.42 12 19 7.41 17.59 6l-6 6zM11 18l1.41-1.41L7.83 12l4.58-4.59L11 6l-6 6z';
-    const DOUBLE_RIGHT = 'M6.41 6 5 7.41 9.58 12 5 16.59 6.41 18l6-6zM13 6l-1.41 1.41L16.17 12l-4.58 4.59L13 18l6-6z';
-
-    function arrowButton(path, label, disabled, goTo) {
-        const btn = el('button', 'page-btn');
-        btn.type = 'button';
-        btn.disabled = disabled;
-        btn.setAttribute('aria-label', label);
-        btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + path + '"/></svg>';
-        btn.addEventListener('click', () => goToPage(goTo));
-        return btn;
-    }
-
-    function renderPagination(pages, total) {
-        pagination.textContent = '';
-        if (total === 0 || pages <= 1) return;
-
-        pagination.appendChild(arrowButton(DOUBLE_LEFT, 'First page', state.page === 1, 1));
-        pagination.appendChild(arrowButton(CHEVRON_LEFT, 'Previous page', state.page === 1, state.page - 1));
-
-        pageList(state.page, pages).forEach(item => {
-            if (item === 'gap') {
-                pagination.appendChild(el('span', 'page-gap', '\u2026'));
-                return;
-            }
-            const btn = el('button', 'page-btn' + (item === state.page ? ' is-current' : ''), String(item));
-            btn.type = 'button';
-            btn.setAttribute('aria-label', 'Page ' + item);
-            if (item === state.page) btn.setAttribute('aria-current', 'page');
-            btn.addEventListener('click', () => goToPage(item));
-            pagination.appendChild(btn);
-        });
-
-        pagination.appendChild(arrowButton(CHEVRON_RIGHT, 'Next page', state.page === pages, state.page + 1));
-        pagination.appendChild(arrowButton(DOUBLE_RIGHT, 'Last page', state.page === pages, pages));
-    }
-
-    function goToPage(n) {
-        if (n === state.page) return;
-        state.page = n;
-        render();
+        showingText.textContent = 'Showing all ' + total + ' questionnaire' + (total === 1 ? '' : 's');
     }
 
     // ======================================================================
@@ -3631,7 +3532,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (state.q.trim()) p.set('q', state.q.trim());
         if (state.status !== 'all') p.set('status', state.status);
         if (state.section !== 'all') p.set('section', state.section);
-        if (state.page > 1) p.set('page', state.page);
         const qs = p.toString();
         window.history.replaceState({}, document.title, window.location.pathname + (qs ? '?' + qs : ''));
     }
@@ -3644,7 +3544,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const section = String(p.get('section') || '').trim();
         if (/^\d+$/.test(section) && questions.some(q => String(q.section_no) === section)) state.section = section;
         state.q = p.get('q') || '';
-        state.page = parseInt(p.get('page'), 10) || 1;
         statusDD.setValue(state.status, true);
         sectionDD.setValue(state.section, true);
         searchInput.value = state.q;
@@ -3656,7 +3555,6 @@ document.addEventListener('DOMContentLoaded', () => {
         clearTimeout(searchTimer);
         searchTimer = setTimeout(() => {
             state.q = searchInput.value;
-            state.page = 1;
             render();
         }, 120);
         searchClear.hidden = searchInput.value === '';
@@ -3672,14 +3570,12 @@ document.addEventListener('DOMContentLoaded', () => {
     searchClear.addEventListener('click', () => {
         searchInput.value = '';
         state.q = '';
-        state.page = 1;
         render();
         searchInput.focus();
     });
 
     clearFilters.addEventListener('click', () => {
         state.q = '';
-        state.page = 1;
         state.status = 'all';
         state.section = 'all';
         searchInput.value = '';
@@ -3688,24 +3584,16 @@ document.addEventListener('DOMContentLoaded', () => {
         render();
     });
 
-    let resizeTimer = null;
-    window.addEventListener('resize', () => {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(refit, 150);
-    });
-
     // ---------- start ----------
     buildSectionOptions();
-    perPage = fitPerPage();
     readUrl();
-    // coming back from the form: open the page where the saved question is
-    if (flashId) {
-        const at = getFiltered().findIndex(q => q.id === flashId);
-        if (at >= 0) state.page = Math.floor(at / perPage) + 1;
-    }
+    // Keep the recently saved questionnaire visible when returning from the form.
     render();
-    refit();                // now that a real row exists, measure again for an exact fit
-    animateRows = true;     // later renders (search, filter, pages) animate the rows in
+    if (flashId) {
+        const row = Array.from(tableBody.querySelectorAll('tr')).find(item => item.dataset.id === flashId);
+        if (row) row.scrollIntoView({ block: 'center' });
+    }
+    animateRows = true;     // later renders (search and filter) animate the rows in
 });
 }
 

@@ -271,10 +271,9 @@ try {
             </div>
         </section>
 
-        <!-- Footer: count + pagination -->
+        <!-- Footer: result count -->
         <footer class="list-footer reveal" style="--i:5">
             <p class="showing" id="showingText" aria-live="polite"></p>
-            <nav class="pagination" id="pagination" aria-label="Pagination"></nav>
         </footer>
     </main>
 
