@@ -5102,22 +5102,6 @@ html:where([data-page="details"])[data-theme="dark"] .tab-ink { background: #ff6
     min-height: 24px;
 }
 
-:where(html[data-page="screeninglist"]) .filter-head-actions {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-:where(html[data-page="screeninglist"]) .view-all-applicants:disabled {
-    cursor: not-allowed;
-    opacity: 0.55;
-    animation: none;
-}
-
-:where(html[data-page="screeninglist"]) .view-all-applicants:disabled:hover {
-    transform: none;
-}
-
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .filter-label {
     display: flex;
     align-items: center;
