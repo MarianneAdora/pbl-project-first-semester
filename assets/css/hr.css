@@ -2964,7 +2964,7 @@ html.js.is-ready:where([data-page="dashboardhr"]) .fl-item {
    Colours use the theme variables (theme.css redefines them for the dark theme); the second value
    is the light-theme colour.
    ========================================================================== */
-:where(html[data-page="dashboardhr"]) .content-header.has-bell {
+.content-header.has-bell {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
@@ -2973,17 +2973,17 @@ html.js.is-ready:where([data-page="dashboardhr"]) .fl-item {
     z-index: 40;                   /* the open panel sits above the cards under the header */
 }
 
-:where(html[data-page="dashboardhr"]) .content-header.has-bell .header-text {
+.content-header.has-bell .header-text {
     min-width: 0;                  /* lets a long name still end in "..." */
     flex: 1 1 auto;
 }
 
-:where(html[data-page="dashboardhr"]) .notif-wrap {
+.notif-wrap {
     position: relative;
     flex-shrink: 0;
 }
 
-:where(html[data-page="dashboardhr"]) .notif-bell {
+.notif-bell {
     position: relative;
     width: 46px;
     height: 46px;
@@ -2998,23 +2998,23 @@ html.js.is-ready:where([data-page="dashboardhr"]) .fl-item {
     transition: transform 0.3s var(--ease-pop), box-shadow 0.25s var(--ease-out), border-color 0.2s ease, color 0.2s ease;
 }
 
-:where(html[data-page="dashboardhr"]) .notif-bell:hover {
+.notif-bell:hover {
     transform: translateY(-2px);
     border-color: #a3081e;
     color: #a3081e;
     box-shadow: 0 10px 22px rgba(163, 8, 30, 0.22);
 }
 
-:where(html[data-page="dashboardhr"]) .notif-bell:active { transform: translateY(0) scale(0.96); }
-:where(html[data-page="dashboardhr"]) .notif-bell:focus-visible { outline: 2px solid #a3081e; outline-offset: 3px; }
-:where(html[data-page="dashboardhr"]) .notif-bell[aria-expanded="true"] { border-color: #a3081e; color: #a3081e; }
-:where(html[data-page="dashboardhr"]) .notif-bell.has-notifications {
+.notif-bell:active { transform: translateY(0) scale(0.96); }
+.notif-bell:focus-visible { outline: 2px solid #a3081e; outline-offset: 3px; }
+.notif-bell[aria-expanded="true"] { border-color: #a3081e; color: #a3081e; }
+.notif-bell.has-notifications {
     border-color: #a3081e;
     color: #a3081e;
     box-shadow: 0 4px 15px rgba(163, 8, 30, 0.22);
 }
 
-:where(html[data-page="dashboardhr"]) .notif-bell svg {
+.notif-bell svg {
     width: 22px;
     height: 22px;
     fill: currentColor;
@@ -3022,7 +3022,7 @@ html.js.is-ready:where([data-page="dashboardhr"]) .fl-item {
 }
 
 /* the bell swings once when the page opens with something new */
-:where(html[data-page="dashboardhr"]) .notif-bell.ring svg { animation: bellRing 1.1s ease 0.5s 1; }
+.notif-bell.ring svg { animation: bellRing 1.1s ease 0.5s 1; }
 
 @keyframes bellRing {
     0%, 100% { transform: rotate(0); }
@@ -3033,7 +3033,7 @@ html.js.is-ready:where([data-page="dashboardhr"]) .fl-item {
     75% { transform: rotate(4deg); }
 }
 
-:where(html[data-page="dashboardhr"]) .notif-count {
+.notif-count {
     position: absolute;
     top: -6px;
     right: -6px;
@@ -3054,11 +3054,11 @@ html.js.is-ready:where([data-page="dashboardhr"]) .fl-item {
     box-shadow: 0 0 0 2px var(--surface, #ffffff);
 }
 
-:where(html[data-page="dashboardhr"]) .notif-count[hidden] { display: none; }
-:where(html[data-page="dashboardhr"]) .notif-count.pop { animation: badgePop 0.55s var(--ease-pop); }
+.notif-count[hidden] { display: none; }
+.notif-count.pop { animation: badgePop 0.55s var(--ease-pop); }
 
 /* ---------- the panel ---------- */
-:where(html[data-page="dashboardhr"]) .notif-panel {
+.notif-panel {
     position: absolute;
     top: calc(100% + 10px);
     right: 0;
@@ -3076,17 +3076,17 @@ html.js.is-ready:where([data-page="dashboardhr"]) .fl-item {
     animation: notifIn 0.28s var(--ease-out);
 }
 
-:where(html[data-page="dashboardhr"]) .notif-panel[hidden] { display: none; }
+.notif-panel[hidden] { display: none; }
 
-html:where([data-page="dashboardhr"])[data-motion="off"] .notif-panel,
-html:where([data-page="dashboardhr"])[data-motion="off"] .notif-bell.ring svg { animation: none; }
+html[data-motion="off"] .notif-panel,
+html[data-motion="off"] .notif-bell.ring svg { animation: none; }
 
 @keyframes notifIn {
     from { opacity: 0; transform: translateY(-8px) scale(0.97); }
     to   { opacity: 1; transform: none; }
 }
 
-:where(html[data-page="dashboardhr"]) .notif-head {
+.notif-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -3095,12 +3095,12 @@ html:where([data-page="dashboardhr"])[data-motion="off"] .notif-bell.ring svg { 
     border-bottom: 1px solid var(--edge, #eceef1);
 }
 
-:where(html[data-page="dashboardhr"]) .notif-head h3 {
+.notif-head h3 {
     font-size: 15px;
     font-weight: 800;
 }
 
-:where(html[data-page="dashboardhr"]) .notif-markall {
+.notif-markall {
     border: none;
     background: none;
     color: #f0586e;
@@ -3112,10 +3112,10 @@ html:where([data-page="dashboardhr"])[data-motion="off"] .notif-bell.ring svg { 
     border-radius: 6px;
 }
 
-:where(html[data-page="dashboardhr"]) .notif-markall:hover { background: rgba(240, 88, 110, 0.12); }
-:where(html[data-page="dashboardhr"]) .notif-markall:disabled { opacity: 0.4; cursor: default; background: none; }
+.notif-markall:hover { background: rgba(240, 88, 110, 0.12); }
+.notif-markall:disabled { opacity: 0.4; cursor: default; background: none; }
 
-:where(html[data-page="dashboardhr"]) .notif-list {
+.notif-list {
     list-style: none;
     margin: 0;
     padding: 6px;
@@ -3124,10 +3124,10 @@ html:where([data-page="dashboardhr"])[data-motion="off"] .notif-bell.ring svg { 
     min-height: 0;
 }
 
-:where(html[data-page="dashboardhr"]) .notif-list::-webkit-scrollbar { width: 6px; }
-:where(html[data-page="dashboardhr"]) .notif-list::-webkit-scrollbar-thumb { background: var(--edge, #d6d9de); border-radius: 6px; }
+.notif-list::-webkit-scrollbar { width: 6px; }
+.notif-list::-webkit-scrollbar-thumb { background: var(--edge, #d6d9de); border-radius: 6px; }
 
-:where(html[data-page="dashboardhr"]) .notif-item {
+.notif-item {
     position: relative;
     display: flex;
     align-items: flex-start;
@@ -3144,12 +3144,12 @@ html:where([data-page="dashboardhr"])[data-motion="off"] .notif-bell.ring svg { 
     transition: background-color 0.2s ease;
 }
 
-:where(html[data-page="dashboardhr"]) button.notif-item { cursor: pointer; }
-:where(html[data-page="dashboardhr"]) button.notif-item:hover,
-:where(html[data-page="dashboardhr"]) button.notif-item:focus-visible { background: var(--surface-2, #f4f5f7); }
-:where(html[data-page="dashboardhr"]) .notif-entry.is-expanded .notif-item { background: var(--surface-2, #f4f5f7); }
-:where(html[data-page="dashboardhr"]) .notif-item:focus-visible { outline: 2px solid #f0586e; outline-offset: -2px; }
-:where(html[data-page="dashboardhr"]) .notif-open {
+button.notif-item { cursor: pointer; }
+button.notif-item:hover,
+button.notif-item:focus-visible { background: var(--surface-2, #f4f5f7); }
+.notif-entry.is-expanded .notif-item { background: var(--surface-2, #f4f5f7); }
+.notif-item:focus-visible { outline: 2px solid #f0586e; outline-offset: -2px; }
+.notif-open {
     display: inline-flex;
     margin: 0 10px 8px 56px;
     color: #e3475c;
@@ -3157,11 +3157,11 @@ html:where([data-page="dashboardhr"])[data-motion="off"] .notif-bell.ring svg { 
     font-weight: 700;
     text-decoration: none;
 }
-:where(html[data-page="dashboardhr"]) .notif-open:hover { text-decoration: underline; }
+.notif-open:hover { text-decoration: underline; }
 
 /* not read yet */
-:where(html[data-page="dashboardhr"]) .notif-item.is-new { background: rgba(240, 88, 110, 0.09); }
-:where(html[data-page="dashboardhr"]) .notif-item.is-new::after {
+.notif-item.is-new { background: rgba(240, 88, 110, 0.09); }
+.notif-item.is-new::after {
     content: "";
     position: absolute;
     top: 14px;
@@ -3172,7 +3172,7 @@ html:where([data-page="dashboardhr"])[data-motion="off"] .notif-bell.ring svg { 
     background: #e60000;
 }
 
-:where(html[data-page="dashboardhr"]) .notif-ico {
+.notif-ico {
     flex-shrink: 0;
     width: 34px;
     height: 34px;
@@ -3183,13 +3183,13 @@ html:where([data-page="dashboardhr"])[data-motion="off"] .notif-bell.ring svg { 
     color: #f0586e;
 }
 
-:where(html[data-page="dashboardhr"]) .notif-ico svg { width: 18px; height: 18px; fill: currentColor; }
-:where(html[data-page="dashboardhr"]) .notif-ico.tone-green { background: rgba(18, 183, 0, 0.14); color: #12a300; }
-:where(html[data-page="dashboardhr"]) .notif-ico.tone-blue  { background: rgba(0, 162, 255, 0.14); color: #0a8fe0; }
-:where(html[data-page="dashboardhr"]) .notif-ico.tone-amber { background: rgba(245, 166, 35, 0.18); color: #d98a00; }
-:where(html[data-page="dashboardhr"]) .notif-ico.tone-red   { background: rgba(230, 0, 0, 0.12); color: #e60000; }
+.notif-ico svg { width: 18px; height: 18px; fill: currentColor; }
+.notif-ico.tone-green { background: rgba(18, 183, 0, 0.14); color: #12a300; }
+.notif-ico.tone-blue { background: rgba(0, 162, 255, 0.14); color: #0a8fe0; }
+.notif-ico.tone-amber { background: rgba(245, 166, 35, 0.18); color: #d98a00; }
+.notif-ico.tone-red { background: rgba(230, 0, 0, 0.12); color: #e60000; }
 
-:where(html[data-page="dashboardhr"]) .notif-text {
+.notif-text {
     min-width: 0;
     flex: 1 1 auto;
     display: flex;
@@ -3198,26 +3198,26 @@ html:where([data-page="dashboardhr"])[data-motion="off"] .notif-bell.ring svg { 
     padding-right: 14px;
 }
 
-:where(html[data-page="dashboardhr"]) .notif-text strong {
+.notif-text strong {
     font-size: 13px;
     font-weight: 800;
 }
 
-:where(html[data-page="dashboardhr"]) .notif-detail {
+.notif-detail {
     font-size: 12.5px;
     font-weight: 500;
     color: var(--ink-soft, #555555);
     overflow-wrap: anywhere;
 }
 
-:where(html[data-page="dashboardhr"]) .notif-time {
+.notif-time {
     font-size: 11.5px;
     font-weight: 600;
     color: var(--ink-soft, #7a7f87);
     opacity: 0.85;
 }
 
-:where(html[data-page="dashboardhr"]) .notif-empty {
+.notif-empty {
     padding: 28px 18px 26px;
     text-align: center;
     font-size: 13px;
@@ -3226,7 +3226,7 @@ html:where([data-page="dashboardhr"])[data-motion="off"] .notif-bell.ring svg { 
 }
 
 @media (max-width: 560px) {
-    :where(html[data-page="dashboardhr"]) .notif-bell { width: 42px; height: 42px; }
+    .notif-bell { width: 42px; height: 42px; }
 }
 
 /* ==========================================================================
@@ -7713,16 +7713,16 @@ html[data-motion="off"] .spinner {              /* a loading spinner still has t
     gap: 16px;
 }
 
-:where(html[data-page="dashboardhr"]) .content-header .header-text { min-width: 0; flex: 1 1 auto; }
+.content-header .header-text { min-width: 0; flex: 1 1 auto; }
 /* Layout: greeting + profile on the left, bell on the right */
-:where(html[data-page="dashboardhr"]) .content-header .header-start {
+.content-header .header-start {
     display: flex;
     align-items: flex-start;
     gap: 16px;
     min-width: 0;
     flex: 1 1 auto;
 }
-:where(html[data-page="dashboardhr"]) .header-tools { display: flex; align-items: flex-start; gap: 12px; flex-shrink: 0; }
+.header-tools { display: flex; align-items: flex-start; gap: 12px; flex-shrink: 0; }
 :where(html[data-page="dashboardhr"]) .hr-stats-download {
     display: inline-flex;
     align-items: center;
@@ -8191,12 +8191,12 @@ html[data-motion="off"] .spinner {              /* a loading spinner still has t
     }
     .btn, .modal-actions button, .avatar-btn { max-width: 100%; min-width: 0; white-space: normal; line-height: 1.35; }
 
-    :where(html[data-page="dashboardhr"]) .content-header.has-bell { flex-direction: column; align-items: stretch; gap: 12px; }
-    :where(html[data-page="dashboardhr"]) .content-header .header-start { width: 100%; }
-    :where(html[data-page="dashboardhr"]) .header-tools { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 48px; align-items: center; gap: 10px; }
+    .content-header.has-bell { flex-direction: column; align-items: stretch; gap: 12px; }
+    .content-header .header-start { width: 100%; }
+    .header-tools { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 48px; align-items: center; gap: 10px; }
     :where(html[data-page="dashboardhr"]) .hr-stats-download { width: 100%; min-width: 0; height: 48px; justify-content: center; padding: 0 12px; }
-    :where(html[data-page="dashboardhr"]) .notif-bell { width: 48px; height: 48px; }
-    :where(html[data-page="dashboardhr"]) .header-tools .notif-wrap { justify-self: end; }
+    .notif-bell { width: 48px; height: 48px; }
+    .header-tools .notif-wrap { justify-self: end; }
 }
 
 @keyframes mobileHeaderEntrance {
@@ -8813,26 +8813,26 @@ html[data-motion="off"] .spinner {              /* a loading spinner still has t
         padding-top: calc(max(12px, env(safe-area-inset-top)) + 76px);
     }
 
-    :where(html[data-page="dashboardhr"]) .content-header.has-bell {
+    .content-header.has-bell {
         flex-direction: column;
         align-items: stretch;
         gap: 10px;
     }
 
-    :where(html[data-page="dashboardhr"]) .content-header .header-start,
-    :where(html[data-page="dashboardhr"]) .content-header .header-text {
+.content-header .header-start,
+.content-header .header-text {
         min-width: 0;
         flex: 1 1 auto;
     }
 
-    :where(html[data-page="dashboardhr"]) .content-header h1 {
+    .content-header h1 {
         margin: 0;
         font-size: 24px;
         line-height: 1.2;
         overflow-wrap: anywhere;
     }
 
-    :where(html[data-page="dashboardhr"]) .content-header.has-bell .header-tools {
+    .content-header.has-bell .header-tools {
         display: flex;
         width: 100%;
         flex: 0 0 auto;
@@ -9430,7 +9430,7 @@ html[data-motion="off"] .nav-notif-panel:not([hidden]) { animation: none; }
 @media (max-width: 800px) {
     .sidebar .sidebar-header:not(.has-profile) { grid-template-columns: 36px minmax(0, 1fr) 42px; }
 
-    :where(html[data-page="dashboardhr"]) .content-header.has-bell {
+    .content-header.has-bell {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
         align-items: center;
@@ -9438,9 +9438,9 @@ html[data-motion="off"] .nav-notif-panel:not([hidden]) { animation: none; }
         gap: 8px;
     }
 
-    :where(html[data-page="dashboardhr"]) .content-header .header-start { width: auto; flex: 1 1 0; min-width: 0; }
-    :where(html[data-page="dashboardhr"]) .content-header .header-text { flex: 1 1 0; min-width: 0; }
-    :where(html[data-page="dashboardhr"]) .content-header.has-bell .header-tools {
+    .content-header .header-start { width: auto; flex: 1 1 0; min-width: 0; }
+    .content-header .header-text { flex: 1 1 0; min-width: 0; }
+    .content-header.has-bell .header-tools {
         display: flex;
         width: auto;
         flex: 0 0 auto;
@@ -9449,7 +9449,7 @@ html[data-motion="off"] .nav-notif-panel:not([hidden]) { animation: none; }
         justify-content: flex-end;
         margin-left: 0;
     }
-    :where(html[data-page="dashboardhr"]) .content-header h1 {
+    .content-header h1 {
         font-size: clamp(18px, 5vw, 24px);
         line-height: 1.15;
         white-space: normal;
