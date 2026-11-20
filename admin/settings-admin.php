@@ -19,6 +19,7 @@ date_default_timezone_set('Asia/Manila');
 
 // Sidebar badges: new HR activity + archived questions/accounts expiring soon.
 require_once __DIR__ . '/../src/Helpers/db.php';
+require_once __DIR__ . '/../src/Repositories/AdminRepository.php';
 require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
 require_once __DIR__ . '/../hr/hr-data.php';
 
@@ -341,33 +342,12 @@ $account_avatar_url = $profile['avatar_url'];
 
     <!-- Pass PHP Variables to JavaScript -->
     <script>
-        // same badges as every admin page: they animate when HR did something new, and clear once the Dashboard is opened
         window.ADMIN_NOTIFY = <?php
-            $adminNotify = ['activity' => [], 'expiring' => 0, 'days' => 7];
-            try {
-                $pdo = db();
-                // HR activity timestamps (newest first), excluding admin's own actions.
-                $acts = [];
-                foreach (repo_recent_activity($pdo, 100) as $row) {
-                    if (strcasecmp((string) ($row['by'] ?? ''), 'Admin') === 0) continue;
-                    $acts[] = (string) ($row['at'] ?? '');
-                }
-                $adminNotify['activity'] = array_slice($acts, 0, 100);
-
-                // Archived questions/accounts expiring within 7 days (30-day retention).
-                $cutoff = date('Y-m-d H:i:s', strtotime('-23 days'));
-                $expiring = 0;
-                $st = $pdo->prepare("SELECT COUNT(*) FROM question_config WHERE deleted_at IS NOT NULL AND deleted_at <= :c");
-                $st->execute([':c' => $cutoff]);
-                $expiring += (int) $st->fetchColumn();
-                $st = $pdo->prepare("SELECT COUNT(*) FROM users WHERE role = 'hr' AND deleted_at IS NOT NULL AND deleted_at <= :c");
-                $st->execute([':c' => $cutoff]);
-                $expiring += (int) $st->fetchColumn();
-                $adminNotify['expiring'] = $expiring;
-            } catch (Throwable $e) {
-                // keep defaults
+            try { echo json_encode(repo_admin_notify(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); }
+            catch (Throwable $e) {
+                error_log('settings-admin.php DB notification error: ' . $e->getMessage());
+                echo json_encode(['activity' => [], 'recent' => [], 'expiring' => 0, 'days' => 7]);
             }
-            echo json_encode($adminNotify, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
         ?>;
         window.ADMIN_ACCOUNT = <?php echo json_encode([
             'name' => $account_name, 'email' => $account_email,
@@ -377,6 +357,6 @@ $account_avatar_url = $profile['avatar_url'];
 
     </script>
     <!-- Shared admin behaviour first, then this page's script -->
-    <script src="../assets/js/admin.js?v=settings-20261119-3"></script>
+    <script src="../assets/js/admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/admin.js'); ?>"></script>
 </body>
 </html>
