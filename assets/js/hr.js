@@ -4347,6 +4347,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const selectAll = document.getElementById('selectAll');
     const showingText = document.getElementById('showingText');
     const pagination = document.getElementById('pagination');
+    const viewAllApplicants = document.getElementById('viewAllApplicants');
     const archiveLink = document.getElementById('archiveLink');
 
     const state = { q: '', status: 'all', result: 'all', page: 1 };
@@ -4481,6 +4482,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('statusReset').addEventListener('click', () => { statusDD.setValue('all'); });
     document.getElementById('resultReset').addEventListener('click', () => { resultDD.setValue('all'); });
+
+    function syncViewAllApplicants() {
+        if (viewAllApplicants) viewAllApplicants.disabled = HR.unseenCompleted().length === 0;
+    }
+
+    if (viewAllApplicants) {
+        viewAllApplicants.addEventListener('click', () => {
+            HR.markAllCompletedSeen();
+            tableBody.querySelectorAll('tr.is-unseen').forEach(row => {
+                row.classList.remove('is-unseen');
+                const dot = row.querySelector('.unseen-dot');
+                if (dot) dot.remove();
+            });
+        });
+        document.addEventListener('hr:unseen-changed', syncViewAllApplicants);
+        syncViewAllApplicants();
+    }
 
     // numbers next to each option ("Pending 13")
     function updateCounts() {
