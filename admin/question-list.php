@@ -267,7 +267,6 @@ try {
                     <h3 id="emptyTitle">No questionnaires found</h3>
                     <p id="emptyText">Try a different search or clear the filter.</p>
                     <button type="button" class="btn-clear-filters" id="clearFilters">Clear filters</button>
-                    <a href="add-question.php" class="btn-clear-filters" id="emptyAdd" hidden>Create Questions</a>
                 </div>
             </div>
         </section>

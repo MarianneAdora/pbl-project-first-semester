@@ -4323,6 +4323,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const toolbar = document.getElementById('toolbar');
     const searchInput = document.getElementById('searchInput');
+    const searchForm = document.getElementById('applicantSearchForm');
     const searchClear = document.getElementById('searchClear');
     const selectAllBtn = document.getElementById('selectAllBtn');
     const selectActions = document.getElementById('selectActions');
@@ -5088,6 +5089,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ---------- events ----------
     let searchTimer = null;
+    searchForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        clearTimeout(searchTimer);
+        state.q = searchInput.value;
+        state.page = 1;
+        render();
+    });
+
     searchInput.addEventListener('input', () => {
         clearTimeout(searchTimer);
         searchTimer = setTimeout(() => {

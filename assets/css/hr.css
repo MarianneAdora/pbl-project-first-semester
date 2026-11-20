@@ -4787,6 +4787,37 @@ html:where([data-page="details"])[data-theme="dark"] .tab-ink { background: #ff6
     color: #8a8f96;
 }
 
+:where(html[data-page="screeninglist"]) .search-submit {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+:where(html[data-page="screeninglist"]) .search-submit:hover {
+    background: #f1f3f5;
+    transform: scale(1.06);
+}
+
+:where(html[data-page="screeninglist"]) .search-submit:focus-visible {
+    outline: 2px solid #a3081e;
+    outline-offset: 2px;
+}
+
+:where(html[data-page="screeninglist"]) .search-submit .search-icon {
+    width: 20px;
+    height: 20px;
+    fill: #a3081e;
+}
+
 /* hide the browser's own clear button, we have ours */
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .search-box input::-webkit-search-cancel-button {
     display: none;

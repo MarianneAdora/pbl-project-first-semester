@@ -250,7 +250,6 @@ try {
                     <h3 id="emptyTitle">No HR accounts found</h3>
                     <p id="emptyText">Try a different search or clear the filter.</p>
                     <button type="button" class="btn-clear-filters" id="clearFilters">Clear filters</button>
-                    <a href="add-hr.php" class="btn-clear-filters" id="emptyAdd" hidden>Add HR</a>
                 </div>
             </div>
         </section>

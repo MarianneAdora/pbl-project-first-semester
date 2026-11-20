@@ -2504,7 +2504,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const emptyTitle = document.getElementById('emptyTitle');
     const emptyText = document.getElementById('emptyText');
     const clearFilters = document.getElementById('clearFilters');
-    const emptyAdd = document.getElementById('emptyAdd');
     const showingText = document.getElementById('showingText');
     const pagination = document.getElementById('pagination');
 
@@ -2697,7 +2696,6 @@ document.addEventListener('DOMContentLoaded', () => {
             emptyTitle.textContent = none ? 'No HR accounts yet' : 'No HR accounts found';
             emptyText.textContent = none ? 'Create the first account for your HR screening staff.' : 'Try a different search or clear the filter.';
             clearFilters.hidden = none;
-            emptyAdd.hidden = !none;
         }
 
         renderShowing(total, start);
@@ -2984,7 +2982,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const emptyTitle = document.getElementById('emptyTitle');
     const emptyText = document.getElementById('emptyText');
     const clearFilters = document.getElementById('clearFilters');
-    const emptyAdd = document.getElementById('emptyAdd');
     const showingText = document.getElementById('showingText');
     const pagination = document.getElementById('pagination');
 
@@ -3232,7 +3229,6 @@ document.addEventListener('DOMContentLoaded', () => {
             emptyTitle.textContent = none ? 'No questionnaires yet' : 'No questionnaires found';
             emptyText.textContent = none ? 'Create the first question the applicants will answer.' : 'Try a different search or clear the filter.';
             clearFilters.hidden = none;
-            emptyAdd.hidden = !none;
         }
 
         renderShowing(total, start);
