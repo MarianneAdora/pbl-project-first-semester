@@ -4361,10 +4361,9 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const result = await ADMIN.request('notify');
             data = result.data.notify;
-            notify.activity = Array.isArray(data.activity) ? data.activity : [];
             await syncReadState();
             paint();
-            refreshBadges();          // keep sidebar badges in sync with fresh server data
+            ADMIN.notify.refresh();          // keep sidebar badges in sync with fresh server data
         } catch (error) {
             console.error('Could not refresh Admin notifications.', error);
             if (!panel.hidden) ADMIN.toast(error.message || 'Could not refresh notifications.', { error: true, duration: 6000 });
