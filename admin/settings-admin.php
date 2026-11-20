@@ -389,6 +389,7 @@ $account_avatar_url = $profile['avatar_url'];
             echo json_encode($adminNotify, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
         ?>;
         window.ADMIN_ACCOUNT = <?php echo json_encode([
+            'id' => (int) ($_SESSION['user_id'] ?? 0),
             'name' => $account_name, 'email' => $account_email,
             'avatar' => $account_avatar, 'avatarUrl' => $account_avatar_url, 'avatarBase' => $profile['avatar_base'],
             'initials' => $profile['initials'], 'role' => 'admin', 'endpoint' => '../hr/hr-data.php'

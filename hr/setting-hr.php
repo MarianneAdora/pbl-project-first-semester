@@ -389,6 +389,7 @@ try {
     <!-- Shared HR behaviour first, then this page's script -->
     <script>window.HR_SERVER_ARCHIVE = <?php echo json_encode(static_archive_sync(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
     <script>window.HR_ACCOUNT = <?php echo json_encode([
+        'id' => (int) ($_SESSION['user_id'] ?? 0),
         'name' => $account_name, 'email' => $account_email,
         'avatar' => $account_avatar, 'avatarUrl' => $account_avatar_url, 'avatarBase' => $profile['avatar_base'],
         'initials' => $profile['initials'], 'role' => 'hr', 'endpoint' => 'hr-data.php'
