@@ -1604,32 +1604,42 @@ html:where([data-page="addhr"],[data-page="addquestion"])[data-theme="dark"] {
 
 :where(html[data-page="addquestion"]) .section-select-row > .dropdown { flex: 1; min-width: 0; }
 
-:where(html[data-page="addquestion"]) .section-delete-btn {
-    min-height: 46px;
-    flex: 0 0 auto;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-    padding: 0 12px;
-    border: 1px solid color-mix(in srgb, var(--red) 28%, var(--edge));
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--red) 6%, var(--surface));
-    color: var(--red);
+:where(html[data-page="addquestion"]) .section-option-row { display: flex; align-items: center; gap: 4px; }
+:where(html[data-page="addquestion"]) .section-options .dropdown-option {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    color: var(--ink);
     font: inherit;
-    font-size: 12px;
-    font-weight: 700;
+    text-align: left;
+}
+:where(html[data-page="addquestion"]) .section-options .dropdown-option:hover,
+:where(html[data-page="addquestion"]) .section-options .dropdown-option.is-focused { transform: none; }
+:where(html[data-page="addquestion"]) .section-options .dropdown-option[aria-checked="true"] { color: var(--red); font-weight: 800; }
+:where(html[data-page="addquestion"]) .section-options .dropdown-option[aria-checked="true"] .opt-check { opacity: 1; transform: none; }
+:where(html[data-page="addquestion"]) .section-option-delete {
+    display: grid;
+    flex: 0 0 32px;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--red);
     cursor: pointer;
-    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+    transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 }
-
-:where(html[data-page="addquestion"]) .section-delete-btn:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--red) 12%, var(--surface));
-    border-color: var(--red);
+:where(html[data-page="addquestion"]) .section-option-delete:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--red) 35%, transparent);
+    background: color-mix(in srgb, var(--red) 13%, var(--surface));
 }
-:where(html[data-page="addquestion"]) .section-delete-btn:active:not(:disabled) { transform: scale(0.97); }
-:where(html[data-page="addquestion"]) .section-delete-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-:where(html[data-page="addquestion"]) .section-delete-btn svg { width: 18px; height: 18px; fill: currentColor; }
+:where(html[data-page="addquestion"]) .section-option-delete:active:not(:disabled) { transform: scale(0.92); }
+:where(html[data-page="addquestion"]) .section-option-delete:disabled { opacity: 0.5; cursor: not-allowed; }
+:where(html[data-page="addquestion"]) .section-option-delete:focus-visible { outline: 2px solid var(--red); outline-offset: 1px; }
+:where(html[data-page="addquestion"]) .section-option-delete svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
 
 :where(html[data-page="addhr"],html[data-page="addquestion"]) .form-card .field > label {
     display: block;

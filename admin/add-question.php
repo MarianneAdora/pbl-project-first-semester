@@ -78,6 +78,7 @@ foreach ($question_types as $key => $label) $type_options[] = [$key, $label, $ty
 function q_dropdown(string $id, string $labelId, array $options, string $selected, string $placeholder = ''): void
 {
     $e = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
+    $sectionMenu = $id === 'sectionDropdown';
     if ($placeholder !== '') array_unshift($options, ['', $placeholder, '#c5c9ce']);
     $now = $options[0];
     foreach ($options as $o) {
@@ -85,17 +86,31 @@ function q_dropdown(string $id, string $labelId, array $options, string $selecte
     }
     ?>
                         <div class="dropdown<?php echo (string) $now[0] === '' ? ' is-placeholder' : ''; ?>" id="<?php echo $e($id); ?>">
-                            <button type="button" class="dropdown-btn" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="<?php echo $e($labelId . ' ' . $id . 'Value'); ?>">
+                            <button type="button" class="dropdown-btn" aria-haspopup="<?php echo $sectionMenu ? 'menu' : 'listbox'; ?>" aria-expanded="false" aria-labelledby="<?php echo $e($labelId . ' ' . $id . 'Value'); ?>">
                                 <span class="dot"></span>
                                 <span class="dropdown-value" id="<?php echo $e($id); ?>Value"><?php echo $e($now[1]); ?></span>
                                 <svg class="dropdown-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
                             </button>
-                            <ul class="dropdown-menu" role="listbox" aria-labelledby="<?php echo $e($labelId); ?>" tabindex="-1">
+                            <ul class="dropdown-menu<?php echo $sectionMenu ? ' section-options' : ''; ?>" role="<?php echo $sectionMenu ? 'menu' : 'listbox'; ?>" aria-labelledby="<?php echo $e($labelId); ?>" tabindex="-1">
                                 <?php foreach ($options as $k => $o): ?>
+                                <?php if ($sectionMenu): ?>
+                                <li class="section-option-row" role="none" style="--k:<?php echo (int) $k; ?>">
+                                    <button type="button" class="dropdown-option" role="menuitemradio" data-value="<?php echo $e($o[0]); ?>" data-dot="<?php echo $e($o[2]); ?>" aria-checked="<?php echo (string) $o[0] === (string) $now[0] ? 'true' : 'false'; ?>" tabindex="-1">
+                                        <span class="dot"></span><span class="opt-label"><?php echo $e($o[1]); ?></span>
+                                        <svg class="opt-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>
+                                    </button>
+                                    <?php if ((string) $o[0] !== ''): ?>
+                                    <button type="button" class="section-option-delete" role="menuitem" aria-label="<?php echo $e('Delete ' . $o[1]); ?>" title="<?php echo $e('Delete ' . $o[1]); ?>" tabindex="-1">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                                    </button>
+                                    <?php endif; ?>
+                                </li>
+                                <?php else: ?>
                                 <li class="dropdown-option" role="option" data-value="<?php echo $e($o[0]); ?>" data-dot="<?php echo $e($o[2]); ?>" aria-selected="<?php echo (string) $o[0] === (string) $now[0] ? 'true' : 'false'; ?>" style="--k:<?php echo (int) $k; ?>">
                                     <span class="dot"></span><span class="opt-label"><?php echo $e($o[1]); ?></span>
                                     <svg class="opt-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>
                                 </li>
+                                <?php endif; ?>
                                 <?php endforeach; ?>
                             </ul>
                         </div>
@@ -265,10 +280,6 @@ function q_dropdown(string $id, string $labelId, array $options, string $selecte
                         <label id="sectionLabel">Section <span class="req">*</span></label>
                         <div class="section-select-row">
                             <?php q_dropdown('sectionDropdown', 'sectionLabel', $section_options, $isEdit ? (string) (int) $editing['section_no'] : '', 'Select Section'); ?>
-                            <button type="button" class="section-delete-btn" id="deleteSectionBtn" aria-label="Delete selected section" title="Select a section to enable deletion" disabled>
-                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                                <span>Delete section</span>
-                            </button>
                         </div>
                         <p class="field-error" role="alert"></p>
                     </div>

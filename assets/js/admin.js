@@ -1494,7 +1494,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const titleInput = document.getElementById('sectionTitle');
     const titleLabel = document.getElementById('sectionTitleLabel');
     const sectionHint = document.getElementById('sectionHint');
-    const deleteSectionBtn = document.getElementById('deleteSectionBtn');
     const textInput = document.getElementById('text');
     const textCount = document.getElementById('textCount');
     const dataProtectionField = document.getElementById('dataProtectionField');
@@ -1513,6 +1512,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const dropdowns = [];
 
     function createDropdown(root, onChange) {
+        const sectionMenu = root.id === 'sectionDropdown';
         const btn = root.querySelector('.dropdown-btn');
         const menu = root.querySelector('.dropdown-menu');
         const valueEl = root.querySelector('.dropdown-value');
@@ -1542,7 +1542,7 @@ document.addEventListener('DOMContentLoaded', () => {
         function setValue(v, silent) {
             const opt = options.find(o => o.dataset.value === v) || options[0];
             value = opt.dataset.value;
-            options.forEach(o => o.setAttribute('aria-selected', String(o === opt)));
+            options.forEach(o => o.setAttribute(sectionMenu ? 'aria-checked' : 'aria-selected', String(o === opt)));
             valueEl.textContent = opt.querySelector('.opt-label').textContent;
             btnDot.style.setProperty('--dot', opt.dataset.dot);
             root.classList.toggle('is-placeholder', value === '');
@@ -1554,13 +1554,21 @@ document.addEventListener('DOMContentLoaded', () => {
             root.classList.add('open');
             if (field) field.classList.add('is-open');
             btn.setAttribute('aria-expanded', 'true');
-            highlight(Math.max(0, options.findIndex(o => o.dataset.value === value)));
+            const selectedIndex = Math.max(0, options.findIndex(o => o.dataset.value === value));
+            highlight(selectedIndex);
+            if (sectionMenu) {
+                options.concat(Array.from(menu.querySelectorAll('.section-option-delete'))).forEach(item => { item.tabIndex = 0; });
+                if (options[selectedIndex]) options[selectedIndex].focus();
+            }
         }
 
         function close() {
             root.classList.remove('open');
             if (field) field.classList.remove('is-open');
             btn.setAttribute('aria-expanded', 'false');
+            if (sectionMenu) {
+                options.concat(Array.from(menu.querySelectorAll('.section-option-delete'))).forEach(item => { item.tabIndex = -1; });
+            }
             highlight(-1);
         }
 
@@ -1590,16 +1598,56 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
+        if (sectionMenu) {
+            menu.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    const step = e.key === 'ArrowDown' ? 1 : -1;
+                    const next = (focusIdx + step + options.length) % options.length;
+                    highlight(next);
+                    options[next].focus();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    close();
+                    btn.focus();
+                } else if (e.key === 'Tab') {
+                    close();
+                }
+            });
+            menu.addEventListener('click', (e) => {
+                const deleteButton = e.target.closest('.section-option-delete');
+                if (!deleteButton) return;
+                e.preventDefault();
+                e.stopPropagation();
+                const option = deleteButton.closest('.section-option-row').querySelector('.dropdown-option');
+                deleteSection(Number(option.dataset.value));
+            });
+            menu.addEventListener('mousedown', (e) => {
+                if (e.target.closest('.section-option-delete')) e.preventDefault();
+            });
+        }
+
         function setOptions(nextOptions, selectedValue) {
             menu.textContent = '';
             nextOptions.forEach((option, i) => {
-                const item = document.createElement('li');
+                const row = document.createElement('li');
+                const item = document.createElement(sectionMenu ? 'button' : 'li');
+                if (sectionMenu) {
+                    row.className = 'section-option-row';
+                    row.setAttribute('role', 'none');
+                    item.type = 'button';
+                    item.setAttribute('role', 'menuitemradio');
+                    item.setAttribute('aria-checked', 'false');
+                    item.tabIndex = -1;
+                    row.style.setProperty('--k', String(i));
+                } else {
+                    item.setAttribute('role', 'option');
+                    item.setAttribute('aria-selected', 'false');
+                    item.style.setProperty('--k', String(i));
+                }
                 item.className = 'dropdown-option';
-                item.setAttribute('role', 'option');
                 item.dataset.value = String(option[0]);
                 item.dataset.dot = String(option[2]);
-                item.setAttribute('aria-selected', 'false');
-                item.style.setProperty('--k', String(i));
 
                 const dot = document.createElement('span');
                 dot.className = 'dot';
@@ -1614,14 +1662,36 @@ document.addEventListener('DOMContentLoaded', () => {
                 path.setAttribute('d', 'M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z');
                 check.appendChild(path);
                 item.append(dot, label, check);
-                menu.appendChild(item);
+                if (sectionMenu) {
+                    row.appendChild(item);
+                    if (String(option[0]) !== '') {
+                        const remove = document.createElement('button');
+                        remove.type = 'button';
+                        remove.className = 'section-option-delete';
+                        remove.setAttribute('role', 'menuitem');
+                        remove.setAttribute('aria-label', 'Delete ' + String(option[1]));
+                        remove.title = 'Delete ' + String(option[1]);
+                        remove.tabIndex = -1;
+                        const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                        icon.setAttribute('viewBox', '0 0 24 24');
+                        icon.setAttribute('aria-hidden', 'true');
+                        const cross = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                        cross.setAttribute('d', 'M18 6 6 18M6 6l12 12');
+                        icon.appendChild(cross);
+                        remove.appendChild(icon);
+                        row.appendChild(remove);
+                    }
+                    menu.appendChild(row);
+                } else {
+                    menu.appendChild(item);
+                }
             });
             bindOptions();
             setValue(selectedValue, true);
         }
 
         bindOptions();
-        const selected = options.find(o => o.getAttribute('aria-selected') === 'true') || options[0];
+        const selected = options.find(o => o.getAttribute(sectionMenu ? 'aria-checked' : 'aria-selected') === 'true') || options[0];
         value = selected ? selected.dataset.value : '';
         setValue(value, true);
         const api = { root, btn, close, setValue, setOptions, getValue: () => value };
@@ -1662,10 +1732,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateSectionBox() {
         const picked = sectionByNo(sectionDD.getValue());
         const title = titleInput.value.trim();
-        deleteSectionBtn.disabled = saving || !picked;
-        deleteSectionBtn.title = picked
-            ? 'Delete Section ' + picked.no + ' · ' + picked.name
-            : 'Select a section to enable deletion';
         if (picked) {
             titleLabel.textContent = 'Rename Section';
             titleInput.placeholder = 'Type a new title for Section ' + picked.no;
@@ -1697,10 +1763,12 @@ document.addEventListener('DOMContentLoaded', () => {
         updateSectionBox();
     }
 
-    deleteSectionBtn.addEventListener('click', async () => {
-        const picked = sectionByNo(sectionDD.getValue());
+    async function deleteSection(sectionNo) {
+        const picked = sectionByNo(String(sectionNo));
         if (!picked || saving) return;
 
+        sectionDD.close();
+        sectionDD.btn.focus();
         const yes = await ADMIN.confirm({
             title: 'Delete this section?',
             message: 'Section ' + picked.no + ' · ' + picked.name + ' will be removed. Its questions will stay in the questionnaire with no section assigned.',
@@ -1711,12 +1779,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!yes || saving) return;
 
         saving = true;
-        deleteSectionBtn.disabled = true;
+        sectionDD.btn.disabled = true;
+        sectionDD.root.querySelectorAll('.section-option-delete').forEach(button => { button.disabled = true; });
         saveBtn.disabled = true;
         cancelBtn.disabled = true;
         try {
             const res = await ADMIN.request('section_delete', { section_no: Number(picked.no) });
             const deleted = res.result || {};
+            const selectedSectionNo = sectionDD.getValue();
+            const deletingCurrent = selectedSectionNo === picked.no;
             const deletedIndex = sections.findIndex(section => section.no === picked.no);
             if (deletedIndex !== -1) sections.splice(deletedIndex, 1);
             if (Number.isInteger(Number(deleted.next_no)) && Number(deleted.next_no) > 0) {
@@ -1729,8 +1800,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 'Sec ' + section.no + ' · ' + section.name,
                 palette[(Number(section.no) - 1 + palette.length) % palette.length]
             ]));
-            sectionDD.setOptions(options, '');
-            titleInput.value = '';
+            sectionDD.setOptions(options, deletingCurrent ? '' : selectedSectionNo);
+            if (deletingCurrent) titleInput.value = '';
             updateSectionBox();
             setError('section', '');
             setError('section_title', '');
@@ -1739,11 +1810,13 @@ document.addEventListener('DOMContentLoaded', () => {
             ADMIN.toast(err.message || 'Could not delete the section. Please try again.', { error: true });
         } finally {
             saving = false;
+            sectionDD.btn.disabled = false;
+            sectionDD.root.querySelectorAll('.section-option-delete').forEach(button => { button.disabled = false; });
             saveBtn.disabled = false;
             cancelBtn.disabled = false;
             updateSectionBox();
         }
-    });
+    }
 
     /* ---------- Type: only the matching extra box is shown ---------- */
     const TYPE_FIELDS = {
@@ -2179,7 +2252,8 @@ document.addEventListener('DOMContentLoaded', () => {
         saveBtn.classList.toggle('saving', state);
         saveBtn.querySelector('.btn-label').textContent = state ? 'SAVING...' : (isEdit ? 'SAVE CHANGES' : 'SAVE');
         cancelBtn.disabled = state;
-        deleteSectionBtn.disabled = state || !sectionByNo(sectionDD.getValue());
+        sectionDD.btn.disabled = state;
+        sectionDD.root.querySelectorAll('.section-option-delete').forEach(button => { button.disabled = state; });
     }
 
     /* ---------- Cancel / Back (asks first when something was typed) ---------- */
