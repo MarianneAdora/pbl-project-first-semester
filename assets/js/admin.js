@@ -3037,7 +3037,7 @@ document.addEventListener('DOMContentLoaded', () => {
 /* ===== PAGE : questionlist.js (runs only on: questionlist) ===== */
 if (document.documentElement.getAttribute('data-page') === 'questionlist') {
 /* ==========================================================================
-   Questionnaires (admin): search, section + status filters, rows that fit the window, page buttons, delete + undo.
+   Questionnaires (admin): search, section + status filters, rows that fit the window, page buttons, reorder + undo.
    Same behaviour as the HR Accounts page (assets/js/hrlist.js). Shared helpers (window.ADMIN: requests, toast,
    confirm box, flyToArchive, badges), the sidebar and logout live in admin-common.js (loaded BEFORE this script).
    This page's markup + data come from admin/question-list.php (window.ADMIN_Q).
@@ -3454,6 +3454,7 @@ document.addEventListener('DOMContentLoaded', () => {
         orderedSection.splice(targetIndex, 0, moved);
         const originalSection = questions.filter(item => Number(item.section_no) === sectionNo);
         if (orderedSection.every((item, index) => item.id === originalSection[index].id)) return;
+        const previousSectionOrder = originalSection.map(item => item.id);
 
         const firstSectionIndex = questions.findIndex(item => Number(item.section_no) === sectionNo);
         questions = questions.filter(item => Number(item.section_no) !== sectionNo);
@@ -3470,11 +3471,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 question_ids: orderedSection.map(item => item.id)
             });
             questions = res.data.questions;
-            ADMIN.toast('Question order saved.', { duration: 3000 });
+            ADMIN.toast('Question order saved.', {
+                actionLabel: 'Undo',
+                duration: 6000,
+                onAction: () => undoReorder(sectionNo, previousSectionOrder)
+            });
         } catch (err) {
             questions = previousQuestions;
             render();
             ADMIN.toast(err.message || 'Could not save the question order.', { error: true, duration: 6000 });
+        } finally {
+            busy = false;
+        }
+    }
+
+    async function undoReorder(sectionNo, questionIds) {
+        if (busy) return;
+        busy = true;
+        try {
+            const res = await ADMIN.request('question_reorder', {
+                section_no: sectionNo,
+                question_ids: questionIds
+            });
+            questions = res.data.questions;
+            render();
+            ADMIN.toast('Question order restored.', { duration: 4000 });
+        } catch (err) {
+            ADMIN.toast(err.message || 'Could not undo the question order.', { error: true, duration: 6000 });
         } finally {
             busy = false;
         }
