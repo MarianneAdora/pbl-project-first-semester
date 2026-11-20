@@ -903,7 +903,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (logoutBtn && logoutModal) {
         logoutBtn.addEventListener('click', () => {
             logoutModal.classList.add('active');
-            setTimeout(() => { if (cancelLogout) cancelLogout.focus(); }, 120);
+            setTimeout(() => {
+                if (confirmLogout && logoutModal.classList.contains('active')) confirmLogout.focus();
+            }, 120);
         });
 
         // Click on the dark backdrop or press Escape to cancel

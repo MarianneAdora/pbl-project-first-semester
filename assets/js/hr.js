@@ -744,7 +744,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 4. Logout: confirm, then elements lift away while the stripes sweep in
     if (logoutBtn && logoutModal) {
-        logoutBtn.addEventListener('click', () => logoutModal.classList.add('active'));
+        logoutBtn.addEventListener('click', () => {
+            logoutModal.classList.add('active');
+            setTimeout(() => {
+                if (confirmLogout && logoutModal.classList.contains('active')) confirmLogout.focus();
+            }, 120);
+        });
 
         // Click on the dark backdrop or press Escape to cancel
         logoutModal.addEventListener('click', (e) => {
