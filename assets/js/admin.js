@@ -4250,7 +4250,14 @@ document.addEventListener('DOMContentLoaded', () => {
         return result;
     };
     const activities = () => {
-        const rows = Array.isArray(data.recent) ? data.recent.slice() : [];
+        const rows = Array.isArray(data.recent) ? data.recent.slice()
+            : Array.isArray(data.activity) ? data.activity.map((at, i) => ({
+                id: i,
+                at,
+                activity: '',
+                details: '',
+                by: 'Admin'
+            })) : [];
         if (window.HRREQ && typeof HRREQ.activity === 'function') {
             rows.push(...HRREQ.activity().filter((row) => String(row.by).toLowerCase() !== 'admin'));
         }
@@ -4301,15 +4308,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function paintBadge() {
-        if (!readStateReady) {
-            badge.hidden = true;
-            bell.classList.remove('has-notifications');
-            bell.setAttribute('aria-label', 'Notifications');
-            bell.title = 'Notifications';
-            return;
-        }
-        const unreadActivity = activities().filter((row) => !readKeys.has(activityKey(row))).length;
-        const total = unreadActivity;
+        // When readStateReady is false (server sync hasn't completed yet), treat all
+        // activities as unread so the badge shows right away. Once syncReadState()
+        // completes, readKeys is populated and paint() updates the badge correctly.
+        const unread = readStateReady
+            ? activities().filter((row) => !readKeys.has(activityKey(row))).length
+            : activities().length;
+        const total = unread;
         badge.textContent = total > 99 ? '99+' : String(total);
         badge.hidden = total === 0;
         bell.classList.toggle('has-notifications', total > 0);

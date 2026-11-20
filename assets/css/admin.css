@@ -4763,7 +4763,7 @@ html:where([data-page="settingsadmin"])[data-theme="dark"] .tile-face { backgrou
 }
 
 :where(html[data-page="dashboardadmin"]) .content-header .header-text { min-width: 0; flex: 1 1 auto; }
-:where(html[data-page="dashboardadmin"]) .header-tools { display: flex; align-items: flex-start; gap: 12px; flex-shrink: 0; }
+.header-tools { display: flex; align-items: flex-start; gap: 12px; flex-shrink: 0; }
 
 /* ---------- Admin notification bell ---------- */
 .content-header.has-bell { justify-content: space-between; }
@@ -5205,11 +5205,11 @@ button.pw-info.is-new::after { top: 3px; right: 0; }
     .btn, .modal-actions button, .avatar-btn { max-width: 100%; min-width: 0; white-space: normal; line-height: 1.35; }
 
     .content-header.has-bell { flex-direction: column; align-items: stretch; gap: 12px; }
-    :where(html[data-page="dashboardadmin"]) .content-header .header-text { width: 100%; }
-    :where(html[data-page="dashboardadmin"]) .header-tools { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 48px; align-items: center; gap: 10px; }
+    .content-header .header-text { width: 100%; }
+    .header-tools { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 48px; align-items: center; gap: 10px; }
     :where(html[data-page="dashboardadmin"]) .stats-download { width: 100%; min-width: 0; height: 48px; justify-content: center; padding: 0 12px; }
     .notif-bell { width: 48px; height: 48px; }
-    :where(html[data-page="dashboardadmin"]) .header-tools .notif-wrap { justify-self: end; }
+    .content-header.has-bell .header-tools .notif-wrap { justify-self: end; }
 }
 
 @keyframes mobileHeaderEntrance {
@@ -5794,7 +5794,7 @@ button.pw-info.is-new::after { top: 3px; right: 0; }
         overflow-wrap: anywhere;
     }
 
-    :where(html[data-page="dashboardadmin"]) .content-header.has-bell .header-tools {
+    .content-header.has-bell .header-tools {
         display: flex;
         width: 100%;
         flex: 0 0 auto;
@@ -6393,7 +6393,7 @@ html[data-motion="off"] .nav-notif-panel:not([hidden]) { animation: none; }
     }
 
     :where(html[data-page="dashboardadmin"]) .content-header .header-text { flex: 1 1 0; min-width: 0; }
-    :where(html[data-page="dashboardadmin"]) .content-header.has-bell .header-tools {
+    .content-header.has-bell .header-tools {
         display: flex;
         width: auto;
         flex: 0 0 auto;
