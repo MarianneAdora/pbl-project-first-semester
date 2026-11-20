@@ -200,13 +200,32 @@ $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
     <!-- Main Content Panel Area -->
     <main class="main-content">
         <div class="form-head reveal" style="--i:1">
-            <header class="content-header">
-                <h1><?php echo $isEdit ? 'Edit HR Account' : 'Create HR Account'; ?></h1>
-            </header>
-            <a href="hr-list.php" class="back-link" id="backLink">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
-                Back
-            </a>
+        <header class="content-header has-bell">
+            <div class="header-start">
+                <div class="header-text">
+                    <h1><?php echo $isEdit ? 'Edit HR Account' : 'Create HR Account'; ?></h1>
+                </div>
+            </div>
+            <div class="header-tools">
+                <a href="hr-list.php" class="back-link" id="backLink">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                    Back
+                </a>
+                <div class="notif-wrap">
+                    <button type="button" class="notif-bell" id="notifBell" aria-haspopup="true" aria-expanded="false" aria-controls="notifPanel" aria-label="Notifications" title="Notifications">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+                        <span class="notif-count" id="notifBadge" hidden>0</span>
+                    </button>
+                    <div class="notif-panel" id="notifPanel" role="dialog" aria-label="Notifications" hidden>
+                        <div class="notif-head">
+                            <h3>Notifications</h3>
+                            <button type="button" class="notif-markall" id="notifMarkAll">Mark all as read</button>
+                        </div>
+                        <ul class="notif-list" id="notifList"></ul>
+                    </div>
+                </div>
+            </div>
+        </header>
         </div>
 
         <!-- ================= Form ================= -->
