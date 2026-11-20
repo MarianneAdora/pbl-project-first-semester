@@ -4403,7 +4403,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!panel.hidden) paintList();
     }
 
+    let refreshInProgress = false;
     async function refresh() {
+        if (refreshInProgress) return;
+        refreshInProgress = true;
         try {
             const result = await ADMIN.request('notify');
             data = result.data.notify;
@@ -4411,7 +4414,8 @@ document.addEventListener('DOMContentLoaded', () => {
             paint();
         } catch (error) {
             console.error('Could not refresh Admin notifications.', error);
-            if (!panel.hidden) ADMIN.toast(error.message || 'Could not refresh notifications.', { error: true, duration: 6000 });
+        } finally {
+            refreshInProgress = false;
         }
     }
 
@@ -4420,7 +4424,7 @@ document.addEventListener('DOMContentLoaded', () => {
         panel.hidden = !panel.hidden;
         bell.setAttribute('aria-expanded', String(!panel.hidden));
         if (panel.hidden) paintBadge();
-        else { paintList(); refresh(); }
+        else paintList();
     });
     panel.addEventListener('click', (event) => event.stopPropagation());
     list.addEventListener('click', async (event) => {
@@ -4832,10 +4836,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (amarkAll) amarkAll.disabled = !dashboardReadStateReady || unreadActivity().length === 0;
         }
 
-        async function openPanel() {
+        function openPanel() {
             apanel.hidden = false;
             abell.setAttribute('aria-expanded', 'true');
-            await refreshBell();
             paintList();
         }
 
@@ -4882,7 +4885,10 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
+        let refreshInProgress = false;
         async function refreshBell() {
+            if (refreshInProgress) return;
+            refreshInProgress = true;
             try {
                 const response = await ADMIN.request('notify');
                 const updated = response && response.data && response.data.notify;
@@ -4892,7 +4898,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 paintList();
             } catch (err) {
                 console.error('Could not refresh admin notifications.', err);
-                if (!apanel.hidden) ADMIN.toast(err.message || 'Could not refresh notifications.', { error: true, duration: 6000 });
+            } finally {
+                refreshInProgress = false;
             }
         }
 
