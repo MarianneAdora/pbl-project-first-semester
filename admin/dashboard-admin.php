@@ -252,7 +252,7 @@ $greeting     = 'Hello, ' . $display_name . '!';
 
         <div class="admin-dashboard">
 
-            <div class="dashboard-scope">
+            <div class="dashboard-scope reveal" style="--i:1">
                 <form class="dashboard-scope-filter" method="get">
                     <label for="activityFilter">Dashboard view</label>
                     <select id="activityFilter" name="activity_filter">
