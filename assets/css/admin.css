@@ -1623,7 +1623,6 @@ html:where([data-page="addhr"],[data-page="addquestion"])[data-theme="dark"] {
     transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 
-:where(html[data-page="addquestion"]) .section-delete-btn[hidden] { display: none; }
 :where(html[data-page="addquestion"]) .section-delete-btn:hover:not(:disabled) {
     background: color-mix(in srgb, var(--red) 12%, var(--surface));
     border-color: var(--red);

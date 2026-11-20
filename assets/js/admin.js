@@ -1662,8 +1662,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateSectionBox() {
         const picked = sectionByNo(sectionDD.getValue());
         const title = titleInput.value.trim();
-        deleteSectionBtn.hidden = !picked;
         deleteSectionBtn.disabled = saving || !picked;
+        deleteSectionBtn.title = picked
+            ? 'Delete Section ' + picked.no + ' · ' + picked.name
+            : 'Select a section to enable deletion';
         if (picked) {
             titleLabel.textContent = 'Rename Section';
             titleInput.placeholder = 'Type a new title for Section ' + picked.no;

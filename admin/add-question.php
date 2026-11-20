@@ -265,7 +265,7 @@ function q_dropdown(string $id, string $labelId, array $options, string $selecte
                         <label id="sectionLabel">Section <span class="req">*</span></label>
                         <div class="section-select-row">
                             <?php q_dropdown('sectionDropdown', 'sectionLabel', $section_options, $isEdit ? (string) (int) $editing['section_no'] : '', 'Select Section'); ?>
-                            <button type="button" class="section-delete-btn" id="deleteSectionBtn" aria-label="Delete selected section" title="Delete selected section" hidden disabled>
+                            <button type="button" class="section-delete-btn" id="deleteSectionBtn" aria-label="Delete selected section" title="Select a section to enable deletion" disabled>
                                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                                 <span>Delete section</span>
                             </button>
