@@ -3309,13 +3309,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function paintBadge() {
-        if (!readStateReady) {
-            badge.hidden = true;
-            bell.classList.remove('has-notifications');
-            bell.setAttribute('aria-label', 'Notifications');
-            bell.title = 'Notifications';
-            return;
-        }
         const total = notifyOn() ? unreadActivity().length + unreadCompletedIds().length : 0;
         badge.textContent = total > 99 ? '99+' : String(total);
         badge.hidden = total <= 0;

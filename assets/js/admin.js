@@ -545,7 +545,10 @@ window.ADMIN = (function () {
     }
 
     function refreshBadges() {
-        const a = unseenActivity().length + unreadHrChanges();
+        const unread = readStateReady
+            ? activities().filter((row) => !readKeys.has(activityKey(row))).length
+            : activities().length;
+        const a = unread + unreadHrChanges();
         const e = notifyOn('archive') ? expiring : 0;
         const h = hrNotifyOn() ? readNewHr().length : 0;
         ensureHrBadge();
