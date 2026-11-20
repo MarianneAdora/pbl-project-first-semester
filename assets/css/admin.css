@@ -5951,7 +5951,28 @@ html[data-motion="off"] .sidebar .sidebar-header { animation: none; }
 }
 
 .sidebar-account-row button.notif-bell svg { width: 19px; height: 19px; fill: currentColor; }
-.sidebar-account-row .notif-count { position: absolute; top: -6px; right: -6px; }
+.sidebar-account-row button.notif-bell:focus-visible { outline: 2px solid #a3081e; outline-offset: 3px; }
+.sidebar-account-row .notif-count {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: #a3081e;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    box-shadow: 0 0 0 2px var(--surface, #ffffff);
+}
+.sidebar-account-row .notif-count[hidden] { display: none; }
 
 .sidebar.collapsed .sidebar-account-row {
     flex-direction: column;
