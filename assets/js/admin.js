@@ -4358,18 +4358,6 @@ document.addEventListener('DOMContentLoaded', () => {
             catch (error) { ADMIN.toast(error.message || 'Could not mark this notification as read.', { error: true, duration: 6000 }); }
         }
     });
-    pwList.addEventListener('click', async (event) => {
-        const button = event.target.closest('button.pw-expand[data-notification-key]');
-        if (!button) return;
-        const key = button.dataset.notificationKey;
-        const expanded = expandedKeys.has(key);
-        expanded ? expandedKeys.delete(key) : expandedKeys.add(key);
-        paintList();
-        if (!expanded) {
-            try { await markRead([key]); }
-            catch (error) { ADMIN.toast(error.message || 'Could not mark this notification as read.', { error: true, duration: 6000 }); }
-        }
-    });
     markAll.addEventListener('click', async () => {
         markAll.disabled = true;
         try { await markRead(allKeys()); }
