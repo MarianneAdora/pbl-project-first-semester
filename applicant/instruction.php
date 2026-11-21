@@ -147,7 +147,7 @@ $reminders = [
                     Estimated Time: <?= htmlspecialchars($estimatedTime) ?>
                 </p>
 
-                <div class="start__consent">
+                <div class="start__consent reveal" style="--i:15">
                     <input type="checkbox" id="privacyAgreement" aria-describedby="privacyError"
                         data-accepted="<?= $privacyAccepted ? 'true' : 'false' ?>"
                         <?= $privacyAccepted ? 'checked disabled' : '' ?>>
