@@ -9560,14 +9560,16 @@ html[data-motion="off"] .nav-notif-panel:not([hidden]) { animation: none; }
     }
 
     :where(html[data-page="screeninglist"]) .table-card {
-        flex: 0 0 auto;
+        flex: 1 1 auto;
         min-width: 0;
-        min-height: 0;
+        min-height: 264px;
     }
 
     :where(html[data-page="screeninglist"]) .table-scroll {
-        flex: 0 0 auto;
-        overflow: visible;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
     }
 }
 
