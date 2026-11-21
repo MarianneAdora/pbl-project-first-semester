@@ -461,6 +461,7 @@ $logoSrc = is_file(__DIR__ . '/../assets/images/expertise.png') ? '../assets/ima
                             class="otp__box"
                             type="text"
                             name="otp[]"
+                            data-input-rule="digits"
                             inputmode="numeric"
                             pattern="[0-9]*"
                             maxlength="1"
@@ -522,6 +523,7 @@ $logoSrc = is_file(__DIR__ . '/../assets/images/expertise.png') ? '../assets/ima
     </main>
 </div>
 
+<script src="../assets/js/input-rules.js?v=<?= @filemtime(__DIR__ . '/../assets/js/input-rules.js') ?>"></script>
 <script src="../assets/js/applicant.js?v=<?= @filemtime(__DIR__ . '/../assets/js/applicant.js') ?>"></script>
 </body>
 </html>

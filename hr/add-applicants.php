@@ -261,7 +261,7 @@ $positions = static_positions();
                             <label for="first_name">First Name <span class="req">*</span></label>
                             <div class="input-box">
                                 <svg class="field-icon" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-                                <input type="text" id="first_name" name="first_name" placeholder="Enter first name" maxlength="50" required>
+                                <input type="text" id="first_name" name="first_name" data-input-rule="name" placeholder="Enter first name" maxlength="50" required>
                             </div>
                             <p class="field-error" role="alert"></p>
                         </div>
@@ -269,7 +269,7 @@ $positions = static_positions();
                             <label for="middle_name">Middle Name <span class="opt">(Optional)</span></label>
                             <div class="input-box">
                                 <svg class="field-icon" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-                                <input type="text" id="middle_name" name="middle_name" placeholder="Enter middle name" maxlength="50">
+                                <input type="text" id="middle_name" name="middle_name" data-input-rule="name" placeholder="Enter middle name" maxlength="50">
                             </div>
                             <p class="field-error" role="alert"></p>
                         </div>
@@ -277,7 +277,7 @@ $positions = static_positions();
                             <label for="last_name">Last Name <span class="req">*</span></label>
                             <div class="input-box">
                                 <svg class="field-icon" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-                                <input type="text" id="last_name" name="last_name" placeholder="Enter last name" maxlength="50" required>
+                                <input type="text" id="last_name" name="last_name" data-input-rule="name" placeholder="Enter last name" maxlength="50" required>
                             </div>
                             <p class="field-error" role="alert"></p>
                         </div>
@@ -296,7 +296,7 @@ $positions = static_positions();
                         <label for="contact">Contact Information <span class="req">*</span></label>
                         <div class="input-box">
                             <svg class="field-icon" viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
-                            <input type="tel" id="contact" name="contact" placeholder="Enter contact number" maxlength="20" inputmode="tel" required>
+                            <input type="tel" id="contact" name="contact" data-input-rule="phone" placeholder="Enter contact number" maxlength="20" inputmode="tel" required>
                         </div>
                         <p class="field-error" role="alert"></p>
                     </div>
@@ -399,6 +399,7 @@ $positions = static_positions();
     <!-- Shared HR behaviour first, then this page's script -->
     <script>window.HR_SERVER_ARCHIVE = <?php echo json_encode($archive_sync, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
     <script>window.HR_ACCOUNT = <?php echo json_encode(['id' => (int) ($_SESSION['user_id'] ?? 0)], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
+    <script src="../assets/js/input-rules.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/input-rules.js'); ?>"></script>
     <script src="../assets/js/hr.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/hr.js'); ?>"></script>
 </body>
 </html>

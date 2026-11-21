@@ -175,7 +175,7 @@ $account_avatar_url = $profile['avatar_url'];
                     <label for="setName">Name</label>
                     <div class="set-input">
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-                        <input type="text" id="setName" name="name" maxlength="100" placeholder="Enter your name" value="<?php echo htmlspecialchars($account_name, ENT_QUOTES, 'UTF-8'); ?>" aria-describedby="nameError" required>
+                        <input type="text" id="setName" name="name" data-input-rule="name" maxlength="100" placeholder="Enter your name" value="<?php echo htmlspecialchars($account_name, ENT_QUOTES, 'UTF-8'); ?>" aria-describedby="nameError" required>
                     </div>
                     <p class="set-error" id="nameError" role="alert"></p>
                 </div>
@@ -357,6 +357,7 @@ $account_avatar_url = $profile['avatar_url'];
 
     </script>
     <!-- Shared admin behaviour first, then this page's script -->
+    <script src="../assets/js/input-rules.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/input-rules.js'); ?>"></script>
     <script src="../assets/js/admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/admin.js'); ?>"></script>
 </body>
 </html>

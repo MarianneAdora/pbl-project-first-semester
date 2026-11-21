@@ -362,7 +362,7 @@ function q_dropdown(string $id, string $labelId, array $options, string $selecte
                         <div class="field-row">
                             <div class="field" data-field="max">
                                 <label for="max">Highest rating <span class="req">*</span></label>
-                                <div class="input-box no-icon"><input type="text" id="max" name="max" inputmode="numeric" maxlength="2" placeholder="5"></div>
+                                <div class="input-box no-icon"><input type="text" id="max" name="max" data-input-rule="digits" inputmode="numeric" maxlength="2" placeholder="5"></div>
                                 <p class="field-error" role="alert"></p>
                                 <p class="field-hint">The scale goes from 1 up to this number (3 to 10).</p>
                             </div>
@@ -404,12 +404,12 @@ function q_dropdown(string $id, string $labelId, array $options, string $selecte
                             </div>
                             <div class="field" data-field="min_chars">
                                 <label for="min_chars">Shortest answer (characters)</label>
-                                <div class="input-box no-icon"><input type="text" id="min_chars" name="min_chars" inputmode="numeric" maxlength="4" placeholder="0"></div>
+                                <div class="input-box no-icon"><input type="text" id="min_chars" name="min_chars" data-input-rule="digits" inputmode="numeric" maxlength="4" placeholder="0"></div>
                                 <p class="field-error" role="alert"></p>
                             </div>
                             <div class="field" data-field="max_chars">
                                 <label for="max_chars">Longest answer (characters) <span class="req">*</span></label>
-                                <div class="input-box no-icon"><input type="text" id="max_chars" name="max_chars" inputmode="numeric" maxlength="4" placeholder="500"></div>
+                                <div class="input-box no-icon"><input type="text" id="max_chars" name="max_chars" data-input-rule="digits" inputmode="numeric" maxlength="4" placeholder="500"></div>
                                 <p class="field-error" role="alert"></p>
                             </div>
                         </div>
@@ -459,7 +459,7 @@ function q_dropdown(string $id, string $labelId, array $options, string $selecte
                             <!-- Rating scale -->
                             <div class="field" data-field="pass_min" id="passMinField" hidden>
                                 <label for="pass_min">Lowest passing rating <span class="req">*</span></label>
-                                <div class="input-box no-icon"><input type="text" id="pass_min" name="pass_min" inputmode="numeric" maxlength="2" placeholder="3"></div>
+                                <div class="input-box no-icon"><input type="text" id="pass_min" name="pass_min" data-input-rule="digits" inputmode="numeric" maxlength="2" placeholder="3"></div>
                                 <p class="field-error" role="alert"></p>
                                 <p class="field-hint" id="passMinHint">A rating lower than this fails the screening.</p>
                             </div>
@@ -524,6 +524,7 @@ function q_dropdown(string $id, string $labelId, array $options, string $selecte
         ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
     </script>
     <!-- Shared admin behaviour first, then this page's script -->
+    <script src="../assets/js/input-rules.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/input-rules.js'); ?>"></script>
     <script src="../assets/js/admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/admin.js'); ?>"></script>
 </body>
 </html>

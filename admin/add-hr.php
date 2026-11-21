@@ -219,7 +219,7 @@ $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
                         <label for="name">Full Name <span class="req">*</span></label>
                         <div class="input-box">
                             <svg class="field-icon" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-                            <input type="text" id="name" name="name" placeholder="Enter full name" maxlength="100" value="<?php echo $isEdit ? $h($editing['name']) : ''; ?>" required>
+                            <input type="text" id="name" name="name" data-input-rule="name" placeholder="Enter full name" maxlength="100" value="<?php echo $isEdit ? $h($editing['name']) : ''; ?>" required>
                         </div>
                         <p class="field-error" role="alert"></p>
                     </div>
@@ -317,7 +317,7 @@ $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
                     <label for="mfa_code">Email Verification Code <span class="req">*</span></label>
                     <div class="input-box">
                         <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 4-8 5-8-5V6l8 5 8-5z"/></svg>
-                        <input type="text" id="mfa_code" name="mfa_code" placeholder="Enter the 6-digit code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}">
+                        <input type="text" id="mfa_code" name="mfa_code" data-input-rule="digits" placeholder="Enter the 6-digit code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}">
                     </div>
                     <p class="field-error" role="alert"></p>
                     <p class="field-hint" id="mfaHint">A verification code will be emailed to the address entered above.</p>
@@ -383,6 +383,7 @@ $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
         ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
     </script>
     <!-- Shared admin behaviour first, then this page's script -->
+    <script src="../assets/js/input-rules.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/input-rules.js'); ?>"></script>
     <script src="../assets/js/admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/admin.js'); ?>"></script>
 </body>
 </html>
