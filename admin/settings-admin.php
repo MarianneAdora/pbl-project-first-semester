@@ -60,6 +60,7 @@ $account_avatar_url = $profile['avatar_url'];
 
     <!-- admin.css = shared admin styles + every admin page (this page is picked by data-page="settingsadmin" on <html>) -->
     <link rel="stylesheet" href="../assets/css/admin.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/admin.css'); ?>">
+    <link rel="stylesheet" href="../assets/css/avatar-cropper.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/avatar-cropper.css'); ?>">
 </head>
 <body>
 
@@ -295,6 +296,41 @@ $account_avatar_url = $profile['avatar_url'];
         </form>
     </main>
 
+    <dialog class="avatar-crop-dialog" id="avatarCropDialog" aria-labelledby="avatarCropTitle" aria-describedby="avatarCropInstructions">
+        <div class="avatar-crop-heading">
+            <div class="avatar-crop-mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6H8l1.2-1.5h5.6L16 6h1.5A2.5 2.5 0 0 1 20 8.5v8a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5v-8Z"/><circle cx="12" cy="12.5" r="3.25"/></svg>
+            </div>
+            <div>
+                <span class="avatar-crop-kicker">PROFILE PHOTO</span>
+                <h2 id="avatarCropTitle">Adjust profile photo</h2>
+            </div>
+        </div>
+        <p class="avatar-crop-instructions" id="avatarCropInstructions">Drag to reposition your photo, or use the controls to fine-tune the crop.</p>
+        <div class="avatar-crop-frame" id="avatarCropFrame" role="img" aria-label="Preview of your cropped profile photo">
+            <img id="avatarCropImage" alt="">
+        </div>
+        <div class="avatar-crop-controls">
+            <label class="avatar-crop-zoom-label" for="avatarCropZoom">
+                <span>Zoom</span>
+                <output id="avatarCropZoomValue" for="avatarCropZoom">100%</output>
+            </label>
+            <div class="avatar-crop-zoom-row">
+                <button class="avatar-crop-zoom-step" type="button" id="avatarCropZoomOut" aria-label="Zoom out">
+                    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12"/></svg>
+                </button>
+                <input class="avatar-crop-zoom" id="avatarCropZoom" type="range" min="1" max="3" step="0.01" value="1">
+                <button class="avatar-crop-zoom-step" type="button" id="avatarCropZoomIn" aria-label="Zoom in">
+                    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12M10 4v12"/></svg>
+                </button>
+            </div>
+        </div>
+        <div class="avatar-crop-actions">
+            <button type="button" id="avatarCropCancel">Cancel</button>
+            <button type="button" id="avatarCropApply"><span>Use photo</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4.5 10 3.6 3.6 7.4-7.2"/></svg></button>
+        </div>
+    </dialog>
+
     <!-- Update Password Modal -->
     <div class="modal-backdrop" id="pwModal" role="dialog" aria-modal="true" aria-labelledby="pwTitle">
         <div class="modal-card pw-modal">
@@ -358,6 +394,7 @@ $account_avatar_url = $profile['avatar_url'];
     </script>
     <!-- Shared admin behaviour first, then this page's script -->
     <script src="../assets/js/input-rules.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/input-rules.js'); ?>"></script>
+    <script src="../assets/js/avatar-cropper.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/avatar-cropper.js'); ?>"></script>
     <script src="../assets/js/admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/admin.js'); ?>"></script>
 </body>
 </html>

@@ -3821,29 +3821,6 @@ document.addEventListener('DOMContentLoaded', () => {
         paintAvatar();
     }
 
-    // Centre-crops the chosen file to a 400 x 400 JPEG (small, and every picture fits the round frame)
-    function squarePicture(file) {
-        return new Promise((resolve, reject) => {
-            const src = URL.createObjectURL(file);
-            const img = new Image();
-            img.onload = () => {
-                try {
-                    const side = Math.min(img.naturalWidth, img.naturalHeight);
-                    if (!side) throw new Error('empty');
-                    const canvas = document.createElement('canvas');
-                    canvas.width = canvas.height = 400;
-                    const g = canvas.getContext('2d');
-                    g.fillStyle = '#ffffff';                    // a see-through PNG gets a white background
-                    g.fillRect(0, 0, 400, 400);
-                    g.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, 400, 400);
-                    canvas.toBlob(blob => { URL.revokeObjectURL(src); blob ? resolve(blob) : reject(new Error('blob')); }, 'image/jpeg', 0.9);
-                } catch (err) { URL.revokeObjectURL(src); reject(err); }
-            };
-            img.onerror = () => { URL.revokeObjectURL(src); reject(new Error('decode')); };
-            img.src = src;
-        });
-    }
-
     avatarPick.addEventListener('click', () => avatarFile.click());
     avatarFile.addEventListener('change', async () => {
         const file = avatarFile.files && avatarFile.files[0];
@@ -3853,7 +3830,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { setError(field, 'Choose a JPG, PNG or WEBP picture.', true); return; }
         if (file.size > 10 * 1024 * 1024) { setError(field, 'That picture is too big (10 MB at most).', true); return; }
         let blob;
-        try { blob = await squarePicture(file); } catch (err) { setError(field, 'That file could not be read as a picture.', true); return; }
+        try { blob = await window.AvatarCropper.open(file); } catch (err) { setError(field, 'That picture could not be processed.', true); return; }
+        if (!blob) return;
         setError(field, '');
         if (photoUrl) URL.revokeObjectURL(photoUrl);
         photoBlob = blob;
