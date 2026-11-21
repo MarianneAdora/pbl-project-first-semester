@@ -60,6 +60,13 @@ function details_first_name(string $name): string
 // Returns ['name' => ..., 'jd_url' => ..., 'archived' => bool]. The name is still shown when HR later
 // deleted (archived) the position, so the Overview never loses what the applicant applied for. Only a
 // position that is still active keeps its job description PDF (the PDF is removed when it is archived).
+function details_clean_position_name(string $name): string
+{
+    $name = trim($name);
+    $cleanName = preg_replace('/\s+job position$/i', '', $name);
+    return $cleanName !== '' ? $cleanName : $name;
+}
+
 function details_position(?int $positionId): array
 {
     $none = ['name' => 'Not set', 'jd_url' => '', 'archived' => false];
@@ -72,7 +79,7 @@ function details_position(?int $positionId): array
         if (!$row || trim((string) $row['job_name']) === '') return $none;
         $archived = !empty($row['archived_at']);
         return [
-            'name'     => (string) $row['job_name'],
+            'name'     => details_clean_position_name((string) $row['job_name']),
             'jd_url'   => $archived ? '' : trim((string) ($row['jd_url'] ?? '')),
             'archived' => $archived
         ];
