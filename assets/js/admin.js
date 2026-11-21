@@ -4417,6 +4417,97 @@ document.addEventListener('DOMContentLoaded', () => {
     const activityFilter = document.getElementById('activityFilter');
     if (activityFilter && activityFilter.form) {
         activityFilter.addEventListener('change', () => activityFilter.form.submit());
+
+        const filterControl = activityFilter.closest('.dashboard-filter-control');
+        const filterTrigger = document.getElementById('activityFilterTrigger');
+        const filterValue = document.getElementById('activityFilterValue');
+        const filterMenu = document.getElementById('activityFilterMenu');
+        const filterOptions = filterMenu ? Array.from(filterMenu.querySelectorAll('.dashboard-filter-option')) : [];
+
+        if (filterControl && filterTrigger && filterValue && filterMenu && filterOptions.length) {
+            let activeIndex = filterOptions.findIndex(option => option.dataset.value === activityFilter.value);
+            let isOpen = false;
+
+            function syncFilterValue() {
+                const selected = filterOptions.find(option => option.dataset.value === activityFilter.value);
+                if (!selected) return;
+                filterValue.textContent = selected.dataset.label || selected.querySelector('.dashboard-filter-option-label').textContent;
+                filterTrigger.title = filterValue.textContent;
+                filterOptions.forEach(option => {
+                    option.setAttribute('aria-selected', String(option === selected));
+                });
+                activeIndex = filterOptions.indexOf(selected);
+            }
+
+            function highlightFilterOption(index) {
+                activeIndex = (index + filterOptions.length) % filterOptions.length;
+                filterOptions.forEach((option, optionIndex) => {
+                    option.classList.toggle('is-focused', optionIndex === activeIndex);
+                });
+                filterOptions[activeIndex].focus();
+                filterOptions[activeIndex].scrollIntoView({ block: 'nearest' });
+            }
+
+            function setFilterOpen(open) {
+                isOpen = open;
+                filterMenu.hidden = !open;
+                filterTrigger.setAttribute('aria-expanded', String(open));
+                if (open) {
+                    highlightFilterOption(activeIndex);
+                } else {
+                    filterOptions.forEach(option => option.classList.remove('is-focused'));
+                }
+            }
+
+            function chooseFilterOption(index) {
+                const option = filterOptions[index];
+                if (!option) return;
+                activityFilter.value = option.dataset.value;
+                syncFilterValue();
+                setFilterOpen(false);
+                filterTrigger.focus();
+                activityFilter.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+
+            function handleFilterKeydown(event) {
+                if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                    event.preventDefault();
+                    const direction = event.key === 'ArrowDown' ? 1 : -1;
+                    if (!isOpen) setFilterOpen(true);
+                    else highlightFilterOption(activeIndex + direction);
+                } else if (event.key === 'Home' || event.key === 'End') {
+                    event.preventDefault();
+                    if (!isOpen) setFilterOpen(true);
+                    highlightFilterOption(event.key === 'Home' ? 0 : filterOptions.length - 1);
+                } else if ((event.key === 'Enter' || event.key === ' ') && isOpen) {
+                    event.preventDefault();
+                    chooseFilterOption(activeIndex);
+                } else if (event.key === 'Escape' && isOpen) {
+                    event.preventDefault();
+                    setFilterOpen(false);
+                    filterTrigger.focus();
+                } else if (event.key === 'Tab' && isOpen) {
+                    window.setTimeout(() => setFilterOpen(false), 0);
+                }
+            }
+
+            syncFilterValue();
+            filterControl.classList.add('is-enhanced');
+            filterTrigger.hidden = false;
+
+            filterTrigger.addEventListener('click', () => setFilterOpen(!isOpen));
+            filterTrigger.addEventListener('keydown', handleFilterKeydown);
+            filterMenu.addEventListener('keydown', handleFilterKeydown);
+
+            filterMenu.addEventListener('click', event => {
+                const option = event.target.closest('.dashboard-filter-option');
+                if (option) chooseFilterOption(filterOptions.indexOf(option));
+            });
+
+            document.addEventListener('click', event => {
+                if (isOpen && !filterControl.contains(event.target)) setFilterOpen(false);
+            });
+        }
     }
 
     /* ---------- 1. Summary boxes: numbers count up, the activity box jumps to the list ---------- */
