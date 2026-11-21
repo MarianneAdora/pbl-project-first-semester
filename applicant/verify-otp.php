@@ -100,7 +100,7 @@ $issueDbOtp = function () use ($otpDb, $applicantId, $email, $applicantName, $re
                 . max(1, (int) ceil($wait / 60)) . ' minute(s).';
         }
 
-        $wait = max(0, $resendBase + $resendStep * $resends - $lastAge);
+        $wait = $ages ? max(0, $resendBase + $resendStep * $resends - $lastAge) : 0;
         if ($wait > 0) {
             if ($ownsTransaction) $pdo->commit();
             return 'Please wait ' . $wait . ' second' . ($wait === 1 ? '' : 's') . ' before asking for a new code.';
