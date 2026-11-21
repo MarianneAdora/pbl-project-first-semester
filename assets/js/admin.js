@@ -3302,7 +3302,9 @@ document.addEventListener('DOMContentLoaded', () => {
         dragHandle.title = 'Drag to reorder within this section';
         dragHandle.setAttribute('aria-label', 'Reorder question ' + number + ' within this section; use the arrow keys or drag');
         dragHandle.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm6-10a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>';
-        tdNum.append(dragHandle, document.createTextNode(String(number)));
+        const orderValue = el('span', 'question-order-value');
+        orderValue.append(dragHandle, document.createTextNode(String(number)));
+        tdNum.appendChild(orderValue);
         dragHandle.addEventListener('keydown', (event) => {
             if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
             const sectionQuestions = questions.filter(item => Number(item.section_no) === Number(q.section_no));
@@ -3351,12 +3353,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const tdSec = el('td', 'cell-sec');
         if (Number(q.section_no) > 0 && q.section) {
             tdSec.title = 'Section ' + q.section_no + ' \u00B7 ' + q.section;
+            const sectionValue = el('span', 'question-section-value');
             const dot = el('span', 'sec-dot');
             dot.style.setProperty('--c', colorOf(q.section_no));
-            tdSec.append(dot, document.createTextNode('Sec ' + q.section_no));
+            sectionValue.append(dot, document.createTextNode('Sec ' + q.section_no));
+            tdSec.appendChild(sectionValue);
         } else {
             tdSec.title = 'No section assigned';
-            tdSec.appendChild(document.createTextNode('Unassigned'));
+            tdSec.appendChild(el('span', 'question-section-value', 'Unassigned'));
         }
 
         const tdTitle = el('td', 'cell-name');

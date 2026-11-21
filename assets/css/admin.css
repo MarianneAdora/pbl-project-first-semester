@@ -3963,20 +3963,25 @@ html:where([data-page="archiveadmin"],[data-page="hrlist"],[data-page="questionl
     :where(html[data-page="hrlist"]) .hr-table tbody td:nth-child(5)::before { content: "Status"; }
 
     :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(1) {
-        display: flex;
+        display: grid;
         align-items: center;
         grid-column: 1;
         grid-row: 1;
-        gap: 4px;
+        gap: 6px;
     }
-    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(1)::before { content: "Order"; margin-right: auto; }
-    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(2) { display: grid; grid-column: 2; grid-row: 1; }
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(1)::before { content: "Order"; }
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(1) .question-drag-handle { margin: 0 2px 0 0; }
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(1) .question-order-value { min-width: 0; }
+    :where(html[data-page="questionlist"]) .hr-table.q-table tbody td { grid-template-columns: 56px minmax(0, 1fr); }
+    :where(html[data-page="questionlist"]) .hr-table.q-table tbody td:first-child { padding-left: 0; }
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(2) { display: grid; align-items: center; grid-column: 2; grid-row: 1; }
     :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(2)::before { content: "Section"; }
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(2) .sec-dot { margin: 0 6px 0 0; }
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(2) .question-section-value { min-width: 0; }
     :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(3) {
         display: grid;
         grid-column: 1 / -1;
         grid-row: 2;
-        grid-template-columns: minmax(42px, 24%) minmax(0, 1fr);
     }
     :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(3)::before { content: "Title"; }
     :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(3) > strong,
@@ -4054,6 +4059,11 @@ html:where([data-page="archiveadmin"],[data-page="hrlist"],[data-page="questionl
 :where(html[data-page="questionlist"]) .q-table col.c-sec  { width: 110px; }
 :where(html[data-page="questionlist"]) .q-table col.c-date { width: 150px; }
 :where(html[data-page="questionlist"]) .q-table .col-num { white-space: nowrap; }
+:where(html[data-page="questionlist"]) .q-table .question-order-value {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
 :where(html[data-page="questionlist"]) .question-drag-handle {
     display: inline-flex;
     align-items: center;
@@ -4076,6 +4086,11 @@ html:where([data-page="archiveadmin"],[data-page="hrlist"],[data-page="questionl
 :where(html[data-page="questionlist"]) .q-table tbody tr.drag-over td { box-shadow: inset 0 2px 0 var(--brand); }
 
 :where(html[data-page="questionlist"]) .q-table .cell-sec { color: var(--ink-soft); font-weight: 600; }
+:where(html[data-page="questionlist"]) .q-table .question-section-value {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+}
 :where(html[data-page="questionlist"]) .q-table .sec-dot {
     display: inline-block;
     width: 9px;
