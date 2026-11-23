@@ -135,8 +135,12 @@ define('ARCHIVE_DAYS', 30);
 function repo_admin_archive(?PDO $pdo = null): array
 {
     $pdo = $pdo ?: db();
-    // auto-purge expired rows first
-    $pdo->exec("DELETE FROM users WHERE role = 'hr' AND deleted_at IS NOT NULL AND deleted_at < NOW() - INTERVAL '30 days'");
+    // Keep archived HR accounts recoverable if none remain outside the Archive.
+    $pdo->exec(
+        "DELETE FROM users
+         WHERE role = 'hr' AND deleted_at IS NOT NULL AND deleted_at < NOW() - INTERVAL '30 days'
+           AND EXISTS (SELECT 1 FROM users active_hr WHERE active_hr.role = 'hr' AND active_hr.deleted_at IS NULL)"
+    );
     $pdo->exec("DELETE FROM question_config WHERE deleted_at IS NOT NULL AND deleted_at < NOW() - INTERVAL '30 days'");
 
     $accounts = [];
@@ -207,9 +211,32 @@ function repo_admin_notify(?PDO $pdo = null): array
 function repo_account_archive(int $id, ?PDO $pdo = null): bool
 {
     $pdo = $pdo ?: db();
-    $st = $pdo->prepare("UPDATE users SET deleted_at = NOW() WHERE user_id = :id AND role = 'hr' AND deleted_at IS NULL");
-    $st->execute([':id' => $id]);
-    return $st->rowCount() > 0;
+    $ownsTransaction = !$pdo->inTransaction();
+    if ($ownsTransaction) $pdo->beginTransaction();
+
+    try {
+        $activeIds = array_map(
+            'intval',
+            $pdo->query("SELECT user_id FROM users WHERE role = 'hr' AND deleted_at IS NULL ORDER BY user_id FOR UPDATE")
+                ->fetchAll(PDO::FETCH_COLUMN)
+        );
+        if (!in_array($id, $activeIds, true)) {
+            if ($ownsTransaction) $pdo->commit();
+            return false;
+        }
+        if (count($activeIds) <= 1) {
+            throw new InvalidArgumentException('At least one HR account must remain outside the Archive.');
+        }
+
+        $st = $pdo->prepare("UPDATE users SET deleted_at = NOW() WHERE user_id = :id AND role = 'hr' AND deleted_at IS NULL");
+        $st->execute([':id' => $id]);
+        $archived = $st->rowCount() > 0;
+        if ($ownsTransaction) $pdo->commit();
+        return $archived;
+    } catch (Throwable $e) {
+        if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
 }
 
 function repo_account_restore(int $id, ?PDO $pdo = null): bool
@@ -223,6 +250,11 @@ function repo_account_restore(int $id, ?PDO $pdo = null): bool
 function repo_account_purge(int $id, ?PDO $pdo = null): bool
 {
     $pdo = $pdo ?: db();
+    $activeCount = (int) $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'hr' AND deleted_at IS NULL")->fetchColumn();
+    if ($activeCount === 0) {
+        throw new InvalidArgumentException('Restore or add an HR account before permanently deleting archived HR accounts.');
+    }
+
     $st = $pdo->prepare("DELETE FROM users WHERE user_id = :id AND role = 'hr' AND deleted_at IS NOT NULL");
     $st->execute([':id' => $id]);
     return $st->rowCount() > 0;
@@ -436,13 +468,17 @@ function repo_admin_question_stats(?PDO $pdo = null, ?int $hrUserId = null, bool
     // Section numbering: distinct section names in first-seen order -> 1..N
     $secNo = [];
     foreach ($questions as $q) {
-        if (!isset($secNo[$q['section']])) $secNo[$q['section']] = count($secNo) + 1;
+        $name = trim((string) $q['section']);
+        if ($name !== '' && !isset($secNo[$name])) $secNo[$name] = count($secNo) + 1;
     }
     $sections = [];
     foreach ($secNo as $name => $no) {
         $sections[] = ['no' => $no, 'name' => $name, 'count' => 0];
     }
-    foreach ($questions as $q) $sections[$secNo[$q['section']] - 1]['count']++;
+    foreach ($questions as $q) {
+        $name = trim((string) $q['section']);
+        if ($name !== '' && isset($secNo[$name])) $sections[$secNo[$name] - 1]['count']++;
+    }
 
     $out = [];
     foreach ($questions as $q) {
@@ -480,7 +516,7 @@ function repo_admin_question_stats(?PDO $pdo = null, ?int $hrUserId = null, bool
 
         $row = [
             'id' => 'q' . $q['question_id'],
-            'section_no' => $secNo[$q['section']],
+            'section_no' => $secNo[trim((string) $q['section'])] ?? 0,
             'section' => (string) $q['section'],
             'text' => (string) $q['question_text'],
             'type' => $type,

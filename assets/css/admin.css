@@ -1326,7 +1326,7 @@ html[data-motion="off"] .new-dot { animation: none !important; }
     .page-overlay .overlay-stripe { animation-delay: 0s !important; }
     html.js.is-ready .reveal,
     html.js.is-ready.is-leaving .reveal { animation: none !important; opacity: 1; }
-    .toast, .nav-badge.pop, .nav-item.bump .nav-icon, .row-in, .sub-fields { transition: none; animation: none !important; }
+    .toast, .nav-badge.pop, .nav-item.bump .nav-icon, .row-in, .activity-row-in, .sub-fields { transition: none; animation: none !important; }
     .nav-badge.alert::after, .new-dot { animation: none; }
 }
 
@@ -1595,6 +1595,51 @@ html:where([data-page="addhr"],[data-page="addquestion"])[data-theme="dark"] {
 
 /* the field whose dropdown is open sits above the fields below it */
 :where(html[data-page="addhr"],html[data-page="addquestion"]) .form-card .field.is-open { z-index: 20; }
+
+:where(html[data-page="addquestion"]) .section-select-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+:where(html[data-page="addquestion"]) .section-select-row > .dropdown { flex: 1; min-width: 0; }
+
+:where(html[data-page="addquestion"]) .section-option-row { display: flex; align-items: center; gap: 4px; }
+:where(html[data-page="addquestion"]) .section-options .dropdown-option {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    color: var(--ink);
+    font: inherit;
+    text-align: left;
+}
+:where(html[data-page="addquestion"]) .section-options .dropdown-option:hover,
+:where(html[data-page="addquestion"]) .section-options .dropdown-option.is-focused { transform: none; }
+:where(html[data-page="addquestion"]) .section-options .dropdown-option[aria-checked="true"] { color: var(--red); font-weight: 800; }
+:where(html[data-page="addquestion"]) .section-options .dropdown-option[aria-checked="true"] .opt-check { opacity: 1; transform: none; }
+:where(html[data-page="addquestion"]) .section-option-delete {
+    display: grid;
+    flex: 0 0 32px;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--red);
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+:where(html[data-page="addquestion"]) .section-option-delete:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--red) 35%, transparent);
+    background: color-mix(in srgb, var(--red) 13%, var(--surface));
+}
+:where(html[data-page="addquestion"]) .section-option-delete:active:not(:disabled) { transform: scale(0.92); }
+:where(html[data-page="addquestion"]) .section-option-delete:disabled { opacity: 0.5; cursor: not-allowed; }
+:where(html[data-page="addquestion"]) .section-option-delete:focus-visible { outline: 2px solid var(--red); outline-offset: 1px; }
+:where(html[data-page="addquestion"]) .section-option-delete svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
 
 :where(html[data-page="addhr"],html[data-page="addquestion"]) .form-card .field > label {
     display: block;
@@ -2068,39 +2113,186 @@ html:where([data-page="addhr"],[data-page="addquestion"])[data-theme="dark"] .in
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
-    gap: 10px 18px;
-    padding: 12px 16px;
+    gap: 12px 20px;
+    padding: 16px 20px;
     border: 1px solid var(--edge);
-    border-radius: 12px;
+    border-radius: 16px;
     background: var(--surface);
+    box-shadow: var(--shadow-card);
 }
 
 :where(html[data-page="dashboardadmin"]) .dashboard-scope-filter {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     flex-wrap: wrap;
-    gap: 7px;
+    gap: 12px;
     margin: 0;
+    width: 100%;
 }
 
 :where(html[data-page="dashboardadmin"]) .dashboard-scope-filter label {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--ink-soft);
+    flex: 0 0 auto;
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--ink);
 }
 
-:where(html[data-page="dashboardadmin"]) .dashboard-scope-filter select {
-    min-height: 34px;
-    padding: 6px 10px;
+:where(html[data-page="dashboardadmin"]) .dashboard-filter-control {
+    position: relative;
+    flex: 1 1 300px;
+    min-width: 0;
+    max-width: 440px;
+}
+
+:where(html[data-page="dashboardadmin"]) .dashboard-filter-control.is-enhanced select { display: none; }
+
+:where(html[data-page="dashboardadmin"]) .dashboard-filter-control select {
+    width: 100%;
+    min-height: 46px;
+    padding: 10px 14px;
     border: 1px solid var(--edge);
-    border-radius: 8px;
+    border-radius: 12px;
     background: var(--surface);
     color: var(--ink);
     font: inherit;
-    font-size: 12px;
+    font-size: 13px;
 }
 
-:where(html[data-page="dashboardadmin"]) .dashboard-scope-filter select { max-width: min(300px, 56vw); }
+:where(html[data-page="dashboardadmin"]) .dashboard-filter-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    min-height: 48px;
+    padding: 0 14px 0 16px;
+    border: 1px solid var(--edge);
+    border-radius: 12px;
+    background: var(--field);
+    color: var(--ink);
+    text-align: left;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+:where(html[data-page="dashboardadmin"]) .dashboard-filter-trigger:hover,
+:where(html[data-page="dashboardadmin"]) .dashboard-filter-trigger[aria-expanded="true"] {
+    border-color: color-mix(in srgb, var(--blue) 55%, var(--edge));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 10%, transparent);
+}
+
+:where(html[data-page="dashboardadmin"]) .dashboard-filter-trigger:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--blue) 42%, transparent);
+    outline-offset: 2px;
+}
+
+:where(html[data-page="dashboardadmin"]) .dashboard-filter-value {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+:where(html[data-page="dashboardadmin"]) .dashboard-filter-trigger > svg {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 auto;
+    fill: var(--ink-soft);
+    transition: transform 0.2s ease;
+}
+
+:where(html[data-page="dashboardadmin"]) .dashboard-filter-trigger[aria-expanded="true"] > svg { transform: rotate(180deg); }
+
+:where(html[data-page="dashboardadmin"]) .dashboard-filter-menu {
+    position: absolute;
+    z-index: 40;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 100%;
+    min-width: min(320px, calc(100vw - 32px));
+    max-height: min(340px, calc(100dvh - 120px));
+    overflow-y: auto;
+    padding: 6px;
+    list-style: none;
+    border: 1px solid var(--edge);
+    border-radius: 14px;
+    background: var(--surface);
+    box-shadow: 0 16px 38px rgba(20, 28, 40, 0.18);
+    overscroll-behavior: contain;
+    animation: dashboardMenuIn 0.16s var(--ease-out) both;
+}
+
+:where(html[data-page="dashboardadmin"]) .dashboard-filter-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    min-height: 54px;
+    padding: 9px 12px;
+    border-radius: 9px;
+    color: var(--ink);
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+:where(html[data-page="dashboardadmin"]) .dashboard-filter-option:hover,
+:where(html[data-page="dashboardadmin"]) .dashboard-filter-option.is-focused {
+    background: var(--hover);
+}
+
+:where(html[data-page="dashboardadmin"]) .dashboard-filter-option[aria-selected="true"] {
+    background: color-mix(in srgb, var(--blue) 10%, var(--surface));
+    color: var(--blue-ink);
+}
+
+:where(html[data-page="dashboardadmin"]) .dashboard-filter-option-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+:where(html[data-page="dashboardadmin"]) .dashboard-filter-option-label {
+    overflow: hidden;
+    color: inherit;
+    font-size: 13px;
+    font-weight: 750;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+:where(html[data-page="dashboardadmin"]) .dashboard-filter-option-meta {
+    overflow: hidden;
+    color: var(--ink-soft);
+    font-size: 11px;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+:where(html[data-page="dashboardadmin"]) .dashboard-filter-check {
+    width: 19px;
+    height: 19px;
+    flex: 0 0 auto;
+    fill: var(--blue-ink);
+    opacity: 0;
+    transform: scale(0.75);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+:where(html[data-page="dashboardadmin"]) .dashboard-filter-option[aria-selected="true"] .dashboard-filter-check {
+    opacity: 1;
+    transform: scale(1);
+}
+
+@keyframes dashboardMenuIn {
+    from { opacity: 0; transform: translateY(-4px) scale(0.985); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
 
 /* ---------- Summary boxes ---------- */
 :where(html[data-page="dashboardadmin"]) .admin-metrics {
@@ -2117,10 +2309,12 @@ html:where([data-page="addhr"],[data-page="addquestion"])[data-theme="dark"] .in
     flex-direction: column;
     justify-content: space-between;
     gap: 6px;
-    padding: 14px 22px;
-    background: var(--surface);
-    border-radius: 14px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+    min-height: 142px;
+    padding: 18px 22px;
+    border: 1px solid var(--edge);
+    background: linear-gradient(135deg, var(--surface) 58%, color-mix(in srgb, var(--tone-soft) 55%, var(--surface)));
+    border-radius: 16px;
+    box-shadow: var(--shadow-card);
     overflow: hidden;
     color: inherit;
     text-decoration: none;
@@ -2148,7 +2342,7 @@ html:where([data-page="dashboardadmin"])[data-theme="dark"] .stat-card.tone-red 
 html:where([data-page="dashboardadmin"])[data-theme="dark"] .stat-card.tone-blue { --tone: #4aa8f0; }
 html:where([data-page="dashboardadmin"])[data-theme="dark"] .stat-card.tone-green { --tone: #4cc27a; }
 
-:where(html[data-page="dashboardadmin"]) .stat-card:hover { transform: translateY(-6px) scale(1.03); box-shadow: var(--shadow-lift); z-index: 2; }
+:where(html[data-page="dashboardadmin"]) .stat-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lift); z-index: 2; }
 :where(html[data-page="dashboardadmin"]) .stat-card:active { transform: translateY(-2px) scale(0.99); }
 
 :where(html[data-page="dashboardadmin"]) .stat-top { display: flex; align-items: center; gap: 10px; }
@@ -2850,6 +3044,14 @@ html:where([data-page="dashboardadmin"])[data-theme="dark"] .vol-chart { --vc: #
 :where(html[data-page="dashboardadmin"]) .activity-card .data-table td:nth-child(3) { white-space: normal; text-overflow: clip; }
 :where(html[data-page="dashboardadmin"]) .activity-card .data-table th { position: sticky; top: 0; z-index: 2; }
 :where(html[data-page="dashboardadmin"]) .activity-card .data-table tbody tr { cursor: default; }
+:where(html[data-page="dashboardadmin"]) .activity-card .data-table tbody tr.activity-row-in {
+    animation: activityRowIn 0.5s var(--ease-out) both;
+    animation-delay: calc(var(--r, 0) * 55ms);
+}
+@keyframes activityRowIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
 :where(html[data-page="dashboardadmin"]) .activity-card .data-table td:first-child { padding-left: 20px; }
 :where(html[data-page="dashboardadmin"]) .activity-card .data-table th:last-child, :where(html[data-page="dashboardadmin"]) .activity-card .data-table td:last-child { padding-right: 20px; }
 
@@ -3020,6 +3222,8 @@ html:where([data-page="archiveadmin"],[data-page="hrlist"],[data-page="questionl
     top: calc(100% + 8px);
     left: 0;
     right: 0;
+    width: 100%;
+    box-sizing: border-box;
     margin: 0;
     padding: 6px;
     list-style: none;
@@ -3046,7 +3250,8 @@ html:where([data-page="archiveadmin"],[data-page="hrlist"],[data-page="questionl
     display: flex;
     align-items: center;
     gap: 10px;
-    height: 42px;
+    min-height: 42px;
+    box-sizing: border-box;
     padding: 0 12px;
     border-radius: 9px;
     font-size: 14px;
@@ -3073,7 +3278,13 @@ html:where([data-page="archiveadmin"],[data-page="hrlist"],[data-page="questionl
     font-weight: 800;
 }
 
-:where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .opt-label { flex: 1; }
+:where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .opt-label {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 
 :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .opt-count {
     min-width: 26px;
@@ -3656,7 +3867,129 @@ html:where([data-page="archiveadmin"],[data-page="hrlist"],[data-page="questionl
     :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .filter-label svg { width: 24px; height: 24px; padding: 5px; }
     :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .dropdown-btn { gap: 6px; padding: 0 8px; font-size: 12px; }
     :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .dropdown-chevron { width: 20px; height: 20px; }
+    :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .dropdown-option {
+        height: 38px;
+        min-height: 38px;
+        gap: 7px;
+        padding: 0 8px;
+        font-size: 12px;
+    }
+    :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .dropdown-menu { padding: 5px; }
+    :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .opt-count { display: none; }
+    :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .opt-check { width: 16px; height: 16px; }
+    :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .dropdown-option:hover,
+    :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .dropdown-option.is-focused { transform: none; }
     :where(html[data-page="archiveadmin"],html[data-page="hrlist"],html[data-page="questionlist"]) .page-head .btn-add span { display: none; }
+
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .table-scroll { overflow-x: hidden; }
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table { display: block; table-layout: auto; }
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table tbody {
+        display: grid;
+        gap: 10px;
+        padding: 10px;
+    }
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table tbody tr {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0 12px;
+        padding: 8px 10px;
+        background: var(--surface);
+        border: 1px solid var(--edge);
+        border-radius: 12px;
+    }
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table tbody tr:hover td:first-child { box-shadow: none; }
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table tbody td {
+        display: grid;
+        grid-template-columns: minmax(48px, 32%) minmax(0, 1fr);
+        align-items: start;
+        gap: 6px;
+        width: auto;
+        height: auto !important;
+        min-width: 0;
+        padding: 7px 0;
+        overflow: visible;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        text-overflow: clip;
+        border-bottom: 1px solid var(--surface-2);
+        font-size: 12px;
+        line-height: 1.4;
+    }
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table tbody td::before {
+        color: var(--ink-soft);
+        font-size: 10px;
+        font-weight: 700;
+        line-height: 1.4;
+    }
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table tbody td > * { min-width: 0; max-width: 100%; }
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table tbody td .cell-name,
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table tbody td strong { overflow-wrap: anywhere; white-space: normal; }
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table tbody td.col-action {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        grid-column: 1 / -1;
+        padding-right: 0;
+        overflow: visible;
+        border-bottom: 0;
+    }
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table tbody td.col-action::before { content: "Actions"; }
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table tbody td.col-num { color: var(--ink); }
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table tbody td .status-pill { justify-self: start; }
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table tbody tr:last-child td { border-bottom: 1px solid var(--surface-2); }
+    :where(html[data-page="hrlist"],html[data-page="questionlist"]) .hr-table tbody tr:last-child td.col-action { border-bottom: 0; }
+
+    :where(html[data-page="hrlist"]) .hr-table tbody td:nth-child(1) { display: none; }
+    :where(html[data-page="hrlist"]) .hr-table tbody td:nth-child(2) { grid-column: 1 / -1; }
+    :where(html[data-page="hrlist"]) .hr-table tbody td:nth-child(2)::before { content: "Full name"; }
+    :where(html[data-page="hrlist"]) .hr-table tbody td:nth-child(2) .new-dot { display: none; }
+    :where(html[data-page="hrlist"]) .hr-table tbody td:nth-child(2) .new-tag { grid-column: 2; justify-self: start; }
+    :where(html[data-page="hrlist"]) .hr-table tbody td:nth-child(3) { display: grid; grid-column: 1 / -1; }
+    :where(html[data-page="hrlist"]) .hr-table tbody td:nth-child(3)::before { content: "Email"; }
+    :where(html[data-page="hrlist"]) .hr-table tbody td:nth-child(4) { display: grid; grid-column: 1; }
+    :where(html[data-page="hrlist"]) .hr-table tbody td:nth-child(4)::before { content: "Role"; }
+    :where(html[data-page="hrlist"]) .hr-table tbody td:nth-child(5) { display: grid; grid-column: 2; }
+    :where(html[data-page="hrlist"]) .hr-table tbody td:nth-child(5)::before { content: "Status"; }
+
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(1) {
+        display: grid;
+        align-items: center;
+        grid-column: 1;
+        grid-row: 1;
+        gap: 6px;
+    }
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(1)::before { content: "Order"; }
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(1) .question-drag-handle { margin: 0 2px 0 0; }
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(1) .question-order-value { min-width: 0; }
+    :where(html[data-page="questionlist"]) .hr-table.q-table tbody td { grid-template-columns: 56px minmax(0, 1fr); }
+    :where(html[data-page="questionlist"]) .hr-table.q-table tbody td:first-child { padding-left: 0; }
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(2) { display: grid; align-items: center; grid-column: 2; grid-row: 1; }
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(2)::before { content: "Section"; }
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(2) .sec-dot { margin: 0 6px 0 0; }
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(2) .question-section-value { min-width: 0; }
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(3) {
+        display: grid;
+        grid-column: 1 / -1;
+        grid-row: 2;
+    }
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(3)::before { content: "Title"; }
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(3) > strong,
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(3) > .ko-tag { grid-column: 2; }
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(4) { display: grid; grid-column: 1; grid-row: 3; }
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(4)::before { content: "Created"; }
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(5) { grid-column: 2; grid-row: 3; }
+    :where(html[data-page="questionlist"]) .hr-table tbody td:nth-child(5)::before { content: "Status"; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -3726,6 +4059,11 @@ html:where([data-page="archiveadmin"],[data-page="hrlist"],[data-page="questionl
 :where(html[data-page="questionlist"]) .q-table col.c-sec  { width: 110px; }
 :where(html[data-page="questionlist"]) .q-table col.c-date { width: 150px; }
 :where(html[data-page="questionlist"]) .q-table .col-num { white-space: nowrap; }
+:where(html[data-page="questionlist"]) .q-table .question-order-value {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
 :where(html[data-page="questionlist"]) .question-drag-handle {
     display: inline-flex;
     align-items: center;
@@ -3748,6 +4086,11 @@ html:where([data-page="archiveadmin"],[data-page="hrlist"],[data-page="questionl
 :where(html[data-page="questionlist"]) .q-table tbody tr.drag-over td { box-shadow: inset 0 2px 0 var(--brand); }
 
 :where(html[data-page="questionlist"]) .q-table .cell-sec { color: var(--ink-soft); font-weight: 600; }
+:where(html[data-page="questionlist"]) .q-table .question-section-value {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+}
 :where(html[data-page="questionlist"]) .q-table .sec-dot {
     display: inline-block;
     width: 9px;
@@ -3761,10 +4104,12 @@ html:where([data-page="archiveadmin"],[data-page="hrlist"],[data-page="questionl
 :where(html[data-page="questionlist"]) .q-table tbody tr:hover .sec-dot { transform: scale(1.35); }
 
 /* hrlist.css hides its 3rd and 4th columns on a narrow card; here the 3rd one is the Title, so the Section goes instead */
-@container tbl (max-width: 600px) {
-    :where(html[data-page="questionlist"]) .hr-table.q-table col.c-title { display: table-column; }
-    :where(html[data-page="questionlist"]) .hr-table.q-table th:nth-child(3), :where(html[data-page="questionlist"]) .hr-table.q-table td:nth-child(3) { display: table-cell; }
-    :where(html[data-page="questionlist"]) .hr-table.q-table col.c-sec, :where(html[data-page="questionlist"]) .hr-table.q-table th:nth-child(2), :where(html[data-page="questionlist"]) .hr-table.q-table td:nth-child(2) { display: none; }
+@media (min-width: 801px) {
+    @container tbl (max-width: 600px) {
+        :where(html[data-page="questionlist"]) .hr-table.q-table col.c-title { display: table-column; }
+        :where(html[data-page="questionlist"]) .hr-table.q-table th:nth-child(3), :where(html[data-page="questionlist"]) .hr-table.q-table td:nth-child(3) { display: table-cell; }
+        :where(html[data-page="questionlist"]) .hr-table.q-table col.c-sec, :where(html[data-page="questionlist"]) .hr-table.q-table th:nth-child(2), :where(html[data-page="questionlist"]) .hr-table.q-table td:nth-child(2) { display: none; }
+    }
 }
 
 /* ==========================================================================
@@ -5167,6 +5512,33 @@ html:where([data-page="dashboardadmin"])[data-motion="off"] .notif-bell.ring svg
 
 @media (max-width: 600px) {
     :where(html[data-page="dashboardadmin"]) .admin-dashboard { gap: 14px; }
+    :where(html[data-page="dashboardadmin"]) .dashboard-scope {
+        align-items: stretch;
+        padding: 14px;
+        border-radius: 14px;
+    }
+    :where(html[data-page="dashboardadmin"]) .dashboard-scope-filter {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 8px;
+    }
+    :where(html[data-page="dashboardadmin"]) .dashboard-scope-filter label { font-size: 12px; }
+    :where(html[data-page="dashboardadmin"]) .dashboard-filter-control {
+        flex: 1 1 auto;
+        width: 100%;
+        max-width: none;
+    }
+    :where(html[data-page="dashboardadmin"]) .dashboard-filter-trigger {
+        min-height: 48px;
+        font-size: 14px;
+    }
+    :where(html[data-page="dashboardadmin"]) .dashboard-filter-menu {
+        left: 0;
+        right: auto;
+        min-width: 0;
+        max-height: min(320px, calc(100dvh - 100px));
+    }
+    :where(html[data-page="dashboardadmin"]) .dashboard-filter-option { min-height: 56px; padding: 10px 11px; }
     :where(html[data-page="dashboardadmin"]) .admin-dashboard .admin-metrics {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 10px;
@@ -5216,6 +5588,11 @@ html:where([data-page="dashboardadmin"])[data-motion="off"] .notif-bell.ring svg
     :where(html[data-page="dashboardadmin"]) .ins-chip .chip-value { line-height: 1.25; white-space: normal; overflow-wrap: anywhere; }
     :where(html[data-page="dashboardadmin"]) .activity-card { padding: 14px; }
     :where(html[data-page="dashboardadmin"]) .activity-card .table-responsive { margin-right: -14px; margin-left: -14px; }
+}
+
+@media (max-width: 400px) {
+    :where(html[data-page="dashboardadmin"]) .admin-dashboard .admin-metrics { grid-template-columns: 1fr; }
+    :where(html[data-page="dashboardadmin"]) .admin-metrics .stat-card { min-height: 116px; padding: 14px 16px; }
 }
 
 @media (max-width: 600px) {
@@ -5787,7 +6164,28 @@ html[data-motion="off"] .sidebar .sidebar-header { animation: none; }
 }
 
 .sidebar-account-row button.notif-bell svg { width: 19px; height: 19px; fill: currentColor; }
-.sidebar-account-row .notif-count { position: absolute; top: -6px; right: -6px; }
+.sidebar-account-row button.notif-bell:focus-visible { outline: 2px solid #a3081e; outline-offset: 3px; }
+.sidebar-account-row .notif-count {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: #a3081e;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    box-shadow: 0 0 0 2px var(--surface, #ffffff);
+}
+.sidebar-account-row .notif-count[hidden] { display: none; }
 
 .sidebar.collapsed .sidebar-account-row {
     flex-direction: column;
@@ -6262,4 +6660,73 @@ html[data-motion="off"] .nav-notif-panel:not([hidden]) { animation: none; }
         transition: none;
         transform: none;
     }
+}
+
+@media (max-width: 800px) {
+    html,
+    body {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    body {
+        height: auto;
+        min-height: 100svh;
+    }
+
+    .main-content,
+    .main-content > *,
+    .content-header,
+    .page-head,
+    .form-head,
+    .toolbar,
+    .form-grid,
+    .table-card,
+    .dash-card,
+    .chart-card,
+    .insight-card {
+        box-sizing: border-box;
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .main-content {
+        width: 100%;
+    }
+
+    .content-header h1 {
+        overflow-wrap: anywhere;
+        text-overflow: clip;
+        white-space: normal;
+    }
+
+    .table-responsive,
+    .table-scroll,
+    .panel-scroll {
+        max-width: 100%;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .modal-backdrop {
+        box-sizing: border-box;
+        max-width: 100vw;
+        padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+        overflow-y: auto;
+    }
+
+    .modal-backdrop .modal-card {
+        box-sizing: border-box;
+        width: 100%;
+        max-width: min(100%, 680px);
+        max-height: calc(100dvh - max(24px, env(safe-area-inset-top) + env(safe-area-inset-bottom)));
+        overflow-y: auto;
+        margin: auto;
+    }
+}
+
+@media (max-width: 380px) {
+    .main-content { padding-right: 10px; padding-left: 10px; }
 }

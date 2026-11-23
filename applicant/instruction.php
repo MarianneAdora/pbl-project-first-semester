@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once __DIR__ . '/../src/Helpers/security.php';
+start_secure_session(1800);
 require_once __DIR__ . '/../src/Helpers/security.php';
 $csrf = csrf_token();
 
@@ -146,7 +147,7 @@ $reminders = [
                     Estimated Time: <?= htmlspecialchars($estimatedTime) ?>
                 </p>
 
-                <div class="start__consent">
+                <div class="start__consent reveal" style="--i:15">
                     <input type="checkbox" id="privacyAgreement" aria-describedby="privacyError"
                         data-accepted="<?= $privacyAccepted ? 'true' : 'false' ?>"
                         <?= $privacyAccepted ? 'checked disabled' : '' ?>>

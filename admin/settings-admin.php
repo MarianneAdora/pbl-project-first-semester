@@ -1,11 +1,13 @@
 <?php
-session_start();
+require_once __DIR__ . '/../src/Helpers/security.php';
+start_secure_session(1800);
 require_once __DIR__ . '/../src/Helpers/security.php';
 $csrf = csrf_token();
 
 // No caching, so the Back button after logout never shows this page
 header('Cache-Control: no-store, no-cache, must-revalidate');
 header('Pragma: no-cache');
+header('Expires: 0');
 
 // Protection: Ensure only the Admin can access this page
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
@@ -17,6 +19,7 @@ date_default_timezone_set('Asia/Manila');
 
 // Sidebar badges: new HR activity + archived questions/accounts expiring soon.
 require_once __DIR__ . '/../src/Helpers/db.php';
+require_once __DIR__ . '/../src/Repositories/AdminRepository.php';
 require_once __DIR__ . '/../src/Repositories/ApplicantRepository.php';
 require_once __DIR__ . '/../hr/hr-data.php';
 
@@ -57,6 +60,7 @@ $account_avatar_url = $profile['avatar_url'];
 
     <!-- admin.css = shared admin styles + every admin page (this page is picked by data-page="settingsadmin" on <html>) -->
     <link rel="stylesheet" href="../assets/css/admin.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/admin.css'); ?>">
+    <link rel="stylesheet" href="../assets/css/avatar-cropper.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/avatar-cropper.css'); ?>">
 </head>
 <body>
 
@@ -172,7 +176,7 @@ $account_avatar_url = $profile['avatar_url'];
                     <label for="setName">Name</label>
                     <div class="set-input">
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-                        <input type="text" id="setName" name="name" maxlength="100" placeholder="Enter your name" value="<?php echo htmlspecialchars($account_name, ENT_QUOTES, 'UTF-8'); ?>" aria-describedby="nameError" required>
+                        <input type="text" id="setName" name="name" data-input-rule="name" maxlength="100" placeholder="Enter your name" value="<?php echo htmlspecialchars($account_name, ENT_QUOTES, 'UTF-8'); ?>" aria-describedby="nameError" required>
                     </div>
                     <p class="set-error" id="nameError" role="alert"></p>
                 </div>
@@ -292,6 +296,41 @@ $account_avatar_url = $profile['avatar_url'];
         </form>
     </main>
 
+    <dialog class="avatar-crop-dialog" id="avatarCropDialog" aria-labelledby="avatarCropTitle" aria-describedby="avatarCropInstructions">
+        <div class="avatar-crop-heading">
+            <div class="avatar-crop-mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6H8l1.2-1.5h5.6L16 6h1.5A2.5 2.5 0 0 1 20 8.5v8a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5v-8Z"/><circle cx="12" cy="12.5" r="3.25"/></svg>
+            </div>
+            <div>
+                <span class="avatar-crop-kicker">PROFILE PHOTO</span>
+                <h2 id="avatarCropTitle">Adjust profile photo</h2>
+            </div>
+        </div>
+        <p class="avatar-crop-instructions" id="avatarCropInstructions">Drag to reposition your photo, or use the controls to fine-tune the crop.</p>
+        <div class="avatar-crop-frame" id="avatarCropFrame" role="img" aria-label="Preview of your cropped profile photo">
+            <img id="avatarCropImage" alt="">
+        </div>
+        <div class="avatar-crop-controls">
+            <label class="avatar-crop-zoom-label" for="avatarCropZoom">
+                <span>Zoom</span>
+                <output id="avatarCropZoomValue" for="avatarCropZoom">100%</output>
+            </label>
+            <div class="avatar-crop-zoom-row">
+                <button class="avatar-crop-zoom-step" type="button" id="avatarCropZoomOut" aria-label="Zoom out">
+                    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12"/></svg>
+                </button>
+                <input class="avatar-crop-zoom" id="avatarCropZoom" type="range" min="1" max="3" step="0.01" value="1">
+                <button class="avatar-crop-zoom-step" type="button" id="avatarCropZoomIn" aria-label="Zoom in">
+                    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12M10 4v12"/></svg>
+                </button>
+            </div>
+        </div>
+        <div class="avatar-crop-actions">
+            <button type="button" id="avatarCropCancel">Cancel</button>
+            <button type="button" id="avatarCropApply"><span>Use photo</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4.5 10 3.6 3.6 7.4-7.2"/></svg></button>
+        </div>
+    </dialog>
+
     <!-- Update Password Modal -->
     <div class="modal-backdrop" id="pwModal" role="dialog" aria-modal="true" aria-labelledby="pwTitle">
         <div class="modal-card pw-modal">
@@ -309,7 +348,7 @@ $account_avatar_url = $profile['avatar_url'];
                 <div class="set-field" data-field="pwNew">
                     <label for="pwNew">New password</label>
                     <div class="set-input">
-                        <input type="password" id="pwNew" autocomplete="new-password">
+                        <input type="password" id="pwNew" maxlength="72" autocomplete="new-password">
                         <button type="button" class="eye" aria-pressed="false" aria-label="Show new password" data-what="new password"><svg class="eye-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg><svg class="eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2z"/></svg></button>
                     </div>
                     <div class="meter" id="pwMeter" data-level="0" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
@@ -324,7 +363,7 @@ $account_avatar_url = $profile['avatar_url'];
                 <div class="set-field" data-field="pwConfirm">
                     <label for="pwConfirm">Confirm new password</label>
                     <div class="set-input">
-                        <input type="password" id="pwConfirm" autocomplete="new-password">
+                        <input type="password" id="pwConfirm" maxlength="72" autocomplete="new-password">
                         <button type="button" class="eye" aria-pressed="false" aria-label="Show confirmation password" data-what="confirmation password"><svg class="eye-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg><svg class="eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2z"/></svg></button>
                     </div>
                     <p class="set-error" role="alert"></p>
@@ -339,33 +378,12 @@ $account_avatar_url = $profile['avatar_url'];
 
     <!-- Pass PHP Variables to JavaScript -->
     <script>
-        // same badges as every admin page: they animate when HR did something new, and clear once the Dashboard is opened
         window.ADMIN_NOTIFY = <?php
-            $adminNotify = ['activity' => [], 'expiring' => 0, 'days' => 7];
-            try {
-                $pdo = db();
-                // HR activity timestamps (newest first), excluding admin's own actions.
-                $acts = [];
-                foreach (repo_recent_activity($pdo, 100) as $row) {
-                    if (strcasecmp((string) ($row['by'] ?? ''), 'Admin') === 0) continue;
-                    $acts[] = (string) ($row['at'] ?? '');
-                }
-                $adminNotify['activity'] = array_slice($acts, 0, 100);
-
-                // Archived questions/accounts expiring within 7 days (30-day retention).
-                $cutoff = date('Y-m-d H:i:s', strtotime('-23 days'));
-                $expiring = 0;
-                $st = $pdo->prepare("SELECT COUNT(*) FROM question_config WHERE deleted_at IS NOT NULL AND deleted_at <= :c");
-                $st->execute([':c' => $cutoff]);
-                $expiring += (int) $st->fetchColumn();
-                $st = $pdo->prepare("SELECT COUNT(*) FROM users WHERE role = 'hr' AND deleted_at IS NOT NULL AND deleted_at <= :c");
-                $st->execute([':c' => $cutoff]);
-                $expiring += (int) $st->fetchColumn();
-                $adminNotify['expiring'] = $expiring;
-            } catch (Throwable $e) {
-                // keep defaults
+            try { echo json_encode(repo_admin_notify(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); }
+            catch (Throwable $e) {
+                error_log('settings-admin.php DB notification error: ' . $e->getMessage());
+                echo json_encode(['activity' => [], 'recent' => [], 'expiring' => 0, 'days' => 7]);
             }
-            echo json_encode($adminNotify, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
         ?>;
         window.ADMIN_ACCOUNT = <?php echo json_encode([
             'name' => $account_name, 'email' => $account_email,
@@ -375,6 +393,8 @@ $account_avatar_url = $profile['avatar_url'];
 
     </script>
     <!-- Shared admin behaviour first, then this page's script -->
+    <script src="../assets/js/input-rules.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/input-rules.js'); ?>"></script>
+    <script src="../assets/js/avatar-cropper.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/avatar-cropper.js'); ?>"></script>
     <script src="../assets/js/admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/admin.js'); ?>"></script>
 </body>
 </html>

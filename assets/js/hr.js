@@ -16,6 +16,9 @@
    ========================================================================== */
 
 /* ---------- PART 1: shared helpers (window.HR) ---------- */
+// Compatibility guard for tabs that loaded an older copy while the portal was updated.
+window.refreshSettingsBadge = window.refreshSettingsBadge || function () {};
+
 window.HR = (function () {
     // Archive data is kept in this browser (localStorage) for now.
     // When the database is ready, replace archiveRequest() with a fetch() to your PHP, and
@@ -126,7 +129,6 @@ window.HR = (function () {
         applySettings(next, true);
         refreshDashboardBadge();               // badges appear / disappear right away
         refreshApplicantBadges();
-        refreshSettingsBadge();
         document.dispatchEvent(new CustomEvent('hr:settings-changed', { detail: next }));
         return ok;
     }
@@ -742,7 +744,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 4. Logout: confirm, then elements lift away while the stripes sweep in
     if (logoutBtn && logoutModal) {
-        logoutBtn.addEventListener('click', () => logoutModal.classList.add('active'));
+        logoutBtn.addEventListener('click', () => {
+            logoutModal.classList.add('active');
+            setTimeout(() => {
+                if (confirmLogout && logoutModal.classList.contains('active')) confirmLogout.focus();
+            }, 120);
+        });
 
         // Click on the dark backdrop or press Escape to cancel
         logoutModal.addEventListener('click', (e) => {
@@ -1250,6 +1257,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const deletePositionText = document.getElementById('deletePositionText');
     const cancelDeletePosition = document.getElementById('cancelDeletePosition');
     const confirmDeletePosition = document.getElementById('confirmDeletePosition');
+    const positionDeleteErrorModal = document.getElementById('positionDeleteErrorModal');
+    const positionDeleteErrorText = document.getElementById('positionDeleteErrorText');
+    const positionDeleteErrorOk = document.getElementById('positionDeleteErrorOk');
+    let positionDeleteErrorFocusId = null;
     let deletePendingId = null;
     let deletePendingName = null;
 
@@ -1351,11 +1362,41 @@ document.addEventListener('DOMContentLoaded', () => {
             const li = del.closest('.pd-opt');
             const id = del.dataset.id;
             const name = li ? li.querySelector('.pd-name').textContent : 'this position';
+            try {
+                const body = new FormData();
+                body.append('action', 'position_delete_check');
+                body.append('id', id);
+                const res = await fetch('hr-data.php', { method: 'POST', body, credentials: 'same-origin' });
+                let data;
+                try { data = await res.json(); } catch (err) { throw new Error('The server did not answer correctly. Please try again.'); }
+                if (!data || data.status !== 'success') {
+                    throw new Error(data && data.message || 'Could not check the job position. Please try again.');
+                }
+                const assignedCount = Number(data.assigned_count);
+                if (!Number.isInteger(assignedCount) || assignedCount < 0) {
+                    throw new Error('Could not check whether this job position is assigned. Please try again.');
+                }
+                if (assignedCount > 0) {
+                    positionDeleteErrorText.textContent = 'This job position is assigned to ' + assignedCount
+                        + ' applicant' + (assignedCount === 1 ? '' : 's')
+                        + ' (including archived applicants) and cannot be deleted.';
+                    positionDeleteErrorFocusId = id;
+                    positionDeleteErrorModal.classList.add('active');
+                    positionDeleteErrorOk.focus();
+                    return;
+                }
+            } catch (err) {
+                positionDeleteErrorText.textContent = err.message || 'Could not check the job position. Please try again.';
+                positionDeleteErrorFocusId = id;
+                positionDeleteErrorModal.classList.add('active');
+                positionDeleteErrorOk.focus();
+                return;
+            }
             // open custom confirmation modal instead of browser confirm()
             deletePendingId = id;
             deletePendingName = name;
             deletePositionTitle.textContent = 'Delete job position "' + name + '"?';
-            deletePositionText.textContent = 'Its job description PDF will also be removed.';
+            deletePositionText.textContent = 'A position assigned to an applicant, including an archived applicant, cannot be deleted. Its job description PDF will also be removed.';
             deletePositionModal.classList.add('active');
             cancelDeletePosition.focus();
             return;
@@ -1387,8 +1428,25 @@ document.addEventListener('DOMContentLoaded', () => {
             // if the deleted position was the currently selected one, clear the selection
             if (posInput.value === String(id)) { setPosition('', POS_PLACEHOLDER); }
         } catch (err) {
-            alert(err.message || 'Could not delete the job position. Please try again.');
+            positionDeleteErrorText.textContent = err.message || 'Could not delete the job position. Please try again.';
+            positionDeleteErrorFocusId = id;
+            positionDeleteErrorModal.classList.add('active');
+            positionDeleteErrorOk.focus();
         }
+    });
+
+    function closePositionDeleteError() {
+        positionDeleteErrorModal.classList.remove('active');
+        const deleteButton = positionDeleteErrorFocusId
+            ? document.querySelector('.pd-delete[data-id="' + positionDeleteErrorFocusId + '"]')
+            : null;
+        if (deleteButton) deleteButton.focus();
+        positionDeleteErrorFocusId = null;
+    }
+
+    positionDeleteErrorOk.addEventListener('click', closePositionDeleteError);
+    positionDeleteErrorModal.addEventListener('click', (e) => {
+        if (e.target === positionDeleteErrorModal) closePositionDeleteError();
     });
 
     // Delete position modal: cancel
@@ -1532,14 +1590,23 @@ document.addEventListener('DOMContentLoaded', () => {
             try { data = await res.json(); } catch (err) { throw new Error('The server did not answer correctly. Please try again.'); }
             if (data.status !== 'success') throw new Error(data.message || 'Something went wrong. Please try again.');
 
+            const addedPosition = data.position;
+            const savedPosition = Array.isArray(data.positions)
+                ? data.positions.find(p => String(p.id) === String(addedPosition && addedPosition.id))
+                    || data.positions.find(p => typeof p.name === 'string' && p.name.trim().toLowerCase() === positionName.value.trim().replace(/\s+/g, ' ').toLowerCase())
+                : addedPosition;
+            if (!savedPosition || !savedPosition.id || typeof savedPosition.name !== 'string' || !savedPosition.name.trim()) {
+                throw new Error('The position was saved, but its name could not be loaded. Please refresh the page.');
+            }
+
             // the new position goes in right above "+ Add job position", and is chosen
-            addPosOption(data.position);
-            setPosition(String(data.position.id), data.position.name);
+            addPosOption(savedPosition);
+            setPosition(String(savedPosition.id), savedPosition.name);
             setError('position', '');
 
             savingPosition = false;
             closePositionModal();
-            HR.toast('Job position "' + data.position.name + '" added' + (data.position.has_jd ? ' with its job description.' : '. No job description PDF yet: applicants see the sample one.'), { duration: 5000 });
+            HR.toast('Job position "' + savedPosition.name + '" added' + (savedPosition.has_jd ? ' with its job description.' : '. No job description PDF yet: applicants see the sample one.'), { duration: 5000 });
         } catch (err) {
             const msg = err.message || 'Something went wrong. Please try again.';
             setPosError(/PDF|job description/i.test(msg) ? 'jd' : 'name', msg);
@@ -1571,6 +1638,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sentModal.classList.contains('active')) finishSent();
         else if (positionModal.classList.contains('active')) closePositionModal();
         else if (discardModal.classList.contains('active')) discardModal.classList.remove('active');
+        else if (positionDeleteErrorModal.classList.contains('active')) closePositionDeleteError();
         else if (deletePositionModal.classList.contains('active')) { deletePendingId = null; deletePendingName = null; deletePositionModal.classList.remove('active'); }
     });
 });
@@ -4260,6 +4328,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const toolbar = document.getElementById('toolbar');
     const searchInput = document.getElementById('searchInput');
+    const searchForm = document.getElementById('applicantSearchForm');
     const searchClear = document.getElementById('searchClear');
     const selectAllBtn = document.getElementById('selectAllBtn');
     const selectActions = document.getElementById('selectActions');
@@ -5025,6 +5094,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ---------- events ----------
     let searchTimer = null;
+    searchForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        clearTimeout(searchTimer);
+        state.q = searchInput.value;
+        state.page = 1;
+        render();
+    });
+
     searchInput.addEventListener('input', () => {
         clearTimeout(searchTimer);
         searchTimer = setTimeout(() => {
@@ -5321,29 +5398,6 @@ document.addEventListener('DOMContentLoaded', () => {
         paintAvatar();
     }
 
-    // Centre-crops the chosen file to a 400 x 400 JPEG (small, and every picture fits the round frame)
-    function squarePicture(file) {
-        return new Promise((resolve, reject) => {
-            const src = URL.createObjectURL(file);
-            const img = new Image();
-            img.onload = () => {
-                try {
-                    const side = Math.min(img.naturalWidth, img.naturalHeight);
-                    if (!side) throw new Error('empty');
-                    const canvas = document.createElement('canvas');
-                    canvas.width = canvas.height = 400;
-                    const g = canvas.getContext('2d');
-                    g.fillStyle = '#ffffff';                    // a see-through PNG gets a white background
-                    g.fillRect(0, 0, 400, 400);
-                    g.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, 400, 400);
-                    canvas.toBlob(blob => { URL.revokeObjectURL(src); blob ? resolve(blob) : reject(new Error('blob')); }, 'image/jpeg', 0.9);
-                } catch (err) { URL.revokeObjectURL(src); reject(err); }
-            };
-            img.onerror = () => { URL.revokeObjectURL(src); reject(new Error('decode')); };
-            img.src = src;
-        });
-    }
-
     avatarPick.addEventListener('click', () => avatarFile.click());
     avatarFile.addEventListener('change', async () => {
         const file = avatarFile.files && avatarFile.files[0];
@@ -5353,7 +5407,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { setError(field, 'Choose a JPG, PNG or WEBP picture.', true); return; }
         if (file.size > 10 * 1024 * 1024) { setError(field, 'That picture is too big (10 MB at most).', true); return; }
         let blob;
-        try { blob = await squarePicture(file); } catch (err) { setError(field, 'That file could not be read as a picture.', true); return; }
+        try { blob = await window.AvatarCropper.open(file); } catch (err) { setError(field, 'That picture could not be processed.', true); return; }
+        if (!blob) return;
         setError(field, '');
         if (photoUrl) URL.revokeObjectURL(photoUrl);
         photoBlob = blob;
@@ -5536,6 +5591,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const checks = pwChecks(pwNew.value);
         const problems = {
             pwNew: !pwNew.value ? 'Enter a new password.'
+                : new Blob([pwNew.value]).size > 72 ? 'The new password must be 72 bytes or fewer.'
                 : !(checks.len && checks.case && checks.num) ? 'The new password does not meet all the requirements.' : '',
             pwConfirm: !pwConfirm.value ? 'Type the new password again.'
                 : pwConfirm.value !== pwNew.value ? 'The passwords do not match.' : ''

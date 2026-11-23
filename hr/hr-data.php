@@ -636,8 +636,16 @@ function static_add_applicant(array $in, ?array $cvUpload = null): array
     $email   = trim((string) ($in['email'] ?? ''));
     $contact = trim((string) ($in['contact'] ?? ''));
     if (mb_strlen($name) > 100)                       throw new InvalidArgumentException('The full name is too long (100 characters at most).');
+    if (strlen($email) > 150)                          throw new InvalidArgumentException('The email is too long (150 characters at most).');
     if (!filter_var($email, FILTER_VALIDATE_EMAIL))   throw new InvalidArgumentException('Enter a valid email address (example: name@gmail.com).');
     if ($contact === '')                              throw new InvalidArgumentException('Please enter the contact number.');
+    if (strlen($contact) > 20 || !preg_match('/^\+?[0-9][0-9\s-]*$/', $contact)) {
+        throw new InvalidArgumentException('Use digits only (you may start with + and use spaces or dashes).');
+    }
+    $contactDigits = strlen(preg_replace('/\D/', '', $contact));
+    if ($contactDigits < 7 || $contactDigits > 15) {
+        throw new InvalidArgumentException('The contact number must contain 7 to 15 digits.');
+    }
 
     $position = static_position_find((int) ($in['position_id'] ?? 0));
     if ($position === null)                           throw new InvalidArgumentException('Please choose a job position.');
@@ -865,8 +873,8 @@ function static_position_find(int $id): ?array
 function static_position_public(array $p): array
 {
     return [
-        'id' => (int) $p['job_id'],
-        'name'    => (string) $p['job_name'],
+        'id' => (int) ($p['id'] ?? $p['job_id'] ?? 0),
+        'name'    => (string) ($p['name'] ?? $p['job_name'] ?? ''),
         'has_jd'  => !empty($p['jd']['url']),
         'jd_name' => !empty($p['jd']['name']) ? (string) $p['jd']['name'] : '',
         'jd_url'  => !empty($p['jd']['url']) ? (string) $p['jd']['url'] : ''
@@ -977,6 +985,13 @@ function static_position_add(string $name, ?array $jdUpload = null): array
 
 // Archive a job position and delete its Cloudinary job-description PDF.
 // Returns the archived position. Throws InvalidArgumentException if not found or in use.
+function static_position_applicant_count(int $id): int
+{
+    $stmt = db()->prepare('SELECT COUNT(*) FROM applicant WHERE position_id = :id');
+    $stmt->execute([':id' => $id]);
+    return (int) $stmt->fetchColumn();
+}
+
 function static_position_delete(int $id): array
 {
     $pdo = db();
@@ -986,6 +1001,14 @@ function static_position_delete(int $id): array
     $pos = $stmt->fetch();
     if (!$pos) throw new InvalidArgumentException('That job position was not found.');
     if (!empty($pos['archived_at'])) throw new InvalidArgumentException('That job position is already archived.');
+
+    $applicantCount = static_position_applicant_count($id);
+    if ($applicantCount > 0) {
+        throw new InvalidArgumentException(
+            'This job position is assigned to ' . $applicantCount . ' applicant' . ($applicantCount === 1 ? '' : 's')
+            . ' (including archived applicants) and cannot be deleted.'
+        );
+    }
 
     // Delete the job description PDF from Cloudinary if it has one
     if (!empty($pos['jd_public_id'])) {
@@ -1558,6 +1581,26 @@ function static_profile_save(array $in, ?array $upload): array
     }
 
     $avatarUrl = $me['avatar'] ?? null;
+    $avatarPublicId = null;
+
+    if (!empty($in['avatar_remove'])) {
+        $avatarUrl = null;
+        if ($me['role'] === 'admin') {
+            $stmt = $pdo->prepare("SELECT avatar_public_id FROM users WHERE role = 'admin' AND deleted_at IS NULL");
+            $stmt->execute();
+        } else {
+            $stmt = $pdo->prepare("SELECT avatar_public_id FROM users WHERE user_id = :id");
+            $stmt->execute([':id' => $me['id']]);
+        }
+        $old = $stmt->fetch();
+        if ($old && !empty($old['avatar_public_id'])) {
+            try {
+                require_once __DIR__ . '/../src/Services/CloudinaryService.php';
+                $cloud = new CloudinaryService();
+                $cloud->deleteResource((string) $old['avatar_public_id'], 'image', 'upload');
+            } catch (Throwable $e) { /* continue saving even if Cloudinary cleanup fails */ }
+        }
+    }
 
     // handle avatar upload
     if ($upload && !empty($upload['tmp_name']) && is_uploaded_file($upload['tmp_name'])) {
@@ -1588,6 +1631,7 @@ function static_profile_save(array $in, ?array $upload): array
                 $mimeType   // confirmed MIME type instead of relying on mime_content_type()
             );
             $avatarUrl = $uploaded['url'];
+            $avatarPublicId = (string) ($uploaded['public_id'] ?? '');
             @unlink($tmpFile);
 
             // delete old avatar from Cloudinary if it had a public_id
@@ -1615,22 +1659,36 @@ function static_profile_save(array $in, ?array $upload): array
     // update the database
     if ($me['role'] === 'admin') {
         // Admin id is 0 (synthetic); update by role instead
-        $stmt = $pdo->prepare("UPDATE users SET name = :name, email = :email, email_normalized = :en, avatar_url = :avatar_url WHERE role = 'admin' AND deleted_at IS NULL");
-        $stmt->execute([
+        $params = [
             ':name' => $name,
             ':email' => $email,
             ':en' => strtolower(trim($email)),
             ':avatar_url' => $avatarUrl,
-        ]);
+        ];
+        $sql = "UPDATE users SET name = :name, email = :email, email_normalized = :en, avatar_url = :avatar_url";
+        if (!empty($in['avatar_remove']) || $avatarPublicId !== null) {
+            $sql .= ", avatar_public_id = :avatar_public_id";
+            $params[':avatar_public_id'] = $avatarPublicId;
+        }
+        $sql .= " WHERE role = 'admin' AND deleted_at IS NULL";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
     } else {
-        $stmt = $pdo->prepare("UPDATE users SET name = :name, email = :email, email_normalized = :en, avatar_url = :avatar_url WHERE user_id = :id");
-        $stmt->execute([
+        $params = [
             ':name' => $name,
             ':email' => $email,
             ':en' => strtolower(trim($email)),
             ':avatar_url' => $avatarUrl,
             ':id' => $me['id']
-        ]);
+        ];
+        $sql = "UPDATE users SET name = :name, email = :email, email_normalized = :en, avatar_url = :avatar_url";
+        if (!empty($in['avatar_remove']) || $avatarPublicId !== null) {
+            $sql .= ", avatar_public_id = :avatar_public_id";
+            $params[':avatar_public_id'] = $avatarPublicId;
+        }
+        $sql .= " WHERE user_id = :id";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
     }
 
     try { repo_log_activity('Updated ' . ucfirst($me['role']) . ' Profile', $name . ' (' . $email . ')'); } catch (Throwable $e) {}
@@ -1670,10 +1728,10 @@ function static_profile_current_password_ok(array $me, string $given): bool
 function static_profile_check_new_password(string $new, string $current): void
 {
     if ($new === '') throw new StaticProfileError('Enter a new password.', 'pwNew');
+    if (strlen($new) > 72) throw new StaticProfileError('The new password must be 72 bytes or fewer.', 'pwNew');
     if (strlen($new) < 8 || !preg_match('/[a-z]/', $new) || !preg_match('/[A-Z]/', $new) || !preg_match('/\d/', $new)) {
         throw new StaticProfileError('The new password does not meet all the requirements.', 'pwNew');
     }
-    if (strlen($new) > 72)    throw new StaticProfileError('The new password is too long (72 characters at most).', 'pwNew');
     if ($new === $current)    throw new StaticProfileError('The new password must be different from the current one.', 'pwNew');
 }
 
@@ -1693,7 +1751,9 @@ function static_profile_change_password(string $current, string $new): array
     static_profile_check_new_password($new, $current);
 
     $pdo = db();
-    $stmt = $pdo->prepare("UPDATE users SET password_hash = :hash WHERE user_id = :id");
+    $stmt = $pdo->prepare(
+        "UPDATE users SET password_hash = :hash, remember_token = NULL, remember_token_expires_at = NULL WHERE user_id = :id"
+    );
     $stmt->execute([':hash' => password_hash($new, PASSWORD_DEFAULT), ':id' => $me['id']]);
     if ($stmt->rowCount() === 0) throw new StaticProfileError('Your account could not be found. Please log in again.');
     try { repo_log_activity('Changed Password', $me['name'] . ' (' . $me['email'] . ')'); } catch (Throwable $e) {}
@@ -1738,6 +1798,8 @@ function static_profile_for_page(string $avatarBase): array
        action = add | archive | restore | purge | status
        add      first_name, middle_name (optional), last_name, email, contact, position_id, cv (file)
        position_add  name, jd (a PDF, optional)     "+ Add job position" in Add Applicant
+       position_delete_check id                    preflight the job-position deletion constraint
+       position_delete id                          archive an unassigned position
        positions     (nothing)                      the list of job positions
        archive  ids = [101, 102], at = { id: ms }     Screening List "Delete" (at is optional)
        restore  ids = [101, 102]                      Archive "Restore"
@@ -1755,7 +1817,7 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
     && strcasecmp(realpath($_SERVER['SCRIPT_FILENAME']), __FILE__) === 0) {   // strcasecmp: Windows paths
 
     require_once __DIR__ . '/../src/Helpers/security.php';
-    if (session_status() === PHP_SESSION_NONE) session_start();
+    start_secure_session(1800);
     restore_remembered_session();
     header('Content-Type: application/json; charset=UTF-8');
     error_reporting(0);          // suppress warnings/notices that would corrupt the JSON response
@@ -1867,6 +1929,15 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
 
             case 'positions':
                 static_respond(['status' => 'success', 'positions' => array_map('static_position_public', static_positions())]);
+                break;
+
+            case 'position_delete_check':
+                $pid = (int) ($input['id'] ?? 0);
+                if ($pid <= 0) static_respond(['status' => 'error', 'message' => 'Invalid position id.'], 400);
+                if (static_position_find($pid) === null) {
+                    static_respond(['status' => 'error', 'message' => 'That job position was not found or is already archived.'], 404);
+                }
+                static_respond(['status' => 'success', 'assigned_count' => static_position_applicant_count($pid)]);
                 break;
 
             case 'position_delete':

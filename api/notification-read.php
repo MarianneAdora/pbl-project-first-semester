@@ -1,7 +1,6 @@
 <?php
 require_once __DIR__ . '/../src/Helpers/security.php';
-secure_session(1800);
-session_start();
+start_secure_session(1800);
 restore_remembered_session();
 send_security_headers(false);
 

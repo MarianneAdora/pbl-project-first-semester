@@ -4787,6 +4787,37 @@ html:where([data-page="details"])[data-theme="dark"] .tab-ink { background: #ff6
     color: #8a8f96;
 }
 
+:where(html[data-page="screeninglist"]) .search-submit {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+:where(html[data-page="screeninglist"]) .search-submit:hover {
+    background: #f1f3f5;
+    transform: scale(1.06);
+}
+
+:where(html[data-page="screeninglist"]) .search-submit:focus-visible {
+    outline: 2px solid #a3081e;
+    outline-offset: 2px;
+}
+
+:where(html[data-page="screeninglist"]) .search-submit .search-icon {
+    width: 20px;
+    height: 20px;
+    fill: #a3081e;
+}
+
 /* hide the browser's own clear button, we have ours */
 :where(html[data-page="archive"],html[data-page="screeninglist"]) .search-box input::-webkit-search-cancel-button {
     display: none;
@@ -9017,7 +9048,28 @@ html[data-motion="off"] .sidebar .sidebar-header { animation: none; }
 }
 
 .sidebar-account-row button.notif-bell svg { width: 19px; height: 19px; fill: currentColor; }
-.sidebar-account-row .notif-count { position: absolute; top: -6px; right: -6px; }
+.sidebar-account-row button.notif-bell:focus-visible { outline: 2px solid #a3081e; outline-offset: 3px; }
+.sidebar-account-row .notif-count {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: #a3081e;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    box-shadow: 0 0 0 2px var(--surface, #ffffff);
+}
+.sidebar-account-row .notif-count[hidden] { display: none; }
 
 .sidebar.collapsed .sidebar-account-row {
     flex-direction: column;
@@ -9508,14 +9560,16 @@ html[data-motion="off"] .nav-notif-panel:not([hidden]) { animation: none; }
     }
 
     :where(html[data-page="screeninglist"]) .table-card {
-        flex: 0 0 auto;
+        flex: 1 1 auto;
         min-width: 0;
-        min-height: 0;
+        min-height: 264px;
     }
 
     :where(html[data-page="screeninglist"]) .table-scroll {
-        flex: 0 0 auto;
-        overflow: visible;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
     }
 }
 
@@ -9624,4 +9678,78 @@ html[data-motion="off"] .nav-notif-panel:not([hidden]) { animation: none; }
     :where(html[data-page="archive"]) #statusDropdown .opt-check {
         display: none;
     }
+}
+
+@media (max-width: 800px) {
+    html,
+    body {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    body {
+        height: auto;
+        min-height: 100svh;
+    }
+
+    .main-content,
+    .main-content > *,
+    main,
+    main > *,
+    .content-header,
+    .page-head,
+    .form-head,
+    .toolbar,
+    .form-grid,
+    .table-card,
+    .dash-card,
+    .chart-card,
+    .insight-card,
+    .details {
+        box-sizing: border-box;
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .main-content,
+    main {
+        width: 100%;
+    }
+
+    .content-header h1 {
+        overflow-wrap: anywhere;
+        text-overflow: clip;
+        white-space: normal;
+    }
+
+    .table-responsive,
+    .table-scroll,
+    .panel-scroll {
+        max-width: 100%;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .modal-backdrop {
+        box-sizing: border-box;
+        max-width: 100vw;
+        padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+        overflow-y: auto;
+    }
+
+    .modal-backdrop .modal-card {
+        box-sizing: border-box;
+        width: 100%;
+        max-width: min(100%, 680px);
+        max-height: calc(100dvh - max(24px, env(safe-area-inset-top) + env(safe-area-inset-bottom)));
+        overflow-y: auto;
+        margin: auto;
+    }
+}
+
+@media (max-width: 380px) {
+    .main-content,
+    main { padding-right: 10px; padding-left: 10px; }
 }

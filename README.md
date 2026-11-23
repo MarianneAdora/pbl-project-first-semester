@@ -34,7 +34,7 @@ pbl-project-first-semester/
 ├── api/                      # JSON API endpoints used by the frontend
 ├── cron/                     # Scheduled jobs (AI scoring)
 ├── config/                   # Risk scoring configuration
-├── database/                 # schema.sql, seeds.sql, rls.sql
+├── database/                 # schema, seed, object, query, and RLS SQL files
 ├── includes/                 # Email templates
 ├── scripts/                  # Maintenance scripts (dependency audit)
 ├── src/                      # Core library (Helpers, Models, Repositories, Services)
@@ -94,7 +94,20 @@ pbl-project-first-semester/
    \i database/schema.sql
    ```
 
-   Optionally load seed data (includes default admin/HR accounts and 13 questionnaire questions):
+   Add the views, function, and trigger, then apply security policies:
+
+   ```sql
+   \i database/database_objects.sql
+   \i database/rls.sql
+   ```
+
+   Optionally seed the default admin and HR accounts:
+
+   ```sql
+   \i database/seed-users.sql
+   ```
+
+   Then optionally load all application seed data (13 questionnaire questions and sample applicants):
 
    ```sql
    \i database/seeds.sql
@@ -107,11 +120,6 @@ pbl-project-first-semester/
    | admin | admin@expertise.com | `admin123` |
    | hr | hr@expertise.com | `hr123` |
 
-   Apply row-level security policies:
-
-   ```sql
-   \i database/rls.sql
-   ```
 
 4. Configure PHP upload limits. The root `.user.ini` allows video uploads up to 50 MB. On Azure App Service these PHP-FPM settings apply automatically; allow a few minutes after deployment for PHP to reload them.
 

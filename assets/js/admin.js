@@ -17,6 +17,9 @@
    ========================================================================== */
 
 /* ---------- PART 1: shared helpers (window.ADMIN) ---------- */
+// Compatibility guard for tabs that loaded an older copy while the portal was updated.
+window.refreshSettingsBadge = window.refreshSettingsBadge || function () {};
+
 window.ADMIN = (function () {
     /* ---- Settings (admin/settings-admin.php) -----------------------------------------------------
        Kept in this browser for now, like the HR settings:
@@ -900,7 +903,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (logoutBtn && logoutModal) {
         logoutBtn.addEventListener('click', () => {
             logoutModal.classList.add('active');
-            setTimeout(() => { if (cancelLogout) cancelLogout.focus(); }, 120);
+            setTimeout(() => {
+                if (confirmLogout && logoutModal.classList.contains('active')) confirmLogout.focus();
+            }, 120);
         });
 
         // Click on the dark backdrop or press Escape to cancel
@@ -1131,6 +1136,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         password(v) {
             if (!v) return isEdit ? '' : 'Please enter a password.';       // Edit: empty = keep the current password
+            if (new Blob([v]).size > 72) return 'The password must be 72 bytes or fewer.';
             if (/\s/.test(v)) return 'The password cannot contain spaces.';
             if (v.length < 8) return 'The password is too short (at least 8 characters).';
             if (!/[A-Za-z]/.test(v)) return 'Add at least one letter to the password.';
@@ -1508,17 +1514,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const dropdowns = [];
 
     function createDropdown(root, onChange) {
+        const sectionMenu = root.id === 'sectionDropdown';
         const btn = root.querySelector('.dropdown-btn');
         const menu = root.querySelector('.dropdown-menu');
         const valueEl = root.querySelector('.dropdown-value');
         const btnDot = btn.querySelector('.dot');
         const field = root.closest('.field');
-        const options = Array.from(menu.querySelectorAll('.dropdown-option'));
-        const start = options.find(o => o.getAttribute('aria-selected') === 'true') || options[0];
-        let value = start.dataset.value;
+        let options = [];
+        let value = '';
         let focusIdx = -1;
 
-        options.forEach(o => o.querySelector('.dot').style.setProperty('--dot', o.dataset.dot));
+        function bindOptions() {
+            options = Array.from(menu.querySelectorAll('.dropdown-option'));
+            options.forEach((o, i) => {
+                o.querySelector('.dot').style.setProperty('--dot', o.dataset.dot);
+                o.addEventListener('mousedown', (e) => e.preventDefault());
+                o.addEventListener('click', () => choose(i));
+                o.addEventListener('mouseenter', () => highlight(i));
+            });
+        }
 
         const isOpen = () => root.classList.contains('open');
 
@@ -1530,7 +1544,7 @@ document.addEventListener('DOMContentLoaded', () => {
         function setValue(v, silent) {
             const opt = options.find(o => o.dataset.value === v) || options[0];
             value = opt.dataset.value;
-            options.forEach(o => o.setAttribute('aria-selected', String(o === opt)));
+            options.forEach(o => o.setAttribute(sectionMenu ? 'aria-checked' : 'aria-selected', String(o === opt)));
             valueEl.textContent = opt.querySelector('.opt-label').textContent;
             btnDot.style.setProperty('--dot', opt.dataset.dot);
             root.classList.toggle('is-placeholder', value === '');
@@ -1542,13 +1556,21 @@ document.addEventListener('DOMContentLoaded', () => {
             root.classList.add('open');
             if (field) field.classList.add('is-open');
             btn.setAttribute('aria-expanded', 'true');
-            highlight(Math.max(0, options.findIndex(o => o.dataset.value === value)));
+            const selectedIndex = Math.max(0, options.findIndex(o => o.dataset.value === value));
+            highlight(selectedIndex);
+            if (sectionMenu) {
+                options.concat(Array.from(menu.querySelectorAll('.section-option-delete'))).forEach(item => { item.tabIndex = 0; });
+                if (options[selectedIndex]) options[selectedIndex].focus();
+            }
         }
 
         function close() {
             root.classList.remove('open');
             if (field) field.classList.remove('is-open');
             btn.setAttribute('aria-expanded', 'false');
+            if (sectionMenu) {
+                options.concat(Array.from(menu.querySelectorAll('.section-option-delete'))).forEach(item => { item.tabIndex = -1; });
+            }
             highlight(-1);
         }
 
@@ -1578,14 +1600,103 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        options.forEach((o, i) => {
-            o.addEventListener('mousedown', (e) => e.preventDefault());   // keep focus on the button
-            o.addEventListener('click', () => choose(i));
-            o.addEventListener('mouseenter', () => highlight(i));
-        });
+        if (sectionMenu) {
+            menu.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    const step = e.key === 'ArrowDown' ? 1 : -1;
+                    const next = (focusIdx + step + options.length) % options.length;
+                    highlight(next);
+                    options[next].focus();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    close();
+                    btn.focus();
+                } else if (e.key === 'Tab') {
+                    close();
+                }
+            });
+            menu.addEventListener('click', (e) => {
+                const deleteButton = e.target.closest('.section-option-delete');
+                if (!deleteButton) return;
+                e.preventDefault();
+                e.stopPropagation();
+                const option = deleteButton.closest('.section-option-row').querySelector('.dropdown-option');
+                deleteSection(Number(option.dataset.value));
+            });
+            menu.addEventListener('mousedown', (e) => {
+                if (e.target.closest('.section-option-delete')) e.preventDefault();
+            });
+        }
 
+        function setOptions(nextOptions, selectedValue) {
+            menu.textContent = '';
+            nextOptions.forEach((option, i) => {
+                const row = document.createElement('li');
+                const item = document.createElement(sectionMenu ? 'button' : 'li');
+                if (sectionMenu) {
+                    row.className = 'section-option-row';
+                    row.setAttribute('role', 'none');
+                    item.type = 'button';
+                    item.setAttribute('role', 'menuitemradio');
+                    item.setAttribute('aria-checked', 'false');
+                    item.tabIndex = -1;
+                    row.style.setProperty('--k', String(i));
+                } else {
+                    item.setAttribute('role', 'option');
+                    item.setAttribute('aria-selected', 'false');
+                    item.style.setProperty('--k', String(i));
+                }
+                item.className = 'dropdown-option';
+                item.dataset.value = String(option[0]);
+                item.dataset.dot = String(option[2]);
+
+                const dot = document.createElement('span');
+                dot.className = 'dot';
+                const label = document.createElement('span');
+                label.className = 'opt-label';
+                label.textContent = String(option[1]);
+                const check = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                check.classList.add('opt-check');
+                check.setAttribute('viewBox', '0 0 24 24');
+                check.setAttribute('aria-hidden', 'true');
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', 'M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z');
+                check.appendChild(path);
+                item.append(dot, label, check);
+                if (sectionMenu) {
+                    row.appendChild(item);
+                    if (String(option[0]) !== '') {
+                        const remove = document.createElement('button');
+                        remove.type = 'button';
+                        remove.className = 'section-option-delete';
+                        remove.setAttribute('role', 'menuitem');
+                        remove.setAttribute('aria-label', 'Delete ' + String(option[1]));
+                        remove.title = 'Delete ' + String(option[1]);
+                        remove.tabIndex = -1;
+                        const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                        icon.setAttribute('viewBox', '0 0 24 24');
+                        icon.setAttribute('aria-hidden', 'true');
+                        const cross = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                        cross.setAttribute('d', 'M18 6 6 18M6 6l12 12');
+                        icon.appendChild(cross);
+                        remove.appendChild(icon);
+                        row.appendChild(remove);
+                    }
+                    menu.appendChild(row);
+                } else {
+                    menu.appendChild(item);
+                }
+            });
+            bindOptions();
+            setValue(selectedValue, true);
+        }
+
+        bindOptions();
+        const selected = options.find(o => o.getAttribute(sectionMenu ? 'aria-checked' : 'aria-selected') === 'true') || options[0];
+        value = selected ? selected.dataset.value : '';
         setValue(value, true);
-        const api = { root, btn, close, setValue, getValue: () => value };
+        const api = { root, btn, close, setValue, setOptions, getValue: () => value };
         dropdowns.push(api);
         return api;
     }
@@ -1630,12 +1741,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 ? 'Section ' + picked.no + ' will be renamed to \u201C' + title + '\u201D for every question in it.'
                 : 'Change the title to rename Section ' + picked.no + ' (it updates every question in it).';
         } else {
-            titleLabel.textContent = 'New Section';
-            titleInput.placeholder = 'Type New Section';
-            const same = matchSectionByTitle(title);
-            sectionHint.textContent = same
-                ? '\u201C' + same.name + '\u201D already exists (Section ' + same.no + '). The question goes into it.'
-                : 'Type only the title. It is added automatically as Section ' + config.nextNo + '.';
+            const existingUnassigned = isEdit && Number(Q.section_no) === 0 && !String(Q.section || '').trim();
+            if (existingUnassigned && !title) {
+                titleLabel.textContent = 'Unassigned Section';
+                titleInput.placeholder = 'Leave empty to keep it unassigned';
+                sectionHint.textContent = 'This question has no section. Choose a section or enter a new title to assign it.';
+            } else {
+                titleLabel.textContent = 'New Section';
+                titleInput.placeholder = 'Type New Section';
+                const same = matchSectionByTitle(title);
+                sectionHint.textContent = same
+                    ? '\u201C' + same.name + '\u201D already exists (Section ' + same.no + '). The question goes into it.'
+                    : 'Type only the title. It is added automatically as Section ' + config.nextNo + '.';
+            }
         }
     }
 
@@ -1645,6 +1763,61 @@ document.addEventListener('DOMContentLoaded', () => {
         titleInput.value = picked ? picked.name : '';
         setError('section_title', '');
         updateSectionBox();
+    }
+
+    async function deleteSection(sectionNo) {
+        const picked = sectionByNo(String(sectionNo));
+        if (!picked || saving) return;
+
+        sectionDD.close();
+        sectionDD.btn.focus();
+        const yes = await ADMIN.confirm({
+            title: 'Delete this section?',
+            message: 'Section ' + picked.no + ' · ' + picked.name + ' will be removed. Its questions will stay in the questionnaire with no section assigned.',
+            confirmLabel: 'Delete section',
+            danger: true,
+            icon: ADMIN.icons.trash
+        });
+        if (!yes || saving) return;
+
+        saving = true;
+        sectionDD.btn.disabled = true;
+        sectionDD.root.querySelectorAll('.section-option-delete').forEach(button => { button.disabled = true; });
+        saveBtn.disabled = true;
+        cancelBtn.disabled = true;
+        try {
+            const res = await ADMIN.request('section_delete', { section_no: Number(picked.no) });
+            const deleted = res.result || {};
+            const selectedSectionNo = sectionDD.getValue();
+            const deletingCurrent = selectedSectionNo === picked.no;
+            const deletedIndex = sections.findIndex(section => section.no === picked.no);
+            if (deletedIndex !== -1) sections.splice(deletedIndex, 1);
+            if (Number.isInteger(Number(deleted.next_no)) && Number(deleted.next_no) > 0) {
+                config.nextNo = Number(deleted.next_no);
+            }
+
+            const palette = ['#8f8aea', '#74cfb9', '#f8a09a', '#f6c453', '#7ab8f0', '#c58ae0'];
+            const options = [['', 'Select Section', '#c5c9ce']].concat(sections.map(section => [
+                section.no,
+                'Sec ' + section.no + ' · ' + section.name,
+                palette[(Number(section.no) - 1 + palette.length) % palette.length]
+            ]));
+            sectionDD.setOptions(options, deletingCurrent ? '' : selectedSectionNo);
+            if (deletingCurrent) titleInput.value = '';
+            updateSectionBox();
+            setError('section', '');
+            setError('section_title', '');
+            ADMIN.toast(res.message || 'Section deleted. Its questions remain unassigned.');
+        } catch (err) {
+            ADMIN.toast(err.message || 'Could not delete the section. Please try again.', { error: true });
+        } finally {
+            saving = false;
+            sectionDD.btn.disabled = false;
+            sectionDD.root.querySelectorAll('.section-option-delete').forEach(button => { button.disabled = false; });
+            saveBtn.disabled = false;
+            cancelBtn.disabled = false;
+            updateSectionBox();
+        }
     }
 
     /* ---------- Type: only the matching extra box is shown ---------- */
@@ -1745,7 +1918,10 @@ document.addEventListener('DOMContentLoaded', () => {
             return '';
         },
         section() {
-            if (!sectionDD.getValue() && !titleInput.value.trim()) return 'Choose a section, or type the title of a new one.';
+            if (!sectionDD.getValue() && !titleInput.value.trim() &&
+                !(isEdit && Number(Q.section_no) === 0 && !String(Q.section || '').trim())) {
+                return 'Choose a section, or type the title of a new one.';
+            }
             return '';
         },
         section_title(v) {
@@ -1763,9 +1939,12 @@ document.addEventListener('DOMContentLoaded', () => {
             return t.length > 80 ? 'The label is too long (80 characters at most).' : '';
         },
         followup_options(v) {
-            const n = lines(v).length;
+            if (v.length > 2000) return 'The choices must be 2000 characters or fewer in total.';
+            const options = lines(v);
+            const n = options.length;
             if (n < 2) return 'Add at least two choices, one per line.';
             if (n > 12) return 'The list can have 12 choices at most.';
+            if (options.some(option => option.length > 100)) return 'Each choice must be 100 characters or fewer.';
             return '';
         },
         max(v) {
@@ -1797,7 +1976,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isWhole(max) && Number(t) > Number(max)) return 'The lowest passing rating cannot be higher than the highest rating (' + max + ').';
             return '';
         },
-        body(v) { return v.trim() ? '' : 'Please write the statement the applicant has to read.'; },
+        body(v) {
+            if (!v.trim()) return 'Please write the statement the applicant has to read.';
+            return v.length > 10000 ? 'The statement must be 10000 characters or fewer.' : '';
+        },
         checkbox(v) {
             const t = v.trim();
             if (!t) return 'Please write the text next to the checkbox (example: I agree).';
@@ -2072,6 +2254,8 @@ document.addEventListener('DOMContentLoaded', () => {
         saveBtn.classList.toggle('saving', state);
         saveBtn.querySelector('.btn-label').textContent = state ? 'SAVING...' : (isEdit ? 'SAVE CHANGES' : 'SAVE');
         cancelBtn.disabled = state;
+        sectionDD.btn.disabled = state;
+        sectionDD.root.querySelectorAll('.section-option-delete').forEach(button => { button.disabled = state; });
     }
 
     /* ---------- Cancel / Back (asks first when something was typed) ---------- */
@@ -2134,7 +2318,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const plain = (q) => String(q.text || '').replace('{link}', (q.link && q.link.text) || 'link');
     function load(archive) {
         const accs = (archive.accounts || []).map(a => ({ kind: 'account', id: a.id, title: a.name, sub: a.email, deleted: a.deleted, left: Number(a.days_left) }));
-        const qs = (archive.questions || []).map(q => ({ kind: 'question', id: q.id, title: plain(q), sub: 'Sec ' + q.section_no + ' \u00B7 ' + q.section, deleted: q.deleted, left: Number(q.days_left) }));
+        const qs = (archive.questions || []).map(q => ({
+            kind: 'question',
+            id: q.id,
+            title: plain(q),
+            sub: Number(q.section_no) > 0 && q.section ? 'Sec ' + q.section_no + ' \u00B7 ' + q.section : 'Unassigned',
+            deleted: q.deleted,
+            left: Number(q.days_left)
+        }));
         items = accs.concat(qs).sort((a, b) => a.left - b.left || String(b.deleted).localeCompare(String(a.deleted)));
     }
     load(cfg.archive);
@@ -2391,7 +2582,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const emptyTitle = document.getElementById('emptyTitle');
     const emptyText = document.getElementById('emptyText');
     const clearFilters = document.getElementById('clearFilters');
-    const emptyAdd = document.getElementById('emptyAdd');
     const showingText = document.getElementById('showingText');
     const pagination = document.getElementById('pagination');
 
@@ -2584,7 +2774,6 @@ document.addEventListener('DOMContentLoaded', () => {
             emptyTitle.textContent = none ? 'No HR accounts yet' : 'No HR accounts found';
             emptyText.textContent = none ? 'Create the first account for your HR screening staff.' : 'Try a different search or clear the filter.';
             clearFilters.hidden = none;
-            emptyAdd.hidden = !none;
         }
 
         renderShowing(total, start);
@@ -2725,7 +2914,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (busy) return;
         const yes = await ADMIN.confirm({
             title: 'Delete this HR account?',
-            message: a.name + ' will be moved to the Archive and can no longer log in. You can restore the account within 30 days.',
+            message: a.name + ' will be moved to the Archive and can no longer log in. You can restore the account within 30 days. At least one HR account must remain outside the Archive.',
             confirmLabel: 'Delete',
             icon: ADMIN.icons.trash
         });
@@ -2848,7 +3037,7 @@ document.addEventListener('DOMContentLoaded', () => {
 /* ===== PAGE : questionlist.js (runs only on: questionlist) ===== */
 if (document.documentElement.getAttribute('data-page') === 'questionlist') {
 /* ==========================================================================
-   Questionnaires (admin): search, section + status filters, rows that fit the window, page buttons, delete + undo.
+   Questionnaires (admin): search, section + status filters, scrollable results, reorder + undo.
    Same behaviour as the HR Accounts page (assets/js/hrlist.js). Shared helpers (window.ADMIN: requests, toast,
    confirm box, flyToArchive, badges), the sidebar and logout live in admin-common.js (loaded BEFORE this script).
    This page's markup + data come from admin/question-list.php (window.ADMIN_Q).
@@ -2871,13 +3060,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const emptyTitle = document.getElementById('emptyTitle');
     const emptyText = document.getElementById('emptyText');
     const clearFilters = document.getElementById('clearFilters');
-    const emptyAdd = document.getElementById('emptyAdd');
     const showingText = document.getElementById('showingText');
-    const pagination = document.getElementById('pagination');
 
-    const state = { q: '', status: 'all', section: 'all', page: 1 };
-    let perPage = 8;                  // fitPerPage() adjusts it to the window height
-    let visible = [];                 // rows on the current page
+    const state = { q: '', status: 'all', section: 'all' };
     let animateRows = false;          // the first render comes with the card entrance
     let busy = false;                 // a delete / undo / reorder request is running
     let flashPending = '';            // the row that glows once (the one just saved / restored)
@@ -3003,10 +3188,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const statusDD = createDropdown(document.getElementById('statusDropdown'), (v) => {
-        state.status = v; state.page = 1; render();
+        state.status = v; render();
     });
     const sectionDD = createDropdown(document.getElementById('sectionDropdown'), (v) => {
-        state.section = v; state.page = 1; render();
+        state.section = v; render();
     });
 
     const CHECK = '<svg class="opt-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>';
@@ -3015,10 +3200,17 @@ document.addEventListener('DOMContentLoaded', () => {
     function buildSectionOptions() {
         const menu = document.querySelector('#sectionDropdown .dropdown-menu');
         const seen = new Map();
-        questions.forEach(q => { if (!seen.has(String(q.section_no))) seen.set(String(q.section_no), q.section); });
+        questions.forEach(q => {
+            const sectionNo = String(q.section_no);
+            if (!seen.has(sectionNo)) seen.set(sectionNo, q.section);
+        });
         const list = [['all', 'All Sections', '#c5c9ce']];
         [...seen.entries()].sort((a, b) => Number(a[0]) - Number(b[0]))
-            .forEach(([no, name]) => list.push([no, 'Sec ' + no + ' \u00B7 ' + name, colorOf(no)]));
+            .forEach(([no, name]) => list.push([
+                no,
+                Number(no) > 0 && name ? 'Sec ' + no + ' \u00B7 ' + name : 'Unassigned',
+                Number(no) > 0 ? colorOf(no) : '#c5c9ce'
+            ]));
 
         menu.textContent = '';
         list.forEach(([value, label, dot]) => {
@@ -3051,35 +3243,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ---------- rows per page: as many as fit, so the card has no empty band ----------
-    const MIN_ROWS = 4;
-    const MAX_ROWS = 15;
-
-    function fitPerPage() {
-        tableScroll.style.removeProperty('--row-h');
-        const firstRow = tableBody.querySelector('tr');
-        const rowHeight = firstRow ? Math.ceil(firstRow.getBoundingClientRect().height) : 53;
-        const head = tableScroll.querySelector('thead');
-        const room = tableScroll.clientHeight - (head ? head.offsetHeight : 46);
-        if (!rowHeight || room <= 0) return perPage;
-        const rows = Math.min(MAX_ROWS, Math.max(MIN_ROWS, Math.floor((room - 4) / rowHeight)));
-        tableScroll.style.setProperty('--row-h', Math.max(rowHeight, Math.floor((room - 2) / rows)) + 'px');
-        return rows;
-    }
-
-    // Window changed size: re-fit, keeping the first visible question in view
-    function refit() {
-        const next = fitPerPage();
-        if (next === perPage) return;
-        const firstIndex = (state.page - 1) * perPage;
-        perPage = next;
-        state.page = Math.floor(firstIndex / perPage) + 1;
-        const wasAnimating = animateRows;
-        animateRows = false;
-        render();
-        animateRows = wasAnimating;
-    }
-
     // ---------- filtering ----------
     function getFiltered() {
         const q = state.q.trim().toLowerCase();
@@ -3092,19 +3255,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ---------- rendering ----------
-    function render() {
+    function render(preserveScroll = false) {
         updateCounts();
         const filtered = getFiltered();
         const total = filtered.length;
-        const pages = Math.max(1, Math.ceil(total / perPage));
-        state.page = Math.min(Math.max(1, state.page), pages);
-
-        const start = (state.page - 1) * perPage;
-        visible = filtered.slice(start, start + perPage);
-
+        const scrollTop = preserveScroll ? tableScroll.scrollTop : 0;
         tableBody.textContent = '';
-        visible.forEach((q, index) => tableBody.appendChild(buildRow(q, index, start + index + 1)));
-        tableScroll.scrollTop = 0;
+        filtered.forEach((q, index) => tableBody.appendChild(buildRow(q, index, index + 1)));
+        tableScroll.scrollTop = scrollTop;
 
         emptyState.hidden = total !== 0;
         if (total === 0) {
@@ -3112,11 +3270,9 @@ document.addEventListener('DOMContentLoaded', () => {
             emptyTitle.textContent = none ? 'No questionnaires yet' : 'No questionnaires found';
             emptyText.textContent = none ? 'Create the first question the applicants will answer.' : 'Try a different search or clear the filter.';
             clearFilters.hidden = none;
-            emptyAdd.hidden = !none;
         }
 
-        renderShowing(total, start);
-        renderPagination(pages, total);
+        renderShowing(total);
         searchClear.hidden = state.q === '';
         syncUrl();
     }
@@ -3141,11 +3297,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const dragHandle = el('button', 'question-drag-handle');
         dragHandle.type = 'button';
         dragHandle.draggable = true;
-        dragHandle.disabled = questions.filter(item => Number(item.section_no) === Number(q.section_no)).length < 2;
+        dragHandle.disabled = Number(q.section_no) < 1 ||
+            questions.filter(item => Number(item.section_no) === Number(q.section_no)).length < 2;
         dragHandle.title = 'Drag to reorder within this section';
         dragHandle.setAttribute('aria-label', 'Reorder question ' + number + ' within this section; use the arrow keys or drag');
         dragHandle.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm6-10a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>';
-        tdNum.append(dragHandle, document.createTextNode(String(number)));
+        const orderValue = el('span', 'question-order-value');
+        orderValue.append(dragHandle, document.createTextNode(String(number)));
+        tdNum.appendChild(orderValue);
         dragHandle.addEventListener('keydown', (event) => {
             if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
             const sectionQuestions = questions.filter(item => Number(item.section_no) === Number(q.section_no));
@@ -3192,10 +3351,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         const tdSec = el('td', 'cell-sec');
-        tdSec.title = 'Section ' + q.section_no + ' \u00B7 ' + q.section;
-        const dot = el('span', 'sec-dot');
-        dot.style.setProperty('--c', colorOf(q.section_no));
-        tdSec.append(dot, document.createTextNode('Sec ' + q.section_no));
+        if (Number(q.section_no) > 0 && q.section) {
+            tdSec.title = 'Section ' + q.section_no + ' \u00B7 ' + q.section;
+            const sectionValue = el('span', 'question-section-value');
+            const dot = el('span', 'sec-dot');
+            dot.style.setProperty('--c', colorOf(q.section_no));
+            sectionValue.append(dot, document.createTextNode('Sec ' + q.section_no));
+            tdSec.appendChild(sectionValue);
+        } else {
+            tdSec.title = 'No section assigned';
+            tdSec.appendChild(el('span', 'question-section-value', 'Unassigned'));
+        }
 
         const tdTitle = el('td', 'cell-name');
         tdTitle.title = plain(q);
@@ -3254,12 +3420,13 @@ document.addEventListener('DOMContentLoaded', () => {
         orderedSection.splice(targetIndex, 0, moved);
         const originalSection = questions.filter(item => Number(item.section_no) === sectionNo);
         if (orderedSection.every((item, index) => item.id === originalSection[index].id)) return;
+        const previousSectionOrder = originalSection.map(item => item.id);
 
         const firstSectionIndex = questions.findIndex(item => Number(item.section_no) === sectionNo);
         questions = questions.filter(item => Number(item.section_no) !== sectionNo);
         questions.splice(firstSectionIndex, 0, ...orderedSection);
         busy = true;
-        render();
+        render(true);
         if (keepFocus) {
             const movedRow = Array.from(tableBody.querySelectorAll('tr')).find(row => row.dataset.id === draggedId);
             if (movedRow) movedRow.querySelector('.question-drag-handle').focus();
@@ -3270,7 +3437,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 question_ids: orderedSection.map(item => item.id)
             });
             questions = res.data.questions;
-            ADMIN.toast('Question order saved.', { duration: 3000 });
+            ADMIN.toast('Question order saved.', {
+                actionLabel: 'Undo',
+                duration: 6000,
+                onAction: () => undoReorder(sectionNo, previousSectionOrder)
+            });
         } catch (err) {
             questions = previousQuestions;
             render();
@@ -3280,73 +3451,30 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function renderShowing(total, start) {
+    async function undoReorder(sectionNo, questionIds) {
+        if (busy) return;
+        busy = true;
+        try {
+            const res = await ADMIN.request('question_reorder', {
+                section_no: sectionNo,
+                question_ids: questionIds
+            });
+            questions = res.data.questions;
+            render(true);
+            ADMIN.toast('Question order restored.', { duration: 4000 });
+        } catch (err) {
+            ADMIN.toast(err.message || 'Could not undo the question order.', { error: true, duration: 6000 });
+        } finally {
+            busy = false;
+        }
+    }
+
+    function renderShowing(total) {
         if (total === 0) {
             showingText.textContent = questions.length === 0 ? 'No questionnaires yet' : 'No questionnaires found';
             return;
         }
-        showingText.textContent = 'Showing ' + (start + 1) + '\u2013' + (start + visible.length) + ' of ' + total;
-    }
-
-    function pageList(current, pages) {
-        if (pages <= 7) return Array.from({ length: pages }, (_, i) => i + 1);
-        const keep = new Set([1, pages, current - 1, current, current + 1]);
-        const nums = [...keep].filter(n => n >= 1 && n <= pages).sort((a, b) => a - b);
-        const out = [];
-        nums.forEach((n, i) => {
-            if (i > 0) {
-                const gap = n - nums[i - 1];
-                if (gap === 2) out.push(n - 1);
-                else if (gap > 2) out.push('gap');
-            }
-            out.push(n);
-        });
-        return out;
-    }
-
-    const CHEVRON_LEFT = 'M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z';
-    const CHEVRON_RIGHT = 'M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z';
-    const DOUBLE_LEFT = 'M17.59 18 19 16.59 14.42 12 19 7.41 17.59 6l-6 6zM11 18l1.41-1.41L7.83 12l4.58-4.59L11 6l-6 6z';
-    const DOUBLE_RIGHT = 'M6.41 6 5 7.41 9.58 12 5 16.59 6.41 18l6-6zM13 6l-1.41 1.41L16.17 12l-4.58 4.59L13 18l6-6z';
-
-    function arrowButton(path, label, disabled, goTo) {
-        const btn = el('button', 'page-btn');
-        btn.type = 'button';
-        btn.disabled = disabled;
-        btn.setAttribute('aria-label', label);
-        btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + path + '"/></svg>';
-        btn.addEventListener('click', () => goToPage(goTo));
-        return btn;
-    }
-
-    function renderPagination(pages, total) {
-        pagination.textContent = '';
-        if (total === 0 || pages <= 1) return;
-
-        pagination.appendChild(arrowButton(DOUBLE_LEFT, 'First page', state.page === 1, 1));
-        pagination.appendChild(arrowButton(CHEVRON_LEFT, 'Previous page', state.page === 1, state.page - 1));
-
-        pageList(state.page, pages).forEach(item => {
-            if (item === 'gap') {
-                pagination.appendChild(el('span', 'page-gap', '\u2026'));
-                return;
-            }
-            const btn = el('button', 'page-btn' + (item === state.page ? ' is-current' : ''), String(item));
-            btn.type = 'button';
-            btn.setAttribute('aria-label', 'Page ' + item);
-            if (item === state.page) btn.setAttribute('aria-current', 'page');
-            btn.addEventListener('click', () => goToPage(item));
-            pagination.appendChild(btn);
-        });
-
-        pagination.appendChild(arrowButton(CHEVRON_RIGHT, 'Next page', state.page === pages, state.page + 1));
-        pagination.appendChild(arrowButton(DOUBLE_RIGHT, 'Last page', state.page === pages, pages));
-    }
-
-    function goToPage(n) {
-        if (n === state.page) return;
-        state.page = n;
-        render();
+        showingText.textContent = 'Showing all ' + total + ' questionnaire' + (total === 1 ? '' : 's');
     }
 
     // ======================================================================
@@ -3408,7 +3536,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (state.q.trim()) p.set('q', state.q.trim());
         if (state.status !== 'all') p.set('status', state.status);
         if (state.section !== 'all') p.set('section', state.section);
-        if (state.page > 1) p.set('page', state.page);
         const qs = p.toString();
         window.history.replaceState({}, document.title, window.location.pathname + (qs ? '?' + qs : ''));
     }
@@ -3421,7 +3548,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const section = String(p.get('section') || '').trim();
         if (/^\d+$/.test(section) && questions.some(q => String(q.section_no) === section)) state.section = section;
         state.q = p.get('q') || '';
-        state.page = parseInt(p.get('page'), 10) || 1;
         statusDD.setValue(state.status, true);
         sectionDD.setValue(state.section, true);
         searchInput.value = state.q;
@@ -3433,7 +3559,6 @@ document.addEventListener('DOMContentLoaded', () => {
         clearTimeout(searchTimer);
         searchTimer = setTimeout(() => {
             state.q = searchInput.value;
-            state.page = 1;
             render();
         }, 120);
         searchClear.hidden = searchInput.value === '';
@@ -3449,14 +3574,12 @@ document.addEventListener('DOMContentLoaded', () => {
     searchClear.addEventListener('click', () => {
         searchInput.value = '';
         state.q = '';
-        state.page = 1;
         render();
         searchInput.focus();
     });
 
     clearFilters.addEventListener('click', () => {
         state.q = '';
-        state.page = 1;
         state.status = 'all';
         state.section = 'all';
         searchInput.value = '';
@@ -3465,24 +3588,16 @@ document.addEventListener('DOMContentLoaded', () => {
         render();
     });
 
-    let resizeTimer = null;
-    window.addEventListener('resize', () => {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(refit, 150);
-    });
-
     // ---------- start ----------
     buildSectionOptions();
-    perPage = fitPerPage();
     readUrl();
-    // coming back from the form: open the page where the saved question is
-    if (flashId) {
-        const at = getFiltered().findIndex(q => q.id === flashId);
-        if (at >= 0) state.page = Math.floor(at / perPage) + 1;
-    }
+    // Keep the recently saved questionnaire visible when returning from the form.
     render();
-    refit();                // now that a real row exists, measure again for an exact fit
-    animateRows = true;     // later renders (search, filter, pages) animate the rows in
+    if (flashId) {
+        const row = Array.from(tableBody.querySelectorAll('tr')).find(item => item.dataset.id === flashId);
+        if (row) row.scrollIntoView({ block: 'center' });
+    }
+    animateRows = true;     // later renders (search and filter) animate the rows in
 });
 }
 
@@ -3706,29 +3821,6 @@ document.addEventListener('DOMContentLoaded', () => {
         paintAvatar();
     }
 
-    // Centre-crops the chosen file to a 400 x 400 JPEG (small, and every picture fits the round frame)
-    function squarePicture(file) {
-        return new Promise((resolve, reject) => {
-            const src = URL.createObjectURL(file);
-            const img = new Image();
-            img.onload = () => {
-                try {
-                    const side = Math.min(img.naturalWidth, img.naturalHeight);
-                    if (!side) throw new Error('empty');
-                    const canvas = document.createElement('canvas');
-                    canvas.width = canvas.height = 400;
-                    const g = canvas.getContext('2d');
-                    g.fillStyle = '#ffffff';                    // a see-through PNG gets a white background
-                    g.fillRect(0, 0, 400, 400);
-                    g.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, 400, 400);
-                    canvas.toBlob(blob => { URL.revokeObjectURL(src); blob ? resolve(blob) : reject(new Error('blob')); }, 'image/jpeg', 0.9);
-                } catch (err) { URL.revokeObjectURL(src); reject(err); }
-            };
-            img.onerror = () => { URL.revokeObjectURL(src); reject(new Error('decode')); };
-            img.src = src;
-        });
-    }
-
     avatarPick.addEventListener('click', () => avatarFile.click());
     avatarFile.addEventListener('change', async () => {
         const file = avatarFile.files && avatarFile.files[0];
@@ -3738,7 +3830,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { setError(field, 'Choose a JPG, PNG or WEBP picture.', true); return; }
         if (file.size > 10 * 1024 * 1024) { setError(field, 'That picture is too big (10 MB at most).', true); return; }
         let blob;
-        try { blob = await squarePicture(file); } catch (err) { setError(field, 'That file could not be read as a picture.', true); return; }
+        try { blob = await window.AvatarCropper.open(file); } catch (err) { setError(field, 'That picture could not be processed.', true); return; }
+        if (!blob) return;
         setError(field, '');
         if (photoUrl) URL.revokeObjectURL(photoUrl);
         photoBlob = blob;
@@ -3920,6 +4013,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const problems = {
             pwCurrent: !pwCurrent.value ? 'Enter your current password.' : '',
             pwNew: !pwNew.value ? 'Enter a new password.'
+                : new Blob([pwNew.value]).size > 72 ? 'The new password must be 72 bytes or fewer.'
                 : !(checks.len && checks.case && checks.num) ? 'The new password does not meet all the requirements.' : '',
             pwConfirm: !pwConfirm.value ? 'Type the new password again.'
                 : pwConfirm.value !== pwNew.value ? 'The passwords do not match.' : ''
@@ -4091,6 +4185,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return 'activity:h' + (hash >>> 0).toString(36);
     };
     const allKeys = () => activities().map(activityKey);
+    const unreadTotal = () => activities().filter(row => !readKeys.has(activityKey(row))).length;
     const formatDate = (value) => {
         const match = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(String(value || ''));
         if (!match) return String(value || '');
@@ -4112,7 +4207,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (seen.has(key)) return false;
             seen.add(key);
             return true;
-        }).sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 20);
+        }).sort((a, b) => String(b.at).localeCompare(String(a.at)));
     };
 
     async function readRequest(action, keys, retried) {
@@ -4135,8 +4230,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function syncReadState() {
         const keys = Array.from(new Set(allKeys()));
-        for (let i = 0; i < keys.length; i += 500) {
-            const result = await readRequest('state', keys.slice(i, i + 500));
+        const batches = keys.length ? Array.from({ length: Math.ceil(keys.length / 500) }, (_, i) => keys.slice(i * 500, (i + 1) * 500)) : [[]];
+        for (const batch of batches) {
+            const result = await readRequest('state', batch);
             (result.read_keys || []).forEach((key) => readKeys.add(key));
         }
         readStateReady = true;
@@ -4160,8 +4256,7 @@ document.addEventListener('DOMContentLoaded', () => {
             bell.title = 'Notifications';
             return;
         }
-        const unreadActivity = activities().filter((row) => !readKeys.has(activityKey(row))).length;
-        const total = unreadActivity;
+        const total = unreadTotal();
         badge.textContent = total > 99 ? '99+' : String(total);
         badge.hidden = total === 0;
         bell.classList.toggle('has-notifications', total > 0);
@@ -4181,7 +4276,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function paintList() {
-        list.innerHTML = activities().map((row) => {
+        list.innerHTML = activities().slice(0, 20).map((row) => {
             const key = activityKey(row);
             const expanded = expandedKeys.has(key);
             const icon = look(row.activity);
@@ -4193,7 +4288,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 '</span></button></li>';
         }).join('') || '<li class="notif-empty">Nothing yet. HR activity shows up here.</li>';
         paintBadge();
-        markAll.disabled = allKeys().every((key) => readKeys.has(key));
+        markAll.disabled = !readStateReady || unreadTotal() === 0;
     }
 
     function paint() {
@@ -4201,7 +4296,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!panel.hidden) paintList();
     }
 
+    let refreshInProgress = false;
     async function refresh() {
+        if (refreshInProgress) return;
+        refreshInProgress = true;
         try {
             const result = await ADMIN.request('notify');
             data = result.data.notify;
@@ -4209,7 +4307,8 @@ document.addEventListener('DOMContentLoaded', () => {
             paint();
         } catch (error) {
             console.error('Could not refresh Admin notifications.', error);
-            if (!panel.hidden) ADMIN.toast(error.message || 'Could not refresh notifications.', { error: true, duration: 6000 });
+        } finally {
+            refreshInProgress = false;
         }
     }
 
@@ -4218,23 +4317,11 @@ document.addEventListener('DOMContentLoaded', () => {
         panel.hidden = !panel.hidden;
         bell.setAttribute('aria-expanded', String(!panel.hidden));
         if (panel.hidden) paintBadge();
-        else { paintList(); refresh(); }
+        else paintList();
     });
     panel.addEventListener('click', (event) => event.stopPropagation());
     list.addEventListener('click', async (event) => {
         const button = event.target.closest('button[data-notification-key]');
-        if (!button) return;
-        const key = button.dataset.notificationKey;
-        const expanded = expandedKeys.has(key);
-        expanded ? expandedKeys.delete(key) : expandedKeys.add(key);
-        paintList();
-        if (!expanded) {
-            try { await markRead([key]); }
-            catch (error) { ADMIN.toast(error.message || 'Could not mark this notification as read.', { error: true, duration: 6000 }); }
-        }
-    });
-    pwList.addEventListener('click', async (event) => {
-        const button = event.target.closest('button.pw-expand[data-notification-key]');
         if (!button) return;
         const key = button.dataset.notificationKey;
         const expanded = expandedKeys.has(key);
@@ -4312,6 +4399,97 @@ document.addEventListener('DOMContentLoaded', () => {
     const activityFilter = document.getElementById('activityFilter');
     if (activityFilter && activityFilter.form) {
         activityFilter.addEventListener('change', () => activityFilter.form.submit());
+
+        const filterControl = activityFilter.closest('.dashboard-filter-control');
+        const filterTrigger = document.getElementById('activityFilterTrigger');
+        const filterValue = document.getElementById('activityFilterValue');
+        const filterMenu = document.getElementById('activityFilterMenu');
+        const filterOptions = filterMenu ? Array.from(filterMenu.querySelectorAll('.dashboard-filter-option')) : [];
+
+        if (filterControl && filterTrigger && filterValue && filterMenu && filterOptions.length) {
+            let activeIndex = filterOptions.findIndex(option => option.dataset.value === activityFilter.value);
+            let isOpen = false;
+
+            function syncFilterValue() {
+                const selected = filterOptions.find(option => option.dataset.value === activityFilter.value);
+                if (!selected) return;
+                filterValue.textContent = selected.dataset.label || selected.querySelector('.dashboard-filter-option-label').textContent;
+                filterTrigger.title = filterValue.textContent;
+                filterOptions.forEach(option => {
+                    option.setAttribute('aria-selected', String(option === selected));
+                });
+                activeIndex = filterOptions.indexOf(selected);
+            }
+
+            function highlightFilterOption(index) {
+                activeIndex = (index + filterOptions.length) % filterOptions.length;
+                filterOptions.forEach((option, optionIndex) => {
+                    option.classList.toggle('is-focused', optionIndex === activeIndex);
+                });
+                filterOptions[activeIndex].focus();
+                filterOptions[activeIndex].scrollIntoView({ block: 'nearest' });
+            }
+
+            function setFilterOpen(open) {
+                isOpen = open;
+                filterMenu.hidden = !open;
+                filterTrigger.setAttribute('aria-expanded', String(open));
+                if (open) {
+                    highlightFilterOption(activeIndex);
+                } else {
+                    filterOptions.forEach(option => option.classList.remove('is-focused'));
+                }
+            }
+
+            function chooseFilterOption(index) {
+                const option = filterOptions[index];
+                if (!option) return;
+                activityFilter.value = option.dataset.value;
+                syncFilterValue();
+                setFilterOpen(false);
+                filterTrigger.focus();
+                activityFilter.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+
+            function handleFilterKeydown(event) {
+                if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                    event.preventDefault();
+                    const direction = event.key === 'ArrowDown' ? 1 : -1;
+                    if (!isOpen) setFilterOpen(true);
+                    else highlightFilterOption(activeIndex + direction);
+                } else if (event.key === 'Home' || event.key === 'End') {
+                    event.preventDefault();
+                    if (!isOpen) setFilterOpen(true);
+                    highlightFilterOption(event.key === 'Home' ? 0 : filterOptions.length - 1);
+                } else if ((event.key === 'Enter' || event.key === ' ') && isOpen) {
+                    event.preventDefault();
+                    chooseFilterOption(activeIndex);
+                } else if (event.key === 'Escape' && isOpen) {
+                    event.preventDefault();
+                    setFilterOpen(false);
+                    filterTrigger.focus();
+                } else if (event.key === 'Tab' && isOpen) {
+                    window.setTimeout(() => setFilterOpen(false), 0);
+                }
+            }
+
+            syncFilterValue();
+            filterControl.classList.add('is-enhanced');
+            filterTrigger.hidden = false;
+
+            filterTrigger.addEventListener('click', () => setFilterOpen(!isOpen));
+            filterTrigger.addEventListener('keydown', handleFilterKeydown);
+            filterMenu.addEventListener('keydown', handleFilterKeydown);
+
+            filterMenu.addEventListener('click', event => {
+                const option = event.target.closest('.dashboard-filter-option');
+                if (option) chooseFilterOption(filterOptions.indexOf(option));
+            });
+
+            document.addEventListener('click', event => {
+                if (isOpen && !filterControl.contains(event.target)) setFilterOpen(false);
+            });
+        }
     }
 
     /* ---------- 1. Summary boxes: numbers count up, the activity box jumps to the list ---------- */
@@ -4361,6 +4539,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const PILL = { pending: 'Needs approval', approved: 'Approved', rejected: 'Rejected', cancelled: 'Cancelled' };
     const body = document.getElementById('activityBody');
+    const dashboardReadKeys = new Set();
+    let dashboardReadStateReady = false;
+
+    function activityNotificationKey(row) {
+        const rowKey = row && row.id != null
+            ? String(row.id)
+            : (() => {
+                const value = [row && row.at, row && row.activity, row && row.details, row && row.by].join('|');
+                let hash = 2166136261;
+                for (let i = 0; i < value.length; i++) hash = Math.imul(hash ^ value.charCodeAt(i), 16777619);
+                return 'h' + (hash >>> 0).toString(36);
+            })();
+        return 'activity:' + rowKey.replace(/[^A-Za-z0-9_-]/g, '');
+    }
 
     const latestAt = (data.activity || []).reduce((max, r) => (r.at && r.at > max ? r.at : max), seenAt || '');
 
@@ -4368,12 +4560,14 @@ document.addEventListener('DOMContentLoaded', () => {
         return rows && rows.length
             ? rows.map((row, i) => {
             const role = String(row.actor || (String(row.by).toLowerCase() === 'admin' ? 'Admin' : 'HR')).toLowerCase();
-            const isNew = Boolean(seenAt && row.at && row.at > seenAt);
+            const key = activityNotificationKey(row);
+            const isNew = dashboardReadStateReady && !dashboardReadKeys.has(key);
             const who = role === 'admin' ? 'admin' : 'hr';
             // A "Password Change Requested" line opens the approve / reject pop-up (it shows what happened to it, too)
             const req = row.kind === 'pw_request' && row.req ? row.req : null;
             const pill = req ? ' <span class="req-pill is-' + esc(req.status) + '" data-pill>' + esc(PILL[req.status] || req.status) + '</span>' : '';
-            return '<tr class="row-in' + (isNew ? ' is-new' : '') + (req ? ' is-click' : '') + '" style="--r:' + i + '"' +
+            return '<tr class="activity-row-in' + (isNew ? ' is-new' : '') + (req ? ' is-click' : '') + '" style="--r:' + i + '"' +
+                ' data-notification-key="' + esc(key) + '"' +
                 (req ? ' data-req="' + Number(req.id) + '" tabindex="0" role="button" title="Click to review this request"' : '') + '>' +
                 '<td>' + (isNew ? '<span class="new-dot" title="New since your last visit"></span>' : '') + esc(ADMIN.formatDate(row.at)) + '</td>' +
                 '<td title="' + esc(row.activity) + '"><strong>' + esc(row.activity) + '</strong></td>' +
@@ -4382,6 +4576,23 @@ document.addEventListener('DOMContentLoaded', () => {
             '</tr>';
         }).join('')
         : '<tr><td colspan="4" class="empty-row">No activity yet.</td></tr>';
+    }
+    function paintDashboardActivityReadState() {
+        if (!body || !dashboardReadStateReady) return;
+        body.querySelectorAll('tr[data-notification-key]').forEach(row => {
+            const unread = !dashboardReadKeys.has(row.dataset.notificationKey);
+            row.classList.toggle('is-new', unread);
+            const dateCell = row.cells[0];
+            let dot = dateCell.querySelector('.new-dot');
+            if (unread && !dot) {
+                dot = document.createElement('span');
+                dot.className = 'new-dot';
+                dot.title = 'Unread activity';
+                dateCell.insertBefore(dot, dateCell.firstChild);
+            } else if (!unread && dot) {
+                dot.remove();
+            }
+        });
     }
     if (body) {
         body.innerHTML = renderDashboardActivityRows(data.activity);
@@ -4498,19 +4709,10 @@ document.addEventListener('DOMContentLoaded', () => {
         let lastCount = -1;
         const accountId = Number(data.account_id) || 0;
         const csrfMeta = document.querySelector('meta[name="csrf-token"]');
-        const readKeys = new Set();
-        let readStateReady = false;
+        const readKeys = dashboardReadKeys;
         const expandedKeys = new Set();
 
-        function rowActivityKey(row) {
-            if (row && row.id != null) return String(row.id);
-            const value = [row && row.at, row && row.activity, row && row.details, row && row.by].join('|');
-            let hash = 2166136261;
-            for (let i = 0; i < value.length; i++) hash = Math.imul(hash ^ value.charCodeAt(i), 16777619);
-            return 'h' + (hash >>> 0).toString(36);
-        }
-
-        const activityKey = row => 'activity:' + rowActivityKey(row).replace(/[^A-Za-z0-9_-]/g, '');
+        const activityKey = activityNotificationKey;
 
         const activityRows = () => {
             const serverRows = window.ADMIN_NOTIFY && Array.isArray(window.ADMIN_NOTIFY.recent) ? window.ADMIN_NOTIFY.recent : [];
@@ -4524,8 +4726,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 return true;
             }).sort((a, b) => String(b.at).localeCompare(String(a.at)));
         };
-        const unreadActivity = () => activityRows().slice(0, 20).filter(row => !readKeys.has(activityKey(row)));
-        const notificationKeys = () => activityRows().slice(0, 20).map(activityKey);
+        const unreadActivity = () => activityRows().filter(row => !readKeys.has(activityKey(row)));
+        const notificationKeys = () => activityRows().map(activityKey);
 
         async function notificationRequest(action, keys, retried) {
             const response = await fetch('../api/notification-read.php', {
@@ -4552,7 +4754,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const result = await notificationRequest('state', keys.slice(i, i + 500));
                 (result.read_keys || []).forEach(key => readKeys.add(key));
             }
-            readStateReady = true;
+            dashboardReadStateReady = true;
         }
 
         async function markRead(keys) {
@@ -4566,7 +4768,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         function paintBadge() {
-            if (!readStateReady) {
+            if (!dashboardReadStateReady) {
                 abadge.hidden = true;
                 abell.classList.remove('has-notifications');
                 abell.setAttribute('aria-label', 'Notifications');
@@ -4614,13 +4816,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             alist.innerHTML = html;
             paintBadge();
-            if (amarkAll) amarkAll.disabled = unreadActivity().length === 0;
+            paintDashboardActivityReadState();
+            if (amarkAll) amarkAll.disabled = !dashboardReadStateReady || unreadActivity().length === 0;
         }
 
-        async function openPanel() {
+        function openPanel() {
             apanel.hidden = false;
             abell.setAttribute('aria-expanded', 'true');
-            await refreshBell();
             paintList();
         }
 
@@ -4667,7 +4869,10 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
+        let refreshInProgress = false;
         async function refreshBell() {
+            if (refreshInProgress) return;
+            refreshInProgress = true;
             try {
                 const response = await ADMIN.request('notify');
                 const updated = response && response.data && response.data.notify;
@@ -4677,7 +4882,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 paintList();
             } catch (err) {
                 console.error('Could not refresh admin notifications.', err);
-                if (!apanel.hidden) ADMIN.toast(err.message || 'Could not refresh notifications.', { error: true, duration: 6000 });
+            } finally {
+                refreshInProgress = false;
             }
         }
 
@@ -4755,7 +4961,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         '<span class="q-badge">' + esc(q.id.toUpperCase()) + '</span>' +
                         '<div class="q-text"><span class="q-title" title="' + esc(q.text) + '">' + esc(q.text) + '</span>' +
                             '<div class="q-meta">' + answer + (q.status === 'Inactive' ? '<em class="q-tag">Inactive</em>' : '') +
-                            '<small>Section ' + esc(q.section_no) + ' · ' + esc(q.section) + (none ? '' : ' · ' + count) + '</small></div></div>' +
+                            '<small>' + (Number(q.section_no) > 0 && q.section
+                                ? 'Section ' + esc(q.section_no) + ' · ' + esc(q.section)
+                                : 'Unassigned') + (none ? '' : ' · ' + count) + '</small></div></div>' +
                     '</div>' +
                     '<div class="q-plot" aria-label="' + (none ? 'No answers yet' : pct(q.share) + ' chose the top answer') + '"><span class="q-bar" style="--w:' + w + '%"></span>' + val + '</div>' +
                 '</div>' +

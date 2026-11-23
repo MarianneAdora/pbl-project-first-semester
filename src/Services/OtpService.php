@@ -138,9 +138,9 @@ class OtpService {
     /**
      * Check a 6-digit code against the DB row.
      * Returns ['ok' => bool, 'error' => string, 'attempts_left' => int, 'locked_until' => ?string].
-     * Wrong codes bump attempt_count; 3 strikes sets locked_until 15 min out.
+     * Wrong codes bump attempt_count; max attempts sets locked_until 15 min out.
      */
-    public function verifyOtp($applicantId, string $code, int $maxAttempts = 3, int $lockSeconds = 900): array
+    public function verifyOtp($applicantId, string $code, int $maxAttempts = 5, int $lockSeconds = 900): array
     {
         $row = $this->latestOtp($applicantId);
         if (!$row) return ['ok' => false, 'error' => 'No code was sent yet. Please ask for a new one.', 'attempts_left' => $maxAttempts, 'locked_until' => null];

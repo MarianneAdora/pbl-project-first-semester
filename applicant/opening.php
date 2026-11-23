@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once __DIR__ . '/../src/Helpers/security.php';
+start_secure_session(1800);
 require_once __DIR__ . '/../src/Helpers/security.php';
 $csrf = csrf_token();
 
@@ -25,6 +26,7 @@ if ($tokenParam !== '') {
         $isNewApplicant = empty($_SESSION['applicant_token'])
             || $_SESSION['applicant_token'] !== (string) ($found['secure_token'] ?? '');
         if ($isNewApplicant) {
+            rotate_session();
             foreach (['otp_verified', 'otp', 'otp_expires', 'otp_sent_at', 'otp_attempts', 'otp_locked_until',
                       'otp_failed_total', 'otp_request_times', 'otp_was_locked',
                       'screening_submitted', 'screening_reference', 'screening_result', 'screening_privacy_accepted_at', 'interview',

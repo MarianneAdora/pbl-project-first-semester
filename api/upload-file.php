@@ -5,8 +5,7 @@
 // Requires a verified applicant session (opening.php?token=... + OTP).
 
 require_once __DIR__ . '/../src/Helpers/security.php';
-secure_session(1800);
-session_start();
+start_secure_session(1800);
 send_security_headers(false);
 
 header('Content-Type: application/json; charset=UTF-8');

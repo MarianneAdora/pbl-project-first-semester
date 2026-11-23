@@ -33,25 +33,43 @@ function csp_nonce(): string
  */
 function secure_session(int $lifetime = 1800): void
 {
-    rate_limit_ensure_table();
-    $ini = [
-        'session.cookie_httponly' => '1',
-        'session.use_strict_mode' => '1',
-        'session.use_only_cookies' => '1',
-        'session.cookie_samesite' => 'Lax',
-        'session.gc_maxlifetime' => (string) $lifetime,
-        'session.cookie_lifetime' => (string) $lifetime,
-    ];
+    if (session_status() !== PHP_SESSION_NONE) return;
+
+    if (headers_sent($file, $line)) {
+        throw new RuntimeException('Could not start the secure session because output started at ' . $file . ':' . $line . '.');
+    }
+
     $https = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
         || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https');
-    if ($https) {
-        $ini['session.cookie_secure'] = '1';
-    } else {
-        $ini['session.cookie_secure'] = '0';
+    if (!session_set_cookie_params([
+        'lifetime' => $lifetime,
+        'path' => '/',
+        'secure' => $https,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ])) {
+        throw new RuntimeException('Could not configure secure session cookie parameters.');
     }
-    foreach ($ini as $key => $val) {
-        @ini_set($key, $val);
+    foreach ([
+        'session.use_strict_mode' => '1',
+        'session.use_only_cookies' => '1',
+        'session.use_trans_sid' => '0',
+        'session.gc_maxlifetime' => (string) $lifetime,
+    ] as $key => $value) {
+        if (ini_set($key, $value) === false) {
+            throw new RuntimeException('Could not configure the PHP session setting: ' . $key);
+        }
     }
+}
+
+/**
+ * Apply the session cookie settings and start the session exactly once.
+ */
+function start_secure_session(int $lifetime = 1800): void
+{
+    if (session_status() === PHP_SESSION_ACTIVE) return;
+    secure_session($lifetime);
+    session_start();
 }
 
 /**
@@ -59,9 +77,7 @@ function secure_session(int $lifetime = 1800): void
  */
 function rotate_session(): void
 {
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
+    start_secure_session();
     session_regenerate_id(true);
 }
 
@@ -70,6 +86,7 @@ function rotate_session(): void
  */
 function restore_remembered_session(): bool
 {
+    start_secure_session();
     $role = (string) ($_SESSION['user_role'] ?? '');
     $userId = (int) ($_SESSION['user_id'] ?? 0);
     if ($userId > 0 && in_array($role, [ROLE_ADMIN, ROLE_HR], true)) {
@@ -87,14 +104,19 @@ function restore_remembered_session(): bool
         return false;
     }
 
-    $stmt = db()->prepare(
-        "SELECT user_id, role, name, email, remember_token, remember_token_expires_at
-         FROM users
-         WHERE user_id = :id AND deleted_at IS NULL AND status = 'Active'
-         LIMIT 1"
-    );
-    $stmt->execute([':id' => $userId]);
-    $user = $stmt->fetch();
+    try {
+        $stmt = db()->prepare(
+            "SELECT user_id, role, name, email, remember_token, remember_token_expires_at
+             FROM users
+             WHERE user_id = :id AND deleted_at IS NULL AND status = 'Active'
+             LIMIT 1"
+        );
+        $stmt->execute([':id' => $userId]);
+        $user = $stmt->fetch();
+    } catch (Throwable $e) {
+        error_log('Remember-me session restoration failed: ' . $e->getMessage());
+        return false;
+    }
     if (!$user || !in_array((string) ($user['role'] ?? ''), [ROLE_ADMIN, ROLE_HR], true)) {
         return false;
     }
@@ -105,6 +127,7 @@ function restore_remembered_session(): bool
         return false;
     }
 
+    rotate_session();
     $_SESSION['user_id'] = (int) $user['user_id'];
     $_SESSION['user_role'] = (string) $user['role'];
     $_SESSION['user_name'] = (string) $user['name'];
@@ -119,9 +142,7 @@ function restore_remembered_session(): bool
  */
 function csrf_token(): string
 {
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
+    start_secure_session();
     if (empty($_SESSION['csrf_token'])) {
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
     }
@@ -134,9 +155,7 @@ function csrf_token(): string
  */
 function csrf_verify(?string $token = null): bool
 {
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
+    start_secure_session();
     $stored = $_SESSION['csrf_token'] ?? '';
     if ($stored === '') {
         return false;
@@ -161,9 +180,6 @@ function csrf_consume(?string $token = null): bool
     if (!csrf_verify($token)) {
         return false;
     }
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
     return true;
 }
@@ -171,11 +187,14 @@ function csrf_consume(?string $token = null): bool
 /*───────────────────────────── rate limiting ─────────────────────────────*/
 
 /**
- * Ensure the rate_limit_log table exists. Call once during bootstrap.
+ * Ensure the rate_limit_log table and indexes exist before rate-limited work.
  */
-function rate_limit_ensure_table(): void
+function rate_limit_ensure_table(?PDO $pdo = null): void
 {
-    $pdo = db();
+    static $ready = false;
+    if ($ready) return;
+
+    $pdo = $pdo ?: db();
     try {
         $pdo->exec(
             "CREATE TABLE IF NOT EXISTS rate_limit_log (" .
@@ -184,10 +203,24 @@ function rate_limit_ensure_table(): void
             "created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP" .
             ")"
         );
-        $pdo->exec("CREATE INDEX IF NOT EXISTS idx_rate_limit_key_time ON rate_limit_log(key_hash, created_at)");
     } catch (Throwable $e) {
-        // Table may already exist; ignore and proceed
+        if (!$pdo->query("SELECT to_regclass('rate_limit_log')")->fetchColumn()) {
+            throw $e;
+        }
+        error_log('Rate-limit table creation skipped; the table already exists: ' . $e->getMessage());
     }
+
+    foreach ([
+        'idx_rate_limit_key_time' => 'CREATE INDEX IF NOT EXISTS idx_rate_limit_key_time ON rate_limit_log(key_hash, created_at)',
+        'idx_rate_limit_created_at' => 'CREATE INDEX IF NOT EXISTS idx_rate_limit_created_at ON rate_limit_log(created_at)',
+    ] as $index => $sql) {
+        try {
+            $pdo->exec($sql);
+        } catch (Throwable $e) {
+            error_log('Rate-limit index check/creation failed for ' . $index . ': ' . $e->getMessage());
+        }
+    }
+    $ready = true;
 }
 
 /**
@@ -197,42 +230,56 @@ function rate_limit_ensure_table(): void
  */
 function rate_limit(string $key, int $maxAttempts, int $windowSeconds): array
 {
-    $pdo = db();
-    $keyHash = hash('sha256', $key);
-
-    // Use the database clock for both writes and expiry checks.
-    $stmt = $pdo->prepare(
-        "DELETE FROM rate_limit_log
-         WHERE key_hash = :kh
-           AND created_at <= NOW() - (CAST(:window_seconds AS INTEGER) * INTERVAL '1 second')"
-    );
-    $stmt->execute([
-        ':kh' => $keyHash,
-        ':window_seconds' => $windowSeconds,
-    ]);
-
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM rate_limit_log WHERE key_hash = :kh");
-    $stmt->execute([':kh' => $keyHash]);
-    $count = (int) $stmt->fetchColumn();
-
-    if ($count >= $maxAttempts) {
-        // retry_after = when the maxAttempts-th oldest entry expires (count drops below the limit)
-        $stmt = $pdo->prepare(
-            "SELECT CEIL(EXTRACT(EPOCH FROM (created_at + INTERVAL '{$windowSeconds} seconds' - NOW())))::int AS retry_after
-             FROM rate_limit_log WHERE key_hash = :kh
-             ORDER BY created_at ASC LIMIT 1 OFFSET :off"
-        );
-        $stmt->execute([':kh' => $keyHash, ':off' => $maxAttempts - 1]);
-        $row = $stmt->fetch();
-        $retryAfter = $row ? max(0, (int) ($row['retry_after'] ?? 0)) : $windowSeconds;
-        return ['allowed' => false, 'remaining' => 0, 'retry_after' => $retryAfter];
+    if ($maxAttempts < 1 || $windowSeconds < 1) {
+        throw new InvalidArgumentException('Rate limit values must be positive.');
     }
 
-    $pdo->prepare(
-        "INSERT INTO rate_limit_log (key_hash, created_at) VALUES (:kh, NOW())"
-    )->execute([':kh' => $keyHash]);
+    $pdo = db();
+    rate_limit_ensure_table($pdo);
+    $keyHash = hash('sha256', $key);
+    $ownsTransaction = !$pdo->inTransaction();
+    if ($ownsTransaction) $pdo->beginTransaction();
 
-    return ['allowed' => true, 'remaining' => $maxAttempts - $count - 1, 'retry_after' => 0];
+    try {
+        $lock = $pdo->prepare('SELECT pg_advisory_xact_lock(hashtextextended(:key_hash, 0))');
+        $lock->execute([':key_hash' => $keyHash]);
+
+        $pdo->exec("DELETE FROM rate_limit_log WHERE created_at < NOW() - INTERVAL '1 day'");
+        $stmt = $pdo->prepare(
+            "DELETE FROM rate_limit_log
+             WHERE key_hash = :kh
+               AND created_at <= NOW() - (CAST(:window_seconds AS INTEGER) * INTERVAL '1 second')"
+        );
+        $stmt->execute([':kh' => $keyHash, ':window_seconds' => $windowSeconds]);
+
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM rate_limit_log WHERE key_hash = :kh");
+        $stmt->execute([':kh' => $keyHash]);
+        $count = (int) $stmt->fetchColumn();
+
+        if ($count >= $maxAttempts) {
+            // retry_after = when the maxAttempts-th oldest entry expires (count drops below the limit)
+            $stmt = $pdo->prepare(
+                "SELECT CEIL(EXTRACT(EPOCH FROM (created_at + (CAST(:window_seconds AS INTEGER) * INTERVAL '1 second') - NOW())))::int AS retry_after
+                 FROM rate_limit_log WHERE key_hash = :kh
+                 ORDER BY created_at ASC LIMIT 1 OFFSET CAST(:off AS INTEGER)"
+            );
+            $stmt->execute([':window_seconds' => $windowSeconds, ':kh' => $keyHash, ':off' => $maxAttempts - 1]);
+            $row = $stmt->fetch();
+            $retryAfter = $row ? max(0, (int) ($row['retry_after'] ?? 0)) : $windowSeconds;
+            if ($ownsTransaction) $pdo->commit();
+            return ['allowed' => false, 'remaining' => 0, 'retry_after' => $retryAfter];
+        }
+
+        $stmt = $pdo->prepare(
+            "INSERT INTO rate_limit_log (key_hash, created_at) VALUES (:kh, NOW())"
+        );
+        $stmt->execute([':kh' => $keyHash]);
+        if ($ownsTransaction) $pdo->commit();
+        return ['allowed' => true, 'remaining' => $maxAttempts - $count - 1, 'retry_after' => 0];
+    } catch (Throwable $e) {
+        if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
 }
 
 /*───────────────────────────── input validation ─────────────────────────────*/
@@ -326,9 +373,7 @@ const ROLE_APPLICANT = 'applicant';
  */
 function require_admin_or_hr(): void
 {
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
+    start_secure_session();
     $role = $_SESSION['user_role'] ?? '';
     $uid  = $_SESSION['user_id'] ?? null;
     if ($uid === null || !in_array($role, [ROLE_ADMIN, ROLE_HR], true)) {
@@ -344,9 +389,7 @@ function require_admin_or_hr(): void
  */
 function require_admin(): void
 {
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
+    start_secure_session();
     $role = $_SESSION['user_role'] ?? '';
     $uid  = $_SESSION['user_id'] ?? null;
     if ($uid === null || $role !== ROLE_ADMIN) {
@@ -362,9 +405,7 @@ function require_admin(): void
  */
 function require_applicant(): void
 {
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
+    start_secure_session();
     if (empty($_SESSION['otp_verified']) || empty($_SESSION['applicant_id'])) {
         http_response_code(403);
         header('Content-Type: application/json; charset=UTF-8');
@@ -378,9 +419,7 @@ function require_applicant(): void
  */
 function current_user_id(): ?int
 {
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
+    start_secure_session();
     return !empty($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : null;
 }
 
@@ -389,9 +428,7 @@ function current_user_id(): ?int
  */
 function current_user_role(): string
 {
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
+    start_secure_session();
     return (string) ($_SESSION['user_role'] ?? '');
 }
 
@@ -403,9 +440,7 @@ function current_user_role(): string
  */
 function assert_applicant_access(int $applicantId): void
 {
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
+    start_secure_session();
     $role = current_user_role();
     $uid  = current_user_id();
 

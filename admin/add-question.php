@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once __DIR__ . '/../src/Helpers/security.php';
+start_secure_session(1800);
 require_once __DIR__ . '/../src/Helpers/security.php';
 $csrf = csrf_token();
 
@@ -49,7 +50,9 @@ $isEdit = $editing !== null;
 $sections = [];
 foreach ($current as $q) {
     $no = (int) $q['section_no'];
-    if (!isset($sections[$no])) $sections[$no] = ['no' => $no, 'name' => (string) $q['section']];
+    if ($no > 0 && trim((string) $q['section']) !== '' && !isset($sections[$no])) {
+        $sections[$no] = ['no' => $no, 'name' => (string) $q['section']];
+    }
 }
 ksort($sections);
 $sections = array_values($sections);
@@ -75,6 +78,7 @@ foreach ($question_types as $key => $label) $type_options[] = [$key, $label, $ty
 function q_dropdown(string $id, string $labelId, array $options, string $selected, string $placeholder = ''): void
 {
     $e = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
+    $sectionMenu = $id === 'sectionDropdown';
     if ($placeholder !== '') array_unshift($options, ['', $placeholder, '#c5c9ce']);
     $now = $options[0];
     foreach ($options as $o) {
@@ -82,17 +86,31 @@ function q_dropdown(string $id, string $labelId, array $options, string $selecte
     }
     ?>
                         <div class="dropdown<?php echo (string) $now[0] === '' ? ' is-placeholder' : ''; ?>" id="<?php echo $e($id); ?>">
-                            <button type="button" class="dropdown-btn" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="<?php echo $e($labelId . ' ' . $id . 'Value'); ?>">
+                            <button type="button" class="dropdown-btn" aria-haspopup="<?php echo $sectionMenu ? 'menu' : 'listbox'; ?>" aria-expanded="false" aria-labelledby="<?php echo $e($labelId . ' ' . $id . 'Value'); ?>">
                                 <span class="dot"></span>
                                 <span class="dropdown-value" id="<?php echo $e($id); ?>Value"><?php echo $e($now[1]); ?></span>
                                 <svg class="dropdown-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
                             </button>
-                            <ul class="dropdown-menu" role="listbox" aria-labelledby="<?php echo $e($labelId); ?>" tabindex="-1">
+                            <ul class="dropdown-menu<?php echo $sectionMenu ? ' section-options' : ''; ?>" role="<?php echo $sectionMenu ? 'menu' : 'listbox'; ?>" aria-labelledby="<?php echo $e($labelId); ?>" tabindex="-1">
                                 <?php foreach ($options as $k => $o): ?>
+                                <?php if ($sectionMenu): ?>
+                                <li class="section-option-row" role="none" style="--k:<?php echo (int) $k; ?>">
+                                    <button type="button" class="dropdown-option" role="menuitemradio" data-value="<?php echo $e($o[0]); ?>" data-dot="<?php echo $e($o[2]); ?>" aria-checked="<?php echo (string) $o[0] === (string) $now[0] ? 'true' : 'false'; ?>" tabindex="-1">
+                                        <span class="dot"></span><span class="opt-label"><?php echo $e($o[1]); ?></span>
+                                        <svg class="opt-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>
+                                    </button>
+                                    <?php if ((string) $o[0] !== ''): ?>
+                                    <button type="button" class="section-option-delete" role="menuitem" aria-label="<?php echo $e('Delete ' . $o[1]); ?>" title="<?php echo $e('Delete ' . $o[1]); ?>" tabindex="-1">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                                    </button>
+                                    <?php endif; ?>
+                                </li>
+                                <?php else: ?>
                                 <li class="dropdown-option" role="option" data-value="<?php echo $e($o[0]); ?>" data-dot="<?php echo $e($o[2]); ?>" aria-selected="<?php echo (string) $o[0] === (string) $now[0] ? 'true' : 'false'; ?>" style="--k:<?php echo (int) $k; ?>">
                                     <span class="dot"></span><span class="opt-label"><?php echo $e($o[1]); ?></span>
                                     <svg class="opt-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>
                                 </li>
+                                <?php endif; ?>
                                 <?php endforeach; ?>
                             </ul>
                         </div>
@@ -260,7 +278,9 @@ function q_dropdown(string $id, string $labelId, array $options, string $selecte
                     <!-- Section: pick an existing one (it can be renamed) ... -->
                     <div class="field" data-field="section">
                         <label id="sectionLabel">Section <span class="req">*</span></label>
-                        <?php q_dropdown('sectionDropdown', 'sectionLabel', $section_options, $isEdit ? (string) (int) $editing['section_no'] : '', 'Select Section'); ?>
+                        <div class="section-select-row">
+                            <?php q_dropdown('sectionDropdown', 'sectionLabel', $section_options, $isEdit ? (string) (int) $editing['section_no'] : '', 'Select Section'); ?>
+                        </div>
                         <p class="field-error" role="alert"></p>
                     </div>
 
@@ -331,7 +351,7 @@ function q_dropdown(string $id, string $labelId, array $options, string $selecte
                         </div>
                         <div class="field" data-field="followup_options">
                             <label for="followup_options">Choices in the list <span class="req">*</span></label>
-                            <textarea class="textarea" id="followup_options" name="followup_options" rows="4" placeholder="One choice per line"></textarea>
+                            <textarea class="textarea" id="followup_options" name="followup_options" rows="4" maxlength="2000" placeholder="One choice per line"></textarea>
                             <p class="field-error" role="alert"></p>
                             <p class="field-hint">One choice per line, from 2 up to 12 choices.</p>
                         </div>
@@ -342,7 +362,7 @@ function q_dropdown(string $id, string $labelId, array $options, string $selecte
                         <div class="field-row">
                             <div class="field" data-field="max">
                                 <label for="max">Highest rating <span class="req">*</span></label>
-                                <div class="input-box no-icon"><input type="text" id="max" name="max" inputmode="numeric" maxlength="2" placeholder="5"></div>
+                                <div class="input-box no-icon"><input type="text" id="max" name="max" data-input-rule="digits" inputmode="numeric" maxlength="2" placeholder="5"></div>
                                 <p class="field-error" role="alert"></p>
                                 <p class="field-hint">The scale goes from 1 up to this number (3 to 10).</p>
                             </div>
@@ -384,12 +404,12 @@ function q_dropdown(string $id, string $labelId, array $options, string $selecte
                             </div>
                             <div class="field" data-field="min_chars">
                                 <label for="min_chars">Shortest answer (characters)</label>
-                                <div class="input-box no-icon"><input type="text" id="min_chars" name="min_chars" inputmode="numeric" maxlength="4" placeholder="0"></div>
+                                <div class="input-box no-icon"><input type="text" id="min_chars" name="min_chars" data-input-rule="digits" inputmode="numeric" maxlength="4" placeholder="0"></div>
                                 <p class="field-error" role="alert"></p>
                             </div>
                             <div class="field" data-field="max_chars">
                                 <label for="max_chars">Longest answer (characters) <span class="req">*</span></label>
-                                <div class="input-box no-icon"><input type="text" id="max_chars" name="max_chars" inputmode="numeric" maxlength="4" placeholder="500"></div>
+                                <div class="input-box no-icon"><input type="text" id="max_chars" name="max_chars" data-input-rule="digits" inputmode="numeric" maxlength="4" placeholder="500"></div>
                                 <p class="field-error" role="alert"></p>
                             </div>
                         </div>
@@ -399,7 +419,7 @@ function q_dropdown(string $id, string $labelId, array $options, string $selecte
                         <p class="sub-title">Statement + checkbox</p>
                         <div class="field" data-field="body">
                             <label for="body">Statement the applicant reads <span class="req">*</span></label>
-                            <textarea class="textarea" id="body" name="body" rows="5" placeholder="Write the statement here"></textarea>
+                            <textarea class="textarea" id="body" name="body" rows="5" maxlength="10000" placeholder="Write the statement here"></textarea>
                             <p class="field-error" role="alert"></p>
                             <p class="field-hint">Leave an empty line between paragraphs.</p>
                         </div>
@@ -439,7 +459,7 @@ function q_dropdown(string $id, string $labelId, array $options, string $selecte
                             <!-- Rating scale -->
                             <div class="field" data-field="pass_min" id="passMinField" hidden>
                                 <label for="pass_min">Lowest passing rating <span class="req">*</span></label>
-                                <div class="input-box no-icon"><input type="text" id="pass_min" name="pass_min" inputmode="numeric" maxlength="2" placeholder="3"></div>
+                                <div class="input-box no-icon"><input type="text" id="pass_min" name="pass_min" data-input-rule="digits" inputmode="numeric" maxlength="2" placeholder="3"></div>
                                 <p class="field-error" role="alert"></p>
                                 <p class="field-hint" id="passMinHint">A rating lower than this fails the screening.</p>
                             </div>
@@ -504,6 +524,7 @@ function q_dropdown(string $id, string $labelId, array $options, string $selecte
         ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
     </script>
     <!-- Shared admin behaviour first, then this page's script -->
+    <script src="../assets/js/input-rules.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/input-rules.js'); ?>"></script>
     <script src="../assets/js/admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/admin.js'); ?>"></script>
 </body>
 </html>

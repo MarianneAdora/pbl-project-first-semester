@@ -167,7 +167,19 @@ function repo_response_submit(int $applicantId, array $answers, array $video = [
                 if (!is_string($raw) || trim($raw) === '') {
                     throw new InvalidArgumentException('Question ' . $qid . ': Please write your answer.');
                 }
-                $clean[$qid] = mb_substr(trim($raw), 0, 2000);
+                $textAnswer = trim($raw);
+                $minChars = max(1, (int) ($cfg['min_chars'] ?? 0));
+                $maxChars = (int) ($cfg['max_chars'] ?? 500);
+                if ($maxChars < 1) $maxChars = 500;
+                $maxChars = min(2000, $maxChars);
+                $answerLength = mb_strlen($textAnswer, 'UTF-8');
+                if ($answerLength < $minChars) {
+                    throw new InvalidArgumentException('Question ' . $qid . ': Please write at least ' . $minChars . ' characters.');
+                }
+                if ($answerLength > $maxChars) {
+                    throw new InvalidArgumentException('Question ' . $qid . ': Your answer must be ' . $maxChars . ' characters or fewer.');
+                }
+                $clean[$qid] = $textAnswer;
         }
 
         if (!empty($q['is_data_protection']) && ($clean[$qid] ?? '') === 'Yes' && $consentAt === null) {

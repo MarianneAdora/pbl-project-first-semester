@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once __DIR__ . '/../src/Helpers/security.php';
+start_secure_session(1800);
 require_once __DIR__ . '/../src/Helpers/security.php';
 $csrf = csrf_token();
 
@@ -218,7 +219,7 @@ $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
                         <label for="name">Full Name <span class="req">*</span></label>
                         <div class="input-box">
                             <svg class="field-icon" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-                            <input type="text" id="name" name="name" placeholder="Enter full name" maxlength="100" value="<?php echo $isEdit ? $h($editing['name']) : ''; ?>" required>
+                            <input type="text" id="name" name="name" data-input-rule="name" placeholder="Enter full name" maxlength="100" autocomplete="section-hr name" value="<?php echo $isEdit ? $h($editing['name']) : ''; ?>" required>
                         </div>
                         <p class="field-error" role="alert"></p>
                     </div>
@@ -227,7 +228,7 @@ $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
                         <label for="email">Email Address <span class="req">*</span></label>
                         <div class="input-box">
                             <svg class="field-icon" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
-                            <input type="email" id="email" name="email" placeholder="Enter email address" maxlength="150" value="<?php echo $isEdit ? $h($editing['email']) : ''; ?>" required>
+                            <input type="email" id="email" name="email" placeholder="Enter email address" maxlength="150" autocomplete="section-hr email" value="<?php echo $isEdit ? $h($editing['email']) : ''; ?>" required>
                         </div>
                         <p class="field-error" role="alert"></p>
                     </div>
@@ -236,7 +237,7 @@ $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
                         <label for="password"><?php echo $isEdit ? 'New Password' : 'Password'; ?> <?php if (!$isEdit): ?><span class="req">*</span><?php else: ?><span class="optional">(leave empty to keep the current one)</span><?php endif; ?></label>
                         <div class="input-box has-eye">
                             <svg class="field-icon" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
-                            <input type="password" id="password" name="password" placeholder="Enter Password" maxlength="100" autocomplete="new-password">
+                            <input type="password" id="password" name="password" placeholder="Enter Password" maxlength="72" autocomplete="section-hr new-password">
                             <button type="button" class="eye-toggle" aria-label="Show password" aria-pressed="false" data-target="password">
                                 <svg class="eye-on" viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
                                 <svg class="eye-off" viewBox="0 0 24 24"><path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/></svg>
@@ -250,7 +251,7 @@ $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
                         <label for="password_confirm">Confirm Password <?php if (!$isEdit): ?><span class="req">*</span><?php endif; ?></label>
                         <div class="input-box has-eye">
                             <svg class="field-icon" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
-                            <input type="password" id="password_confirm" name="password_confirm" placeholder="Confirm Password" maxlength="100" autocomplete="new-password">
+                            <input type="password" id="password_confirm" name="password_confirm" placeholder="Confirm Password" maxlength="72" autocomplete="section-hr new-password">
                             <button type="button" class="eye-toggle" aria-label="Show password" aria-pressed="false" data-target="password_confirm">
                                 <svg class="eye-on" viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
                                 <svg class="eye-off" viewBox="0 0 24 24"><path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/></svg>
@@ -300,29 +301,32 @@ $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
                         </div>
                         <p class="field-error" role="alert"></p>
                     </div>
-                </div>
-
-                <?php if (!$isEdit): ?>
-                <div class="field" data-field="admin_password">
-                    <label for="admin_password">Confirm Your Admin Password <span class="req">*</span></label>
-                    <div class="input-box">
-                        <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8h-1V6a5 5 0 0 0-10 0v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2zm-9-2a3 3 0 0 1 6 0v2H9zm9 14H6V10h12z"/></svg>
-                        <input type="password" id="admin_password" name="admin_password" placeholder="Enter your current Admin password" maxlength="1024" autocomplete="current-password" required>
+                    <?php if (!$isEdit): ?>
+                    <div class="field field-wide" data-field="admin_password">
+                        <label for="admin_password">Confirm Your Admin Password <span class="req">*</span></label>
+                        <div class="input-box has-eye">
+                            <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8h-1V6a5 5 0 0 0-10 0v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2zm-9-2a3 3 0 0 1 6 0v2H9zm9 14H6V10h12z"/></svg>
+                            <input type="password" id="admin_password" name="admin_password" placeholder="Enter your current Admin password" maxlength="1024" autocomplete="section-admin current-password" required>
+                            <button type="button" class="eye-toggle" aria-label="Show password" aria-pressed="false" data-target="admin_password">
+                                <svg class="eye-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+                                <svg class="eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/></svg>
+                            </button>
+                        </div>
+                        <p class="field-error" role="alert"></p>
+                        <p class="field-hint">Required to authorize creating a new HR account.</p>
                     </div>
-                    <p class="field-error" role="alert"></p>
-                    <p class="field-hint">Required to authorize creating a new HR account.</p>
-                </div>
-                <div class="field" data-field="mfa_code" hidden>
-                    <label for="mfa_code">Email Verification Code <span class="req">*</span></label>
-                    <div class="input-box">
-                        <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 4-8 5-8-5V6l8 5 8-5z"/></svg>
-                        <input type="text" id="mfa_code" name="mfa_code" placeholder="Enter the 6-digit code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}">
+                    <div class="field field-wide" data-field="mfa_code" hidden>
+                        <label for="mfa_code">Email Verification Code <span class="req">*</span></label>
+                        <div class="input-box">
+                            <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 4-8 5-8-5V6l8 5 8-5z"/></svg>
+                            <input type="text" id="mfa_code" name="mfa_code" data-input-rule="digits" placeholder="Enter the 6-digit code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}">
+                        </div>
+                        <p class="field-error" role="alert"></p>
+                        <p class="field-hint" id="mfaHint">A verification code will be emailed to the address entered above.</p>
+                        <button type="button" class="btn btn-outline" id="resendMfaBtn" hidden>Send a new code</button>
                     </div>
-                    <p class="field-error" role="alert"></p>
-                    <p class="field-hint" id="mfaHint">A verification code will be emailed to the address entered above.</p>
-                    <button type="button" class="btn btn-outline" id="resendMfaBtn" hidden>Send a new code</button>
+                    <?php endif; ?>
                 </div>
-                <?php endif; ?>
 
                 <div class="send-row">
                     <label class="check-row">
@@ -382,6 +386,7 @@ $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
         ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
     </script>
     <!-- Shared admin behaviour first, then this page's script -->
+    <script src="../assets/js/input-rules.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/input-rules.js'); ?>"></script>
     <script src="../assets/js/admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/admin.js'); ?>"></script>
 </body>
 </html>

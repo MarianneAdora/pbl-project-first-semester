@@ -1,8 +1,7 @@
 <?php
 // api/admin-action.php — DB-backed AJAX endpoint for admin archive/restore/purge actions.
 require_once __DIR__ . '/../src/Helpers/security.php';
-secure_session(1800);
-session_start();
+start_secure_session(1800);
 send_security_headers(false);
 
 header('Content-Type: application/json; charset=UTF-8');
@@ -21,6 +20,35 @@ function admin_respond(array $data, int $code = 200): void
     exit;
 }
 
+function admin_action_hr_name_error(string $name): ?string
+{
+    if ($name === '') return 'Please enter the full name.';
+    if (mb_strlen($name, 'UTF-8') > 100) return 'The name is too long (100 characters maximum).';
+    if (preg_match('/\d/', $name) || !preg_match("/^[\\p{L}\\p{M}'.\\- ]+$/u", $name)) {
+        return 'Use letters only (spaces, apostrophes, periods and hyphens are fine).';
+    }
+    if (preg_match_all('/\p{L}/u', $name) < 2) return 'The name is too short (at least 2 letters).';
+    return null;
+}
+
+function admin_action_hr_email_error(string $email): ?string
+{
+    if (strlen($email) > 150 || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        return 'Please enter a valid email address (150 characters maximum).';
+    }
+    return null;
+}
+
+function admin_action_hr_password_error(string $password): ?string
+{
+    if (strlen($password) > 72) return 'Password must be 72 bytes or fewer.';
+    if (preg_match('/\s/', $password)) return 'The password cannot contain spaces.';
+    if (strlen($password) < 8 || !preg_match('/[A-Za-z]/', $password) || !preg_match('/\d/', $password)) {
+        return 'Password must be at least 8 characters with letters and a number.';
+    }
+    return null;
+}
+
 function admin_action_hr_create_data(array $account): array
 {
     $name = trim((string) ($account['name'] ?? ''));
@@ -30,15 +58,12 @@ function admin_action_hr_create_data(array $account): array
     $status = ($account['status'] ?? 'Active') === 'Inactive' ? 'Inactive' : 'Active';
     $sendMail = !empty($account['send_email']);
 
-    if ($name === '' || mb_strlen($name, 'UTF-8') > 100) {
-        admin_respond(['status' => 'error', 'message' => 'Please enter a valid full name (100 characters maximum).'], 422);
-    }
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 150) {
-        admin_respond(['status' => 'error', 'message' => 'Please enter a valid email address.'], 422);
-    }
-    if (strlen($password) < 8 || !preg_match('/[A-Za-z]/', $password) || !preg_match('/\d/', $password)) {
-        admin_respond(['status' => 'error', 'message' => 'Password must be at least 8 characters with letters and a number.'], 422);
-    }
+    $nameError = admin_action_hr_name_error($name);
+    if ($nameError !== null) admin_respond(['status' => 'error', 'message' => $nameError], 422);
+    $emailError = admin_action_hr_email_error($email);
+    if ($emailError !== null) admin_respond(['status' => 'error', 'message' => $emailError], 422);
+    $passwordError = admin_action_hr_password_error($password);
+    if ($passwordError !== null) admin_respond(['status' => 'error', 'message' => $passwordError], 422);
     if ($passwordConfirm !== $password) {
         admin_respond(['status' => 'error', 'message' => 'The passwords do not match.'], 422);
     }
@@ -198,8 +223,10 @@ try {
             $sendMail = !empty($acc['send_email']);
 
             if (!$id)   admin_respond(['status' => 'error', 'message' => 'Invalid account ID.'], 422);
-            if (!$name) admin_respond(['status' => 'error', 'message' => 'Please enter the full name.'], 422);
-            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) admin_respond(['status' => 'error', 'message' => 'Please enter a valid email address.'], 422);
+            $nameError = admin_action_hr_name_error($name);
+            if ($nameError !== null) admin_respond(['status' => 'error', 'message' => $nameError], 422);
+            $emailError = admin_action_hr_email_error($email);
+            if ($emailError !== null) admin_respond(['status' => 'error', 'message' => $emailError], 422);
 
             $pdo = db();
             $dup = $pdo->prepare("SELECT 1 FROM users WHERE email = :e AND user_id != :id AND deleted_at IS NULL");
@@ -208,11 +235,17 @@ try {
 
             $en = strtolower(trim($email));
             if ($password !== '') {
-                if (strlen($password) < 8 || !preg_match('/[A-Za-z]/', $password) || !preg_match('/\d/', $password))
-                    admin_respond(['status' => 'error', 'message' => 'Password must be at least 8 characters with letters and a number.'], 422);
+                $passwordError = admin_action_hr_password_error($password);
+                if ($passwordError !== null) admin_respond(['status' => 'error', 'message' => $passwordError], 422);
+                if ((string) ($acc['password_confirm'] ?? '') !== $password) {
+                    admin_respond(['status' => 'error', 'message' => 'The passwords do not match.'], 422);
+                }
                 $hash = password_hash($password, PASSWORD_DEFAULT);
-                $upd = $pdo->prepare("UPDATE users SET name=:n, email=:e, email_normalized=:en, password_hash=:p, status=:s WHERE user_id=:id AND role='hr' AND deleted_at IS NULL");
+                $upd = $pdo->prepare("UPDATE users SET name=:n, email=:e, email_normalized=:en, password_hash=:p, status=:s, remember_token=NULL, remember_token_expires_at=NULL WHERE user_id=:id AND role='hr' AND deleted_at IS NULL");
                 $upd->execute([':n' => $name, ':e' => $email, ':en' => $en, ':p' => $hash, ':s' => $status, ':id' => $id]);
+            } elseif ($status === 'Inactive') {
+                $upd = $pdo->prepare("UPDATE users SET name=:n, email=:e, email_normalized=:en, status=:s, remember_token=NULL, remember_token_expires_at=NULL WHERE user_id=:id AND role='hr' AND deleted_at IS NULL");
+                $upd->execute([':n' => $name, ':e' => $email, ':en' => $en, ':s' => $status, ':id' => $id]);
             } else {
                 $upd = $pdo->prepare("UPDATE users SET name=:n, email=:e, email_normalized=:en, status=:s WHERE user_id=:id AND role='hr' AND deleted_at IS NULL");
                 $upd->execute([':n' => $name, ':e' => $email, ':en' => $en, ':s' => $status, ':id' => $id]);
@@ -253,6 +286,56 @@ try {
             if (!repo_account_purge($aid)) admin_respond(['status' => 'error', 'message' => $missing], 404);
             repo_log_activity('HR Account Deleted Forever', $aname . ' (HR) · ' . $aemail);
             $message = 'HR account deleted forever.';
+            break;
+
+        case 'section_delete':
+            $sectionNo = filter_var($input['section_no'] ?? null, FILTER_VALIDATE_INT);
+            if ($sectionNo === false || $sectionNo < 1) {
+                admin_respond(['status' => 'error', 'message' => 'Choose a valid section to delete.'], 422);
+            }
+
+            $pdo = db();
+            $pdo->beginTransaction();
+            try {
+                $sectionQuery = $pdo->prepare(
+                    "SELECT section FROM question_config WHERE section_no = :section_no AND section <> '' ORDER BY question_id FOR UPDATE"
+                );
+                $sectionQuery->execute([':section_no' => $sectionNo]);
+                $sectionName = $sectionQuery->fetchColumn();
+                if ($sectionName === false) {
+                    $pdo->rollBack();
+                    admin_respond(['status' => 'error', 'message' => 'That section no longer exists. Refresh and try again.'], 404);
+                }
+
+                $countQuery = $pdo->prepare('SELECT COUNT(*) FROM question_config WHERE section_no = :section_no');
+                $countQuery->execute([':section_no' => $sectionNo]);
+                $questionCount = (int) $countQuery->fetchColumn();
+
+                $deleteSection = $pdo->prepare(
+                    "UPDATE question_config SET section_no = 0, section = '' WHERE section_no = :section_no"
+                );
+                $deleteSection->execute([':section_no' => $sectionNo]);
+                $pdo->commit();
+            } catch (Throwable $e) {
+                if ($pdo->inTransaction()) $pdo->rollBack();
+                throw $e;
+            }
+
+            repo_log_activity(
+                'Questionnaire Section Deleted',
+                'Sec ' . $sectionNo . ' · ' . (string) $sectionName . ' · ' . $questionCount . ' questions left unassigned'
+            );
+            $nextNo = (int) $pdo->query('SELECT COALESCE(MAX(section_no), 0) + 1 FROM question_config')->fetchColumn();
+            admin_respond([
+                'status'  => 'success',
+                'message' => 'Section deleted. Its questions were kept with no section assigned.',
+                'result'  => ['section_no' => $sectionNo, 'section' => (string) $sectionName, 'question_count' => $questionCount, 'next_no' => $nextNo],
+                'data'    => [
+                    'accounts'  => repo_admin_accounts(),
+                    'questions' => repo_admin_questions_list(),
+                    'archive'   => repo_admin_archive(),
+                ],
+            ]);
             break;
 
         case 'question_add':
@@ -378,6 +461,8 @@ try {
             foreach ($stmt->fetchAll() as $r) { $oldRow = $r; }
             $old = [
                 'id'      => 'q' . $id,
+                'section_no' => (int) ($oldRow['section_no'] ?? 0),
+                'section' => (string) ($oldRow['section'] ?? ''),
                 'status'  => $oldRow && $oldRow['is_active'] ? 'Active' : 'Inactive',
                 'created' => $oldRow && $oldRow['created_at'] ? date('Y-m-d H:i', strtotime((string) $oldRow['created_at'])) : date('Y-m-d H:i'),
             ];

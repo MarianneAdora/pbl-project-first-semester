@@ -1,36 +1,7 @@
 <?php
-session_start();
-
-require_once __DIR__ . '/../src/Helpers/db.php';
-
-// Restore session from "remember me" cookie when no session exists
-if (empty($_SESSION['user_role']) && isset($_COOKIE['remember'])) {
-    $pdo = db();
-    $parts = explode('|', $_COOKIE['remember'], 2);
-    if (count($parts) === 2) {
-        $uid = (int) $parts[0];
-        $token = $parts[1];
-        if ($uid > 0 && $token !== '') {
-            $stmt = $pdo->prepare(
-                "SELECT user_id, role, name, email, remember_token, remember_token_expires_at
-                 FROM users WHERE user_id = :id AND deleted_at IS NULL LIMIT 1"
-            );
-            $stmt->execute([':id' => $uid]);
-            $row = $stmt->fetch();
-            if ($row && !empty($row['remember_token']) && hash_equals($row['remember_token'], hash('sha256', $token))) {
-                $expires = $row['remember_token_expires_at'];
-                if ($expires && strtotime($expires) > time()) {
-                    $_SESSION['user_role'] = $row['role'];
-                    $_SESSION['user_email'] = strtolower(trim((string) $row['email']));
-                    $_SESSION['user_name'] = (string) $row['name'];
-                    $_SESSION['user_id'] = (int) $row['user_id'];
-                }
-            }
-            }
-        }
-    }
-
 require_once __DIR__ . '/../src/Helpers/security.php';
+start_secure_session(1800);
+restore_remembered_session();
 $csrf = csrf_token();
 
 // No caching, so the Back button after logout never shows this page
@@ -281,18 +252,43 @@ $greeting     = 'Hello, ' . $display_name . '!';
 
         <div class="admin-dashboard">
 
-            <div class="dashboard-scope">
+            <div class="dashboard-scope reveal" style="--i:1">
                 <form class="dashboard-scope-filter" method="get">
-                    <label for="activityFilter">Dashboard view</label>
-                    <select id="activityFilter" name="activity_filter">
-                        <option value="all" <?= $activity_filter === 'all' ? 'selected' : '' ?>>All Activities</option>
-                        <option value="hr" <?= $activity_filter === 'hr' ? 'selected' : '' ?>>All HR Accounts</option>
+                    <label id="activityFilterLabel" for="activityFilter">Dashboard view</label>
+                    <div class="dashboard-filter-control">
+                        <select id="activityFilter" name="activity_filter">
+                            <option value="all" <?= $activity_filter === 'all' ? 'selected' : '' ?>>All Activities</option>
+                            <option value="hr" <?= $activity_filter === 'hr' ? 'selected' : '' ?>>All HR Accounts</option>
+                            <?php foreach ($hr_accounts as $account): ?>
+                                <option value="<?= 'account:' . (int) $account['id'] ?>" <?= $hr_user_id === (int) $account['id'] ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars(trim((string) $account['name']) . ' (' . (string) $account['email'] . ')', ENT_QUOTES, 'UTF-8') ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <button type="button" class="dashboard-filter-trigger" id="activityFilterTrigger" aria-haspopup="listbox" aria-expanded="false" aria-controls="activityFilterMenu" aria-labelledby="activityFilterLabel activityFilterValue" hidden>
+                            <span class="dashboard-filter-value" id="activityFilterValue"></span>
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5z"/></svg>
+                        </button>
+                        <ul class="dashboard-filter-menu" id="activityFilterMenu" role="listbox" aria-labelledby="activityFilterLabel" hidden>
+                            <li class="dashboard-filter-option" id="activityFilterOptionAll" role="option" tabindex="-1" data-value="all" data-label="All Activities" aria-selected="<?= $activity_filter === 'all' ? 'true' : 'false' ?>">
+                                <span class="dashboard-filter-option-copy"><span class="dashboard-filter-option-label">All Activities</span><span class="dashboard-filter-option-meta">System-wide activity and dashboard metrics</span></span>
+                                <svg class="dashboard-filter-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 16.2-3.5-3.5L4 14.2l5 5L20 8.2l-1.5-1.4z"/></svg>
+                            </li>
+                            <li class="dashboard-filter-option" id="activityFilterOptionHr" role="option" tabindex="-1" data-value="hr" data-label="All HR Accounts" aria-selected="<?= $activity_filter === 'hr' ? 'true' : 'false' ?>">
+                                <span class="dashboard-filter-option-copy"><span class="dashboard-filter-option-label">All HR Accounts</span><span class="dashboard-filter-option-meta">Activity from every HR account</span></span>
+                                <svg class="dashboard-filter-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 16.2-3.5-3.5L4 14.2l5 5L20 8.2l-1.5-1.4z"/></svg>
+                            </li>
                         <?php foreach ($hr_accounts as $account): ?>
-                            <option value="<?= 'account:' . (int) $account['id'] ?>" <?= $hr_user_id === (int) $account['id'] ? 'selected' : '' ?>>
-                                <?= htmlspecialchars(trim((string) $account['name']) . ' (' . (string) $account['email'] . ')', ENT_QUOTES, 'UTF-8') ?>
-                            </option>
+                            <li class="dashboard-filter-option" id="activityFilterOption<?= (int) $account['id'] ?>" role="option" tabindex="-1" data-value="<?= 'account:' . (int) $account['id'] ?>" data-label="<?= htmlspecialchars(trim((string) $account['name']) . ' (' . (string) $account['email'] . ')', ENT_QUOTES, 'UTF-8') ?>" aria-selected="<?= $hr_user_id === (int) $account['id'] ? 'true' : 'false' ?>">
+                                <span class="dashboard-filter-option-copy">
+                                    <span class="dashboard-filter-option-label"><?= htmlspecialchars(trim((string) $account['name']), ENT_QUOTES, 'UTF-8') ?></span>
+                                    <span class="dashboard-filter-option-meta"><?= htmlspecialchars((string) $account['email'], ENT_QUOTES, 'UTF-8') ?></span>
+                                </span>
+                                <svg class="dashboard-filter-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 16.2-3.5-3.5L4 14.2l5 5L20 8.2l-1.5-1.4z"/></svg>
+                            </li>
                         <?php endforeach; ?>
-                    </select>
+                        </ul>
+                    </div>
                 </form>
             </div>
 
