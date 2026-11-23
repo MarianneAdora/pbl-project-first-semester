@@ -8,9 +8,9 @@ $devMode     = false;   // true = shows the OTP on screen so you can test withou
 $otpLifetime = 300;     // seconds the code stays valid (5 minutes)
 $resendBase   = 30;     // seconds the applicant waits before the 1st resend
 $resendStep   = 10;     // +10 seconds for every further resend (30, 40, 50, 60 ...)
-$resendMax    = 10;     // resends allowed per window = the "attempts" shown on the page; after this a popup appears
+$resendMax    = 10;     // resends allowed per window; after this a popup appears
 $resendWindow = 3600;   // 1 hour: the resend counter renews after this
-$maxAttempts = 3;       // wrong codes allowed (the usual OTP limit). Reaching it locks the page
+$maxAttempts = 5;       // wrong codes allowed before the page locks
 $lockSeconds = 900;     // how long the page stays locked after the last wrong attempt (15 minutes)
 $nextPage    = 'instruction.php';
 $backPage    = 'opening.php';
@@ -357,7 +357,6 @@ if ($otpDb && !$row && !$otpRateLogUnavailable) {
     $rs = ['blocked' => false, 'wait' => 0];
     $resendsUsed = 0;
 }
-$attemptsLeft   = max(0, $resendMax - $resendsUsed);
 $resendBlocked  = $rs['blocked'];
 $cooldown       = $locked ? 0 : $rs['wait'];
 $resendUnavailable = $verificationUnavailable || ($otpRateLogUnavailable && $notice === '');
@@ -499,7 +498,7 @@ $logoSrc = is_file(__DIR__ . '/../assets/images/expertise.png') ? '../assets/ima
             <?php endif; ?>
 
             <p class="attempts reveal<?= $attemptsLeft === 1 ? ' attempts--last' : '' ?>" id="attempts" style="--i:10.6">
-                <?= (int) $attemptsLeft ?> of <?= (int) $resendMax ?> attempt<?= $resendMax === 1 ? '' : 's' ?> left
+                <?= (int) $attemptsLeft ?> of <?= (int) $maxAttempts ?> attempt<?= $maxAttempts === 1 ? '' : 's' ?> left
             </p>
 
         </form>
