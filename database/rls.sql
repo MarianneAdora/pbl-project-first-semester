@@ -1,5 +1,5 @@
--- database/rls.sql — Row Level Security policies for PostgreSQL.
--- Apply after schema.sql. Requires the app to set a DB role per request
+-- database/rls.sql — Row Level Security policies and database roles.
+-- Apply after schema.sql and database_objects.sql. Requires the app to set a DB role per request
 -- (e.g. via SET ROLE) matching the policy checks below.
 --
 -- Roles used by the app: hr, admin
@@ -28,6 +28,37 @@ GRANT SELECT ON users, otp, question_config, job_positions TO hr;
 -- HR can update their own user row (name/email settings)
 GRANT UPDATE (name, email, email_normalized) ON users TO hr;
 GRANT SELECT, INSERT ON otp_request_log TO hr;
+
+-- Application roles and reporting role
+-- These roles are separate from PostgreSQL's built-in postgres role.
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_user') THEN
+        CREATE ROLE app_user LOGIN PASSWORD 'app_user_password';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'read_only') THEN
+        CREATE ROLE read_only LOGIN PASSWORD 'read_only_password';
+    END IF;
+END $$;
+
+GRANT USAGE ON SCHEMA public TO app_user, read_only;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON
+    users, applicant, response, score, otp, question_config,
+    job_positions, schedule, activity_log, otp_request_log,
+    deleted_applicant_fingerprints, notification_reads,
+    admin_mfa_challenges, rate_limit_log TO app_user;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO app_user;
+
+GRANT SELECT ON
+    users, applicant, response, score, otp, question_config,
+    job_positions, schedule, activity_log, otp_request_log,
+    deleted_applicant_fingerprints, notification_reads,
+    admin_mfa_challenges, rate_limit_log TO read_only;
+GRANT SELECT ON
+    v_applicant_screening_summary,
+    v_weekly_funnel_stats TO read_only;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO read_only;
 
 -- ------------------------------------------------------------
 -- USERS

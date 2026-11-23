@@ -312,10 +312,6 @@ CREATE TABLE notification_reads (
     PRIMARY KEY (user_id, notification_key)
 );
 
--- ------------------------------------------------------------
--- PASSWORD CHANGE REQUESTS
--- HR requests to change their password; the Admin reviews and decides.
--- ------------------------------------------------------------
 -- End of tables
 -- ------------------------------------------------------------
 
