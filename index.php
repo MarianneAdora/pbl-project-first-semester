@@ -73,24 +73,9 @@ try {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Content-Type: application/json');
 
-        // Reject cross-site or expired submissions before they consume rate-limit slots.
-        $csrfIn = (string) ($_POST['csrf_token'] ?? '');
-        if (!csrf_verify($csrfIn)) {
-            http_response_code(403);
-            echo json_encode(['status' => 'error', 'message' => 'Invalid CSRF token. Please refresh and try again.']);
-            exit();
-        }
-
-        // Rate limit login attempts (50 attempts per 15 minutes per IP)
+        // Rate limit login attempts (5 attempts per 15 minutes per IP)
         $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
-        try {
-            $rl = rate_limit('login:' . $ip, 50, 15 * 60);
-        } catch (Throwable $e) {
-            error_log('Login rate-limit check failed: ' . $e->getMessage());
-            http_response_code(503);
-            echo json_encode(['status' => 'error', 'message' => 'Login is temporarily unavailable. Please try again later.']);
-            exit();
-        }
+        $rl = rate_limit('login:' . $ip, 5, 15 * 60);
         if (!$rl['allowed']) {
             $seconds = (int) $rl['retry_after'];
             $waitText = $seconds >= 60
